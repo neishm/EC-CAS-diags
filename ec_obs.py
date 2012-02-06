@@ -32,3 +32,6 @@ varlist = list(data)
 varlist = [var.rename(var.name[:-9]) for var in varlist if var.name.endswith('_CO2_mean')]
 data = asdataset(varlist)
 data = fix_timeaxis(data)
+
+# Fix Egbert (only has measurements every *other* hour, on odd hours)
+data = data.replace_vars(Egbert = data.Egbert.slice[1::2])
