@@ -13,9 +13,9 @@ def rpnopen_sfconly (filename):
   f = f(eta=1).squeeze()
   return f
 
-def rpnopen_eta995 (filename):
+def rpnopen_eta932 (filename):
   f = rpnopen(filename)
-  f = f(eta=0.995)
+  f = f(eta=0.932)
   return f
 
 # Extract a date from a GEM model filename
@@ -59,60 +59,62 @@ def save (filename, data):
   nc.save (filename, data)
 
 year = 2009
-month = 12
+for month in range(1,13):
 
-# Convert dynamics fields
-#dm = open_multi ("model_data/dm%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
-#save("%04d%02d_dynamics.nc"%(year,month), dm)
+  # Convert dynamics fields
+  #dm = open_multi ("model_data/dm%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
+  #save("%04d%02d_dynamics.nc"%(year,month), dm)
 
-# Convert the surface data
-sfc = open_multi ("model_data/km%04d%02d*"%(year,month), opener=rpnopen_sfconly, file2date=file2date)
-save("%04d%02d_co2_sfc.nc"%(year,month), sfc)
+  # Convert the surface data
+  sfc = open_multi ("model_data/km%04d%02d*"%(year,month), opener=rpnopen_sfconly, file2date=file2date)
+  save("%04d%02d_co2_sfc.nc"%(year,month), sfc)
 
-# Convert the 2nd lowest level
-data = open_multi ("model_data/km%04d%02d*"%(year,month), opener=rpnopen_eta995, file2date=file2date)
-save("%04d%02d_co2_eta995.nc"%(year,month), data)
+  # Convert another level (daily only)
+  data = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen_eta932, file2date=file2date)
+  save("%04d%02d_co2_eta932.nc"%(year,month), data)
 
 
-# Convert 3D data
-#atm = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
-## Only 1 level
-#atm = atm(eta=0.5)
-#print atm
-#nc.save("%04d%02d_co2_500mb.nc"%(year,month), atm)
+  # Convert 3D data
+  #atm = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
+  ## Only 1 level
+  #atm = atm(eta=0.5)
+  #print atm
+  #nc.save("%04d%02d_co2_500mb.nc"%(year,month), atm)
 
-# Convert zonal mean data (over eta levels)
-km = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
-zonal = km.mean('lon')
-save("%04d%02d_co2_zonalmean_eta.nc"%(year,month), zonal)
+  # Convert zonal mean data (over eta levels)
+  km = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
+  zonal = km.mean('lon')
+  save("%04d%02d_co2_zonalmean_eta.nc"%(year,month), zonal)
 
-# Convert zonal mean data (pressure levels)
-quit()
-km = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
-anlm = open_multi ("wind_data/anlm%04d%02d*"%(year,month), opener=rpnopen, file2date=file2date_anlm)
+  continue
 
-p0 = anlm.P0 * 100  # Pa
-p0 = p0.load()
-co2 = km.CO2
+  # Convert zonal mean data (pressure levels)
+  quit()
+  km = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
+  anlm = open_multi ("wind_data/anlm%04d%02d*"%(year,month), opener=rpnopen, file2date=file2date_anlm)
 
-eta = co2.eta
-A = eta.auxasvar('A')
-B = eta.auxasvar('B')
+  p0 = anlm.P0 * 100  # Pa
+  p0 = p0.load()
+  co2 = km.CO2
 
-pres = A + B*p0
-pres = pres / 100 # hPa
+  eta = co2.eta
+  A = eta.auxasvar('A')
+  B = eta.auxasvar('B')
 
-from pygeode.axis import Pres, Hybrid
-plevs = Pres(eta.values*1000)
+  pres = A + B*p0
+  pres = pres / 100 # hPa
 
-# Interpolate!
-from pygeode.interp import interpolate
-from common import overlapping
+  from pygeode.axis import Pres, Hybrid
+  plevs = Pres(eta.values*1000)
 
-# Remove timesteps where we have no corresponding pressure
-co2, pres = overlapping(co2, pres)
+  # Interpolate!
+  from pygeode.interp import interpolate
+  from common import overlapping
 
-co2 = interpolate (co2, inaxis=Hybrid, outaxis=plevs, inx=pres.log(), outx = plevs.log())
+  # Remove timesteps where we have no corresponding pressure
+  co2, pres = overlapping(co2, pres)
 
-#nc.save("%04d%02d_co2_zonalmean.nc"%(year,month), zonal)
+  co2 = interpolate (co2, inaxis=Hybrid, outaxis=plevs, inx=pres.log(), outx = plevs.log())
+
+  #nc.save("%04d%02d_co2_zonalmean.nc"%(year,month), zonal)
 

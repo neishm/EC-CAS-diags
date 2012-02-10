@@ -18,6 +18,11 @@ eta995 = openall(files="2009*_co2_eta995.nc", format=nc)
 co2_eta995 = eta995.CO2 * convert
 co2_eta995.name = 'CO2'
 
+# Eta 0.932
+eta932 = openall(files="2009*_co2_eta932.nc", format=nc)
+co2_eta932 = eta932.CO2 * convert
+co2_eta932.name = 'CO2'
+
 # Ocean field
 co2_ocean = sfc.COC * convert
 co2_ocean.name = 'COC'
