@@ -3,7 +3,7 @@ from pygeode.volatile.plot_shortcuts import pcolor, contour, contourf, Map
 
 import matplotlib.pyplot as plt
 
-from model import co2_zonal as co2, co2b_zonal as co2b
+from model import co2_zonal as co2, co2b_zonal as co2_ref
 
 from os.path import exists
 import numpy as np
@@ -11,6 +11,11 @@ import numpy as np
 #print co2.min(), co2.mean(), co2.max()
 #print co2.stdev()
 #quit()
+
+# Force daily data
+from pygeode.climat import dailymean
+co2 = dailymean(co2)
+co2_ref = dailymean(co2_ref)
 
 #fig = plt.figure(figsize=(8,8))  # for single plot
 fig = plt.figure(figsize=(12,6))  # double plot
@@ -22,10 +27,10 @@ for t in range(len(co2.time)):
   year = data.time.year[0]
   month = data.time.month[0]
   day = data.time.day[0]
-  hour = data.time.hour[0]
+#  hour = data.time.hour[0]
 
-  date = "%04d-%02d-%02d %02d:00"%(year,month,day,hour)
-  fname = "images/%04d%02d%02d%02d.png"%(year,month,day,hour)
+  date = "%04d-%02d-%02d"%(year,month,day)
+  fname = "images/%04d%02d%02d.png"%(year,month,day)
   if exists(fname):
     print date, '(exists)'
     continue
@@ -40,7 +45,7 @@ for t in range(len(co2.time)):
   plot1 = Colorbar(plot1)
 
   # CO2B
-  data = co2b(i_time=t)
+  data = co2_ref(i_time=t)
   plot2 = contourf(data, contours, title='CO2 ppmV (background) '+date)
   plot2 = Colorbar(plot2)
 
