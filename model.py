@@ -28,12 +28,17 @@ co2_ocean = sfc.COC * convert
 co2_ocean.name = 'COC'
 
 # Zonal means
-zonal = openall(files="2009*_co2_zonalmean_eta.nc", format=nc)
+#zonal = openall(files="2009*_co2_zonalmean_eta.nc", format=nc)
+zonal = openall(files="2009*_co2_zonalmean_gph.nc", format=nc)
 zonal = fix_timeaxis(zonal)
 co2_zonal = zonal.CO2 * convert
 co2_zonal.name = 'CO2'
 co2b_zonal = zonal.CO2B * convert
 co2b_zonal.name = 'CO2B'
+coc_zonal = zonal.COC * convert
+coc_zonal.name = 'COC'
+cla_zonal = zonal.CLA * convert
+cla_zonal.name = 'CLA'
 
 # Dynamics fields
 dynamics = openall(files="2009*_dynamics.nc", format=nc)

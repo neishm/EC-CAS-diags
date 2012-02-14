@@ -62,8 +62,8 @@ year = 2009
 for month in range(1,13):
 
   # Convert dynamics fields
-  #dm = open_multi ("model_data/dm%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
-  #save("%04d%02d_dynamics.nc"%(year,month), dm)
+  dm = open_multi ("model_data/dm%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
+  save("%04d%02d_dynamics.nc"%(year,month), dm)
 
   # Convert the surface data
   sfc = open_multi ("model_data/km%04d%02d*"%(year,month), opener=rpnopen_sfconly, file2date=file2date)
@@ -85,6 +85,19 @@ for month in range(1,13):
   km = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
   zonal = km.mean('lon')
   save("%04d%02d_co2_zonalmean_eta.nc"%(year,month), zonal)
+
+  # Convert zonal mean data (on height)
+  km = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
+  dm = open_multi ("model_data/dm%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
+  from pygeode.interp import interpolate
+  from pygeode.axis import Height
+  height = Height(range(68), name='height')
+  varlist = [var for var in km if var.hasaxis('eta')]
+  varlist = [interpolate(var, inaxis='eta', outaxis=height, inx=dm.GZ*10/1000) for var in varlist]
+  varlist = [var.mean('lon') for var in varlist]
+  varlist = [var.transpose(0,2,1) for var in varlist]
+  save("%04d%02d_co2_zonalmean_gph.nc"%(year,month), varlist)
+
 
   continue
 
