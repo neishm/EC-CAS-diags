@@ -43,6 +43,8 @@ cbb_zonal = zonal.CBB * convert
 cbb_zonal.name = 'CBB'
 cff_zonal = zonal.CFF * convert
 cff_zonal.name = 'CFF'
+cons_zonal = zonal.CONS * convert
+cons_zonal.name = 'CONS'
 
 # Dynamics fields
 dynamics = openall(files="2009*_dynamics.nc", format=nc)
