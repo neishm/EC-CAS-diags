@@ -14,9 +14,9 @@ co2_bg = sfc.CO2B * convert
 co2_bg.name = 'CO2B'
 
 # Eta 0.995
-eta995 = openall(files="2009*_co2_eta995.nc", format=nc)
-co2_eta995 = eta995.CO2 * convert
-co2_eta995.name = 'CO2'
+#eta995 = openall(files="2009*_co2_eta995.nc", format=nc)
+#co2_eta995 = eta995.CO2 * convert
+#co2_eta995.name = 'CO2'
 
 # Eta 0.932
 eta932 = openall(files="2009*_co2_eta932.nc", format=nc)
@@ -39,6 +39,10 @@ coc_zonal = zonal.COC * convert
 coc_zonal.name = 'COC'
 cla_zonal = zonal.CLA * convert
 cla_zonal.name = 'CLA'
+cbb_zonal = zonal.CBB * convert
+cbb_zonal.name = 'CBB'
+cff_zonal = zonal.CFF * convert
+cff_zonal.name = 'CFF'
 
 # Dynamics fields
 dynamics = openall(files="2009*_dynamics.nc", format=nc)
