@@ -11,8 +11,10 @@ def create_images (co2, co2_ref, contours, refname='(reference)'):
   #print co2.stdev()
   #quit()
 
-  #fig = plt.figure(figsize=(8,8))  # for single plot
-  fig = plt.figure(figsize=(12,6))  # double plot
+  if co2_ref is None:
+    fig = plt.figure(figsize=(8,8))  # single plot
+  else:
+    fig = plt.figure(figsize=(12,6))  # double plot
 
   # Loop over all available times
   for t in range(len(co2.time)):
@@ -34,20 +36,25 @@ def create_images (co2, co2_ref, contours, refname='(reference)'):
     else:
       print date
 
-    # CO2
+    # 1st plot
     data = co2(year=year,month=month,day=day)
     assert len(data.time) == 1
     plot1 = contourf(data, contours, title='CO2 ppmV '+date)
     plot1 = Colorbar(plot1)
 
-    # CO2B
-    data = co2_ref(year=year,month=month,day=day)
-    if data.size == 0: continue # not available for this timestep
-    plot2 = contourf(data, contours, title='CO2 ppmV (%s) '%refname+date)
-    plot2 = Colorbar(plot2)
+    # 2nd plot
+    if co2_ref is not None:
+      data = co2_ref(year=year,month=month,day=day)
+      if data.size == 0: continue # not available for this timestep
+      plot2 = contourf(data, contours, title='CO2 ppmV (%s) '%refname+date)
+      plot2 = Colorbar(plot2)
+
 
     # Put them together
-    plot = Multiplot([[plot1,plot2]])
+    if co2_ref is not None:
+      plot = Multiplot([[plot1,plot2]])
+    else:
+      plot = plot1
 
     plot.render(figure=fig)
     fig.savefig(fname)
