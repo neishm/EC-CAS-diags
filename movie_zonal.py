@@ -36,17 +36,19 @@ def create_images (co2, co2_ref, contours, refname='(reference)'):
     else:
       print date
 
+    cmap = plt.get_cmap('Paired')
+
     # 1st plot
     data = co2(year=year,month=month,day=day)
     assert len(data.time) == 1
-    plot1 = contourf(data, contours, title='CO2 ppmV '+date)
+    plot1 = contourf(data, contours, title='CO2 ppmV '+date, cmap=cmap)
     plot1 = Colorbar(plot1)
 
     # 2nd plot
     if co2_ref is not None:
       data = co2_ref(year=year,month=month,day=day)
       if data.size == 0: continue # not available for this timestep
-      plot2 = contourf(data, contours, title='CO2 ppmV (%s) '%refname+date)
+      plot2 = contourf(data, contours, title='CO2 ppmV (%s) '%refname+date, cmap=cmap)
       plot2 = Colorbar(plot2)
 
 
