@@ -69,8 +69,8 @@ for month in range(1,13):
   sfc = open_multi ("model_data/km%04d%02d*"%(year,month), opener=rpnopen_sfconly, file2date=file2date)
   save("%04d%02d_co2_sfc.nc"%(year,month), sfc)
 
-  # Convert another level (daily only)
-  data = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen_eta932, file2date=file2date)
+  # Convert another level
+  data = open_multi ("model_data/km%04d%02d*"%(year,month), opener=rpnopen_eta932, file2date=file2date)
   save("%04d%02d_co2_eta932.nc"%(year,month), data)
 
 
