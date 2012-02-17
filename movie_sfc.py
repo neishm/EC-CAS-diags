@@ -1,4 +1,4 @@
-def create_images (co2, contours, title=''):
+def create_images (co2, contours, title='', palette=None):
   from pygeode.volatile.plot_wrapper import Colorbar, Plot, Overlay
   from pygeode.volatile.plot_shortcuts import pcolor, contour, contourf, Map
   
@@ -41,7 +41,7 @@ def create_images (co2, contours, title=''):
     else:
       print date
   
-    plot = contourf(data, contours, title=title+' '+date, cmap=plt.get_cmap('Paired'))
+    plot = contourf(data, contours, title=title+' '+date, cmap=plt.get_cmap(palette))
     plot = Colorbar(plot)
   #  # Add the city
   #  plot = Overlay(plot, city)

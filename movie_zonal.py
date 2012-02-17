@@ -1,4 +1,4 @@
-def create_images (co2, co2_ref, contours, refname='(reference)'):
+def create_images (co2, co2_ref, contours, refname='(reference)', palette=None):
   from pygeode.volatile.plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from pygeode.volatile.plot_shortcuts import pcolor, contour, contourf, Map
 
@@ -36,7 +36,7 @@ def create_images (co2, co2_ref, contours, refname='(reference)'):
     else:
       print date
 
-    cmap = plt.get_cmap('Paired')
+    cmap = plt.get_cmap(palette)
 
     # 1st plot
     data = co2(year=year,month=month,day=day)
