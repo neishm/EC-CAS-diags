@@ -58,41 +58,34 @@ def save (filename, data):
     return
   nc.save (filename, data)
 
-year = 2009
-for month in range(1,13):
+if __name__ == '__main__':
+
+ year = 2009
+ for month in range(1,13):
+
+  dm = open_multi ("model_data/dm%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
+  km_sfc = open_multi ("model_data/km%04d%02d*"%(year,month), opener=rpnopen_sfconly, file2date=file2date)
+  eta932 = open_multi ("model_data/km%04d%02d*"%(year,month), opener=rpnopen_eta932, file2date=file2date)
+  km_daily = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
 
   # Convert dynamics fields
-  dm = open_multi ("model_data/dm%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
   save("%04d%02d_dynamics.nc"%(year,month), dm)
 
   # Convert the surface data
-  sfc = open_multi ("model_data/km%04d%02d*"%(year,month), opener=rpnopen_sfconly, file2date=file2date)
-  save("%04d%02d_co2_sfc.nc"%(year,month), sfc)
+  save("%04d%02d_co2_sfc.nc"%(year,month), km_sfc)
 
   # Convert another level
-  data = open_multi ("model_data/km%04d%02d*"%(year,month), opener=rpnopen_eta932, file2date=file2date)
-  save("%04d%02d_co2_eta932.nc"%(year,month), data)
-
-
-  # Convert 3D data
-  #atm = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
-  ## Only 1 level
-  #atm = atm(eta=0.5)
-  #print atm
-  #nc.save("%04d%02d_co2_500mb.nc"%(year,month), atm)
+  save("%04d%02d_co2_eta932.nc"%(year,month), eta932)
 
   # Convert zonal mean data (over eta levels)
-  km = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
-  zonal = km.mean('lon')
+  zonal = km_daily.mean('lon')
   save("%04d%02d_co2_zonalmean_eta.nc"%(year,month), zonal)
 
   # Convert zonal mean data (on height)
-  km = open_multi ("model_data/km%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
-  dm = open_multi ("model_data/dm%04d%02d*_1440m"%(year,month), opener=rpnopen, file2date=file2date)
   from pygeode.interp import interpolate
   from pygeode.axis import Height
   height = Height(range(68), name='height')
-  varlist = [var for var in km if var.hasaxis('eta')]
+  varlist = [var for var in km_daily if var.hasaxis('eta')]
   varlist = [interpolate(var, inaxis='eta', outaxis=height, inx=dm.GZ*10/1000) for var in varlist]
   varlist = [var.mean('lon') for var in varlist]
   varlist = [var.transpose(0,2,1) for var in varlist]
