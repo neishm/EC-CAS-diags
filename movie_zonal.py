@@ -1,4 +1,4 @@
-def create_images (co2, co2_ref, contours, refname='(reference)', palette=None):
+def create_images (co2, co2_ref, contours, title1='plot1', title2='plot2', palette=None, norm=None):
   from pygeode.volatile.plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from pygeode.volatile.plot_shortcuts import pcolor, contour, contourf, Map
 
@@ -41,14 +41,14 @@ def create_images (co2, co2_ref, contours, refname='(reference)', palette=None):
     # 1st plot
     data = co2(year=year,month=month,day=day)
     assert len(data.time) == 1
-    plot1 = contourf(data, contours, title='CO2 ppmV '+date, cmap=cmap)
+    plot1 = contourf(data, contours, title=title1+' '+date, cmap=cmap, norm=norm)
     plot1 = Colorbar(plot1)
 
     # 2nd plot
     if co2_ref is not None:
       data = co2_ref(year=year,month=month,day=day)
       if data.size == 0: continue # not available for this timestep
-      plot2 = contourf(data, contours, title='CO2 ppmV (%s) '%refname+date, cmap=cmap)
+      plot2 = contourf(data, contours, title=title2+' '+date, cmap=cmap, norm=norm)
       plot2 = Colorbar(plot2)
 
 
