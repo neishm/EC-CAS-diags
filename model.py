@@ -51,3 +51,7 @@ dynamics = openall(files="2009*_dynamics.nc", format=nc)
 dynamics = fix_timeaxis(dynamics)
 gz = dynamics.GZ
 hu = dynamics.HU
+
+dyn_zonal = openall(files="2009*_dyn_zonalmean_eta.nc", format=nc)
+gz_zonal = dyn_zonal.GZ
+hu_zonal = dyn_zonal.HU
