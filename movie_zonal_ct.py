@@ -27,5 +27,5 @@ from movie_zonal import create_images
 #contours = np.arange(-12,-2+0.2,0.5) # ocean range
 #contours = np.arange(4,12+0.2,0.2) # fires range
 contours = np.arange(10,50) # fossil fuels range
-create_images (gem_co2, ct_co2, contours = contours, refname='CarbonTracker')
+create_images (gem_co2, ct_co2, contours = contours, title1='CO2 ppmV', title2='CO2 ppmV (CarbonTracker)')
 
