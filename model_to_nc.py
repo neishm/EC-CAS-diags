@@ -70,6 +70,7 @@ if __name__ == '__main__':
 
   # Convert dynamics fields
   save("%04d%02d_dynamics.nc"%(year,month), dm)
+  save("%04d%02d_dyn_zonalmean_eta.nc"%(year,month), dm.mean('lon'))
 
   # Convert the surface data
   save("%04d%02d_co2_sfc.nc"%(year,month), km_sfc)
