@@ -1,4 +1,50 @@
-def create_images (co2, co2_ref, contours, title1='plot1', title2='plot2', palette=None, norm=None, preview=False):
+# Helper method for autogenerating contour levels
+def get_contours(low,high):
+  from math import log10, ceil, floor
+  import numpy as np
+
+  true_low = low
+  true_high = high
+
+#  print '?? low/high:', low, high
+  # Make the numbers nice
+  dx = high-low
+#  print '?? dx:', dx
+  digits = int(floor(log10(dx)))
+#  print '?? digits:', digits
+  # Adjust the low/high to the proper # of digits
+  low  = floor(low /10**digits * 10) * 10**digits / 10
+  high =  ceil(high/10**digits * 10) * 10**digits / 10
+#  print '?? low/high:', low, high
+  # Adjust so that dx is divisible into 20 units
+  dx = high-low
+#  print '?? dx:', dx
+
+  count = dx / 10**digits * 10
+#  print '?? count:', count
+  count = int(count)
+#  print '?? count:', count
+  # Want a range that's divisible into a reasonable number of contours
+  min_contours = 16
+  max_contours = 24
+  valid_contours = range(min_contours,max_contours+1)
+  while not any(count%n == 0 for n in valid_contours):
+    # Which end should we extend?
+    if abs(low-true_low) < abs(high-true_high):
+      low -= 10**digits / 10
+    else:
+      high += 10**digits / 10
+    count += 1
+#  print '?? count:', count
+#  print '?? low/high:', low, high
+
+  for n in valid_contours:
+    if count%n == 0:
+      contours = np.linspace(low,high,n+1)
+#      print '?? contours:', contours
+      return contours
+
+def create_images (co2, co2_ref, contours=None, title1='plot1', title2='plot2', palette=None, norm=None, preview=False):
   from pygeode.volatile.plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from pygeode.volatile.plot_shortcuts import pcolor, contour, contourf, Map
 
@@ -7,9 +53,19 @@ def create_images (co2, co2_ref, contours, title1='plot1', title2='plot2', palet
   from os.path import exists
   import numpy as np
 
-  #print co2.min(), co2.mean(), co2.max()
-  #print co2.stdev()
-  #quit()
+  # Autogenerate contours?
+  if contours is None:
+
+    # Sample every 10th frame (for speedup)
+    sample = co2.slice[::10,...]
+    mean = sample.mean()
+    stdev = sample.stdev()
+    low = mean - 3*stdev
+    high = mean + 3*stdev
+    contours = get_contours(low,high)
+
+  # Get the palette to use
+  cmap = plt.get_cmap(palette)
 
   if co2_ref is None:
     fig = plt.figure(figsize=(8,8))  # single plot
@@ -35,8 +91,6 @@ def create_images (co2, co2_ref, contours, title1='plot1', title2='plot2', palet
       continue
     else:
       print date
-
-    cmap = plt.get_cmap(palette)
 
     # 1st plot
     data = co2(year=year,month=month,day=day)
