@@ -71,7 +71,7 @@ def nc_cache (dirname, data):
         if exists(filename):
           print "skipping '%s' - already exists"%filename
           continue
-        nc.save (filename, data[datatype](year=year,month=month))
+        nc.save (filename, data[datatype](year=year,month=month), version=4)
 
   # Reload the data from these files
   data = dict(data)
