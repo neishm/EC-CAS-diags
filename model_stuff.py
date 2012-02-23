@@ -87,12 +87,12 @@ def open (indir, tmpdir=None):
 
   data = dict()
 
-  data['dynamics'] = dm = open_multi (indir+"/dm*_1440m", opener=rpnopen, file2date=file2date)
-  data['dyn_zonalmean_eta'] = dm.mean('lon')
-  data['co2_sfc'] = open_multi (indir+"/km*", opener=rpnopen_sfconly, file2date=file2date)
-  data['co2_eta932'] = open_multi (indir+"/km*", opener=rpnopen_eta932, file2date=file2date)
+  data['dm'] = dm = open_multi (indir+"/dm*", opener=rpnopen, file2date=file2date)
+  data['dm_zonalmean_eta'] = dm.mean('lon')
+  data['km_sfc'] = open_multi (indir+"/km*", opener=rpnopen_sfconly, file2date=file2date)
+#  data['km_eta932'] = open_multi (indir+"/km*", opener=rpnopen_eta932, file2date=file2date)
   km_daily = open_multi (indir+"/km*_1440m", opener=rpnopen, file2date=file2date)
-  data['co2_zonalmean_eta'] = km_daily.mean('lon')
+  data['km_zonalmean_eta'] = km_daily.mean('lon')
 
   # Convert zonal mean data (on height)
   from pygeode.interp import interpolate
@@ -103,7 +103,7 @@ def open (indir, tmpdir=None):
   varlist = [interpolate(var, inaxis='eta', outaxis=height, inx=dm.GZ*10/1000) for var in varlist]
   varlist = [var.mean('lon') for var in varlist]
   varlist = [var.transpose(0,2,1) for var in varlist]
-  data['co2_zonalmean_gph'] = Dataset(varlist)
+  data['km_zonalmean_gph'] = Dataset(varlist)
 
   # Cache the data in netcdf files?
   if tmpdir is not None: data = nc_cache(tmpdir, data)
