@@ -51,9 +51,12 @@ def file2date_anlm (filename):
 def nc_cache (dirname, data):
 
   from os.path import exists
+  from os import mkdir
   from pygeode.formats import netcdf as nc
   from pygeode.formats.multifile import openall
   from common import convert, fix_timeaxis
+
+  if not exists(dirname): mkdir(dirname)
 
   taxis = data.values()[0].time
 
