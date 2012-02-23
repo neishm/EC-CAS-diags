@@ -1,4 +1,4 @@
-def create_images (co2, co2_ref, contours, title1='plot1', title2='plot2', palette=None, norm=None):
+def create_images (co2, co2_ref, contours, title1='plot1', title2='plot2', palette=None, norm=None, preview=False):
   from pygeode.volatile.plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from pygeode.volatile.plot_shortcuts import pcolor, contour, contourf, Map
 
@@ -30,7 +30,7 @@ def create_images (co2, co2_ref, contours, title1='plot1', title2='plot2', palet
 
     date = "%04d-%02d-%02d"%(year,month,day)
     fname = "images/%04d%02d%02d.png"%(year,month,day)
-    if exists(fname):
+    if exists(fname) and preview is False:
       print date, '(exists)'
       continue
     else:
@@ -59,8 +59,11 @@ def create_images (co2, co2_ref, contours, title1='plot1', title2='plot2', palet
       plot = plot1
 
     plot.render(figure=fig)
-    fig.savefig(fname)
-    fig.clear()
+    if preview is False:
+      fig.savefig(fname)
+      fig.clear()
+    else:
+      break
 
-#    break
-#  plt.show()
+  if preview is True:
+    plt.show()
