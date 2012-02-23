@@ -47,16 +47,48 @@ def file2date_anlm (filename):
   return out
 
 
-def open (dirname):
+# Save intermediate netcdf files (for faster access)
+def nc_cache (dirname, data):
+
+  from os.path import exists
+  from pygeode.formats import netcdf as nc
+  from pygeode.formats.multifile import openall
+  from common import convert, fix_timeaxis
+
+  taxis = data.values()[0].time
+
+  # Save the data in netcdf files, 1 file per month
+  for year in sorted(set(taxis.year)):
+    if len(taxis(year=year)) == 1:
+      print "skipping year %d - only one timestep available"%year
+      continue
+    for month in sorted(set(taxis(year=year).month)):
+      for datatype in sorted(data.keys()):
+        filename = dirname+"/%04d%02d_%s.nc"%(year,month,datatype)
+        if exists(filename):
+          print "skipping '%s' - already exists"%filename
+          continue
+        nc.save (filename, data[datatype](year=year,month=month))
+
+  # Reload the data from these files
+  data = dict(data)
+  for datatype in sorted(data.keys()):
+    data[datatype] = openall(files=dirname+"/*_%s.nc"%datatype, format=nc)
+    data[datatype] = fix_timeaxis(data[datatype])
+
+  return data
+
+
+def open (indir, tmpdir=None):
   from pygeode.formats.multifile import open_multi
 
   data = dict()
 
-  data['dynamics'] = dm = open_multi (dirname+"/dm*_1440m", opener=rpnopen, file2date=file2date)
+  data['dynamics'] = dm = open_multi (indir+"/dm*_1440m", opener=rpnopen, file2date=file2date)
   data['dyn_zonalmean_eta'] = dm.mean('lon')
-  data['co2_sfc'] = open_multi (dirname+"/km*", opener=rpnopen_sfconly, file2date=file2date)
-  data['co2_eta932'] = open_multi (dirname+"/km*", opener=rpnopen_eta932, file2date=file2date)
-  km_daily = open_multi (dirname+"/km*_1440m", opener=rpnopen, file2date=file2date)
+  data['co2_sfc'] = open_multi (indir+"/km*", opener=rpnopen_sfconly, file2date=file2date)
+  data['co2_eta932'] = open_multi (indir+"/km*", opener=rpnopen_eta932, file2date=file2date)
+  km_daily = open_multi (indir+"/km*_1440m", opener=rpnopen, file2date=file2date)
   data['co2_zonalmean_eta'] = km_daily.mean('lon')
 
   # Convert zonal mean data (on height)
@@ -69,6 +101,9 @@ def open (dirname):
   varlist = [var.mean('lon') for var in varlist]
   varlist = [var.transpose(0,2,1) for var in varlist]
   data['co2_zonalmean_gph'] = Dataset(varlist)
+
+  # Cache the data in netcdf files?
+  if tmpdir is not None: data = nc_cache(tmpdir, data)
 
   return data
 
