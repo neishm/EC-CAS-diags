@@ -1,7 +1,7 @@
 # Functions / constants common to multiple modules
 
 # Conversion factor (from ug C / kg air to ppmV)
-convert = 1/414.22161
+convert_CO2 = 1/414.22161
 
 # Normalize the time axes to the same start date / units
 def fix_timeaxis (data):

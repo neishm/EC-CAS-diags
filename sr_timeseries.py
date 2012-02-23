@@ -2,7 +2,7 @@ from pygeode.timeaxis import StandardTime, months
 from pygeode.var import Var
 from pygeode.dataset import asdataset
 
-from common import convert, fix_timeaxis
+from common import convert_CO2, fix_timeaxis
 from ec_obs import obs_locations
 
 
@@ -17,7 +17,7 @@ for location in obs_locations.keys():
   month = [int(t[4:6]) for t in times]
   day   = [int(t[6:8]) for t in times]
   hour  = [int(t[8:10]) for t in times]
-  data = [float(d.split()[0])*convert for d in data]
+  data = [float(d.split()[0])*convert_CO2 for d in data]
   time = StandardTime(year=year, month=month, day=day, hour=hour)
   data = Var([time], values=data, name=location)
   varlist.append(data)

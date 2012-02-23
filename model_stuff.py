@@ -54,7 +54,7 @@ def nc_cache (dirname, data):
   from os import mkdir
   from pygeode.formats import netcdf as nc
   from pygeode.formats.multifile import openall
-  from common import convert, fix_timeaxis
+  from common import fix_timeaxis
 
   if not exists(dirname): mkdir(dirname)
 
