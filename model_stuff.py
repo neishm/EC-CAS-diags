@@ -107,3 +107,6 @@ def open (indir, tmpdir=None):
 
   return data
 
+# Shortcut for opening data in my directory
+def my_data (name):
+  return open (indir="/wrk1/neish/"+name, tmpdir="/wrk1/neish/nc_cache/"+name)
