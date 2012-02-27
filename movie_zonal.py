@@ -44,7 +44,7 @@ def get_contours(low,high):
 #      print '?? contours:', contours
       return contours
 
-def create_images (co2, co2_ref, contours=None, title1='plot1', title2='plot2', palette=None, norm=None, preview=False):
+def create_images (field1, field2=None, contours=None, title1='plot1', title2='plot2', palette=None, norm=None, preview=False):
   from pygeode.volatile.plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from pygeode.volatile.plot_shortcuts import pcolor, contour, contourf, Map
 
@@ -57,7 +57,7 @@ def create_images (co2, co2_ref, contours=None, title1='plot1', title2='plot2', 
   if contours is None:
 
     # Sample every 10th frame (for speedup)
-    sample = co2.slice[::10,...]
+    sample = field1.slice[::10,...]
     mean = sample.mean()
     stdev = sample.stdev()
     low = mean - 3*stdev
@@ -67,15 +67,15 @@ def create_images (co2, co2_ref, contours=None, title1='plot1', title2='plot2', 
   # Get the palette to use
   cmap = plt.get_cmap(palette)
 
-  if co2_ref is None:
+  if field2 is None:
     fig = plt.figure(figsize=(8,8))  # single plot
   else:
     fig = plt.figure(figsize=(12,6))  # double plot
 
   # Loop over all available times
-  for t in range(len(co2.time)):
+  for t in range(len(field1.time)):
 
-    data = co2(i_time=t)
+    data = field1(i_time=t)
     year = data.time.year[0]
     month = data.time.month[0]
     day = data.time.day[0]
@@ -93,21 +93,21 @@ def create_images (co2, co2_ref, contours=None, title1='plot1', title2='plot2', 
       print date
 
     # 1st plot
-    data = co2(year=year,month=month,day=day)
+    data = field1(year=year,month=month,day=day)
     assert len(data.time) == 1
     plot1 = contourf(data, contours, title=title1+' '+date, cmap=cmap, norm=norm)
     plot1 = Colorbar(plot1)
 
     # 2nd plot
-    if co2_ref is not None:
-      data = co2_ref(year=year,month=month,day=day)
+    if field2 is not None:
+      data = field2(year=year,month=month,day=day)
       if data.size == 0: continue # not available for this timestep
       plot2 = contourf(data, contours, title=title2+' '+date, cmap=cmap, norm=norm)
       plot2 = Colorbar(plot2)
 
 
     # Put them together
-    if co2_ref is not None:
+    if field2 is not None:
       plot = Multiplot([[plot1,plot2]])
     else:
       plot = plot1
