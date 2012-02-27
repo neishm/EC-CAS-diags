@@ -1,9 +1,12 @@
 # Compute hemispheric gradient (from model and obs)
 
 from globalview import data as gv
-from model import co2 as model_co2
+from model_stuff import my_data
+from common import convert_CO2
 import numpy as np
 from math import isnan
+
+model_co2 = my_data("validation_run_32bit")['km_sfc']['CO2'] * convert_CO2
 
 year = 2009
 

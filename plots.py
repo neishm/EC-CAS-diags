@@ -4,7 +4,9 @@ from pygeode.timeaxis import months
 
 from ec_obs import obs_locations, data as obs_f
 #from gaw_obs import obs_locations, data as obs_f
-from model import co2 as model_co2
+from model_stuff import my_data
+from common import convert_CO2
+model_co2 = my_data("validation_run_32bit")['km_sfc']['CO2'] * convert_CO2
 #from sr_timeseries import data as sr_data
 
 

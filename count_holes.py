@@ -1,4 +1,7 @@
-from model import co2
+from model_stuff import my_data
+from common import convert_CO2
+
+co2 = my_data("validation_run_32bit")['km_sfc']['CO2'] * convert_CO2
 
 # Count the number of grid points that go down to ~0 ppmV (?!)
 

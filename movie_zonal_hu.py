@@ -1,9 +1,11 @@
 # Movie of zonal mean humidity
 
-from model import hu_zonal
+from model_stuff import my_data
 from movie_zonal import create_images
 from matplotlib import colors
 import numpy as np
+
+hu_zonal = my_data("validation_run_32bit")['dm_zonalmean_eta']['HU']
 
 #print hu_zonal.min(), hu_zonal.max()
 #print hu_zonal.mean(), hu_zonal.stdev()

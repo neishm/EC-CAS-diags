@@ -1,7 +1,8 @@
 # Compare the station heights to what height the model sees for that grid point.
 
 from gaw_obs import obs_locations, data as obs
-from model import gz
+from model_stuff import my_data
+gz = my_data("validation_run_32bit")['dm']['GZ']
 
 # Take GZ at the 'surface' level of the model, and assume it doesn't vary with time.
 gz = gz(i_time=0).squeeze()*10

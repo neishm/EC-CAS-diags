@@ -1,6 +1,9 @@
-from model import co2
+from model_stuff import my_data
+from common import convert_CO2
 from pygeode.volatile.plot_wrapper import Colorbar
 from pygeode.volatile.plot_shortcuts import contourf, pcolor, Map
+
+co2 = my_data("validation_run_32bit")['km_sfc']['CO2'] * convert_CO2
 
 co2_start = co2(year=2009,month=1,day=2,hour=0).squeeze()
 co2_end = co2(year=2010,month=1,day=1,hour=0).squeeze()

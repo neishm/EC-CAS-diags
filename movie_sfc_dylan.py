@@ -1,7 +1,6 @@
-#from model import co2
-#from model import co2_ocean as co2
-#from model import co2_bg as co2
-from model import co2_eta932 as co2
+from model_stuff import my_data
+from common import convert_CO2
+co2 = my_data("validation_run_32bit")['km_eta932']['CO2'] * convert_CO2
 
 from os.path import exists
 import numpy as np
