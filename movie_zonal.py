@@ -22,7 +22,7 @@ def get_contours(low,high):
 
   count = dx / 10**digits * 10
 #  print '?? count:', count
-  count = int(count)
+  count = int(round(count))
 #  print '?? count:', count
   # Want a range that's divisible into a reasonable number of contours
   min_contours = 16
@@ -31,9 +31,9 @@ def get_contours(low,high):
   while not any(count%n == 0 for n in valid_contours):
     # Which end should we extend?
     if abs(low-true_low) < abs(high-true_high):
-      low -= 10**digits / 10
+      low -= 10**digits / 10.
     else:
-      high += 10**digits / 10
+      high += 10**digits / 10.
     count += 1
 #  print '?? count:', count
 #  print '?? low/high:', low, high
