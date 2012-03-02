@@ -44,6 +44,18 @@ def get_contours(low,high):
 #      print '?? contours:', contours
       return contours
 
+# Helper method - determine a good high and low value for the given data
+# (discard the bottom and top 0.1%, so our range at least covers 99.8% of the plot)
+def get_range (var):
+  sample = var
+  sample = sample.get().flatten()
+  sample.sort()
+  N = len(sample)
+#  print '?? N:', N
+  low = sample[int(round((N-1)*0.001))]
+  high = sample[int(round((N-1)*0.999))]
+  return low, high
+
 def create_images (field1, field2=None, contours=None, title1='plot1', title2='plot2', palette=None, norm=None, preview=False):
   from pygeode.volatile.plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from pygeode.volatile.plot_shortcuts import pcolor, contour, contourf, Map
@@ -56,12 +68,8 @@ def create_images (field1, field2=None, contours=None, title1='plot1', title2='p
   # Autogenerate contours?
   if contours is None:
 
-    # Sample every 10th frame (for speedup)
-    sample = field1.slice[::10,...]
-    mean = sample.mean()
-    stdev = sample.stdev()
-    low = mean - 3*stdev
-    high = mean + 3*stdev
+    # Define low and high based on the actual distribution of values.
+    low, high = get_range(field1)
     contours = get_contours(low,high)
 
   # Get the palette to use
