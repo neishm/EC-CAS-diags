@@ -56,7 +56,7 @@ def get_range (var):
   high = sample[int(round((N-1)*0.999))]
   return low, high
 
-def create_images (field1, field2=None, contours=None, title1='plot1', title2='plot2', palette=None, norm=None, preview=False):
+def create_images (field1, field2=None, field3=None, contours=None, title1='plot1', title2='plot2', title3='plot3', palette=None, norm=None, preview=False):
   from pygeode.volatile.plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from pygeode.volatile.plot_shortcuts import pcolor, contour, contourf, Map
 
@@ -77,8 +77,10 @@ def create_images (field1, field2=None, contours=None, title1='plot1', title2='p
 
   if field2 is None:
     fig = plt.figure(figsize=(8,8))  # single plot
-  else:
+  elif field3 is None:
     fig = plt.figure(figsize=(12,6))  # double plot
+  else:
+    fig = plt.figure(figsize=(12,4))  # triple plot
 
   # Loop over all available times
   for t in range(len(field1.time)):
@@ -112,13 +114,19 @@ def create_images (field1, field2=None, contours=None, title1='plot1', title2='p
       if data.size == 0: continue # not available for this timestep
       plot2 = contourf(data, contours, title=title2+' '+date, cmap=cmap, norm=norm)
       plot2 = Colorbar(plot2)
+    else: plot2 = None
+
+    # 3rd plot
+    if field3 is not None:
+      data = field3(year=year,month=month,day=day)
+      if data.size == 0: continue # not available for this timestep
+      plot3 = contourf(data, contours, title=title3+' '+date, cmap=cmap, norm=norm)
+      plot3 = Colorbar(plot3)
+    else: plot3 = None
 
 
     # Put them together
-    if field2 is not None:
-      plot = Multiplot([[plot1,plot2]])
-    else:
-      plot = plot1
+    plot = Multiplot([[p for p in plot1,plot2,plot3 if p is not None]])
 
     plot.render(figure=fig)
     if preview is False:
