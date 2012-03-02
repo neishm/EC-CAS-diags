@@ -1,5 +1,5 @@
 
-from carbontracker import molefractions
+from carbontracker import molefractions, ct_zonal
 
 from pygeode.climat import dailymean
 
@@ -10,10 +10,7 @@ from pygeode.interp import interpolate
 from pygeode.axis import Height
 height = Height(range(68))
 field = 'ff'
-ct_co2 = interpolate(molefractions[field], inaxis='level', outaxis=height, inx = molefractions.gph/1000)
-ct_co2 = ct_co2.mean('lon')
-ct_co2 = ct_co2.transpose(0,2,1)
-ct_co2 = dailymean(ct_co2)
+ct_co2 = ct_zonal(morefractions[field])
 
 from model_stuff import my_data
 from common import convert_CO2
