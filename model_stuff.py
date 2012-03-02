@@ -62,10 +62,10 @@ def nc_cache (dirname, data):
 
   # Save the data in netcdf files, 1 file per month
   for year in sorted(set(taxis.year)):
-    if len(taxis(year=year)) == 1:
-      print "skipping year %d - only one timestep available"%year
-      continue
     for month in sorted(set(taxis(year=year).month)):
+      if len(taxis(year=year,month=month)) == 1:
+        print "skipping year %d month %d - only one timestep available"%(year,month)
+        continue
       for datatype in sorted(data.keys()):
         filename = dirname+"/%04d%02d_%s.nc"%(year,month,datatype)
         if exists(filename):
