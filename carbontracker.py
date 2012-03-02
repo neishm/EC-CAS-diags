@@ -27,3 +27,18 @@ fluxes = ct_open("/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc")
 co2 = molefractions.bg + molefractions.ff + molefractions.bio + molefractions.ocean + molefractions.fires
 
 
+# Method for calculating zonal mean on-the-fly
+def ct_zonal (field):
+  from pygeode.climat import dailymean
+  import numpy as np
+
+  # Interpolate to geopotential height
+  from pygeode.interp import interpolate
+  from pygeode.axis import Height
+  height = Height(range(68))
+  ct_co2 = interpolate(field, inaxis='level', outaxis=height, inx = molefractions.gph/1000)
+  ct_co2 = ct_co2.mean('lon')
+  ct_co2 = ct_co2.transpose(0,2,1)
+  ct_co2 = dailymean(ct_co2)
+
+  return ct_co2
