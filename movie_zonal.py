@@ -112,7 +112,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
     if field2 is not None:
       data = field2(year=year,month=month,day=day)
       if data.size == 0: continue # not available for this timestep
-      plot2 = contourf(data, contours, title=title2+' '+date, cmap=cmap, norm=norm)
+      plot2 = contourf(data, contours, title=title2+' '+date, cmap=cmap, norm=norm, ylabel='')
       plot2 = Colorbar(plot2)
     else: plot2 = None
 
@@ -120,7 +120,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
     if field3 is not None:
       data = field3(year=year,month=month,day=day)
       if data.size == 0: continue # not available for this timestep
-      plot3 = contourf(data, contours, title=title3+' '+date, cmap=cmap, norm=norm)
+      plot3 = contourf(data, contours, title=title3+' '+date, cmap=cmap, norm=norm, ylabel='')
       plot3 = Colorbar(plot3)
     else: plot3 = None
 
