@@ -82,6 +82,9 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
   else:
     fig = plt.figure(figsize=(12,4))  # triple plot
 
+  # Adjust the defaults of the subplots (the defaults give too much blank space on the sides)
+  plt.subplots_adjust (left=0.06, right=0.96)
+
   # Loop over all available times
   for t in range(len(field1.time)):
 
