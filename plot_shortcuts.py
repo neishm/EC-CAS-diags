@@ -4,7 +4,7 @@
 # Set up arguments for axis
 def get_axes_args (var):
 
-  title = var.plotatts.get('plottitle', None)
+  title = getattr(var,'plotatts',{}).get('plottitle', None)
   if title is None: title = var.name
 
   # Put degenerate PyGeode axis info into title,
@@ -18,13 +18,13 @@ def get_axes_args (var):
   # 1D stuff
   if var.naxes == 1:
     xaxis = var.axes[0]
-    xatts = xaxis.plotatts
+    xatts = getattr(xaxis,'plotatts',{})
 
-    xlabel = var.plotatts.get('xlabel',xaxis.name)
+    xlabel = getattr(var,'plotatts',{}).get('xlabel',xaxis.name)
     ylabel = var.name
     xlim = min(xaxis.values), max(xaxis.values)
     xscale = xatts.get('plotscale','linear')
-    yscale = var.plotatts.get('plotscale','linear')
+    yscale = getattr(var,'plotatts',{}).get('plotscale','linear')
     xlim = xlim[::xatts.get('plotorder',1)]
 
     del xaxis, xatts
@@ -35,8 +35,8 @@ def get_axes_args (var):
     # For 2D plots, the x/y need to be switched?
     xaxis = var.axes[1]
     yaxis = var.axes[0]
-    xatts = xaxis.plotatts
-    yatts = yaxis.plotatts
+    xatts = getattr(xaxis,'plotatts',{})
+    yatts = getattr(yaxis,'plotatts',{})
 
     xlabel = xatts.get('plottitle','')
     if xlabel == '': xlabel = var.axes[1].name
