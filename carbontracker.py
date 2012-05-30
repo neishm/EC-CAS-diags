@@ -46,7 +46,7 @@ def ct_zonal (field):
   from pygeode.axis import Height
   height = Height(range(68))
   ct_co2 = interpolate(field, inaxis='level', outaxis=height, inx = molefractions.gph/1000)
-  ct_co2 = ct_co2.mean('lon')
+  ct_co2 = ct_co2.nanmean('lon')
   ct_co2 = ct_co2.transpose(0,2,1)
   ct_co2 = dailymean(ct_co2)
 
