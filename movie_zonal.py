@@ -47,8 +47,11 @@ def get_contours(low,high):
 # Helper method - determine a good high and low value for the given data
 # (discard the bottom and top 0.1%, so our range at least covers 99.8% of the plot)
 def get_range (var):
+  import numpy as np
   sample = var
   sample = sample.get().flatten()
+  # Filter out NaN values
+  sample = sample[np.isfinite(sample)]
   sample.sort()
   N = len(sample)
 #  print '?? N:', N
