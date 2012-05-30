@@ -20,7 +20,7 @@ def rpnopen_eta932 (filename):
 def file2date (filename):
   from re import search
   from datetime import datetime, timedelta
-  out = search('[dkp][m](?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)(?P<units>[m])$', filename).groupdict()
+  out = search('[dkp][m](?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)(?P<units>[mh])$', filename).groupdict()
   units = out.pop('units')
   out = dict([k,int(v)] for k,v in out.items())
   offset = out.pop('offset')
