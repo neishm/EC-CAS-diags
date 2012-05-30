@@ -8,11 +8,20 @@ def ct_file2date(filename):
   date['day']   = int(date['day'])
   return date
 
+def ct_opener (filename):
+  from pygeode.formats import netcdf
+  data = netcdf.open(filename)
+  # kludge for PyGeode 0.6
+  from pygeode.formats import cfmeta
+  data = data.rename_axes(date='time')
+  data = cfmeta.decode_cf(data)
+  return data
+
 def ct_open (files):
   from pygeode.formats.multifile import open_multi
   from pygeode.formats import netcdf as nc
   from common import fix_timeaxis
-  data = open_multi(files=files, format=nc, file2date=ct_file2date)
+  data = open_multi(files=files, opener=ct_opener, file2date=ct_file2date)
   data = data.rename_axes(date='time')
   data = fix_timeaxis(data)
   return data
