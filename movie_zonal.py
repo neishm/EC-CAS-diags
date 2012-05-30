@@ -57,8 +57,8 @@ def get_range (var):
   return low, high
 
 def create_images (field1, field2=None, field3=None, contours=None, title1='plot1', title2='plot2', title3='plot3', palette=None, norm=None, preview=False):
-  from pygeode.volatile.plot_wrapper import Colorbar, Plot, Overlay, Multiplot
-  from pygeode.volatile.plot_shortcuts import pcolor, contour, contourf, Map
+  from plot_wrapper import Colorbar, Plot, Overlay, Multiplot
+  from plot_shortcuts import pcolor, contour, contourf, Map
 
   import matplotlib.pyplot as plt
 
