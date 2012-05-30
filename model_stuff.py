@@ -71,7 +71,7 @@ def nc_cache (dirname, data):
         if exists(filename):
           print "skipping '%s' - already exists"%filename
           continue
-        nc.save (filename, data[datatype](year=year,month=month), version=4)
+        nc.save (filename, data[datatype](year=year,month=month))#, version=4)
 
   # Reload the data from these files
   data = dict(data)
@@ -84,6 +84,7 @@ def nc_cache (dirname, data):
 
 def open (indir, tmpdir=None):
   from pygeode.formats.multifile import open_multi
+  from glob import glob
 
   data = dict()
 
@@ -93,6 +94,11 @@ def open (indir, tmpdir=None):
 #  data['km_eta932'] = open_multi (indir+"/km*", opener=rpnopen_eta932, file2date=file2date)
   km_daily = open_multi (indir+"/km*_1440m", opener=rpnopen, file2date=file2date)
   data['km_zonalmean_eta'] = km_daily.mean('lon')
+
+  # Optionally, add physics fields
+  if len(glob(indir+"/pm*")) > 0:
+    data['pm'] = pm = open_multi (indir+"/pm*", opener=rpnopen, file2date=file2date)
+    data['pm_zonalmean_eta'] = pm.mean('lon')
 
   # Convert zonal mean data (on height)
   from pygeode.interp import interpolate
