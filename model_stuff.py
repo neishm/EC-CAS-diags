@@ -82,6 +82,18 @@ def nc_cache (dirname, data):
   return data
 
 
+# Convert zonal mean data (on height)
+def to_gph (dataset, dm):
+  from pygeode.interp import interpolate
+  from pygeode.axis import Height
+  from pygeode.dataset import Dataset
+  height = Height(range(68), name='height')
+  varlist = [var for var in dataset if var.hasaxis('eta')]
+  varlist = [interpolate(var, inaxis='eta', outaxis=height, inx=dm.GZ*10/1000) for var in varlist]
+  varlist = [var.transpose(0,3,1,2) for var in varlist]
+  return Dataset(varlist)
+
+
 def open (indir, tmpdir=None):
   from pygeode.formats.multifile import open_multi
   from glob import glob
