@@ -80,14 +80,22 @@ def ct_zonal_24h (field):
 
   return ct_co2
 
-# Zonal mean data
 data = {}
-from model_stuff import nc_cache
 from pygeode.dataset import Dataset
+
+# Zonal mean data
 zonalmean = molefractions + co2.rename('co2') - 'date_components' - 'decimal_date'
 zonalmean = [ct_zonal_24h(v) for v in zonalmean]
 zonalmean = Dataset(zonalmean)
 data['zonalmean_gph_24h'] = zonalmean
 del zonalmean 
 
+# Surface data
+surface = molefractions + co2.rename('co2') - 'date_components' - 'decimal_date'
+surface = surface(i_level=0)  # lowest level
+surface = Dataset(surface)
+data['sfc'] = surface
+del surface
+
+from model_stuff import nc_cache
 data = nc_cache ("/wrk1/neish/nc_cache/carbontracker", data)
