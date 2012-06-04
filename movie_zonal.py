@@ -77,6 +77,15 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
 
     # Define low and high based on the actual distribution of values.
     low, high = get_range(field1)
+    if field2 is not None:
+      low2, high2 = get_range(field2)
+      low = min(low,low2)
+      high = max(high,high2)
+    if field3 is not None:
+      low3, high3 = get_range(field3)
+      low = min(low,low3)
+      high = max(high,high3)
+
     contours = get_contours(low,high)
 
   # Get the palette to use
