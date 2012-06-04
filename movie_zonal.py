@@ -59,14 +59,18 @@ def get_range (var):
   high = sample[int(round((N-1)*0.999))]
   return low, high
 
-def create_images (field1, field2=None, field3=None, contours=None, title1='plot1', title2='plot2', title3='plot3', palette=None, norm=None, preview=False):
+def create_images (field1, field2=None, field3=None, contours=None, title1='plot1', title2='plot2', title3='plot3', palette=None, norm=None, preview=False, outdir='images'):
   from plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from plot_shortcuts import pcolor, contour, contourf, Map
 
   import matplotlib.pyplot as plt
 
   from os.path import exists
+  from os import makedirs
   import numpy as np
+
+  # Create output directory?
+  if not exists(outdir): makedirs(outdir)
 
   # Autogenerate contours?
   if contours is None:
@@ -101,7 +105,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
     if year==2009 and month==8 and day==7: continue
 
     date = "%04d-%02d-%02d"%(year,month,day)
-    fname = "images/%04d%02d%02d.png"%(year,month,day)
+    fname = "%s/%04d%02d%02d.png"%(outdir,year,month,day)
     if exists(fname) and preview is False:
       print date, '(exists)'
       continue
