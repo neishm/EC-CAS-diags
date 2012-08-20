@@ -58,20 +58,20 @@ def nc_cache (dirname, data):
 
   if not exists(dirname): mkdir(dirname)
 
-  taxis = data.values()[0].time
+  for datatype in sorted(data.keys()):
+   taxis = data[datatype].time
 
-  # Save the data in netcdf files, 1 file per month
-  for year in sorted(set(taxis.year)):
+   # Save the data in netcdf files, 1 file per month
+   for year in sorted(set(taxis.year)):
     for month in sorted(set(taxis(year=year).month)):
       if len(taxis(year=year,month=month)) == 1:
         print "skipping year %d month %d - only one timestep available"%(year,month)
         continue
-      for datatype in sorted(data.keys()):
-        filename = dirname+"/%04d%02d_%s.nc"%(year,month,datatype)
-        if exists(filename):
-          print "skipping '%s' - already exists"%filename
-          continue
-        nc.save (filename, data[datatype](year=year,month=month))#, version=4)
+      filename = dirname+"/%04d%02d_%s.nc"%(year,month,datatype)
+      if exists(filename):
+        print "skipping '%s' - already exists"%filename
+        continue
+      nc.save (filename, data[datatype](year=year,month=month))#, version=4)
 
   # Reload the data from these files
   data = dict(data)
