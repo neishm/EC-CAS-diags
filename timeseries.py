@@ -7,7 +7,6 @@ def timeseries (show=True, outdir=None):
 
   from ec_obs import obs_locations, data as obs_f
   #from gaw_obs import obs_locations, data as obs_f
-  from model_stuff import my_data
   from common import convert_CO2
   from interfaces import control, control_title, experiment, experiment_name, experiment_title
   from carbontracker import data as ct
