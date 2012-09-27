@@ -156,3 +156,25 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
 
   if preview is True:
     plt.show()
+
+def movie_zonal (gemfield, ctfield, offset, outdir):
+
+  from carbontracker import data as ct
+
+  ct_co2 = ct['zonalmean_gph_24h'][ctfield]
+
+  from interfaces import control_title, control, experiment_title, experiment_name, experiment
+  from common import convert_CO2
+
+  control_co2 = control['zonalmean_gph'][gemfield] * convert_CO2 + offset
+  exper_co2 = experiment['zonalmean_gph'][gemfield] * convert_CO2 + offset
+
+  imagedir=outdir+"/images_%s_zonal%s"%(experiment_name, ctfield)
+  create_images (exper_co2, control_co2, ct_co2, title1=experiment_title, title2=control_title, title3='CarbonTracker',preview=False, outdir=imagedir)
+
+if __name__ == '__main__':
+  from interfaces import experiment_name
+  outdir = experiment_name
+
+  movie_zonal(gemfield = 'CO2', ctfield = 'co2', offset =    0, outdir=outdir)
+  movie_zonal(gemfield = 'CLA', ctfield = 'bio', offset = -100, outdir=outdir)
