@@ -58,3 +58,6 @@ from movie_zonal import movie_zonal
 movie_zonal(gemfield = 'CO2', ctfield = 'co2', offset =    0, **exp_args)
 movie_zonal(gemfield = 'CLA', ctfield = 'bio', offset = -100, **exp_args)
 
+# Count of CO2 'holes'
+from where_holes import where_holes
+where_holes (**exp_args)
