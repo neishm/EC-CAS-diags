@@ -1,5 +1,4 @@
-def where_holes (outdir):
-  from interfaces import experiment, experiment_name
+def where_holes (experiment, experiment_name, outdir, **unused_args):
   from common import convert_CO2
   from pygeode.formats import netcdf
   from os.path import exists
@@ -15,7 +14,3 @@ def where_holes (outdir):
   if not exists(outfile):
     netcdf.save(outfile, count)
 
-if __name__ == '__main__':
-  from interfaces import experiment_name
-  outdir = experiment_name
-  where_holes (outdir=outdir)

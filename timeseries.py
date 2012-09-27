@@ -1,4 +1,6 @@
-def timeseries (show=True, outdir=None):
+# CO2 timeseries
+
+def timeseries (experiment_name, experiment_title, experiment, control_name, control_title, control, show=True, outdir=None):
 
   from plot_shortcuts import plot
   from plot_wrapper import Multiplot, Legend
@@ -8,7 +10,6 @@ def timeseries (show=True, outdir=None):
   from ec_obs import obs_locations, data as obs_f
   #from gaw_obs import obs_locations, data as obs_f
   from common import convert_CO2
-  from interfaces import control, control_title, experiment, experiment_name, experiment_title
   from carbontracker import data as ct
 
   from os.path import exists
@@ -80,5 +81,3 @@ def timeseries (show=True, outdir=None):
   if show:
     pl.show()
 
-if __name__ == "__main__":
-  timeseries()
