@@ -42,7 +42,11 @@ else:
   control = None
 
 # By default, dump the output files to directory of the same name as the experiment.
+from os.path import exists
+from os import mkdir
 outdir = experiment_name
+if not exists(outdir):
+  mkdir(outdir)
 
 # Set up some common keyword parameters to pass to the specific diagnostics
 exp_args = dict(experiment_name=experiment_name, experiment_title=experiment_title, experiment=experiment, control_name=control_name, control_title=control_title, control=control, outdir=outdir)
