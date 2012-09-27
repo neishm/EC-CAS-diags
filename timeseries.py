@@ -15,7 +15,11 @@ def timeseries (experiment_name, experiment_title, experiment, control_name, con
   from os.path import exists
 
   exper_co2 = experiment['sfc']['CO2'] * convert_CO2
-  control_co2 = control['sfc']['CO2'] * convert_CO2
+  if control is not None:
+    control_co2 = control['sfc']['CO2'] * convert_CO2
+  else:
+    control_co2 = None
+
   # Use CarbonTracker data
   ct_co2 = ct['sfc'].co2
   ct_co2 = ct_co2.unfill(4.984605e+37)
@@ -25,7 +29,8 @@ def timeseries (experiment_name, experiment_title, experiment, control_name, con
 
   # Limit the time period to plot
   exper_co2 = exper_co2(year=2009, month=(6,9))
-  control_co2 = control_co2(year=2009, month=(6,9))
+  if control_co2 is not None:
+    control_co2 = control_co2(year=2009, month=(6,9))
   obs_f = obs_f(year=2009, month=(6,9))
   ct_co2 = ct_co2(year=2009, month=(6,9))
 
@@ -56,8 +61,12 @@ def timeseries (experiment_name, experiment_title, experiment, control_name, con
     if lon < 0: lon += 360  # Model data is from longitutes 0 to 360
     obs_series = obs_f[location]
     exper_series = exper_co2(lat=lat, lon=lon)
-    control_series = control_co2(lat=lat, lon=lon)
-    theplot = plot (exper_series, obs_series, control_series, title=title,
+    if control_co2 is not None:
+      control_series = control_co2(lat=lat, lon=lon)
+      series = [exper_series, obs_series, control_series]
+    else:
+      series = [exper_series, obs_series]
+    theplot = plot (*series, title=title,
            xlabel='', ylabel='CO2 ppmV', xticks=xticks, xticklabels=xticklabels)
     plots.append (theplot)
 
@@ -69,7 +78,10 @@ def timeseries (experiment_name, experiment_title, experiment, control_name, con
 
     theplots = plots[i:i+4]
     # Put a legend on the last plot
-    theplots[-1] = Legend(theplots[-1], [experiment_title, 'Obs', control_title])
+    if control_title is not None:
+      theplots[-1] = Legend(theplots[-1], [experiment_title, 'Obs', control_title])
+    else:
+      theplots[-1] = Legend(theplots[-1], [experiment_title, 'Obs'])
 
     theplots = Multiplot([[p] for p in theplots])
     theplots.render(figure=fig)
