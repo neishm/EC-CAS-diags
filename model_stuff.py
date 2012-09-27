@@ -93,3 +93,33 @@ def to_gph (dataset, dm):
   varlist = [var.transpose(0,3,1,2) for var in varlist]
   return Dataset(varlist)
 
+
+# Given a model data directory, get the useful data out of it.
+# Cache the data in netcdf format, for faster subsequent access.
+def get_data (indir):
+  from model_stuff import rpnopen, rpnopen_sfconly, file2date, to_gph, nc_cache
+  from pygeode.formats.multifile import open_multi
+
+  data = dict()
+  tmpdir = indir + "/nc_cache"
+
+  dm_24h = open_multi(indir+"/dm*_024h", opener=rpnopen, file2date=file2date)
+#  km_24h = open_multi(indir+"/km*_024h", opener=rpnopen, file2date=file2date)
+#  pm_24h = open_multi(indir+"/pm*_024h", opener=rpnopen, file2date=file2date)
+#  stuff_24h = dm_24h + km_24h + pm_24h
+  stuff_24h = dm_24h
+  dm = open_multi([indir+"/dm*%03dh"%i for i in range(0,24,2)], opener=rpnopen, file2date=file2date)
+  km = open_multi([indir+"/km*%03dh"%i for i in range(0,24,2)], opener=rpnopen, file2date=file2date)
+  pm = open_multi([indir+"/pm*%03dh"%i for i in range(0,24,2)], opener=rpnopen, file2date=file2date)
+  stuff = dm + km + pm
+
+  data['sfc'] = dm(eta=1)
+  data['pm_sfc'] = pm(eta=1)
+  data['km_sfc'] = km(eta=1)
+#  data['toronto'] = stuff.squeeze(lat=43.7833,lon=280.5333)
+#  data['zonalmean_eta'] = stuff_24h.mean('lon')
+  data['zonalmean_gph'] = to_gph(stuff_24h,stuff_24h).nanmean('lon')
+  data = nc_cache(tmpdir, data)
+
+  return data
+
