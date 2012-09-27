@@ -98,4 +98,4 @@ data['sfc'] = surface
 del surface
 
 from model_stuff import nc_cache
-data = nc_cache ("/wrk1/neish/nc_cache/carbontracker", data)
+data = nc_cache ("/wrk1/EC-CAS/CarbonTracker/nc_cache", data)
