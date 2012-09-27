@@ -172,6 +172,13 @@ def movie_zonal (gemfield, ctfield, offset, outdir):
   imagedir=outdir+"/images_%s_zonal%s"%(experiment_name, ctfield)
   create_images (exper_co2, control_co2, ct_co2, title1=experiment_title, title2=control_title, title3='CarbonTracker',preview=False, outdir=imagedir)
 
+  moviefile = "%s/%s_zonal%s.avi"%(outdir,experiment_name,ctfield)
+
+  from os import system
+  from os.path import exists
+  if not exists(moviefile):
+    system("mencoder -o %s mf://%s/*.png -ovc lavc -lavcopts vcodec=msmpeg4v2"%(moviefile, imagedir))
+
 if __name__ == '__main__':
   from interfaces import experiment_name
   outdir = experiment_name
