@@ -2,14 +2,18 @@ def timeseries (show=True, outdir=None):
 
   from plot_shortcuts import plot
   from plot_wrapper import Multiplot, Legend
+  import matplotlib.pyplot as pl
   from pygeode.timeaxis import months
 
   from ec_obs import obs_locations, data as obs_f
   #from gaw_obs import obs_locations, data as obs_f
   from model_stuff import my_data
   from common import convert_CO2
-  from interfaces import control, control_title, experiment, experiment_title
+  from interfaces import control, control_title, experiment, experiment_name, experiment_title
   from carbontracker import data as ct
+
+  from os.path import exists
+
   exper_co2 = experiment['sfc']['CO2'] * convert_CO2
   control_co2 = control['sfc']['CO2'] * convert_CO2
   # Use CarbonTracker data
@@ -61,15 +65,20 @@ def timeseries (show=True, outdir=None):
   # Plot 4 timeseries per figure
   n = 4
   for i in range(0,len(plots),4):
+    fig = pl.figure(figsize=(15,12))
+
     theplots = plots[i:i+4]
     # Put a legend on the last plot
     theplots[-1] = Legend(theplots[-1], [experiment_title, 'Obs', control_title])
 
     theplots = Multiplot([[p] for p in theplots])
-    theplots.render()
+    theplots.render(figure=fig)
+
+    if outdir is not None:
+      outfile = "%s/%s_timeseries_ec%02d.png"%(outdir,experiment_name,i/4+1)
+      fig.savefig(outfile)
 
   if show:
-    import matplotlib.pyplot as pl
     pl.show()
 
 if __name__ == "__main__":
