@@ -108,13 +108,13 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
     year = data.time.year[0]
     month = data.time.month[0]
     day = data.time.day[0]
-#    hour = data.time.hour[0]
+    hour = data.time.hour[0]
 
     # Quick kludge to workaround non-monotonic gph in CarbonTracker
     if year==2009 and month==8 and day==7: continue
 
-    date = "%04d-%02d-%02d"%(year,month,day)
-    fname = "%s/%04d%02d%02d.png"%(outdir,year,month,day)
+    date = "%04d-%02d-%02d %02dz"%(year,month,day,hour)
+    fname = "%s/%04d%02d%02d%02d.png"%(outdir,year,month,day,hour)
     if exists(fname) and preview is False:
       print date, '(exists)'
       continue
@@ -122,14 +122,14 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
       print date
 
     # 1st plot
-    data = field1(year=year,month=month,day=day)
+    data = field1(year=year,month=month,day=day,hour=hour)
     assert len(data.time) == 1
     plot1 = contourf(data, contours, title=title1+' '+date, cmap=cmap, norm=norm)
     plot1 = Colorbar(plot1)
 
     # 2nd plot
     if field2 is not None:
-      data = field2(year=year,month=month,day=day)
+      data = field2(year=year,month=month,day=day,hour=hour)
       if data.size == 0: continue # not available for this timestep
       plot2 = contourf(data, contours, title=title2+' '+date, cmap=cmap, norm=norm, ylabel='')
       plot2 = Colorbar(plot2)
@@ -137,7 +137,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
 
     # 3rd plot
     if field3 is not None:
-      data = field3(year=year,month=month,day=day)
+      data = field3(year=year,month=month,day=day,hour=hour)
       if data.size == 0: continue # not available for this timestep
       plot3 = contourf(data, contours, title=title3+' '+date, cmap=cmap, norm=norm, ylabel='')
       plot3 = Colorbar(plot3)

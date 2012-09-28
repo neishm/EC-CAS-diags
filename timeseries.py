@@ -14,9 +14,9 @@ def timeseries (experiment_name, experiment_title, experiment, control_name, con
 
   from os.path import exists
 
-  exper_co2 = experiment['sfc']['CO2'] * convert_CO2
+  exper_co2 = experiment['dm_sfc']['CO2'] * convert_CO2
   if control is not None:
-    control_co2 = control['sfc']['CO2'] * convert_CO2
+    control_co2 = control['dm_sfc']['CO2'] * convert_CO2
   else:
     control_co2 = None
 
