@@ -34,11 +34,29 @@ def timeseries (experiment_name, experiment_title, experiment, control_name, con
   obs_f = obs_f(year=2009, month=(6,9))
   ct_co2 = ct_co2(year=2009, month=(6,9))
 
+  # Limit the time period to the current experiment
+  # (sometimes we have a really short experiment)
+  times = exper_co2.time.get()
+  time1 = min(times)
+  time2 = max(times)
+  obs_f = obs_f(time=(time1,time2))
+  if control_co2 is not None:
+    control_co2 = control_co2(time=(time1,time2))
+
   # Create plots of each location
   xticks = []
   xticklabels = []
+
+  # Determine the frequency of day ticks, based on the number of months of data
+  nmonths = len(set(exper_co2.time.month))
+  if nmonths == 1:
+    daylist = range(1,32)
+  else:
+    daylist = (1,15)
+
+  # Set the ticks
   for month in sorted(list(set(exper_co2.time.month))):
-    for day in (1,15):
+    for day in daylist:
       val = exper_co2.time(month=month,day=day,hour=0).get()
       if len(val) == 0: continue
       assert len(val) == 1
@@ -58,7 +76,7 @@ def timeseries (experiment_name, experiment_title, experiment, control_name, con
     title += ') - ' + country
 
     ct_series = ct_co2(lat=lat, lon=lon)
-    if lon < 0: lon += 360  # Model data is from longitutes 0 to 360
+    if lon < 0: lon += 360  # Model data is from longitudes 0 to 360
     obs_series = obs_f[location]
     exper_series = exper_co2(lat=lat, lon=lon)
     if control_co2 is not None:
