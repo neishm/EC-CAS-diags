@@ -117,7 +117,7 @@ def get_data (indir):
   data['sfc'] = dm(eta=1)
   data['pm_sfc'] = pm(eta=1)
   data['km_sfc'] = km(eta=1)
-#  data['toronto'] = stuff.squeeze(lat=43.7833,lon=280.5333)
+  data['toronto'] = stuff.squeeze(lat=43.7833,lon=280.5333)
 #  data['zonalmean_eta'] = stuff_24h.mean('lon')
   data['zonalmean_gph'] = to_gph(stuff_24h,stuff_24h).nanmean('lon')
   data = nc_cache(tmpdir, data)
