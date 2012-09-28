@@ -11,11 +11,6 @@ def rpnopen_sfconly (filename):
   f = f(eta=1).squeeze()
   return f
 
-def rpnopen_eta932 (filename):
-  f = rpnopen(filename)
-  f = f(eta=0.932)
-  return f
-
 # Extract a date from a GEM model filename
 def file2date (filename):
   from re import search
@@ -98,7 +93,6 @@ def to_gph (dataset, dm):
 # Given a model data directory, get the useful data out of it.
 # Cache the data in netcdf format, for faster subsequent access.
 def get_data (indir):
-  from model_stuff import rpnopen, rpnopen_sfconly, file2date, to_gph, nc_cache
   from pygeode.formats.multifile import open_multi
 
   data = dict()
