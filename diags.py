@@ -62,3 +62,7 @@ movie_zonal(gemfield = 'CLA', ctfield = 'bio', offset = -100, experiment=experim
 # Count of CO2 'holes'
 from where_holes import where_holes
 where_holes (experiment=experiment, outdir=outdir)
+
+# KT sensitivity check
+from shortexper_diffcheck import shortexper_diffcheck
+shortexper_diffcheck (experiment=experiment, control=control, location="Toronto", outdir=outdir)
