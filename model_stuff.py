@@ -100,6 +100,7 @@ class Experiment(object):
     from pygeode.formats import rpn
     from glob import glob
     from pygeode.axis import ZAxis
+    from common import fix_timeaxis
 
     self.name = name
     self.title = title
@@ -137,9 +138,9 @@ class Experiment(object):
     km_3d = open_multi(km_3d, opener=rpnopen, file2date=file2date)
     pm_3d = open_multi(pm_3d, opener=rpnopen, file2date=file2date)
 
-    self.dm_3d = dm_3d
-    self.km_3d = km_3d
-    self.pm_3d = pm_3d
+    self.dm_3d = fix_timeaxis(dm_3d)
+    self.km_3d = fix_timeaxis(km_3d)
+    self.pm_3d = fix_timeaxis(pm_3d)
 
     ##############################
     # Surface data
@@ -147,15 +148,17 @@ class Experiment(object):
 
     # Assume surface data is available in every output time.
     # Ignore 0h output - use 24h output instead.
-    self.dm = open_multi([indir+"/dm*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
-    self.km = open_multi([indir+"/km*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
-    self.pm = open_multi([indir+"/pm*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
+    dm = open_multi([indir+"/dm*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
+    km = open_multi([indir+"/km*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
+    pm = open_multi([indir+"/pm*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
+    self.dm = fix_timeaxis(dm)
+    self.km = fix_timeaxis(km)
+    self.pm = fix_timeaxis(pm)
 
   def get_data (self, filetype, domain, field):
     from os.path import exists
     from os import mkdir
     from pygeode.formats import netcdf
-    from common import fix_timeaxis
 
     assert filetype in ('dm', 'km', 'pm')
     assert domain in ('sfc', 'zonalmean_gph', 'toronto')
@@ -171,9 +174,6 @@ class Experiment(object):
       data = getattr(self,filetype+'_3d')[field]
       data = data.squeeze(lat=43.7833,lon=280.5333)
     else: raise Exception
-
-    # Standardize the values in the relative time axis
-    data = fix_timeaxis(data)
 
     if not exists(self._tmpdir): mkdir(self._tmpdir)
     cachefile = self._tmpdir + '/%s_%s_%s.nc'%(filetype,domain,field)
