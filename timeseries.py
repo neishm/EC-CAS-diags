@@ -106,7 +106,8 @@ def timeseries (experiment, control, show=True, outdir=None):
 
     if outdir is not None:
       outfile = "%s/%s_timeseries_ec%02d.png"%(outdir,experiment.name,i/4+1)
-      fig.savefig(outfile)
+      if not exists(outfile):
+        fig.savefig(outfile)
 
   if show:
     pl.show()
