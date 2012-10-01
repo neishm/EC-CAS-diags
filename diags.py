@@ -49,20 +49,42 @@ if not exists(outdir):
   mkdir(outdir)
 
 # Some standard diagnostics
+failures = []
 
 # Timeseries
-from timeseries import timeseries
-timeseries (show=False, experiment=experiment, control=control, outdir=outdir)
+try:
+  from timeseries import timeseries
+  timeseries (show=False, experiment=experiment, control=control, outdir=outdir)
+except Exception as e:
+  failures.append(['timeseries', e])
 
 # Zonal mean movies
-from movie_zonal import movie_zonal
-movie_zonal(gemfield = 'CO2', ctfield = 'co2', offset =    0, experiment=experiment, control=control, outdir=outdir)
-movie_zonal(gemfield = 'CLA', ctfield = 'bio', offset = -100, experiment=experiment, control=control, outdir=outdir)
+try:
+  from movie_zonal import movie_zonal
+  movie_zonal(gemfield = 'CO2', ctfield = 'co2', offset =    0, experiment=experiment, control=control, outdir=outdir)
+  movie_zonal(gemfield = 'CLA', ctfield = 'bio', offset = -100, experiment=experiment, control=control, outdir=outdir)
+except Exception as e:
+  failures.append(['movie_zonal', e])
 
 # Count of CO2 'holes'
-from where_holes import where_holes
-where_holes (experiment=experiment, outdir=outdir)
+try:
+  from where_holes import where_holes
+  where_holes (experiment=experiment, outdir=outdir)
+except Exception as e:
+  failures.append(['where_holes', e])
 
 # KT sensitivity check
-from shortexper_diffcheck import shortexper_diffcheck
-shortexper_diffcheck (experiment=experiment, control=control, location="Toronto", outdir=outdir)
+try:
+  from shortexper_diffcheck import shortexper_diffcheck
+  shortexper_diffcheck (experiment=experiment, control=control, location="Toronto", outdir=outdir)
+except Exception as e:
+  failures.append(['diffcheck', e])
+
+
+# Report any diagnostics that failed to run
+if len(failures) > 0:
+  print "WARNING:"
+  print "The following diagnostics failed to run:"
+  for diag, e in failures:
+    print "%s: %s"%(diag,e)
+
