@@ -34,10 +34,10 @@ else:
 
 
 # Get the data
-from model_stuff import get_data
-experiment = get_data(experiment_dir)
+from model_stuff import Experiment
+experiment = Experiment(experiment_dir, name=experiment_name, title=experiment_title)
 if control_dir is not None:
-  control = get_data(control_dir)
+  control = Experiment(control_dir, name=control_name, title=control_title)
 else:
   control = None
 
@@ -48,20 +48,17 @@ outdir = experiment_name
 if not exists(outdir):
   mkdir(outdir)
 
-# Set up some common keyword parameters to pass to the specific diagnostics
-exp_args = dict(experiment_name=experiment_name, experiment_title=experiment_title, experiment=experiment, control_name=control_name, control_title=control_title, control=control, outdir=outdir)
-
 # Some standard diagnostics
 
 # Timeseries
 from timeseries import timeseries
-timeseries (show=False, **exp_args)
+timeseries (show=False, experiment=experiment, control=control, outdir=outdir)
 
 # Zonal mean movies
 from movie_zonal import movie_zonal
-movie_zonal(gemfield = 'CO2', ctfield = 'co2', offset =    0, **exp_args)
-movie_zonal(gemfield = 'CLA', ctfield = 'bio', offset = -100, **exp_args)
+movie_zonal(gemfield = 'CO2', ctfield = 'co2', offset =    0, experiment=experiment, control=control, outdir=outdir)
+movie_zonal(gemfield = 'CLA', ctfield = 'bio', offset = -100, experiment=experiment, control=control, outdir=outdir)
 
 # Count of CO2 'holes'
 from where_holes import where_holes
-where_holes (**exp_args)
+where_holes (experiment=experiment, outdir=outdir)

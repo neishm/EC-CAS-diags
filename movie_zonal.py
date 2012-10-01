@@ -157,7 +157,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
   if preview is True:
     plt.show()
 
-def movie_zonal (gemfield, ctfield, offset, outdir, experiment_name, experiment_title, experiment, control_name, control_title, control):
+def movie_zonal (gemfield, ctfield, offset, outdir, experiment, control):
 
   from carbontracker import data as ct
 
@@ -166,22 +166,22 @@ def movie_zonal (gemfield, ctfield, offset, outdir, experiment_name, experiment_
   from common import convert_CO2
 
   if control is not None:
-    control_co2 = control['zonalmean_gph'][gemfield] * convert_CO2 + offset
+    control_co2 = control.get_data('dm','zonalmean_gph',gemfield) * convert_CO2 + offset
   else:
     control_co2 = None
-  exper_co2 = experiment['zonalmean_gph'][gemfield] * convert_CO2 + offset
+  exper_co2 = experiment.get_data('dm','zonalmean_gph',gemfield) * convert_CO2 + offset
 
-  imagedir=outdir+"/images_%s_zonal%s"%(experiment_name, ctfield)
+  imagedir=outdir+"/images_%s_zonal%s"%(experiment.name, ctfield)
 
   if control is not None:
 
-    create_images (exper_co2, control_co2, ct_co2, title1=experiment_title, title2=control_title, title3='CarbonTracker',preview=False, outdir=imagedir)
+    create_images (exper_co2, control_co2, ct_co2, title1=experiment.title, title2=control.title, title3='CarbonTracker',preview=False, outdir=imagedir)
 
   else:
 
-    create_images (exper_co2, ct_co2, title1=experiment_title, title2='CarbonTracker',preview=False, outdir=imagedir)
+    create_images (exper_co2, ct_co2, title1=experiment.title, title2='CarbonTracker',preview=False, outdir=imagedir)
 
-  moviefile = "%s/%s_zonal%s.avi"%(outdir,experiment_name,ctfield)
+  moviefile = "%s/%s_zonal%s.avi"%(outdir,experiment.name,ctfield)
 
   from os import system
   from os.path import exists

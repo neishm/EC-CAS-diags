@@ -1,6 +1,6 @@
 # CO2 timeseries
 
-def timeseries (experiment_name, experiment_title, experiment, control_name, control_title, control, show=True, outdir=None):
+def timeseries (experiment, control, show=True, outdir=None):
 
   from plot_shortcuts import plot
   from plot_wrapper import Multiplot, Legend
@@ -14,9 +14,9 @@ def timeseries (experiment_name, experiment_title, experiment, control_name, con
 
   from os.path import exists
 
-  exper_co2 = experiment['dm_sfc']['CO2'] * convert_CO2
+  exper_co2 = experiment.get_data('dm','sfc','CO2') * convert_CO2
   if control is not None:
-    control_co2 = control['dm_sfc']['CO2'] * convert_CO2
+    control_co2 = control.get_data('dm','sfc','CO2') * convert_CO2
   else:
     control_co2 = None
 
@@ -96,16 +96,16 @@ def timeseries (experiment_name, experiment_title, experiment, control_name, con
 
     theplots = plots[i:i+4]
     # Put a legend on the last plot
-    if control_title is not None:
-      theplots[-1] = Legend(theplots[-1], [experiment_title, 'Obs', control_title])
+    if control is not None:
+      theplots[-1] = Legend(theplots[-1], [experiment.title, 'Obs', control.title])
     else:
-      theplots[-1] = Legend(theplots[-1], [experiment_title, 'Obs'])
+      theplots[-1] = Legend(theplots[-1], [experiment.title, 'Obs'])
 
     theplots = Multiplot([[p] for p in theplots])
     theplots.render(figure=fig)
 
     if outdir is not None:
-      outfile = "%s/%s_timeseries_ec%02d.png"%(outdir,experiment_name,i/4+1)
+      outfile = "%s/%s_timeseries_ec%02d.png"%(outdir,experiment.name,i/4+1)
       fig.savefig(outfile)
 
   if show:

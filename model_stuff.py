@@ -154,3 +154,100 @@ def get_data (indir):
 
   return data
 
+# New data interface - get data as needed on-the-fly.
+# Replaces pre-computing everything with nc_cache.
+# This should be faster, since we only compute what we need.
+
+class Experiment(object):
+  def __init__ (self, indir, name, title):
+    from pygeode.formats.multifile import open_multi
+    from pygeode.formats import rpn
+    from glob import glob
+    from pygeode.axis import ZAxis
+
+    self.name = name
+    self.title = title
+    self._tmpdir = indir + "/nc_cache"
+
+    ##############################
+    # Data with vertical extent
+    ##############################
+
+    # Open a single day of data, to determine at what times 3D data is saved.
+    files_24h = sorted(glob(indir+"/dm*_024h"))
+    testfile = files_24h[0]
+    del files_24h
+    testfile = rpn.open(testfile)
+    # Assume we have 3D output for at least the 24h forecasts
+    levels = list(testfile['CO2'].getaxis(ZAxis).values)
+    # Get the rest of the files for this day, check the levels
+    year = int(testfile.time.year[0])
+    month = int(testfile.time.month[0])
+    day = int(testfile.time.day[0])
+    del testfile
+    testfiles = sorted(glob(indir+"/dm%04d%02d%02d00_???h"%(year,month,day)))
+    testfiles = [rpn.open(f) for f in testfiles]
+    times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f['CO2'].getaxis(ZAxis).values) == levels]
+    # Ignore 0h files, since we're already using the 24h forecasts
+    if 0 in times_with_3d:
+      times_with_3d.remove(0)
+
+    dm_3d = [indir+"/dm*_%03dh"%h for h in times_with_3d]
+    km_3d = [indir+"/km*_%03dh"%h for h in times_with_3d]
+    pm_3d = [indir+"/pm*_%03dh"%h for h in times_with_3d]
+
+    # Open the 3D files
+    dm_3d = open_multi(dm_3d, opener=rpnopen, file2date=file2date)
+    km_3d = open_multi(km_3d, opener=rpnopen, file2date=file2date)
+    pm_3d = open_multi(pm_3d, opener=rpnopen, file2date=file2date)
+
+    self.dm_3d = dm_3d
+    self.km_3d = km_3d
+    self.pm_3d = pm_3d
+
+    ##############################
+    # Surface data
+    ##############################
+
+    # Assume surface data is available in every output time.
+    # Ignore 0h output - use 24h output instead.
+    self.dm = open_multi([indir+"/dm*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
+    self.km = open_multi([indir+"/km*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
+    self.pm = open_multi([indir+"/pm*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
+
+  def get_data (self, filetype, domain, field):
+    from os.path import exists
+    from os import mkdir
+    from pygeode.formats import netcdf
+    from common import fix_timeaxis
+
+    assert filetype in ('dm', 'km', 'pm')
+    assert domain in ('sfc', 'zonalmean_gph', 'toronto')
+
+    # Determine which data is needed
+    if domain == 'sfc':
+      data = getattr(self,filetype)[field]
+    elif domain == 'zonalmean_gph':
+      data = getattr(self,filetype+'_3d')
+      data = to_gph(data,self.dm_3d).nanmean('lon')
+      data = data[field]
+    elif domain == 'toronto':
+      data = getattr(self,filetype+'_3d')[field]
+      data = data.squeeze(lat=43.7833,lon=280.5333)
+    else: raise Exception
+
+    # Standardize the values in the relative time axis
+    data = fix_timeaxis(data)
+
+    if not exists(self._tmpdir): mkdir(self._tmpdir)
+    cachefile = self._tmpdir + '/%s_%s_%s.nc'%(filetype,domain,field)
+
+    # Pre-compute the data and save it, if this is the first time using it.
+    if not exists(cachefile):
+      print '===>', cachefile
+      netcdf.save(cachefile, data)
+
+    data = netcdf.open(cachefile)[field]
+
+    return data
+
