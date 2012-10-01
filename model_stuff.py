@@ -161,7 +161,7 @@ class Experiment(object):
     from pygeode.formats import netcdf
 
     assert filetype in ('dm', 'km', 'pm')
-    assert domain in ('sfc', 'zonalmean_gph', 'toronto')
+    assert domain in ('sfc', 'zonalmean_gph', 'Toronto')
 
     # Determine which data is needed
     if domain == 'sfc':
@@ -170,7 +170,7 @@ class Experiment(object):
       data = getattr(self,filetype+'_3d')
       data = to_gph(data,self.dm_3d).nanmean('lon')
       data = data[field]
-    elif domain == 'toronto':
+    elif domain == 'Toronto':
       data = getattr(self,filetype+'_3d')[field]
       data = data.squeeze(lat=43.7833,lon=280.5333)
     else: raise Exception

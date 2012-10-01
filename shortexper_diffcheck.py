@@ -17,14 +17,14 @@ def shortexper_diffcheck(experiment, control, location, outdir):
 
   for i,dataset in enumerate([experiment,control]):
 
-    ktn = dataset.get_data('km',location.lower(),'KTN')
-    co2 = dataset.get_data('dm',location.lower(),'CO2') * convert_CO2
+    ktn = dataset.get_data('km',location,'KTN')
+    co2 = dataset.get_data('dm',location,'CO2') * convert_CO2
     co2.name = 'CO2'
-    gz = dataset.get_data('dm',location.lower(),'GZ')(i_time=0).squeeze()
+    gz = dataset.get_data('dm',location,'GZ')(i_time=0).squeeze()
     height = Height(gz.get() * 10)  # decametres to metres
     ktn = ktn.replace_axes(eta=height)
     co2 = co2.replace_axes(eta=height)
-    pbl = dataset.get_data('pm',location.lower(),'H')
+    pbl = dataset.get_data('pm',location,'H')
 
     axis = pl.subplot(3,2,0*2+i+1)
     plotvar(ktn(z=(0,10000)), ax=axis, title='%s KTN (%s)'%(location,dataset.name))
