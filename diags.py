@@ -41,10 +41,10 @@ if control_dir is not None:
 else:
   control = None
 
-# By default, dump the output files to directory of the same name as the experiment.
+# Dump the output files to a subdirectory of the experiment data
 from os.path import exists
 from os import mkdir
-outdir = experiment_name
+outdir = experiment_dir+"/diags"
 if not exists(outdir):
   mkdir(outdir)
 
