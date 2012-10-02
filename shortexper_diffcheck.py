@@ -42,3 +42,4 @@ def shortexper_diffcheck(experiment, control, location, outdir):
   if not exists(outfile):
     fig.savefig(outfile)
 
+  pl.close(fig)

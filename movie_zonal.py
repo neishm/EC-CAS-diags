@@ -157,6 +157,8 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
   if preview is True:
     plt.show()
 
+  plt.close(fig)
+
 def movie_zonal (gemfield, ctfield, offset, outdir, experiment, control):
 
   from carbontracker import data as ct
