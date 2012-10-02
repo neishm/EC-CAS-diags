@@ -48,6 +48,10 @@ outdir = experiment_dir+"/diags"
 if not exists(outdir):
   mkdir(outdir)
 
+# Some obs data that's needed by certain diagnostics
+from ec_to_nc import ec_to_nc
+ec_to_nc()
+
 # Some standard diagnostics
 failures = []
 
