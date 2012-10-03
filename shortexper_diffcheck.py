@@ -6,6 +6,7 @@ def shortexper_diffcheck(experiment, control, location, outdir):
   from pygeode.plot import plotvar
   from contouring import get_range, get_contours
   from matplotlib import pyplot as pl
+  import numpy as np
 
   lat, lon, country = obs_locations[location]
   lon += 360
@@ -21,12 +22,15 @@ def shortexper_diffcheck(experiment, control, location, outdir):
     fig = pl.figure(figsize=(8,15))
     n = 1
 
+  # Initialize ranges
   ktn_min = float('inf')
   ktn_max = float('-inf')
   co2_min = float('inf')
   co2_max = float('-inf')
-  co2_sfc_min = co2_obs.min()
-  co2_sfc_max = co2_obs.max()
+  co2_sfc_min = np.nanmin(co2_obs.get())
+  co2_sfc_max = np.nanmax(co2_obs.get())
+  if np.isnan(co2_sfc_min): co2_sfc_min = float('inf')
+  if np.isnan(co2_sfc_max): co2_sfc_max = float('-inf')
 
   # Get the data, and compute the global ranges
   for i,dataset in enumerate([experiment,control]):
