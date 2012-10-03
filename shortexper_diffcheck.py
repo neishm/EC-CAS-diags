@@ -25,6 +25,8 @@ def shortexper_diffcheck(experiment, control, location, outdir):
     ktn = ktn.replace_axes(eta=height)
     co2 = co2.replace_axes(eta=height)
     pbl = dataset.get_data('pm',location,'H')
+    # Adjust pbl to use the same height units for plotting.
+    pbl *= Height.plotatts.get('scalefactor',1)
 
     axis = pl.subplot(3,2,0*2+i+1)
     plotvar(ktn(z=(0,10000)), ax=axis, title='%s KTN (%s)'%(location,dataset.name))
