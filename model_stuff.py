@@ -155,6 +155,27 @@ class Experiment(object):
     self.km = fix_timeaxis(km)
     self.pm = fix_timeaxis(pm)
 
+    ##############################
+    # Derived fields
+    ##############################
+
+    # (Things that may not have been output from the model, but that we can
+    #  compute)
+
+    # Sigma levels
+    # Assume this is usually available in the physics bus
+    if 'SIGM' not in self.pm_3d:
+      Ps = self.dm['P0'] * 100
+      A = self.dm_3d.eta.auxasvar('A')
+      B = self.dm_3d.eta.auxasvar('B')
+      P = A + B * Ps
+      P = P.transpose('time','eta','lat','lon')
+      sigma = P / Ps
+      sigma.name = 'SIGM'
+      self.pm_3d += sigma
+
+  # The data interface
+  # Handles the computing of general diagnostic domains (zonal means, etc.)
   def get_data (self, filetype, domain, field):
     from os.path import exists
     from os import mkdir
