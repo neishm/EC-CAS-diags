@@ -165,7 +165,7 @@ class Experiment(object):
     # Sigma levels
     # Assume this is usually available in the physics bus
     if 'SIGM' not in self.pm_3d:
-      Ps = self.dm['P0'] * 100
+      Ps = self.dm_3d['P0'] * 100
       A = self.dm_3d.eta.auxasvar('A')
       B = self.dm_3d.eta.auxasvar('B')
       P = A + B * Ps
@@ -196,7 +196,7 @@ class Experiment(object):
     elif domain == 'totalcolumn':
       from pygeode.axis import ZAxis
       from pygeode.var import Var
-      Ps = self.dm['P0'] * 100
+      Ps = self.dm_3d['P0'] * 100
       sigma = self.pm_3d['SIGM']
       c = getattr(self,filetype+'_3d')[field]
       # Interpolate concentration to half levels
