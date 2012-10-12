@@ -182,7 +182,9 @@ class Experiment(object):
     from pygeode.formats import netcdf
 
     assert filetype in ('dm', 'km', 'pm')
-    assert domain in ('sfc', 'zonalmean_gph', 'Toronto')
+    assert domain in ('sfc', 'zonalmean_gph', 'totalcolumn', 'avgcolumn', 'Toronto')
+
+    g = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
     # Determine which data is needed
     if domain == 'sfc':
@@ -191,6 +193,40 @@ class Experiment(object):
       data = getattr(self,filetype+'_3d')
       data = to_gph(data,self.dm_3d).nanmean('lon')
       data = data[field]
+    elif domain == 'totalcolumn':
+      from pygeode.axis import ZAxis
+      from pygeode.var import Var
+      Ps = self.dm['P0'] * 100
+      sigma = self.pm_3d['SIGM']
+      c = getattr(self,filetype+'_3d')[field]
+      # Interpolate concentration to half levels
+      c1 = c.slice[:,:-1,:,:]
+      c2 = c.slice[:,1:,:,:]
+      c2 = c2.replace_axes(eta=c1.eta)
+      c_half = (c2 + c1) / 2
+      # Compute sigma layers
+      sigma1 = sigma.slice[:,:-1,:,:]
+      sigma2 = sigma.slice[:,1:,:,:]
+      sigma2 = sigma2.replace_axes(eta=sigma1.eta)
+      dsigma = (sigma2-sigma1)
+      # Integrate the tracer
+      col = (c_half * dsigma).sum('eta')
+      # Scale by Ps/g
+      data = col * Ps / g
+      data.name = field
+    elif domain == 'avgcolumn':
+      # Total column (ug)
+      tc = self.get_data(filetype, 'totalcolumn', field)
+      sigma = self.pm_3d['SIGM']
+      sigma_top = sigma.slice[:,0,:,:].squeeze()
+      #sigma_bottom = sigma.slice[:,-1,:,:].squeeze()
+      sigma_bottom = 1
+      Ps = self.dm_3d['P0'] * 100
+      # Total mass dry air (ug)
+      Mair = 1E9 * Ps / g * (sigma_bottom - sigma_top)
+      data = tc / Mair
+      data.name = field
+
     elif domain == 'Toronto':
       data = getattr(self,filetype+'_3d')[field]
       data = data.squeeze(lat=43.7833,lon=280.5333)
