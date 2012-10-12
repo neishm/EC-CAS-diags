@@ -232,6 +232,10 @@ class Experiment(object):
       data = data.squeeze(lat=43.7833,lon=280.5333)
     else: raise Exception
 
+    # Make sure the data is in 32-bit precision
+    if data.dtype.name != 'float32':
+      data = data.as_type('float32')
+
     if not exists(self._tmpdir): mkdir(self._tmpdir)
     cachefile = self._tmpdir + '/%s_%s_%s.nc'%(filetype,domain,field)
 
