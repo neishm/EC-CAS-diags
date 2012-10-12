@@ -84,6 +84,12 @@ try:
 except Exception as e:
   failures.append(['diffcheck', e])
 
+# XCO2
+try:
+  from xco2 import xco2
+  xco2 (experiment=experiment, control=control, outdir=outdir)
+except Exception as e:
+  failures.append(['xco2', e])
 
 # Report any diagnostics that failed to run
 if len(failures) > 0:
