@@ -155,13 +155,36 @@ class Experiment(object):
     self.km = fix_timeaxis(km)
     self.pm = fix_timeaxis(pm)
 
+    ##############################
+    # Derived fields
+    ##############################
+
+    # (Things that may not have been output from the model, but that we can
+    #  compute)
+
+    # Sigma levels
+    # Assume this is usually available in the physics bus
+    if 'SIGM' not in self.pm_3d:
+      Ps = self.dm_3d['P0'] * 100
+      A = self.dm_3d.eta.auxasvar('A')
+      B = self.dm_3d.eta.auxasvar('B')
+      P = A + B * Ps
+      P = P.transpose('time','eta','lat','lon')
+      sigma = P / Ps
+      sigma.name = 'SIGM'
+      self.pm_3d += sigma
+
+  # The data interface
+  # Handles the computing of general diagnostic domains (zonal means, etc.)
   def get_data (self, filetype, domain, field):
     from os.path import exists
     from os import mkdir
     from pygeode.formats import netcdf
 
     assert filetype in ('dm', 'km', 'pm')
-    assert domain in ('sfc', 'zonalmean_gph', 'Toronto')
+    assert domain in ('sfc', 'zonalmean_gph', 'totalcolumn', 'avgcolumn', 'Toronto')
+
+    g = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
     # Determine which data is needed
     if domain == 'sfc':
@@ -170,10 +193,48 @@ class Experiment(object):
       data = getattr(self,filetype+'_3d')
       data = to_gph(data,self.dm_3d).nanmean('lon')
       data = data[field]
+    elif domain == 'totalcolumn':
+      from pygeode.axis import ZAxis
+      from pygeode.var import Var
+      Ps = self.dm_3d['P0'] * 100
+      sigma = self.pm_3d['SIGM']
+      c = getattr(self,filetype+'_3d')[field]
+      # Interpolate concentration to half levels
+      c1 = c.slice[:,:-1,:,:]
+      c2 = c.slice[:,1:,:,:]
+      c2 = c2.replace_axes(eta=c1.eta)
+      c_half = (c2 + c1) / 2
+      # Compute sigma layers
+      sigma1 = sigma.slice[:,:-1,:,:]
+      sigma2 = sigma.slice[:,1:,:,:]
+      sigma2 = sigma2.replace_axes(eta=sigma1.eta)
+      dsigma = (sigma2-sigma1)
+      # Integrate the tracer
+      col = (c_half * dsigma).sum('eta')
+      # Scale by Ps/g
+      data = col * Ps / g
+      data.name = field
+    elif domain == 'avgcolumn':
+      # Total column (ug)
+      tc = self.get_data(filetype, 'totalcolumn', field)
+      sigma = self.pm_3d['SIGM']
+      sigma_top = sigma.slice[:,0,:,:].squeeze()
+      #sigma_bottom = sigma.slice[:,-1,:,:].squeeze()
+      sigma_bottom = 1
+      Ps = self.dm_3d['P0'] * 100
+      # Total mass dry air (ug)
+      Mair = 1E9 * Ps / g * (sigma_bottom - sigma_top)
+      data = tc / Mair
+      data.name = field
+
     elif domain == 'Toronto':
       data = getattr(self,filetype+'_3d')[field]
       data = data.squeeze(lat=43.7833,lon=280.5333)
     else: raise Exception
+
+    # Make sure the data is in 32-bit precision
+    if data.dtype.name != 'float32':
+      data = data.as_type('float32')
 
     if not exists(self._tmpdir): mkdir(self._tmpdir)
     cachefile = self._tmpdir + '/%s_%s_%s.nc'%(filetype,domain,field)

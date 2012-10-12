@@ -59,3 +59,9 @@ def get_range (var):
   high = sample[int(round((N-1)*0.999))]
   return low, high
 
+# Get a global range that covers multiple fields
+def get_global_range (*vars):
+  lows, highs = zip(*[get_range(var) for var in vars])
+  low = min(lows)
+  high = max(highs)
+  return low, high

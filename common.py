@@ -76,3 +76,15 @@ def overlapping (*varlist):
       #TODO
 
   return varlist
+
+# Adjust a lat/lon grid from -180,180 to 0,360
+def rotate_grid (data):
+  from pygeode.var import concat
+  east = data(lon=(-180,0))
+  west = data(lon=(0,180))
+
+  oldlons = east.lon
+  newlons = type(oldlons)(oldlons.values + 360)
+  east = east.replace_axes(lon=newlons)
+
+  return concat(west, east)
