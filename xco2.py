@@ -24,18 +24,32 @@ def xco2 (experiment, control, outdir):
   from pygeode.progress import PBar
   from os.path import exists
   from os import makedirs
+  from carbontracker import data as ct
+  from common import rotate_grid
 
   imagedir = outdir + "/images_%s_XCO2"%experiment.name
   if not exists(imagedir): makedirs(imagedir)
 
   exper_xco2 = get_xco2(experiment)
-  control_xco2 = get_xco2(control)
+  if control is not None:
+    control_xco2 = get_xco2(control)
+  ct_xco2 = ct['colavg']['co2'].rename('CarbonTracker')
+  # Rotate the longitudes to 0,360
+  ct_xco2 = rotate_grid(ct_xco2)
 
-  low, high = get_global_range (exper_xco2, control_xco2)
+  if control is not None:
+    low, high = get_global_range (exper_xco2, control_xco2, ct_xco2)
+  else:
+    low, high = get_global_range (exper_xco2, ct_xco2)
   clevs = get_contours(low, high)
 
   # Generate each individual frame
-  fig = pl.figure(figsize=(10,8))
+  if control is not None:
+    fig = pl.figure(figsize=(8,10))
+    n = 3
+  else:
+    fig = pl.figure(figsize=(10,8))
+    n = 2
 
   times = exper_xco2.time.values
   pbar = PBar()
@@ -50,11 +64,15 @@ def xco2 (experiment, control, outdir):
 
     fig.clear()
 
-    ax = pl.subplot(2,1,1)
+    ax = pl.subplot(n,1,1)
     plotvar (exper_xco2(time=t), ax=ax, clevs=clevs)
 
-    ax = pl.subplot(2,1,2)
-    plotvar (control_xco2(time=t), ax=ax, clevs=clevs)
+    if control is not None:
+      ax = pl.subplot(n,1,2)
+      plotvar (control_xco2(time=t), ax=ax, clevs=clevs)
+
+    ax = pl.subplot(n,1,n)
+    plotvar (ct_xco2(time=t), ax=ax, clevs=clevs)
 
     fig.savefig(outfile)
 
