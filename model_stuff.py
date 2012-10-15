@@ -211,7 +211,7 @@ class Experiment(object):
     from pygeode.formats import netcdf
 
     assert filetype in ('dm', 'km', 'pm')
-    assert domain in ('sfc', 'zonalmean_gph', 'totalcolumn', 'avgcolumn', 'Toronto')
+    assert domain in ('sfc', 'zonalmean_gph', 'totalcolumn', 'avgcolumn', 'totalmass', 'Toronto')
 
     g = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
@@ -254,6 +254,18 @@ class Experiment(object):
       # Total mass dry air (ug)
       Mair = 1E9 * Ps / g * (sigma_bottom - sigma_top)
       data = tc / Mair
+      data.name = field
+
+    elif domain == 'totalmass':
+      # Total column (ug)
+      tc = self.get_data(filetype, 'totalcolumn', field)
+      area = self.pm_3d['DX']
+      # Mass per grid area (ug)
+      # Assume global grid - remove repeated longitude
+      mass = (tc * area).slice[:,:,:-1].sum('lat','lon')
+      # Convert from ug to Pg
+      mass *= 1E-21
+      data = mass
       data.name = field
 
     elif domain == 'Toronto':
