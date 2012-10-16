@@ -27,6 +27,7 @@ def ct_open (files):
   return data
 
 molefractions = ct_open("/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc")
+molefractions = molefractions - 'date_components' - 'decimal_date'
 
 molefractions_interface = ct_open("/wrk1/EC-CAS/CarbonTracker/molefractions_interface/molefrac_glb3x2_????-??-??.nc")
 
@@ -84,14 +85,14 @@ data = {}
 from pygeode.dataset import Dataset
 
 # Zonal mean data
-zonalmean = molefractions + co2 - 'date_components' - 'decimal_date'
+zonalmean = molefractions + co2
 zonalmean = [ct_zonal_24h(v) for v in zonalmean]
 zonalmean = Dataset(zonalmean)
 data['zonalmean_gph_24h'] = zonalmean
 del zonalmean 
 
 # Surface data
-surface = molefractions + co2 - 'date_components' - 'decimal_date'
+surface = molefractions + co2
 surface = surface(i_level=0)  # lowest level
 surface = Dataset(surface)
 data['sfc'] = surface
@@ -132,7 +133,7 @@ sigma_bottom = 1
 #netcdf.save("ct_dsigma.nc", dsigma(i_time=0))
 #raise Exception
 
-cols = [(c*dsigma/(sigma_bottom-sigma_top)).sum('level').as_type('float32').rename(c.name) for c in molefractions+co2-'date_components'-'decimal_date']
+cols = [(c*dsigma/(sigma_bottom-sigma_top)).sum('level').as_type('float32').rename(c.name) for c in molefractions+co2]
 data['colavg'] = Dataset(cols)
 
 from model_stuff import nc_cache
