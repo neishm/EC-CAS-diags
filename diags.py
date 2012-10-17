@@ -91,6 +91,13 @@ try:
 except Exception as e:
   failures.append(['xco2', e])
 
+# Total mass CO2
+try:
+  from totalmass import totalmass
+  totalmass (experiment=experiment, control=control, outdir=outdir)
+except Exception as e:
+  failures.append(['totalmass', e])
+
 # Report any diagnostics that failed to run
 if len(failures) > 0:
   print "WARNING:"
