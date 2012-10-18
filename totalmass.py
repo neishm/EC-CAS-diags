@@ -36,4 +36,14 @@ def totalmass (experiment, control, outdir):
   if not exists(outfile):
     doplot (outfile, "Total mass CO2 (Pg C)", fields, colors, styles, labels)
 
+  # Air mass
+  exper_airmass = experiment.get_data('dm', 'totalmass', 'air')
+  control_airmass = control.get_data('dm', 'totalmass', 'air')
+  fields = [exper_airmass, control_airmass]
+  colors = ['blue', 'red']
+  styles = ['-', '-']
+  labels = [experiment.title, control.title]
+  outfile = outdir + "/%s_totalmass_air.png"%experiment.name
+  if not exists(outfile):
+    doplot (outfile, "Total air mass (Pg)", fields, colors, styles, labels)
 
