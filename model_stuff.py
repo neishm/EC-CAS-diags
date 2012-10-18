@@ -227,12 +227,17 @@ class Experiment(object):
       from pygeode.var import Var
       Ps = self.dm_3d['P0'] * 100
       sigma = self.pm_3d['SIGM']
-      c = getattr(self,filetype+'_3d')[field]
-      # Interpolate concentration to half levels
-      c1 = c.slice[:,:-1,:,:]
-      c2 = c.slice[:,1:,:,:]
-      c2 = c2.replace_axes(eta=c1.eta)
-      c_half = (c2 + c1) / 2
+      # Compute mixing ratio at half levels
+      # Special case: air mass (not an actual output field)
+      if field is 'air':
+        c_half = 1E9   # ug/kg
+      else:
+        c = getattr(self,filetype+'_3d')[field]
+        # Interpolate concentration to half levels
+        c1 = c.slice[:,:-1,:,:]
+        c2 = c.slice[:,1:,:,:]
+        c2 = c2.replace_axes(eta=c1.eta)
+        c_half = (c2 + c1) / 2
       # Compute sigma layers
       sigma1 = sigma.slice[:,:-1,:,:]
       sigma2 = sigma.slice[:,1:,:,:]
