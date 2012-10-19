@@ -174,6 +174,35 @@ class Experiment(object):
       sigma.name = 'SIGM'
       self.pm_3d += sigma
 
+    # Grid cell areas
+    if 'DX' not in self.pm_3d:
+      import numpy as np
+      from pygeode.var import Var
+      from math import pi
+      r = .637122e7  # Taken from consphy.cdk
+      lats = self.pm_3d.lat.values * (pi / 180)
+#      from pygeode.axis import gausslat
+#      lats = gausslat(len(lats)).values * (pi / 180)
+      # Get the boundaries of the latitudes
+      lat_bounds = (lats[:-1] + lats[1:]) * 0.5
+      # Including the poles
+      lat_bounds = np.concatenate([[-pi/2], lat_bounds, [pi/2]])
+      # Length in y direction
+      dlat = np.diff(lat_bounds)
+      # Length in x direction (assuming global grid)
+      nlon = len(self.pm_3d.lon)
+      dlon = 2*pi / (nlon-1)
+      dlon = np.repeat(dlon, nlon)
+
+      dlat = dlat.reshape(-1,1)
+      dlon = dlon.reshape(1,-1)
+      clat = np.cos(lats).reshape(-1,1)
+      dxdy = r*r * clat * dlat * dlon
+      dxdy = np.asarray(dxdy, dtype='float32')
+      dxdy = Var([self.pm_3d.lat, self.pm_3d.lon], values=dxdy, name='DX')
+      self.pm_3d += dxdy
+      self.pm += dxdy
+
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
   def get_data (self, filetype, domain, field):
@@ -182,7 +211,7 @@ class Experiment(object):
     from pygeode.formats import netcdf
 
     assert filetype in ('dm', 'km', 'pm')
-    assert domain in ('sfc', 'zonalmean_gph', 'totalcolumn', 'avgcolumn', 'Toronto')
+    assert domain in ('sfc', 'zonalmean_gph', 'totalcolumn', 'avgcolumn', 'totalmass', 'Toronto')
 
     g = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
@@ -198,12 +227,17 @@ class Experiment(object):
       from pygeode.var import Var
       Ps = self.dm_3d['P0'] * 100
       sigma = self.pm_3d['SIGM']
-      c = getattr(self,filetype+'_3d')[field]
-      # Interpolate concentration to half levels
-      c1 = c.slice[:,:-1,:,:]
-      c2 = c.slice[:,1:,:,:]
-      c2 = c2.replace_axes(eta=c1.eta)
-      c_half = (c2 + c1) / 2
+      # Compute mixing ratio at half levels
+      # Special case: air mass (not an actual output field)
+      if field is 'air':
+        c_half = 1E9   # ug/kg
+      else:
+        c = getattr(self,filetype+'_3d')[field]
+        # Interpolate concentration to half levels
+        c1 = c.slice[:,:-1,:,:]
+        c2 = c.slice[:,1:,:,:]
+        c2 = c2.replace_axes(eta=c1.eta)
+        c_half = (c2 + c1) / 2
       # Compute sigma layers
       sigma1 = sigma.slice[:,:-1,:,:]
       sigma2 = sigma.slice[:,1:,:,:]
@@ -225,6 +259,18 @@ class Experiment(object):
       # Total mass dry air (ug)
       Mair = 1E9 * Ps / g * (sigma_bottom - sigma_top)
       data = tc / Mair
+      data.name = field
+
+    elif domain == 'totalmass':
+      # Total column (ug)
+      tc = self.get_data(filetype, 'totalcolumn', field)
+      area = self.pm_3d['DX']
+      # Mass per grid area (ug)
+      # Assume global grid - remove repeated longitude
+      mass = (tc * area).slice[:,:,:-1].sum('lat','lon')
+      # Convert from ug to Pg
+      mass *= 1E-21
+      data = mass
       data.name = field
 
     elif domain == 'Toronto':

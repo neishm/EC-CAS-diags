@@ -27,6 +27,7 @@ def ct_open (files):
   return data
 
 molefractions = ct_open("/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc")
+molefractions = molefractions - 'date_components' - 'decimal_date'
 
 molefractions_interface = ct_open("/wrk1/EC-CAS/CarbonTracker/molefractions_interface/molefrac_glb3x2_????-??-??.nc")
 
@@ -84,14 +85,14 @@ data = {}
 from pygeode.dataset import Dataset
 
 # Zonal mean data
-zonalmean = molefractions + co2 - 'date_components' - 'decimal_date'
+zonalmean = molefractions + co2
 zonalmean = [ct_zonal_24h(v) for v in zonalmean]
 zonalmean = Dataset(zonalmean)
 data['zonalmean_gph_24h'] = zonalmean
 del zonalmean 
 
 # Surface data
-surface = molefractions + co2 - 'date_components' - 'decimal_date'
+surface = molefractions + co2
 surface = surface(i_level=0)  # lowest level
 surface = Dataset(surface)
 data['sfc'] = surface
@@ -132,8 +133,58 @@ sigma_bottom = 1
 #netcdf.save("ct_dsigma.nc", dsigma(i_time=0))
 #raise Exception
 
-cols = [(c*dsigma/(sigma_bottom-sigma_top)).sum('level').as_type('float32').rename(c.name) for c in molefractions+co2-'date_components'-'decimal_date']
+cols = [(c*dsigma/(sigma_bottom-sigma_top)).sum('level').as_type('float32').rename(c.name) for c in molefractions+co2]
 data['colavg'] = Dataset(cols)
 
 from model_stuff import nc_cache
+data = nc_cache ("/wrk1/EC-CAS/CarbonTracker/nc_cache", data)
+
+
+# More heavily derived diagnostics
+
+# Total mass
+from math import pi
+import numpy as np
+from pygeode.var import Var
+r = .637122e7  # Taken from consphy.cdk
+g = .980616e1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
+# Get latitudes
+lats = molefractions.lat.values * (pi/180)
+# Get lat boundaries
+lat_bounds = (lats[:-1] + lats[1:]) * 0.5
+# Including the poles
+lat_bounds = np.concatenate([[-pi/2], lat_bounds, [pi/2]])
+# Get the cell length
+dlat = np.diff(lat_bounds)
+# Get longitudes
+lons = molefractions.lon.values * (pi/180)
+# Assume global & equidistant longitudes
+dlon = lons[1] - lons[0]
+dlon = np.repeat(dlon, len(lons))
+
+dlat = dlat.reshape(-1,1)
+dlon = dlon.reshape(1,-1)
+clat = np.cos(lats).reshape(-1,1)
+dxdy = r * r * clat * dlat * dlon
+dxdy = Var([molefractions.lat, molefractions.lon], values=dxdy, name='dxdy')
+
+varlist = []
+from common import convert_CO2
+for colavg in data['colavg']:
+  name = colavg.name
+  # Convert column average from ppmV to ug C / kg air
+  colavg /= convert_CO2
+  # Calculate total column from average column
+  totalcol = colavg * Ps / g * (sigma_bottom - sigma_top)
+  # Sum over all grid cells to get total mass (in ug C)
+  totalmass = (totalcol*dxdy).sum('lat','lon')
+  # Convert from ug to Pg
+  totalmass *= 1E-21
+  totalmass.name = name
+  totalmass = totalmass.as_type('float32')
+  varlist.append(totalmass)
+data['totalmass'] = Dataset(varlist)
+
+
+# Cache these extra diagnostics
 data = nc_cache ("/wrk1/EC-CAS/CarbonTracker/nc_cache", data)
