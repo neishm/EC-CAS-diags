@@ -98,6 +98,7 @@ class Experiment(object):
   def __init__ (self, indir, name, title):
     from pygeode.formats.multifile import open_multi
     from pygeode.formats import rpn
+    from pygeode.dataset import Dataset
     from glob import glob
     from pygeode.axis import ZAxis
     from common import fix_timeaxis
@@ -134,13 +135,20 @@ class Experiment(object):
     pm_3d = [indir+"/pm*_%03dh"%h for h in times_with_3d]
 
     # Open the 3D files
-    dm_3d = open_multi(dm_3d, opener=rpnopen, file2date=file2date)
-    km_3d = open_multi(km_3d, opener=rpnopen, file2date=file2date)
-    pm_3d = open_multi(pm_3d, opener=rpnopen, file2date=file2date)
+    if any(len(glob(x))>0 for x in dm_3d):
+      dm_3d = open_multi(dm_3d, opener=rpnopen, file2date=file2date)
+      self.dm_3d = fix_timeaxis(dm_3d)
+    else: self.dm_3d = Dataset([])
+    if any(len(glob(x))>0 for x in km_3d):
+      km_3d = open_multi(km_3d, opener=rpnopen, file2date=file2date)
+      self.km_3d = fix_timeaxis(km_3d)
+    else: self.km_3d = Dataset([])
+    if any(len(glob(x))>0 for x in pm_3d):
+      pm_3d = open_multi(pm_3d, opener=rpnopen, file2date=file2date)
+      self.pm_3d = fix_timeaxis(pm_3d)
+    else: self.pm_3d = Dataset([])
 
-    self.dm_3d = fix_timeaxis(dm_3d)
-    self.km_3d = fix_timeaxis(km_3d)
-    self.pm_3d = fix_timeaxis(pm_3d)
+
 
     ##############################
     # Surface data
@@ -148,12 +156,21 @@ class Experiment(object):
 
     # Assume surface data is available in every output time.
     # Ignore 0h output - use 24h output instead.
-    dm = open_multi([indir+"/dm*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
-    km = open_multi([indir+"/km*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
-    pm = open_multi([indir+"/pm*%03dh"%i for i in range(1,25)], opener=rpnopen_sfconly, file2date=file2date)
-    self.dm = fix_timeaxis(dm)
-    self.km = fix_timeaxis(km)
-    self.pm = fix_timeaxis(pm)
+    dm = [indir+"/dm*%03dh"%i for i in range(1,25)]
+    if any(len(glob(x))>0 for x in dm):
+      dm = open_multi(dm, opener=rpnopen_sfconly, file2date=file2date)
+      self.dm = fix_timeaxis(dm)
+    else: self.dm = Dataset([])
+    km = [indir+"/km*%03dh"%i for i in range(1,25)]
+    if any(len(glob(x))>0 for x in km):
+      km = open_multi(km, opener=rpnopen_sfconly, file2date=file2date)
+      self.km = fix_timeaxis(km)
+    else: self.km = Dataset([])
+    pm = [indir+"/pm*%03dh"%i for i in range(1,25)]
+    if any(len(glob(x))>0 for x in pm):
+      pm = open_multi(pm, opener=rpnopen_sfconly, file2date=file2date)
+      self.pm = fix_timeaxis(pm)
+    else: self.pm = Dataset([])
 
     ##############################
     # Derived fields
