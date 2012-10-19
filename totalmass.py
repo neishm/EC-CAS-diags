@@ -42,11 +42,16 @@ def totalmass (experiment, control, outdir):
 
   # Air mass
   exper_airmass = experiment.get_data('dm', 'totalmass', 'air')
-  control_airmass = control.get_data('dm', 'totalmass', 'air')
-  fields = [exper_airmass, control_airmass]
-  colors = ['blue', 'red']
-  styles = ['-', '-']
-  labels = [experiment.title, control.title]
+  fields = [exper_airmass]
+  colors = ['blue']
+  styles = ['-']
+  labels = [experiment.title]
+  if control is not None:
+    control_airmass = control.get_data('dm', 'totalmass', 'air')
+    fields.append(control_airmass)
+    colors.append('red')
+    styles.append('-')
+    labels.append(control.title)
   outfile = outdir + "/%s_totalmass_air.png"%experiment.name
   if not exists(outfile):
     doplot (outfile, "Total air mass (Pg)", fields, colors, styles, labels)
