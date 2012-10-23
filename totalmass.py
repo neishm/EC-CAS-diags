@@ -15,11 +15,15 @@ def totalmass (experiment, control, outdir):
   from carbontracker import data as ct
   from os.path import exists
 
+  # Limit CarbonTracker to experiment range
+  t0 = experiment.dm.time[0]
+  t1 = experiment.dm.time[-1]
+
   # CO2 mass
 
   exper_mass = experiment.get_data('dm', 'totalmass', 'CO2')
   exper_bgmass = experiment.get_data('dm', 'totalmass', 'CO2B')
-  ct_mass = ct['totalmass']['co2']
+  ct_mass = ct['totalmass']['co2'](time=(t0,t1))
   fields = [exper_mass, exper_bgmass, ct_mass]
   colors = ['blue', 'blue', 'green']
   styles = ['-', ':', '-']
