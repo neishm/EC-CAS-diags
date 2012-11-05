@@ -10,6 +10,7 @@ parser = argparse.ArgumentParser (description='Do some standard diagnostics on a
 parser.add_argument('experiment', help="location of the model output")
 parser.add_argument('--desc', help="short description of the experient", default="Experiment")
 parser.add_argument('--control', help="location of the control run (if desired)", default=None)
+parser.add_argument('--emissions', help="location of the emissions used in the model")
 
 args = parser.parse_args()
 
@@ -34,12 +35,18 @@ else:
 
 
 # Get the data
-from model_stuff import Experiment
+from model_stuff import Experiment, Fluxes
 experiment = Experiment(experiment_dir, name=experiment_name, title=experiment_title)
 if control_dir is not None:
   control = Experiment(control_dir, name=control_name, title=control_title)
 else:
   control = None
+
+emissions_dir = args.emissions
+if emissions_dir is not None:
+  fluxes = Fluxes(emissions_dir, name='fluxes', title='fluxes')
+else:
+  fluxes = None
 
 # Dump the output files to a subdirectory of the experiment data
 from os.path import exists
