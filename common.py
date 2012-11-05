@@ -88,3 +88,33 @@ def rotate_grid (data):
   east = east.replace_axes(lon=newlons)
 
   return concat(west, east)
+
+# Compute grid cell areas (how GEM does it)
+def get_area (latvar, lonvar):
+
+  import numpy as np
+  from pygeode.var import Var
+  from math import pi
+  r = .637122e7  # Taken from consphy.cdk
+  lats = latvar.values * (pi / 180)
+  # Get the boundaries of the latitudes
+  lat_bounds = (lats[:-1] + lats[1:]) * 0.5
+  # Including the poles
+  lat_bounds = np.concatenate([[-pi/2], lat_bounds, [pi/2]])
+  # Length in y direction
+  dlat = np.diff(lat_bounds)
+  # Length in x direction (assuming global grid)
+  lons = lonvar.values * (pi/180)
+  # Assume global & equidistant longitudes
+  dlon = lons[1] - lons[0]
+  dlon = np.repeat(dlon, len(lons))
+
+  dlat = dlat.reshape(-1,1)
+  dlon = dlon.reshape(1,-1)
+  clat = np.cos(lats).reshape(-1,1)
+  dxdy = r*r * clat * dlat * dlon
+  dxdy = np.asarray(dxdy, dtype='float32')
+  dxdy = Var([latvar, lonvar], values=dxdy, name='DX')
+
+  return dxdy
+
