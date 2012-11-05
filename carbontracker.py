@@ -143,30 +143,10 @@ data = nc_cache ("/wrk1/EC-CAS/CarbonTracker/nc_cache", data)
 # More heavily derived diagnostics
 
 # Total mass
-from math import pi
 import numpy as np
-from pygeode.var import Var
-r = .637122e7  # Taken from consphy.cdk
+from common import get_area
 g = .980616e1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
-# Get latitudes
-lats = molefractions.lat.values * (pi/180)
-# Get lat boundaries
-lat_bounds = (lats[:-1] + lats[1:]) * 0.5
-# Including the poles
-lat_bounds = np.concatenate([[-pi/2], lat_bounds, [pi/2]])
-# Get the cell length
-dlat = np.diff(lat_bounds)
-# Get longitudes
-lons = molefractions.lon.values * (pi/180)
-# Assume global & equidistant longitudes
-dlon = lons[1] - lons[0]
-dlon = np.repeat(dlon, len(lons))
-
-dlat = dlat.reshape(-1,1)
-dlon = dlon.reshape(1,-1)
-clat = np.cos(lats).reshape(-1,1)
-dxdy = r * r * clat * dlat * dlon
-dxdy = Var([molefractions.lat, molefractions.lon], values=dxdy, name='dxdy')
+dxdy = get_area(molefractions.lat, molefractions.lon).rename('dxdy')
 
 varlist = []
 from common import convert_CO2

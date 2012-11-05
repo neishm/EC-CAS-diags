@@ -193,30 +193,8 @@ class Experiment(object):
 
     # Grid cell areas
     if 'DX' not in self.pm_3d:
-      import numpy as np
-      from pygeode.var import Var
-      from math import pi
-      r = .637122e7  # Taken from consphy.cdk
-      lats = self.pm_3d.lat.values * (pi / 180)
-#      from pygeode.axis import gausslat
-#      lats = gausslat(len(lats)).values * (pi / 180)
-      # Get the boundaries of the latitudes
-      lat_bounds = (lats[:-1] + lats[1:]) * 0.5
-      # Including the poles
-      lat_bounds = np.concatenate([[-pi/2], lat_bounds, [pi/2]])
-      # Length in y direction
-      dlat = np.diff(lat_bounds)
-      # Length in x direction (assuming global grid)
-      nlon = len(self.pm_3d.lon)
-      dlon = 2*pi / (nlon-1)
-      dlon = np.repeat(dlon, nlon)
-
-      dlat = dlat.reshape(-1,1)
-      dlon = dlon.reshape(1,-1)
-      clat = np.cos(lats).reshape(-1,1)
-      dxdy = r*r * clat * dlat * dlon
-      dxdy = np.asarray(dxdy, dtype='float32')
-      dxdy = Var([self.pm_3d.lat, self.pm_3d.lon], values=dxdy, name='DX')
+      from common import get_area
+      dxdy = get_area(self.pm.lat, self.pm.lon)
       self.pm_3d += dxdy
       self.pm += dxdy
 
