@@ -32,6 +32,7 @@ molefractions = molefractions - 'date_components' - 'decimal_date'
 molefractions_interface = ct_open("/wrk1/EC-CAS/CarbonTracker/molefractions_interface/molefrac_glb3x2_????-??-??.nc")
 
 fluxes = ct_open("/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc")
+fluxes = fluxes - 'date_components' - 'decimal_date'
 
 # Find the total CO2 (sum of components)
 co2 = molefractions.bg + molefractions.ff + molefractions.bio + molefractions.ocean + molefractions.fires
@@ -165,6 +166,15 @@ for colavg in data['colavg']:
   varlist.append(totalmass)
 data['totalmass'] = Dataset(varlist)
 
+
+# Integrated fluxes (moles s-1)
+
+fluxes_dxdy = get_area (fluxes.lat, fluxes.lon)
+varlist = []
+for fluxvar in fluxes:
+  fluxvar = (fluxvar*fluxes_dxdy).sum('lat','lon').rename(fluxvar.name)
+  varlist.append(fluxvar)
+data['totalflux'] = Dataset(varlist)
 
 # Cache these extra diagnostics
 data = nc_cache ("/wrk1/EC-CAS/CarbonTracker/nc_cache", data)
