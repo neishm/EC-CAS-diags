@@ -2,6 +2,10 @@
 
 # Do some standard diagnostics on a model run.
 
+# Disable X-windows stuff
+import matplotlib
+matplotlib.use('Agg')
+
 import argparse
 
 # Extract command-line arguments
