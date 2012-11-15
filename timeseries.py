@@ -1,6 +1,6 @@
 # CO2 timeseries
 
-def timeseries (experiment, control, show=False, outdir=None):
+def timeseries (experiment, control, outdir):
 
   from plot_shortcuts import plot
   from plot_wrapper import Multiplot, Legend
@@ -104,14 +104,9 @@ def timeseries (experiment, control, show=False, outdir=None):
     theplots = Multiplot([[p] for p in theplots])
     theplots.render(figure=fig)
 
-    if outdir is not None:
-      outfile = "%s/%s_timeseries_ec%02d.png"%(outdir,experiment.name,i/4+1)
-      if not exists(outfile):
-        fig.savefig(outfile)
+    outfile = "%s/%s_timeseries_ec%02d.png"%(outdir,experiment.name,i/4+1)
+    if not exists(outfile):
+      fig.savefig(outfile)
 
-  if not show:
-    pl.close(fig)
-
-  if show:
-    pl.show()
+  pl.close(fig)
 

@@ -69,7 +69,7 @@ failures = []
 # Timeseries
 try:
   from timeseries import timeseries
-  timeseries (show=False, experiment=experiment, control=control, outdir=outdir)
+  timeseries (experiment=experiment, control=control, outdir=outdir)
 except Exception as e:
   failures.append(['timeseries', e])
 
