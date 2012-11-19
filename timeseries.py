@@ -1,14 +1,19 @@
 # CO2 timeseries
 
-def timeseries (experiment, control, show=False, outdir=None):
+def timeseries (experiment, control, outdir, obstype):
 
   from plot_shortcuts import plot
   from plot_wrapper import Multiplot, Legend
   import matplotlib.pyplot as pl
   from pygeode.timeaxis import months
 
-  from ec_obs import obs_locations, data as obs_f
-  #from gaw_obs import obs_locations, data as obs_f
+  if obstype == 'ec':
+    from ec_obs import obs_locations, data as obs_f
+  elif obstype == 'gaw':
+    from gaw_obs import obs_locations, data as obs_f
+  else:
+    raise Exception   # Unknown obs type
+
   from common import convert_CO2
   from carbontracker import data as ct
 
@@ -104,14 +109,9 @@ def timeseries (experiment, control, show=False, outdir=None):
     theplots = Multiplot([[p] for p in theplots])
     theplots.render(figure=fig)
 
-    if outdir is not None:
-      outfile = "%s/%s_timeseries_ec%02d.png"%(outdir,experiment.name,i/4+1)
-      if not exists(outfile):
-        fig.savefig(outfile)
+    outfile = "%s/%s_timeseries_%s%02d.png"%(outdir,experiment.name,obstype,i/4+1)
+    if not exists(outfile):
+      fig.savefig(outfile)
 
-  if not show:
-    pl.close(fig)
-
-  if show:
-    pl.show()
+  pl.close(fig)
 
