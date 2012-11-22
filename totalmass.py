@@ -52,7 +52,10 @@ def totalmass (experiment, control, gemfluxes, outdir):
   # CO2 mass
 
   exper_mass = experiment.get_data('dm', 'totalmass', 'CO2')
-  exper_bgmass = experiment.get_data('dm', 'totalmass', 'CO2B')
+  try:
+    exper_bgmass = experiment.get_data('dm', 'totalmass', 'CO2B')
+  except KeyError:
+    exper_bgmass = None
   ct_mass = ct['totalmass']['co2'](time=(t0,t1))
 
   ct_co2_flux = ct_co2_flux(time=(t0,t1))
@@ -62,10 +65,16 @@ def totalmass (experiment, control, gemfluxes, outdir):
   if gemfluxes is not None:
     gem_co2_flux += float(exper_mass(time=t0).get().squeeze())
 
-  fields = [exper_mass, exper_bgmass]
-  colors = ['blue', 'blue']
-  styles = ['-', ':']
-  labels = [experiment.title, 'background']
+  fields = [exper_mass]
+  colors = ['blue']
+  styles = ['-']
+  labels = [experiment.title]
+
+  if exper_bgmass is not None:
+    fields.append(bgmass)
+    colors.append('blue')
+    styles.append(':')
+    labels.append('background')
 
   if gemfluxes is not None:
     fields.append(gem_co2_flux)
@@ -80,11 +89,17 @@ def totalmass (experiment, control, gemfluxes, outdir):
 
   if control is not None:
     control_mass = control.get_data('dm', 'totalmass', 'CO2')
-    control_bgmass = control.get_data('dm', 'totalmass', 'CO2B')
-    fields.extend([control_mass, control_bgmass])
-    colors.extend(['red', 'red'])
-    styles.extend(['-', ':'])
-    labels.extend([control.title, 'control bg'])
+    fields.extend([control_mass])
+    colors.extend(['red'])
+    styles.extend(['-'])
+    labels.extend([control.title])
+    try:
+      control_bgmass = control.get_data('dm', 'totalmass', 'CO2B')
+      fields.extend([control_bgmass])
+      colors.extend(['red'])
+      styles.extend([':'])
+      labels.extend(['control bg'])
+    except KeyError: pass
 
   outfile = outdir + "/%s_totalmass_CO2.png"%experiment.name
   if not exists(outfile):
