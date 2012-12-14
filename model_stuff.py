@@ -202,7 +202,7 @@ class Experiment(object):
     # Grid cell areas
     if 'DX' not in self.pm_3d:
       from common import get_area
-      dxdy = get_area(self.pm.lat, self.pm.lon)
+      dxdy = get_area(self.dm.lat, self.dm.lon)
       self.pm_3d += dxdy
       self.pm += dxdy
 
