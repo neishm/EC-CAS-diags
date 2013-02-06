@@ -1,8 +1,12 @@
 
 def rpnopen (filename):
   from pygeode.formats import rpn
-  f = rpn.open(filename)
-#  f = f.squeeze(rpn.F)
+  try:
+    # For RPN interface v0.6+
+    f = rpn.open(filename, squash_forecasts=True)
+  except TypeError:
+    # For RPN interface < v0.6
+    f = rpn.open(filename)
   f = f.squeeze()
   return f
 
