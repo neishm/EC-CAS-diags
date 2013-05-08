@@ -204,9 +204,29 @@ class Experiment(object):
     # (Things that may not have been output from the model, but that we can
     #  compute)
 
-    # Sigma levels
+    # Sigma levels through debug field?
+    # (works around Mantis issue #2355)
+    for (SIGMA_name, DBG_name) in [('SIGM','3DB1'),('SIGT','3DB2')]:
+      if SIGMA_name not in self.pm_3d and DBG_name in self.pm_3d:
+        # Note: the debug field is missing surface values, have to re-create.
+        from pygeode.var import concat
+        from pygeode.var import Var
+        import numpy as np
+        sigma = self.pm_3d[DBG_name]
+        sigma_bottom = sigma.slice[:,-1,:,:]
+        # Override the values
+        sigma_bottom = Var(axes=sigma_bottom.axes, values=np.ones(sigma_bottom.shape))
+        sigma_rest = sigma.slice[:,:-1,:,:]
+        # Recombine
+        sigma = concat(sigma_rest,sigma_bottom)
+        sigma.name = SIGMA_name
+        self.pm_3d += sigma
+
+    # Sigma levels - generated for GEM3 levels
     # Assume this is usually available in the physics bus
-    if False and 'SIGM' not in self.pm_3d:
+    if 'SIGM' not in self.pm_3d:
+      test_field = (v for v in self.dm_3d if v.hasaxis(ZAxis)).next()
+      assert test_field.hasaxis('eta')  # only works for 'eta' coordinates.
       Ps = self.dm_3d['P0'] * 100
       A = self.dm_3d.eta.auxasvar('A')
       B = self.dm_3d.eta.auxasvar('B')
@@ -215,6 +235,8 @@ class Experiment(object):
       sigma = P / Ps
       sigma.name = 'SIGM'
       self.pm_3d += sigma
+
+
 
     # Grid cell areas
     if 'DX' not in self.pm_3d:
@@ -245,29 +267,61 @@ class Experiment(object):
     elif domain == 'totalcolumn':
       from pygeode.axis import ZAxis
       from pygeode.var import Var
+
+      dataset = getattr(self,filetype+'_3d')
+      test_field = (v for v in dataset if v.hasaxis(ZAxis)).next()
+
       Ps = self.dm_3d['P0'] * 100
       sigma = self.pm_3d['SIGM']
-      # Compute mixing ratio at half levels
-      # Special case: air mass (not an actual output field)
-      if field is 'air':
-        c_half = 1E9   # ug/kg
-      else:
-        c = getattr(self,filetype+'_3d')[field]
-        # Interpolate concentration to half levels
-        c1 = c.slice[:,:-1,:,:]
-        c2 = c.slice[:,1:,:,:]
-        c2 = c2.replace_axes(eta=c1.eta)
-        c_half = (c2 + c1) / 2
-      # Compute sigma layers
-      sigma1 = sigma.slice[:,:-1,:,:]
-      sigma2 = sigma.slice[:,1:,:,:]
-      sigma2 = sigma2.replace_axes(eta=sigma1.eta)
-      dsigma = (sigma2-sigma1)
-      # Integrate the tracer
-      col = (c_half * dsigma).sum('eta')
-      # Scale by Ps/g
-      data = col * Ps / g
-      data.name = field
+
+      # Case 1 - GEM3 (unstaggered) levels
+      if test_field.hasaxis("eta"):
+        # Compute mixing ratio at half levels
+        # Special case: air mass (not an actual output field)
+        if field is 'air':
+          c_half = 1E9   # ug/kg
+        else:
+          c = getattr(self,filetype+'_3d')[field]
+          # Interpolate concentration to half levels
+          c1 = c.slice[:,:-1,:,:]
+          c2 = c.slice[:,1:,:,:]
+          c2 = c2.replace_axes(eta=c1.eta)
+          c_half = (c2 + c1) / 2
+        # Compute sigma layers
+        sigma1 = sigma.slice[:,:-1,:,:]
+        sigma2 = sigma.slice[:,1:,:,:]
+        sigma2 = sigma2.replace_axes(eta=sigma1.eta)
+        dsigma = (sigma2-sigma1)
+        # Integrate the tracer
+        col = (c_half * dsigma).sum('eta')
+        assert (col.naxes == 3)
+        # Scale by Ps/g
+        data = col * Ps / g
+        data.name = field
+
+      # Case 2 - GEM4 (staggered levels)
+      elif test_field.hasaxis("zeta"):
+        if field is 'air':
+          c_kp1 = 1E9   # ug/kg
+        else:
+          c = getattr(self,filetype+'_3d')[field]
+          # Assuming we have an unused "surface" diagnositic level
+          assert 1.0 in c.getaxis("zeta").values
+          c_kp1 = c.slice[:,1:-1,:,:]
+        sigma_kp1 = sigma.slice[:,1:,:,:]
+        sigma_k = sigma.slice[:,:-1,:,:]
+        # Put everything on the same levels
+        if isinstance(c_kp1,Var):
+          c_kp1 = c_kp1.replace_axes(zeta=sigma_k.zeta)
+        sigma_kp1 = sigma_kp1.replace_axes(zeta=sigma_k.zeta)
+        # Do the summation
+        col = ( (sigma_kp1 - sigma_k) * c_kp1 ).sum('zeta')
+        # Scale by Ps/g
+        data = col * Ps / g
+        data.name = field
+
+      else: raise Exception   # Unrecognized vertical coordinate
+
     elif domain == 'avgcolumn':
       # Total column (ug)
       tc = self.get_data(filetype, 'totalcolumn', field)
