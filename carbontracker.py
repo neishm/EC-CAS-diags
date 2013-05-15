@@ -37,6 +37,13 @@ fluxes = fluxes - 'date_components' - 'decimal_date'
 # Find the total CO2 (sum of components)
 co2 = molefractions.bg + molefractions.ff + molefractions.bio + molefractions.ocean + molefractions.fires
 co2 = co2.rename('co2')
+# Pretend it's another CarbonTracker product
+molefractions = molefractions + co2
+
+# Simliarly, create a total flux product
+co2_flux = fluxes.fossil_imp + fluxes.bio_flux_opt + fluxes.ocn_flux_opt + fluxes.fire_flux_imp
+co2_flux = co2_flux.rename('co2')
+fluxes = fluxes + co2_flux
 
 # Method for calculating zonal mean on-the-fly
 def ct_zonal (field):
@@ -86,15 +93,13 @@ data = {}
 from pygeode.dataset import Dataset
 
 # Zonal mean data
-zonalmean = molefractions + co2
-zonalmean = [ct_zonal_24h(v) for v in zonalmean]
+zonalmean = [ct_zonal_24h(v) for v in molefractions]
 zonalmean = Dataset(zonalmean)
 data['zonalmean_gph_24h'] = zonalmean
 del zonalmean 
 
 # Surface data
-surface = molefractions + co2
-surface = surface(i_level=0)  # lowest level
+surface = molefractions(i_level=0)  # lowest level
 surface = Dataset(surface)
 data['sfc'] = surface
 del surface
@@ -134,7 +139,7 @@ sigma_bottom = 1
 #netcdf.save("ct_dsigma.nc", dsigma(i_time=0))
 #raise Exception
 
-cols = [(c*dsigma/(sigma_bottom-sigma_top)).sum('level').as_type('float32').rename(c.name) for c in molefractions+co2]
+cols = [(c*dsigma/(sigma_bottom-sigma_top)).sum('level').as_type('float32').rename(c.name) for c in molefractions]
 data['colavg'] = Dataset(cols)
 
 from model_stuff import nc_cache

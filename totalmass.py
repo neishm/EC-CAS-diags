@@ -17,8 +17,7 @@ def totalmass (experiment, control, gemfluxes, outdir):
   from pygeode.var import Var
 
   # Integrate the CarbonTracker fluxes over time
-  ct_fluxes = ct['totalflux']
-  ct_co2_flux = ct_fluxes.fossil_imp + ct_fluxes.bio_flux_opt + ct_fluxes.ocn_flux_opt + ct_fluxes.fire_flux_imp
+  ct_co2_flux = ct['totalflux']['co2']
   ct_co2_flux_time = ct_co2_flux.time
   ct_co2_flux = ct_co2_flux.get()
   # Integrate over a 3-hour period
