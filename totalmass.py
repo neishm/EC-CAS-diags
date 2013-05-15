@@ -11,13 +11,13 @@ def doplot (outfile, title, fields, colors, styles, labels):
 
   fig.savefig(outfile)
 
-def totalmass (experiment, control, gemfluxes, outdir):
+def totalmass (experiment, control, gemfluxes, gemfieldname, gemfluxname, ctfieldname, ctfluxname, outdir):
   from carbontracker import data as ct
   from os.path import exists
   from pygeode.var import Var
 
   # Integrate the CarbonTracker fluxes over time
-  ct_co2_flux = ct['totalflux']['co2']
+  ct_co2_flux = ct['totalflux'][ctfluxname]
   ct_co2_flux_time = ct_co2_flux.time
   ct_co2_flux = ct_co2_flux.get()
   # Integrate over a 3-hour period
@@ -32,7 +32,7 @@ def totalmass (experiment, control, gemfluxes, outdir):
 
   # Integrate GEM fluxes over time
   if gemfluxes is not None:
-    gem_co2_flux = gemfluxes.get_data('sum', 'ECO2')
+    gem_co2_flux = gemfluxes.get_data('sum', gemfluxname)
     gem_co2_flux_time = gem_co2_flux.time
     gem_co2_flux = gem_co2_flux.get()
     # Integrate over a 3-hour period
@@ -50,12 +50,15 @@ def totalmass (experiment, control, gemfluxes, outdir):
 
   # CO2 mass
 
-  exper_mass = experiment.get_data('dm', 'totalmass', 'CO2')
-  try:
-    exper_bgmass = experiment.get_data('dm', 'totalmass', 'CO2B')
-  except KeyError:
-    exper_bgmass = None
-  ct_mass = ct['totalmass']['co2'](time=(t0,t1))
+  exper_mass = experiment.get_data('dm', 'totalmass', gemfieldname)
+  # Special case: CO2 plot includes CO2 background field
+  exper_bgmass = None
+  if gemfieldname == 'CO2':
+    try:
+      exper_bgmass = experiment.get_data('dm', 'totalmass', 'CO2B')
+    except KeyError:
+      exper_bgmass = None
+  ct_mass = ct['totalmass'][ctfieldname](time=(t0,t1))
 
   ct_co2_flux = ct_co2_flux(time=(t0,t1))
 
@@ -100,9 +103,9 @@ def totalmass (experiment, control, gemfluxes, outdir):
       labels.extend(['control bg'])
     except KeyError: pass
 
-  outfile = outdir + "/%s_totalmass_CO2.png"%experiment.name
+  outfile = outdir + "/%s_totalmass_%s.png"%(experiment.name,gemfieldname)
   if not exists(outfile):
-    doplot (outfile, "Total mass CO2 (Pg C)", fields, colors, styles, labels)
+    doplot (outfile, "Total mass %s (Pg C)"%gemfieldname, fields, colors, styles, labels)
 
   # Air mass
   exper_airmass = experiment.get_data('dm', 'totalmass', 'air')

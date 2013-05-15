@@ -111,7 +111,7 @@ except Exception as e:
 # Total mass CO2
 try:
   from totalmass import totalmass
-  totalmass (experiment=experiment, control=control, gemfluxes=fluxes, outdir=outdir)
+  totalmass (experiment=experiment, control=control, gemfluxes=fluxes, gemfieldname='CO2', gemfluxname='ECO2', ctfieldname='co2', ctfluxname='co2', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass', e])
 
