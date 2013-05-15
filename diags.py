@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 import argparse
+from os.path import exists
 
 # Extract command-line arguments
 
@@ -19,6 +20,8 @@ parser.add_argument('--emissions', help="location of the emissions used in the m
 args = parser.parse_args()
 
 experiment_dir = args.experiment
+if not exists(experiment_dir):
+  raise IOError ("experiment directory '%s' doesn't exist"%experiment_dir)
 if experiment_dir == ".":
   experiment_name = "unnamed_exp"
 else:
@@ -27,6 +30,8 @@ experiment_title = "%s (%s)"%(args.desc, experiment_name)
 
 control_dir = args.control
 if control_dir is not None:
+  if not exists(control_dir):
+    raise IOError ("control directory '%s' doesn't exist"%control_dir)
   if control_dir == ".":
     control_name = "control"
     control_title = "Control"
