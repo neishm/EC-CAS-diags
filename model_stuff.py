@@ -123,7 +123,8 @@ def to_gph (var, GZ):
 # Replaces pre-computing everything with nc_cache.
 # This should be faster, since we only compute what we need.
 
-class Experiment(object):
+from data_interface import Data
+class Experiment(Data):
   def __init__ (self, indir, name, title):
     from pygeode.formats.multifile import open_multi
     from pygeode.formats import rpn
@@ -388,7 +389,7 @@ class Experiment(object):
 
     return data
 
-class Fluxes(object):
+class Fluxes(Data):
   def __init__ (self, indir, name, title):
     from pygeode.formats.multifile import open_multi
     from pygeode.formats import rpn
@@ -435,3 +436,4 @@ class Fluxes(object):
     return data
 
 
+del Data
