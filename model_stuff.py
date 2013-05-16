@@ -91,28 +91,32 @@ def nc_cache (dirname, data):
 
 
 # Convert zonal mean data (on height)
-def to_gph (dataset, dm):
+def to_gph (var, GZ):
   from pygeode.interp import interpolate
   from pygeode.axis import Height
   from pygeode.dataset import Dataset
   import numpy as np
-  height = Height(range(68), name='height')
-  varlist = []
-  for var in dataset:
-    if var.hasaxis('eta'):
-      varlist.append(interpolate(var, inaxis='eta', outaxis=height, inx=dm.GZ*10/1000))
-    elif var.hasaxis('zeta'):
-      # Subset GZ on tracer levels (applicable to GEM4 output)
-      GZ_zeta = dm.GZ.zeta.values
-      var_zeta = var.zeta.values
-      indices = []
-      for zeta in var_zeta:
-        indices.append(np.where(GZ_zeta==zeta)[0][0])
-      GZ = dm.GZ(i_zeta=indices)
-      varlist.append(interpolate(var, inaxis='zeta', outaxis=height, inx=GZ*10/1000))
 
-  varlist = [var.transpose(0,3,1,2) for var in varlist]
-  return Dataset(varlist)
+  # Remove extra longitude from the data
+  var = var.slice[:,:,:,:-1]
+  GZ = GZ.slice[:,:,:,:-1]
+
+  height = Height(range(68), name='height')
+
+  if var.hasaxis('eta'):
+    var = interpolate(var, inaxis='eta', outaxis=height, inx=GZ*10/1000)
+  elif var.hasaxis('zeta'):
+    # Subset GZ on tracer levels (applicable to GEM4 output)
+    GZ_zeta = GZ.zeta.values
+    var_zeta = var.zeta.values
+    indices = []
+    for zeta in var_zeta:
+      indices.append(np.where(GZ_zeta==zeta)[0][0])
+    GZ = GZ(i_zeta=indices)
+    var = interpolate(var, inaxis='zeta', outaxis=height, inx=GZ*10/1000)
+
+  var = var.transpose(0,3,1,2)
+  return var
 
 
 # New data interface - get data as needed on-the-fly.
@@ -245,33 +249,47 @@ class Experiment(object):
       self.pm_3d += dxdy
       self.pm += dxdy
 
+  # Helper functions - find the field (look in dm,km,pm,etc. files)
+
+  def _find_sfc_field (self, name):
+    for dataset in self.dm, self.km, self.pm:
+      if name in dataset: return dataset[name]
+    raise KeyError ("%s not found in model surface data."%name)
+
+  def _find_3d_field (self, name):
+    for dataset in self.dm_3d, self.km_3d, self.pm_3d:
+      if name in dataset: return dataset[name]
+    raise KeyError ("%s not found in model 3d data."%name)
+
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
-  def get_data (self, filetype, domain, field):
+  def get_data (self, domain, field):
     from os.path import exists
     from os import mkdir
     from pygeode.formats import netcdf
 
-    assert filetype in ('dm', 'km', 'pm')
     assert domain in ('sfc', 'zonalmean_gph', 'totalcolumn', 'avgcolumn', 'totalmass', 'Toronto')
 
     g = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
     # Determine which data is needed
+
+    # Surface data (lowest model level)
     if domain == 'sfc':
-      data = getattr(self,filetype)[field]
+      data = self._find_sfc_field(field)
+    # Zonal mean, with data interpolated to a fixed set of geopotential heights
     elif domain == 'zonalmean_gph':
-      data = getattr(self,filetype+'_3d')
-      data = to_gph(data,self.dm_3d).nanmean('lon')
-      data = data[field]
+      data = self._find_3d_field(field)
+      GZ = self._find_3d_field('GZ')
+      data = to_gph(data,GZ).nanmean('lon')
+    # "total column" (in ug/m2)
     elif domain == 'totalcolumn':
       from pygeode.axis import ZAxis
       from pygeode.var import Var
 
-      dataset = getattr(self,filetype+'_3d')
-      test_field = (v for v in dataset if v.hasaxis(ZAxis)).next()
+      test_field = self._find_3d_field('CO2')
 
-      Ps = self.dm_3d['P0'] * 100
+      Ps = self.dm_3d['P0'] * 100 # Get Ps on 3D field time frequency
       sigma = self.pm_3d['SIGM']
 
       # Case 1 - GEM3 (unstaggered) levels
@@ -281,7 +299,7 @@ class Experiment(object):
         if field is 'air':
           c_half = 1E9   # ug/kg
         else:
-          c = getattr(self,filetype+'_3d')[field]
+          c = self._find_3d_field(field)
           # Interpolate concentration to half levels
           c1 = c.slice[:,:-1,:,:]
           c2 = c.slice[:,1:,:,:]
@@ -304,7 +322,7 @@ class Experiment(object):
         if field is 'air':
           c_kp1 = 1E9   # ug/kg
         else:
-          c = getattr(self,filetype+'_3d')[field]
+          c = self._find_3d_field(field)
           # Assuming we have an unused "surface" diagnositic level
           assert 1.0 in c.getaxis("zeta").values
           c_kp1 = c.slice[:,1:-1,:,:]
@@ -322,22 +340,19 @@ class Experiment(object):
 
       else: raise Exception   # Unrecognized vertical coordinate
 
+    # Average column (mass mixing ratio)
     elif domain == 'avgcolumn':
-      # Total column (ug)
-      tc = self.get_data(filetype, 'totalcolumn', field)
-      sigma = self.pm_3d['SIGM']
-      sigma_top = sigma.slice[:,0,:,:].squeeze()
-      #sigma_bottom = sigma.slice[:,-1,:,:].squeeze()
-      sigma_bottom = 1
-      Ps = self.dm_3d['P0'] * 100
-      # Total mass dry air (ug)
-      Mair = 1E9 * Ps / g * (sigma_bottom - sigma_top)
+      # Total column (ug/m2)
+      tc = self.get_data('totalcolumn', field)
+      # Total column air (ug/m2)
+      Mair = self.get_data('totalcolumn', 'air')
+      # Compute the mass mixing ratio
       data = tc / Mair
       data.name = field
 
     elif domain == 'totalmass':
-      # Total column (ug)
-      tc = self.get_data(filetype, 'totalcolumn', field)
+      # Total column (ug/m2)
+      tc = self.get_data('totalcolumn', field)
       area = self.pm_3d['DX']
       # Mass per grid area (ug)
       # Assume global grid - remove repeated longitude
@@ -348,7 +363,7 @@ class Experiment(object):
       data.name = field
 
     elif domain == 'Toronto':
-      data = getattr(self,filetype+'_3d')[field]
+      data = self._find_3d_field(field)
       data = data.squeeze(lat=43.7833,lon=280.5333)
     else: raise Exception
 
@@ -357,7 +372,12 @@ class Experiment(object):
       data = data.as_type('float32')
 
     if not exists(self._tmpdir): mkdir(self._tmpdir)
-    cachefile = self._tmpdir + '/%s_%s_%s.nc'%(filetype,domain,field)
+    cachefile = self._tmpdir + '/%s_%s.nc'%(domain,field)
+
+    # Special case for backwards-compatibility with older version.
+    # We used to include the model output prefix (dm,km,pm) in the cache name
+    old_cachefile = self._tmpdir + '/dm_%s_%s.nc'%(domain,field)
+    if exists(old_cachefile): cachefile = old_cachefile
 
     # Pre-compute the data and save it, if this is the first time using it.
     if not exists(cachefile):

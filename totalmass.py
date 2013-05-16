@@ -50,12 +50,12 @@ def totalmass (experiment, control, gemfluxes, gemfieldname, gemfluxname, ctfiel
 
   # CO2 mass
 
-  exper_mass = experiment.get_data('dm', 'totalmass', gemfieldname)
+  exper_mass = experiment.get_data('totalmass', gemfieldname)
   # Special case: CO2 plot includes CO2 background field
   exper_bgmass = None
   if gemfieldname == 'CO2':
     try:
-      exper_bgmass = experiment.get_data('dm', 'totalmass', 'CO2B')
+      exper_bgmass = experiment.get_data('totalmass', 'CO2B')
     except KeyError:
       exper_bgmass = None
   ct_mass = ct['totalmass'][ctfieldname](time=(t0,t1))
@@ -90,13 +90,13 @@ def totalmass (experiment, control, gemfluxes, gemfieldname, gemfluxname, ctfiel
   labels.extend(['CarbonTracker', 'CT flux'])
 
   if control is not None:
-    control_mass = control.get_data('dm', 'totalmass', 'CO2')
+    control_mass = control.get_data('totalmass', 'CO2')
     fields.extend([control_mass])
     colors.extend(['red'])
     styles.extend(['-'])
     labels.extend([control.title])
     try:
-      control_bgmass = control.get_data('dm', 'totalmass', 'CO2B')
+      control_bgmass = control.get_data('totalmass', 'CO2B')
       fields.extend([control_bgmass])
       colors.extend(['red'])
       styles.extend([':'])
@@ -108,13 +108,13 @@ def totalmass (experiment, control, gemfluxes, gemfieldname, gemfluxname, ctfiel
     doplot (outfile, "Total mass %s (Pg C)"%gemfieldname, fields, colors, styles, labels)
 
   # Air mass
-  exper_airmass = experiment.get_data('dm', 'totalmass', 'air')
+  exper_airmass = experiment.get_data('totalmass', 'air')
   fields = [exper_airmass]
   colors = ['blue']
   styles = ['-']
   labels = [experiment.title]
   if control is not None:
-    control_airmass = control.get_data('dm', 'totalmass', 'air')
+    control_airmass = control.get_data('totalmass', 'air')
     fields.append(control_airmass)
     colors.append('red')
     styles.append('-')

@@ -19,9 +19,9 @@ def timeseries (experiment, control, outdir, obstype):
 
   from os.path import exists
 
-  exper_co2 = experiment.get_data('dm','sfc','CO2') * convert_CO2
+  exper_co2 = experiment.get_data('sfc','CO2') * convert_CO2
   if control is not None:
-    control_co2 = control.get_data('dm','sfc','CO2') * convert_CO2
+    control_co2 = control.get_data('sfc','CO2') * convert_CO2
   else:
     control_co2 = None
 
