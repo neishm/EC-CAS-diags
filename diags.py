@@ -44,16 +44,16 @@ else:
 
 
 # Get the data
-from model_stuff import Experiment, Fluxes
-experiment = Experiment(experiment_dir, name=experiment_name, title=experiment_title)
+from model_stuff import GEM_Data, GEM_Fluxes
+experiment = GEM_Data(experiment_dir, name=experiment_name, title=experiment_title)
 if control_dir is not None:
-  control = Experiment(control_dir, name=control_name, title=control_title)
+  control = GEM_Data(control_dir, name=control_name, title=control_title)
 else:
   control = None
 
 emissions_dir = args.emissions
 if emissions_dir is not None:
-  fluxes = Fluxes(emissions_dir, name='fluxes', title='fluxes')
+  fluxes = GEM_Fluxes(emissions_dir, name='fluxes', title='fluxes')
 else:
   fluxes = None
 

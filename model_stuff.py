@@ -124,7 +124,7 @@ def to_gph (var, GZ):
 # This should be faster, since we only compute what we need.
 
 from data_interface import Data
-class Experiment(Data):
+class GEM_Data(Data):
   def __init__ (self, indir, name, title):
     from pygeode.formats.multifile import open_multi
     from pygeode.formats import rpn
@@ -389,7 +389,7 @@ class Experiment(Data):
 
     return data
 
-class Fluxes(Data):
+class GEM_Fluxes(Data):
   def __init__ (self, indir, name, title):
     from pygeode.formats.multifile import open_multi
     from pygeode.formats import rpn
