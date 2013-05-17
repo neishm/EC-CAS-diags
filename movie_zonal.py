@@ -103,13 +103,11 @@ def movie_zonal (gemfield, ctfield, offset, outdir, experiment, control, carbont
 
   ct_co2 = carbontracker.get_data('zonalmean_gph',ctfield)
 
-  from common import convert_CO2
-
   if control is not None:
-    control_co2 = control.get_data('zonalmean_gph',gemfield) * convert_CO2 + offset
+    control_co2 = control.get_data('zonalmean_gph',gemfield) + offset
   else:
     control_co2 = None
-  exper_co2 = experiment.get_data('zonalmean_gph',gemfield) * convert_CO2 + offset
+  exper_co2 = experiment.get_data('zonalmean_gph',gemfield) + offset
 
   imagedir=outdir+"/images_%s_zonal%s"%(experiment.name, ctfield)
 

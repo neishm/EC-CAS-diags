@@ -58,8 +58,8 @@ else:
   fluxes = None
 
 # CarbonTracker data
-from carbontracker import CarbonTracker
-carbontracker = CarbonTracker()
+from carbontracker import CarbonTracker_Data
+carbontracker = CarbonTracker_Data()
 
 # Dump the output files to a subdirectory of the experiment data
 from os.path import exists

@@ -14,13 +14,11 @@ def timeseries (experiment, control, carbontracker, outdir, obstype):
   else:
     raise Exception   # Unknown obs type
 
-  from common import convert_CO2
-
   from os.path import exists
 
-  exper_co2 = experiment.get_data('sfc','CO2') * convert_CO2
+  exper_co2 = experiment.get_data('sfc','CO2')
   if control is not None:
-    control_co2 = control.get_data('sfc','CO2') * convert_CO2
+    control_co2 = control.get_data('sfc','CO2')
   else:
     control_co2 = None
 

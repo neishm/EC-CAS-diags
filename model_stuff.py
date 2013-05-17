@@ -250,6 +250,23 @@ class GEM_Data(Data):
       self.pm_3d += dxdy
       self.pm += dxdy
 
+    ##############################
+    # Unit conversions
+    ##############################
+
+    # CO2 tracers are in ug/kg, but we'd like to have ppm for diagnostics.
+    # Conversion factor (from ug C / kg air to ppm)
+    from common import molecular_weight as mw
+    convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
+    for dataset_name in 'dm', 'dm_3d':
+      dataset = getattr(self,dataset_name)
+      for co2_name in 'CO2', 'CO2B', 'CFF', 'CBB', 'COC', 'CLA':
+        if co2_name in dataset:
+          new_field = dataset[co2_name]*convert_CO2
+          new_field.name = co2_name
+          dataset = dataset.replace_vars({co2_name:new_field})
+      setattr(self,dataset_name,dataset)
+
   # Helper functions - find the field (look in dm,km,pm,etc. files)
 
   def _find_sfc_field (self, name):
@@ -269,10 +286,6 @@ class GEM_Data(Data):
     from os import mkdir
     from pygeode.formats import netcdf
 
-    assert domain in ('sfc', 'zonalmean_gph', 'totalcolumn', 'avgcolumn', 'totalmass', 'Toronto')
-
-    g = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
-
     # Determine which data is needed
 
     # Surface data (lowest model level)
@@ -283,10 +296,14 @@ class GEM_Data(Data):
       data = self._find_3d_field(field)
       GZ = self._find_3d_field('GZ')
       data = to_gph(data,GZ).nanmean('lon')
-    # "total column" (in ug/m2)
+    # "total column" (in kg/m2)
     elif domain == 'totalcolumn':
       from pygeode.axis import ZAxis
       from pygeode.var import Var
+      from common import molecular_weight as mw, grav as g
+
+      # Convert from ppm to kg / kg
+      conversion = 1E-6 * mw['C'] / mw['air']
 
       test_field = self._find_3d_field('CO2')
 
@@ -298,9 +315,9 @@ class GEM_Data(Data):
         # Compute mixing ratio at half levels
         # Special case: air mass (not an actual output field)
         if field is 'air':
-          c_half = 1E9   # ug/kg
+          c_half = 1
         else:
-          c = self._find_3d_field(field)
+          c = self._find_3d_field(field) * conversion
           # Interpolate concentration to half levels
           c1 = c.slice[:,:-1,:,:]
           c2 = c.slice[:,1:,:,:]
@@ -321,9 +338,9 @@ class GEM_Data(Data):
       # Case 2 - GEM4 (staggered levels)
       elif test_field.hasaxis("zeta"):
         if field is 'air':
-          c_kp1 = 1E9   # ug/kg
+          c_kp1 = 1
         else:
-          c = self._find_3d_field(field)
+          c = self._find_3d_field(field) * conversion
           # Assuming we have an unused "surface" diagnositic level
           assert 1.0 in c.getaxis("zeta").values
           c_kp1 = c.slice[:,1:-1,:,:]
@@ -341,32 +358,37 @@ class GEM_Data(Data):
 
       else: raise Exception   # Unrecognized vertical coordinate
 
-    # Average column (mass mixing ratio)
+    # Average column (ppm)
     elif domain == 'avgcolumn':
-      # Total column (ug/m2)
+      from common import molecular_weight as mw
+      # Total column (kg/m2)
       tc = self.get_data('totalcolumn', field)
-      # Total column air (ug/m2)
+      # Total column air (kg/m2)
       Mair = self.get_data('totalcolumn', 'air')
       # Compute the mass mixing ratio
       data = tc / Mair
+      # Convert kg/kg to ppm
+      data *= mw['air']/mw['C'] * 1E6
+
       data.name = field
 
     elif domain == 'totalmass':
-      # Total column (ug/m2)
+      # Total column (kg C/m2)
       tc = self.get_data('totalcolumn', field)
       area = self.pm_3d['DX']
-      # Mass per grid area (ug)
+      # Mass per grid area (kg)
       # Assume global grid - remove repeated longitude
       mass = (tc * area).slice[:,:,:-1].sum('lat','lon')
-      # Convert from ug to Pg
-      mass *= 1E-21
+      # Convert from kg of C to Pg C
+      mass *= 1E-12
       data = mass
       data.name = field
 
     elif domain == 'Toronto':
       data = self._find_3d_field(field)
       data = data.squeeze(lat=43.7833,lon=280.5333)
-    else: raise Exception
+
+    else: raise ValueError ("Unknown domain '%s'"%domain)
 
     # Make sure the data is in 32-bit precision
     if data.dtype.name != 'float32':

@@ -5,13 +5,7 @@
 
 # Get XCO2 in the right units (vmr)
 def get_xco2 (experiment):
-  from common import convert_CO2
   xco2 = experiment.get_data('avgcolumn', 'CO2')
-  # Have values in kg C / kg air
-  # Convert to ug C / kg air
-  xco2 *= 1E9
-  # Convert to vmr
-  xco2 *= convert_CO2
   xco2.name = experiment.title  # Verbose name for plotting
   return xco2
 

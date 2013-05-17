@@ -1,9 +1,8 @@
 def where_holes (experiment, outdir):
-  from common import convert_CO2
   from pygeode.formats import netcdf
   from os.path import exists
 
-  co2 = experiment.get_data('sfc','CO2') * convert_CO2
+  co2 = experiment.get_data('sfc','CO2')
 
   holes = (co2 < 100)
 

@@ -1,7 +1,6 @@
 def shortexper_diffcheck(experiment, control, location, outdir):
   from pygeode.axis import Height
   from ec_obs import obs_locations, data as obs
-  from common import convert_CO2
   from os.path import exists
   from pygeode.plot import plotvar
   from contouring import get_range, get_contours
@@ -42,7 +41,7 @@ def shortexper_diffcheck(experiment, control, location, outdir):
     ktn_min = min(ktn_min, mn)
     ktn_max = max(ktn_max, mx)
 
-    co2 = dataset.get_data(location,'CO2') * convert_CO2
+    co2 = dataset.get_data(location,'CO2')
     mn, mx = get_range(co2)
     co2_min = min(co2_min, mn)
     co2_max = max(co2_max, mx)
@@ -56,7 +55,7 @@ def shortexper_diffcheck(experiment, control, location, outdir):
     if dataset is None: continue
 
     ktn = dataset.get_data(location,'KTN')
-    co2 = dataset.get_data(location,'CO2') * convert_CO2
+    co2 = dataset.get_data(location,'CO2')
     co2.name = 'CO2'
 
     # Put the variables on a height coordinate

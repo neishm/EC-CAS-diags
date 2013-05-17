@@ -155,8 +155,8 @@ class CarbonTracker_Data(Data):
     elif domain == 'totalcolumn':
       import numpy as np
       from pygeode.var import Var
+      from common import molecular_weight as mw, grav as g
 
-      g = .980616e1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
       Ps = self.P0
 
       # Compute sigma at interfaces
@@ -171,16 +171,23 @@ class CarbonTracker_Data(Data):
       sigma_bottom = 1
 
       if field == 'air': c = 1
-      else: c = self.molefractions[field]
+      else:
+        # Convert ppm to kg/kg
+        conversion = 1E-6 * mw['C'] / mw['air']
+        c = self.molefractions[field] * conversion
 
       data = Ps / g * (c*dsigma).sum('level')
       data.name = field
 
     # Column averages
     elif domain == 'avgcolumn':
+      from common import molecular_weight as mw
       tc = self.get_data('totalcolumn',field)
       tc_air = self.get_data('totalcolumn','air')
       data = tc / tc_air
+      # Convert kg/kg to ppm
+      data *= mw['air']/mw['C'] * 1E6
+
       data.name = field
 
     # Total mass
@@ -202,7 +209,7 @@ class CarbonTracker_Data(Data):
       data = (fluxvar*fluxes_dxdy).sum('lat','lon')
       data.name = field
 
-    else raise ValueError ("Unknown domain '%s'"%domain)
+    else: raise ValueError ("Unknown domain '%s'"%domain)
 
     # Make sure the data is in 32-bit precision
     if data.dtype.name != 'float32':
