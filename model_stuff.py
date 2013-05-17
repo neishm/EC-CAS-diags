@@ -397,11 +397,6 @@ class GEM_Data(Data):
     if not exists(self._tmpdir): mkdir(self._tmpdir)
     cachefile = self._tmpdir + '/%s_%s.nc'%(domain,field)
 
-    # Special case for backwards-compatibility with older version.
-    # We used to include the model output prefix (dm,km,pm) in the cache name
-    old_cachefile = self._tmpdir + '/dm_%s_%s.nc'%(domain,field)
-    if exists(old_cachefile): cachefile = old_cachefile
-
     # Pre-compute the data and save it, if this is the first time using it.
     if not exists(cachefile):
       print '===>', cachefile
