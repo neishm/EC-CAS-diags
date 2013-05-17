@@ -303,7 +303,7 @@ class GEM_Data(Data):
       from common import molecular_weight as mw, grav as g
 
       # Convert from ppm to kg / kg
-      conversion = 1E-6 * mw['C'] / mw['air']
+      conversion = 1E-6 * mw['CO2'] / mw['air']
 
       test_field = self._find_3d_field('CO2')
 
@@ -368,7 +368,7 @@ class GEM_Data(Data):
       # Compute the mass mixing ratio
       data = tc / Mair
       # Convert kg/kg to ppm
-      data *= mw['air']/mw['C'] * 1E6
+      data *= mw['air']/mw['CO2'] * 1E6
 
       data.name = field
 
@@ -379,7 +379,7 @@ class GEM_Data(Data):
       # Mass per grid area (kg)
       # Assume global grid - remove repeated longitude
       mass = (tc * area).slice[:,:,:-1].sum('lat','lon')
-      # Convert from kg of C to Pg C
+      # Convert from kg to Pg
       mass *= 1E-12
       data = mass
       data.name = field

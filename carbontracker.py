@@ -173,7 +173,7 @@ class CarbonTracker_Data(Data):
       if field == 'air': c = 1
       else:
         # Convert ppm to kg/kg
-        conversion = 1E-6 * mw['C'] / mw['air']
+        conversion = 1E-6 * mw['CO2'] / mw['air']
         c = self.molefractions[field] * conversion
 
       data = Ps / g * (c*dsigma).sum('level')
@@ -186,7 +186,7 @@ class CarbonTracker_Data(Data):
       tc_air = self.get_data('totalcolumn','air')
       data = tc / tc_air
       # Convert kg/kg to ppm
-      data *= mw['air']/mw['C'] * 1E6
+      data *= mw['air']/mw['CO2'] * 1E6
 
       data.name = field
 

@@ -14,6 +14,7 @@ def doplot (outfile, title, fields, colors, styles, labels):
 def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemfluxname, ctfieldname, ctfluxname, outdir):
   from os.path import exists
   from pygeode.var import Var
+  from common import molecular_weight as mw
 
   # Integrate the CarbonTracker fluxes over time
   ct_co2_flux = carbontracker.get_data('totalflux',ctfluxname)
@@ -47,17 +48,19 @@ def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemf
   t0 = float(experiment.dm.time[0])
   t1 = float(experiment.dm.time[-1])
 
-  # CO2 mass
+  # CO2 mass (Pg C)
 
-  exper_mass = experiment.get_data('totalmass', gemfieldname)
+  # Convert from Pg CO2 to Pg C for the plot.
+  conversion = mw['C'] / mw['CO2']
+  exper_mass = experiment.get_data('totalmass', gemfieldname) * conversion
   # Special case: CO2 plot includes CO2 background field
   exper_bgmass = None
   if gemfieldname == 'CO2':
     try:
-      exper_bgmass = experiment.get_data('totalmass', 'CO2B')
+      exper_bgmass = experiment.get_data('totalmass', 'CO2B') * conversion
     except KeyError:
       exper_bgmass = None
-  ct_mass = carbontracker.get_data('totalmass',ctfieldname)(time=(t0,t1))
+  ct_mass = carbontracker.get_data('totalmass',ctfieldname)(time=(t0,t1)) * conversion
 
   ct_co2_flux = ct_co2_flux(time=(t0,t1))
 
@@ -89,13 +92,13 @@ def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemf
   labels.extend(['CarbonTracker', 'CT flux'])
 
   if control is not None:
-    control_mass = control.get_data('totalmass', 'CO2')
+    control_mass = control.get_data('totalmass', 'CO2') * conversion
     fields.extend([control_mass])
     colors.extend(['red'])
     styles.extend(['-'])
     labels.extend([control.title])
     try:
-      control_bgmass = control.get_data('totalmass', 'CO2B')
+      control_bgmass = control.get_data('totalmass', 'CO2B') * conversion
       fields.extend([control_bgmass])
       colors.extend(['red'])
       styles.extend([':'])
