@@ -99,11 +99,9 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
 
   plt.close(fig)
 
-def movie_zonal (gemfield, ctfield, offset, outdir, experiment, control):
+def movie_zonal (gemfield, ctfield, offset, outdir, experiment, control, carbontracker):
 
-  from carbontracker import data as ct
-
-  ct_co2 = ct['zonalmean_gph_24h'][ctfield]
+  ct_co2 = carbontracker.get_data('zonalmean_gph',ctfield)
 
   from common import convert_CO2
 

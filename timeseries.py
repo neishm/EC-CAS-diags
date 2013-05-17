@@ -1,6 +1,6 @@
 # CO2 timeseries
 
-def timeseries (experiment, control, outdir, obstype):
+def timeseries (experiment, control, carbontracker, outdir, obstype):
 
   from plot_shortcuts import plot
   from plot_wrapper import Multiplot, Legend
@@ -15,7 +15,6 @@ def timeseries (experiment, control, outdir, obstype):
     raise Exception   # Unknown obs type
 
   from common import convert_CO2
-  from carbontracker import data as ct
 
   from os.path import exists
 
@@ -26,7 +25,7 @@ def timeseries (experiment, control, outdir, obstype):
     control_co2 = None
 
   # Use CarbonTracker data
-  ct_co2 = ct['sfc'].co2
+  ct_co2 = carbontracker.get_data('sfc', 'co2')
   ct_co2 = ct_co2.unfill(4.984605e+37)
   ct_title = "CarbonTracker"
   #from sr_timeseries import data as sr_data

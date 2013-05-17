@@ -11,13 +11,12 @@ def doplot (outfile, title, fields, colors, styles, labels):
 
   fig.savefig(outfile)
 
-def totalmass (experiment, control, gemfluxes, gemfieldname, gemfluxname, ctfieldname, ctfluxname, outdir):
-  from carbontracker import data as ct
+def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemfluxname, ctfieldname, ctfluxname, outdir):
   from os.path import exists
   from pygeode.var import Var
 
   # Integrate the CarbonTracker fluxes over time
-  ct_co2_flux = ct['totalflux'][ctfluxname]
+  ct_co2_flux = carbontracker.get_data('totalflux',ctfluxname)
   ct_co2_flux_time = ct_co2_flux.time
   ct_co2_flux = ct_co2_flux.get()
   # Integrate over a 3-hour period
@@ -58,7 +57,7 @@ def totalmass (experiment, control, gemfluxes, gemfieldname, gemfluxname, ctfiel
       exper_bgmass = experiment.get_data('totalmass', 'CO2B')
     except KeyError:
       exper_bgmass = None
-  ct_mass = ct['totalmass'][ctfieldname](time=(t0,t1))
+  ct_mass = carbontracker.get_data('totalmass',ctfieldname)(time=(t0,t1))
 
   ct_co2_flux = ct_co2_flux(time=(t0,t1))
 

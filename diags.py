@@ -57,6 +57,10 @@ if emissions_dir is not None:
 else:
   fluxes = None
 
+# CarbonTracker data
+from carbontracker import CarbonTracker
+carbontracker = CarbonTracker()
+
 # Dump the output files to a subdirectory of the experiment data
 from os.path import exists
 from os import mkdir
@@ -74,16 +78,16 @@ failures = []
 # Timeseries
 try:
   from timeseries import timeseries
-  timeseries (experiment=experiment, control=control, outdir=outdir, obstype='ec')
-  timeseries (experiment=experiment, control=control, outdir=outdir, obstype='gaw')
+  timeseries (experiment=experiment, control=control, carbontracker=carbontracker, outdir=outdir, obstype='ec')
+  timeseries (experiment=experiment, control=control, carbontracker=carbontracker, outdir=outdir, obstype='gaw')
 except Exception as e:
   failures.append(['timeseries', e])
 
 # Zonal mean movies
 try:
   from movie_zonal import movie_zonal
-  movie_zonal(gemfield = 'CO2', ctfield = 'co2', offset =    0, experiment=experiment, control=control, outdir=outdir)
-  movie_zonal(gemfield = 'CLA', ctfield = 'bio', offset = -100, experiment=experiment, control=control, outdir=outdir)
+  movie_zonal(gemfield = 'CO2', ctfield = 'co2', offset =    0, experiment=experiment, control=control, carbontracker=carbontracker, outdir=outdir)
+#  movie_zonal(gemfield = 'CLA', ctfield = 'bio', offset = -100, experiment=experiment, control=control, carbontracker=carbontracker, outdir=outdir)
 except Exception as e:
   failures.append(['movie_zonal', e])
 
@@ -104,14 +108,14 @@ except Exception as e:
 # XCO2
 try:
   from xco2 import xco2
-  xco2 (experiment=experiment, control=control, outdir=outdir)
+  xco2 (experiment=experiment, control=control, carbontracker=carbontracker, outdir=outdir)
 except Exception as e:
   failures.append(['xco2', e])
 
 # Total mass CO2
 try:
   from totalmass import totalmass
-  totalmass (experiment=experiment, control=control, gemfluxes=fluxes, gemfieldname='CO2', gemfluxname='ECO2', ctfieldname='co2', ctfluxname='co2', outdir=outdir)
+  totalmass (experiment=experiment, control=control, gemfluxes=fluxes, carbontracker=carbontracker, gemfieldname='CO2', gemfluxname='ECO2', ctfieldname='co2', ctfluxname='co2', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass', e])
 

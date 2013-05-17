@@ -16,14 +16,13 @@ def get_xco2 (experiment):
   return xco2
 
 
-def xco2 (experiment, control, outdir):
+def xco2 (experiment, control, carbontracker, outdir):
   import matplotlib.pyplot as pl
   from contouring import get_global_range, get_contours
   from pygeode.plot import plotvar
   from pygeode.progress import PBar
   from os.path import exists
   from os import makedirs
-  from carbontracker import data as ct
   from common import rotate_grid
 
   imagedir = outdir + "/images_%s_XCO2"%experiment.name
@@ -32,7 +31,7 @@ def xco2 (experiment, control, outdir):
   exper_xco2 = get_xco2(experiment)
   if control is not None:
     control_xco2 = get_xco2(control)
-  ct_xco2 = ct['colavg']['co2'].rename('CarbonTracker')
+  ct_xco2 = carbontracker.get_data('avgcolumn','co2').rename('CarbonTracker')
   # Rotate the longitudes to 0,360
   ct_xco2 = rotate_grid(ct_xco2)
 
