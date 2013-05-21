@@ -44,7 +44,7 @@ else:
 
 
 # Get the data
-from model_stuff import GEM_Data
+from gem import GEM_Data
 flux_dir = args.emissions
 experiment = GEM_Data(experiment_dir, flux_dir=flux_dir, name=experiment_name, title=experiment_title)
 if control_dir is not None:
