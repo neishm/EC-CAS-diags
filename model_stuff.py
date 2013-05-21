@@ -54,42 +54,6 @@ def file2date_flux (filename):
   return out
 
 
-# Save intermediate netcdf files (for faster access)
-def nc_cache (dirname, data):
-
-  from os.path import exists
-  from os import mkdir
-  from pygeode.formats import netcdf as nc
-  from pygeode.formats.multifile import openall
-  from common import fix_timeaxis
-
-  if not exists(dirname): mkdir(dirname)
-
-  for datatype in sorted(data.keys()):
-   taxis = data[datatype].time
-
-   # Save the data in netcdf files, 1 file per month
-   for year in sorted(set(taxis.year)):
-    for month in sorted(set(taxis(year=year).month)):
-      if len(taxis(year=year,month=month)) == 1:
-        print "skipping year %d month %d - only one timestep available"%(year,month)
-        continue
-      filename = dirname+"/%04d%02d_%s.nc"%(year,month,datatype)
-      if exists(filename):
-        print "skipping '%s' - already exists"%filename
-        continue
-      print "===> %s"%filename
-      nc.save (filename, data[datatype](year=year,month=month))#, version=4)
-
-  # Reload the data from these files
-  data = dict(data)
-  for datatype in sorted(data.keys()):
-    data[datatype] = openall(files=dirname+"/*_%s.nc"%datatype, format=nc)
-    data[datatype] = fix_timeaxis(data[datatype])
-
-  return data
-
-
 # Convert zonal mean data (on height)
 def to_gph (var, GZ):
   from pygeode.interp import interpolate
