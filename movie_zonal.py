@@ -9,6 +9,8 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
   from os import makedirs
   import numpy as np
 
+  from pygeode.progress import PBar
+
   # Create output directory?
   if not exists(outdir): makedirs(outdir)
 
@@ -41,8 +43,11 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
   # Adjust the defaults of the subplots (the defaults give too much blank space on the sides)
   plt.subplots_adjust (left=0.06, right=0.96)
 
+  print "Saving zonal %s mean images"%field1.name
+  pbar = PBar()
+
   # Loop over all available times
-  for t in range(len(field1.time)):
+  for i,t in enumerate(range(len(field1.time))):
 
     data = field1(i_time=t)
     year = data.time.year[0]
@@ -56,10 +61,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
     date = "%04d-%02d-%02d %02dz"%(year,month,day,hour)
     fname = "%s/%04d%02d%02d%02d.png"%(outdir,year,month,day,hour)
     if exists(fname) and preview is False:
-      print date, '(exists)'
       continue
-    else:
-      print date
 
     # 1st plot
     data = field1(year=year,month=month,day=day,hour=hour)
@@ -88,9 +90,11 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
     plot = Multiplot([[p for p in plot1,plot2,plot3 if p is not None]])
 
     plot.render(figure=fig)
+
     if preview is False:
       fig.savefig(fname)
       fig.clear()
+      pbar.update(i*100/len(field1.time))
     else:
       break
 
