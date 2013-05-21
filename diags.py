@@ -73,8 +73,8 @@ failures = []
 # Timeseries
 try:
   from timeseries import timeseries
-  timeseries (experiment=experiment, control=control, carbontracker=carbontracker, outdir=outdir, obstype='ec')
-  timeseries (experiment=experiment, control=control, carbontracker=carbontracker, outdir=outdir, obstype='gaw')
+  timeseries (models=[experiment,control], fieldname='CO2', outdir=outdir, obstype='ec')
+  timeseries (models=[experiment,control], fieldname='CO2', outdir=outdir, obstype='gaw')
 except Exception as e:
   failures.append(['timeseries', e])
 

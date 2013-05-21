@@ -1,6 +1,6 @@
 # CO2 timeseries
 
-def timeseries (experiment, control, carbontracker, outdir, obstype):
+def timeseries (models, fieldname, outdir, obstype):
 
   from plot_shortcuts import plot
   from plot_wrapper import Multiplot, Legend
@@ -16,50 +16,38 @@ def timeseries (experiment, control, carbontracker, outdir, obstype):
 
   from os.path import exists
 
-  exper_co2 = experiment.get_data('sfc','CO2')
-  if control is not None:
-    control_co2 = control.get_data('sfc','CO2')
-  else:
-    control_co2 = None
+  models = [m for m in models if m is not None]
 
-  # Use CarbonTracker data
-  ct_co2 = carbontracker.get_data('sfc', 'CO2')
-  ct_co2 = ct_co2.unfill(4.984605e+37)
-  ct_title = "CarbonTracker"
-  #from sr_timeseries import data as sr_data
-
+  model_data = [m.get_data('sfc',fieldname) for m in models]
 
   # Limit the time period to plot
-  exper_co2 = exper_co2(year=2009, month=(6,9))
-  if control_co2 is not None:
-    control_co2 = control_co2(year=2009, month=(6,9))
+  model_data = [x(year=2009, month=(6,9)) for x in model_data]
   obs_f = obs_f(year=2009, month=(6,9))
-  ct_co2 = ct_co2(year=2009, month=(6,9))
 
   # Limit the time period to the current experiment
   # (sometimes we have a really short experiment)
-  times = exper_co2.time.get()
+  timeaxis = model_data[0].time
+  times = timeaxis.get()
   time1 = min(times)
   time2 = max(times)
   obs_f = obs_f(time=(time1,time2))
-  if control_co2 is not None:
-    control_co2 = control_co2(time=(time1,time2))
+  model_data = [x(time=(time1,time2)) for x in model_data]
 
   # Create plots of each location
   xticks = []
   xticklabels = []
 
   # Determine the frequency of day ticks, based on the number of months of data
-  nmonths = len(set(exper_co2.time.month))
+  nmonths = len(set(timeaxis.month))
   if nmonths == 1:
     daylist = range(1,32)
   else:
     daylist = (1,15)
 
   # Set the ticks
-  for month in sorted(list(set(exper_co2.time.month))):
+  for month in sorted(list(set(timeaxis.month))):
     for day in daylist:
-      val = exper_co2.time(month=month,day=day,hour=0).get()
+      val = timeaxis(month=month,day=day,hour=0).get()
       if len(val) == 0: continue
       assert len(val) == 1
       xticks.append(float(val[0]))
@@ -77,15 +65,14 @@ def timeseries (experiment, control, carbontracker, outdir, obstype):
     else: title += 'E'
     title += ') - ' + country
 
-    ct_series = ct_co2(lat=lat, lon=lon)
     if lon < 0: lon += 360  # Model data is from longitudes 0 to 360
+
+    series = [x(lat=lat, lon=lon) for x in model_data]
+    # Make the obs the second entry
+    # (to use the same default line colours as older versions of this diagnostic)
     obs_series = obs_f[location]
-    exper_series = exper_co2(lat=lat, lon=lon)
-    if control_co2 is not None:
-      control_series = control_co2(lat=lat, lon=lon)
-      series = [exper_series, obs_series, control_series]
-    else:
-      series = [exper_series, obs_series]
+    series = series[:1] + [obs_series] + series[1:]
+
     theplot = plot (*series, title=title,
            xlabel='', ylabel='CO2 ppmV', xticks=xticks, xticklabels=xticklabels)
     plots.append (theplot)
@@ -98,15 +85,14 @@ def timeseries (experiment, control, carbontracker, outdir, obstype):
 
     theplots = plots[i:i+4]
     # Put a legend on the last plot
-    if control is not None:
-      theplots[-1] = Legend(theplots[-1], [experiment.title, 'Obs', control.title])
-    else:
-      theplots[-1] = Legend(theplots[-1], [experiment.title, 'Obs'])
+    labels = [m.title for m in models]
+    labels = labels[:1] + ['Obs'] + labels[1:]
+    theplots[-1] = Legend(theplots[-1], labels)
 
     theplots = Multiplot([[p] for p in theplots])
     theplots.render(figure=fig)
 
-    outfile = "%s/%s_timeseries_%s%02d.png"%(outdir,experiment.name,obstype,i/4+1)
+    outfile = "%s/%s_timeseries_%s_%s%02d.png"%(outdir,'_'.join(m.name for m in models),fieldname,obstype,i/4+1)
     if not exists(outfile):
       fig.savefig(outfile)
 
