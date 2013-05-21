@@ -75,7 +75,7 @@ def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemf
   labels = [experiment.title]
 
   if exper_bgmass is not None:
-    fields.append(bgmass)
+    fields.append(exper_bgmass)
     colors.append('blue')
     styles.append(':')
     labels.append('background')
