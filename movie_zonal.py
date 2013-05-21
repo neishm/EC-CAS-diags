@@ -43,7 +43,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
   # Adjust the defaults of the subplots (the defaults give too much blank space on the sides)
   plt.subplots_adjust (left=0.06, right=0.96)
 
-  print "Saving zonal %s mean images"%field1.name
+  print "Saving zonal mean %s images"%field1.name
   pbar = PBar()
 
   # Loop over all available times
@@ -103,27 +103,23 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
 
   plt.close(fig)
 
-def movie_zonal (gemfield, ctfield, outdir, experiment, control, carbontracker):
+def movie_zonal (models, fieldname, outdir):
 
-  ct_co2 = carbontracker.get_data('zonalmean_gph',ctfield)
+  assert len(models) > 0
+  assert len(models) <= 3  # too many things to plot
+  models = [m for m in models if m is not None]
 
-  if control is not None:
-    control_co2 = control.get_data('zonalmean_gph',gemfield)
-  else:
-    control_co2 = None
-  exper_co2 = experiment.get_data('zonalmean_gph',gemfield)
+  imagedir=outdir+"/images_%s_zonal%s"%('_'.join(m.name for m in models), fieldname)
 
-  imagedir=outdir+"/images_%s_zonal%s"%(experiment.name, ctfield)
+  fields = [m.get_data('zonalmean_gph',fieldname) for m in models]
+  titles = [m.title for m in models]
 
-  if control is not None:
+  while len(fields) < 3: fields += [None]
+  while len(titles) < 3: titles += [None]
 
-    create_images (exper_co2, control_co2, ct_co2, title1=experiment.title, title2=control.title, title3='CarbonTracker',preview=False, outdir=imagedir)
+  create_images (field1=fields[0], field2=fields[1], field3=fields[2], title1=titles[0], title2=titles[1], title3=titles[2],preview=False, outdir=imagedir)
 
-  else:
-
-    create_images (exper_co2, ct_co2, title1=experiment.title, title2='CarbonTracker',preview=False, outdir=imagedir)
-
-  moviefile = "%s/%s_zonal%s.avi"%(outdir,experiment.name,ctfield)
+  moviefile = "%s/%s_zonal%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname)
 
   from os import system
   from os.path import exists

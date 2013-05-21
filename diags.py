@@ -81,7 +81,7 @@ except Exception as e:
 # Zonal mean movies
 try:
   from movie_zonal import movie_zonal
-  movie_zonal(gemfield = 'CO2', ctfield = 'CO2', experiment=experiment, control=control, carbontracker=carbontracker, outdir=outdir)
+  movie_zonal(models=[experiment,control,carbontracker], fieldname='CO2', outdir=outdir)
 except Exception as e:
   failures.append(['movie_zonal', e])
 
