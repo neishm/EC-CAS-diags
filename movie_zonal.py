@@ -103,15 +103,15 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
 
   plt.close(fig)
 
-def movie_zonal (gemfield, ctfield, offset, outdir, experiment, control, carbontracker):
+def movie_zonal (gemfield, ctfield, outdir, experiment, control, carbontracker):
 
   ct_co2 = carbontracker.get_data('zonalmean_gph',ctfield)
 
   if control is not None:
-    control_co2 = control.get_data('zonalmean_gph',gemfield) + offset
+    control_co2 = control.get_data('zonalmean_gph',gemfield)
   else:
     control_co2 = None
-  exper_co2 = experiment.get_data('zonalmean_gph',gemfield) + offset
+  exper_co2 = experiment.get_data('zonalmean_gph',gemfield)
 
   imagedir=outdir+"/images_%s_zonal%s"%(experiment.name, ctfield)
 
