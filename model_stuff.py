@@ -253,22 +253,39 @@ class GEM_Data(Data):
 
   # Helper functions - find the field (look in dm,km,pm,etc. files)
 
+  # Instead of renaming all the variables in the model, patch on a mapping
+  # to "standard" names.
+  local_names = {
+    'CO2':'CO2',
+    'CO2_background':'CO2B',
+    'geopotential_height':'GZ',
+    'eddy_diffusivity':'KTN',
+    'PBL_height':'H',
+    'air':'air'
+  }
+
   def _find_sfc_field (self, name):
     for dataset in self.dm, self.km, self.pm:
       if name in dataset: return dataset[name]
-    raise KeyError ("%s not found in model surface data."%name)
+    raise ValueError ("%s not found in model surface data."%name)
 
   def _find_3d_field (self, name):
     for dataset in self.dm_3d, self.km_3d, self.pm_3d:
       if name in dataset: return dataset[name]
-    raise KeyError ("%s not found in model 3d data."%name)
+    raise ValueError ("%s not found in model 3d data."%name)
 
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
-  def get_data (self, domain, field):
+  def get_data (self, domain, standard_name):
     from os.path import exists
     from os import mkdir
     from pygeode.formats import netcdf
+
+    # Translate the standard name into the name used by GEM.
+    try:
+      field = self.local_names[standard_name]
+    except KeyError:
+      raise ValueError ("Can't find a variable representing '%s' in the model."%standard_name)
 
     # Determine which data is needed
 
@@ -346,7 +363,7 @@ class GEM_Data(Data):
     elif domain == 'avgcolumn':
       from common import molecular_weight as mw
       # Total column (kg/m2)
-      tc = self.get_data('totalcolumn', field)
+      tc = self.get_data('totalcolumn', standard_name)
       # Total column air (kg/m2)
       Mair = self.get_data('totalcolumn', 'air')
       # Compute the mass mixing ratio
@@ -358,7 +375,7 @@ class GEM_Data(Data):
 
     elif domain == 'totalmass':
       # Total column (kg C/m2)
-      tc = self.get_data('totalcolumn', field)
+      tc = self.get_data('totalcolumn', standard_name)
       area = self.pm_3d['DX']
       # Mass per grid area (kg)
       # Assume global grid - remove repeated longitude

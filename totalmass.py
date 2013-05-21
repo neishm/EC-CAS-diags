@@ -60,8 +60,8 @@ def totalmass (experiment, control, carbontracker, gemfieldname, gemfluxname, ct
   exper_bgmass = None
   if gemfieldname == 'CO2':
     try:
-      exper_bgmass = experiment.get_data('totalmass', 'CO2B') * conversion
-    except KeyError:
+      exper_bgmass = experiment.get_data('totalmass', 'CO2_background') * conversion
+    except ValueError:
       exper_bgmass = None
   ct_mass = carbontracker.get_data('totalmass',ctfieldname)(time=(t0,t1)) * conversion
 
@@ -101,7 +101,7 @@ def totalmass (experiment, control, carbontracker, gemfieldname, gemfluxname, ct
     styles.extend(['-'])
     labels.extend([control.title])
     try:
-      control_bgmass = control.get_data('totalmass', 'CO2B') * conversion
+      control_bgmass = control.get_data('totalmass', 'CO2_background') * conversion
       fields.extend([control_bgmass])
       colors.extend(['red'])
       styles.extend([':'])

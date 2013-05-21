@@ -81,7 +81,7 @@ except Exception as e:
 # Zonal mean movies
 try:
   from movie_zonal import movie_zonal
-  movie_zonal(gemfield = 'CO2', ctfield = 'co2', offset =    0, experiment=experiment, control=control, carbontracker=carbontracker, outdir=outdir)
+  movie_zonal(gemfield = 'CO2', ctfield = 'CO2', offset =    0, experiment=experiment, control=control, carbontracker=carbontracker, outdir=outdir)
 #  movie_zonal(gemfield = 'CLA', ctfield = 'bio', offset = -100, experiment=experiment, control=control, carbontracker=carbontracker, outdir=outdir)
 except Exception as e:
   failures.append(['movie_zonal', e])
@@ -110,7 +110,7 @@ except Exception as e:
 # Total mass CO2
 try:
   from totalmass import totalmass
-  totalmass (experiment=experiment, control=control, carbontracker=carbontracker, gemfieldname='CO2', gemfluxname='ECO2', ctfieldname='co2', ctfluxname='co2', outdir=outdir)
+  totalmass (experiment=experiment, control=control, carbontracker=carbontracker, gemfieldname='CO2', gemfluxname='ECO2', ctfieldname='CO2', ctfluxname='CO2', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass', e])
 

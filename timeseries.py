@@ -23,7 +23,7 @@ def timeseries (experiment, control, carbontracker, outdir, obstype):
     control_co2 = None
 
   # Use CarbonTracker data
-  ct_co2 = carbontracker.get_data('sfc', 'co2')
+  ct_co2 = carbontracker.get_data('sfc', 'CO2')
   ct_co2 = ct_co2.unfill(4.984605e+37)
   ct_title = "CarbonTracker"
   #from sr_timeseries import data as sr_data

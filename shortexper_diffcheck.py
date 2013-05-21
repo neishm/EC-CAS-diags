@@ -36,7 +36,7 @@ def shortexper_diffcheck(experiment, control, location, outdir):
 
     if dataset is None: continue
 
-    ktn = dataset.get_data(location,'KTN')
+    ktn = dataset.get_data(location,'eddy_diffusivity')
     mn, mx = get_range(ktn)
     ktn_min = min(ktn_min, mn)
     ktn_max = max(ktn_max, mx)
@@ -54,17 +54,17 @@ def shortexper_diffcheck(experiment, control, location, outdir):
 
     if dataset is None: continue
 
-    ktn = dataset.get_data(location,'KTN')
+    ktn = dataset.get_data(location,'eddy_diffusivity')
     co2 = dataset.get_data(location,'CO2')
     co2.name = 'CO2'
 
     # Put the variables on a height coordinate
     # TODO: proper vertical interpolation
-    gz = dataset.get_data(location,'GZ')(i_time=0).squeeze()
+    gz = dataset.get_data(location,'geopotential_height')(i_time=0).squeeze()
     height = Height(gz.get())
     ktn = ktn.replace_axes(eta=height)
     co2 = co2.replace_axes(eta=height)
-    pbl = dataset.get_data(location,'H')
+    pbl = dataset.get_data(location,'PBL_height')
     # Adjust pbl to use the same height units for plotting.
     pbl *= Height.plotatts.get('scalefactor',1)
 

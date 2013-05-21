@@ -25,7 +25,7 @@ def xco2 (experiment, control, carbontracker, outdir):
   exper_xco2 = get_xco2(experiment)
   if control is not None:
     control_xco2 = get_xco2(control)
-  ct_xco2 = carbontracker.get_data('avgcolumn','co2').rename('CarbonTracker')
+  ct_xco2 = carbontracker.get_data('avgcolumn','CO2').rename('CarbonTracker')
   # Rotate the longitudes to 0,360
   ct_xco2 = rotate_grid(ct_xco2)
 

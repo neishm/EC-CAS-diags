@@ -99,7 +99,7 @@ class CarbonTracker_Data(Data):
 
     # Find the total CO2 (sum of components)
     co2 = molefractions.bg + molefractions.ff + molefractions.bio + molefractions.ocean + molefractions.fires
-    co2 = co2.rename('co2')
+    co2 = co2.rename('CO2')
     # Pretend it's another CarbonTracker product
     molefractions = molefractions + co2
 
@@ -112,7 +112,7 @@ class CarbonTracker_Data(Data):
 
     # Create a total flux product
     co2_flux = fluxes.fossil_imp + fluxes.bio_flux_opt + fluxes.ocn_flux_opt + fluxes.fire_flux_imp
-    co2_flux = co2_flux.rename('co2')
+    co2_flux = co2_flux.rename('CO2')
     fluxes = fluxes + co2_flux
 
     self.fluxes = fluxes
@@ -136,11 +136,23 @@ class CarbonTracker_Data(Data):
     self.name = 'CT2011'
     self.title = 'CarbonTracker'
 
+  # Translate CarbonTracker variable names into some "standard" naming convention.
+  local_names = {
+    'CO2':'CO2',
+    'geopotential_height':'gph',
+    'air':'air'
+  }
+
   # Data interface
-  def get_data (self, domain, field):
+  def get_data (self, domain, standard_name):
     from os.path import exists
     from os import mkdir
     from pygeode.formats import netcdf
+
+    try:
+      field = self.local_names[standard_name]
+    except KeyError:
+      raise ValueError ("No representation of '%s' in the CarbonTracker data."%standard_name)
 
     # Zonal mean (over geopotential height)
     if domain == 'zonalmean_gph':
@@ -182,7 +194,7 @@ class CarbonTracker_Data(Data):
     # Column averages
     elif domain == 'avgcolumn':
       from common import molecular_weight as mw
-      tc = self.get_data('totalcolumn',field)
+      tc = self.get_data('totalcolumn', standard_name)
       tc_air = self.get_data('totalcolumn','air')
       data = tc / tc_air
       # Convert kg/kg to ppm
@@ -194,7 +206,7 @@ class CarbonTracker_Data(Data):
     elif domain == 'totalmass':
       from common import get_area
       dxdy = get_area(self.molefractions.lat, self.molefractions.lon).rename('dxdy')
-      totalcol = self.get_data('totalcolumn',field)
+      totalcol = self.get_data('totalcolumn', standard_name)
       totalmass = (totalcol*dxdy).sum('lat','lon')
       # Convert from kg to Pg
       totalmass *= 1E-12
