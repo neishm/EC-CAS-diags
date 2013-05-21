@@ -61,7 +61,7 @@ def shortexper_diffcheck(experiment, control, location, outdir):
     # Put the variables on a height coordinate
     # TODO: proper vertical interpolation
     gz = dataset.get_data(location,'GZ')(i_time=0).squeeze()
-    height = Height(gz.get() * 10)  # decametres to metres
+    height = Height(gz.get())
     ktn = ktn.replace_axes(eta=height)
     co2 = co2.replace_axes(eta=height)
     pbl = dataset.get_data(location,'H')

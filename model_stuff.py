@@ -68,7 +68,7 @@ def to_gph (var, GZ):
   height = Height(range(68), name='height')
 
   if var.hasaxis('eta'):
-    var = interpolate(var, inaxis='eta', outaxis=height, inx=GZ*10/1000)
+    var = interpolate(var, inaxis='eta', outaxis=height, inx=GZ/1000.)
   elif var.hasaxis('zeta'):
     # Subset GZ on tracer levels (applicable to GEM4 output)
     GZ_zeta = GZ.zeta.values
@@ -77,7 +77,7 @@ def to_gph (var, GZ):
     for zeta in var_zeta:
       indices.append(np.where(GZ_zeta==zeta)[0][0])
     GZ = GZ(i_zeta=indices)
-    var = interpolate(var, inaxis='zeta', outaxis=height, inx=GZ*10/1000)
+    var = interpolate(var, inaxis='zeta', outaxis=height, inx=GZ/1000.)
 
   var = var.transpose(0,3,1,2)
   return var
@@ -237,12 +237,19 @@ class GEM_Data(Data):
     convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
     for dataset_name in 'dm', 'dm_3d':
       dataset = getattr(self,dataset_name)
+      # Convert CO2 units
       for co2_name in 'CO2', 'CO2B', 'CFF', 'CBB', 'COC', 'CLA':
         if co2_name in dataset:
           new_field = dataset[co2_name]*convert_CO2
           new_field.name = co2_name
           dataset = dataset.replace_vars({co2_name:new_field})
+      # Convert GZ units (from decametres to metres)
+      GZ = dataset['GZ']*10
+      GZ.name = 'GZ'
+      dataset = dataset.replace_vars(GZ=GZ)
+
       setattr(self,dataset_name,dataset)
+
 
   # Helper functions - find the field (look in dm,km,pm,etc. files)
 
