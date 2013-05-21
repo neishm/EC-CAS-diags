@@ -430,13 +430,11 @@ class GEM_Fluxes(Data):
     from os import mkdir
     from pygeode.formats import netcdf
 
-    assert domain in ('sum',)
-
     # Determine which data is needed
-    if domain == 'sum':
+    if domain == 'totalflux':
       # Sum, skipping the last (repeated) longitude
       data = self.fluxes[field].slice[:,:,:-1].sum('lat','lon')
-    else: raise Exception
+    else: raise ValueError ("Unknown domain '%s'"%domain)
 
     # Make sure the data is in 32-bit precision
     if data.dtype.name != 'float32':

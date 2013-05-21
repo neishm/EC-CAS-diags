@@ -32,7 +32,7 @@ def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemf
 
   # Integrate GEM fluxes over time
   if gemfluxes is not None:
-    gem_co2_flux = gemfluxes.get_data('sum', gemfluxname)
+    gem_co2_flux = gemfluxes.get_data('totalflux', gemfluxname)
     gem_co2_flux_time = gem_co2_flux.time
     gem_co2_flux = gem_co2_flux.get()
     # Integrate over a 3-hour period
