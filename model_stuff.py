@@ -89,7 +89,7 @@ def to_gph (var, GZ):
 
 from data_interface import Data
 class GEM_Data(Data):
-  def __init__ (self, indir, name, title):
+  def __init__ (self, experiment_dir, flux_dir, name, title):
     from pygeode.formats.multifile import open_multi
     from pygeode.formats import rpn
     from pygeode.dataset import Dataset
@@ -97,9 +97,22 @@ class GEM_Data(Data):
     from pygeode.axis import ZAxis
     from common import fix_timeaxis
 
+    indir = experiment_dir
+
     self.name = name
     self.title = title
     self._tmpdir = indir + "/nc_cache"
+
+    ##############################
+    # Fluxes
+    ##############################
+
+    if flux_dir is not None:
+      fluxes = open_multi(flux_dir+"/area_??????????", format=rpn, file2date=file2date_flux, opener=rpnopen)
+      # Convert from g/s to moles/s
+      fluxes = Dataset([(v/12.).rename(v.name) for v in fluxes])
+      fluxes = fix_timeaxis(fluxes)
+      self.fluxes = fluxes
 
     ##############################
     # Data with vertical extent
@@ -348,6 +361,13 @@ class GEM_Data(Data):
       data = mass
       data.name = field
 
+    # Integrated flux (if available)
+    elif domain == 'totalflux':
+      if not hasattr(self,'fluxes'):
+        raise ValueError ("Can't compute a total flux, because no fluxes are identified with this run.")
+      # Sum, skipping the last (repeated) longitude
+      data = self.fluxes[field].slice[:,:,:-1].sum('lat','lon')
+
     elif domain == 'Toronto':
       data = self._find_3d_field(field)
       data = data.squeeze(lat=43.7833,lon=280.5333)
@@ -370,51 +390,5 @@ class GEM_Data(Data):
 
     return data
 
-class GEM_Fluxes(Data):
-  def __init__ (self, indir, name, title):
-    from pygeode.formats.multifile import open_multi
-    from pygeode.formats import rpn
-    from pygeode.dataset import Dataset
-    from glob import glob
-    from pygeode.axis import ZAxis
-    from common import fix_timeaxis
-
-    self.name = name
-    self.title = title
-    self._tmpdir = indir + "/nc_cache"
-
-    fluxes = open_multi(indir+"/area_??????????", format=rpn, file2date=file2date_flux, opener=rpnopen)
-    # Convert from g/s to moles/s
-    fluxes = Dataset([v/12. for v in fluxes])
-    fluxes = fix_timeaxis(fluxes)
-    self.fluxes = fluxes
-
-  def get_data (self, domain, field):
-    from os.path import exists
-    from os import mkdir
-    from pygeode.formats import netcdf
-
-    # Determine which data is needed
-    if domain == 'totalflux':
-      # Sum, skipping the last (repeated) longitude
-      data = self.fluxes[field].slice[:,:,:-1].sum('lat','lon')
-    else: raise ValueError ("Unknown domain '%s'"%domain)
-
-    # Make sure the data is in 32-bit precision
-    if data.dtype.name != 'float32':
-      data = data.as_type('float32')
-
-    if not exists(self._tmpdir): mkdir(self._tmpdir)
-    cachefile = self._tmpdir + '/%s_%s.nc'%(domain,field)
-
-    # Pre-compute the data and save it, if this is the first time using it.
-    if not exists(cachefile):
-      print '===>', cachefile
-      netcdf.save(cachefile, data)
-
-    data = netcdf.open(cachefile)[field]
-
-    return data
-
-
 del Data
+

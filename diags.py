@@ -44,18 +44,13 @@ else:
 
 
 # Get the data
-from model_stuff import GEM_Data, GEM_Fluxes
-experiment = GEM_Data(experiment_dir, name=experiment_name, title=experiment_title)
+from model_stuff import GEM_Data
+flux_dir = args.emissions
+experiment = GEM_Data(experiment_dir, flux_dir=flux_dir, name=experiment_name, title=experiment_title)
 if control_dir is not None:
   control = GEM_Data(control_dir, name=control_name, title=control_title)
 else:
   control = None
-
-emissions_dir = args.emissions
-if emissions_dir is not None:
-  fluxes = GEM_Fluxes(emissions_dir, name='fluxes', title='fluxes')
-else:
-  fluxes = None
 
 # CarbonTracker data
 from carbontracker import CarbonTracker_Data
@@ -115,7 +110,7 @@ except Exception as e:
 # Total mass CO2
 try:
   from totalmass import totalmass
-  totalmass (experiment=experiment, control=control, gemfluxes=fluxes, carbontracker=carbontracker, gemfieldname='CO2', gemfluxname='ECO2', ctfieldname='co2', ctfluxname='co2', outdir=outdir)
+  totalmass (experiment=experiment, control=control, carbontracker=carbontracker, gemfieldname='CO2', gemfluxname='ECO2', ctfieldname='co2', ctfluxname='co2', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass', e])
 

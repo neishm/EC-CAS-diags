@@ -11,7 +11,7 @@ def doplot (outfile, title, fields, colors, styles, labels):
 
   fig.savefig(outfile)
 
-def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemfluxname, ctfieldname, ctfluxname, outdir):
+def totalmass (experiment, control, carbontracker, gemfieldname, gemfluxname, ctfieldname, ctfluxname, outdir):
   from os.path import exists
   from pygeode.var import Var
   from common import molecular_weight as mw
@@ -31,8 +31,8 @@ def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemf
   ct_co2_flux = Var([ct_co2_flux_time], values=ct_co2_flux)
 
   # Integrate GEM fluxes over time
-  if gemfluxes is not None:
-    gem_co2_flux = gemfluxes.get_data('totalflux', gemfluxname)
+  try:
+    gem_co2_flux = experiment.get_data('totalflux', gemfluxname)
     gem_co2_flux_time = gem_co2_flux.time
     gem_co2_flux = gem_co2_flux.get()
     # Integrate over a 3-hour period
@@ -44,7 +44,8 @@ def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemf
     gem_co2_flux *= 1E-15  # g to Pg
     # Re-wrap as a PyGeode var
     gem_co2_flux = Var([gem_co2_flux_time], values=gem_co2_flux)
-
+  except ValueError:
+    gem_co2_flux = None
 
   # Limit CarbonTracker to experiment range
   t0 = float(experiment.dm.time[0])
@@ -68,7 +69,7 @@ def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemf
 
   # Offset the flux mass
   ct_co2_flux += float(ct_mass(time=t0).get().squeeze())
-  if gemfluxes is not None:
+  if gem_co2_flux is not None:
     gem_co2_flux += float(exper_mass(time=t0).get().squeeze())
 
   fields = [exper_mass]
@@ -82,7 +83,7 @@ def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemf
     styles.append(':')
     labels.append('background')
 
-  if gemfluxes is not None:
+  if gem_co2_flux is not None:
     fields.append(gem_co2_flux)
     colors.append('#C0C0FF')
     styles.append('-')
