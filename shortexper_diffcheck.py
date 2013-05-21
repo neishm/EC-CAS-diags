@@ -1,8 +1,19 @@
-def shortexper_diffcheck(experiment, control, location, outdir):
+# Temporary work-around for PyGeode issue #36
+# (http://code.google.com/p/pygeode/issues/detail?id=36)
+def plotvar(data, *args, **kwargs):
+  from pygeode.plot import plotvar as plotvar_upstream
+  if data.hasaxis('height'):
+    height = data.height.values
+    plotvar_upstream(data, *args, **kwargs)
+    data.height.values = height
+  else:
+    plotvar_upstream(data, *args, **kwargs)
+
+
+def shortexper_diffcheck(models, location, outdir):
   from pygeode.axis import Height
   from ec_obs import obs_locations, data as obs
   from os.path import exists
-  from pygeode.plot import plotvar
   from contouring import get_range, get_contours
   from matplotlib import pyplot as pl
   import numpy as np
@@ -11,10 +22,14 @@ def shortexper_diffcheck(experiment, control, location, outdir):
   lon += 360
   co2_obs = obs[location]
   # Limit to the length of the experiment
-  time = experiment.dm.time.values
+  test_field = models[0].get_data(location,'CO2')
+  time = test_field.time.values
+  del test_field
   co2_obs = co2_obs(time=(min(time),max(time)))
 
-  if control is not None:
+  assert len(models) in (1,2)
+
+  if len(models) == 1:
     fig = pl.figure(figsize=(15,15))
     n = 2
   else:
@@ -32,7 +47,7 @@ def shortexper_diffcheck(experiment, control, location, outdir):
   if np.isnan(co2_sfc_max): co2_sfc_max = float('-inf')
 
   # Get the data, and compute the global ranges
-  for i,dataset in enumerate([experiment,control]):
+  for i,dataset in enumerate(models):
 
     if dataset is None: continue
 
@@ -46,11 +61,11 @@ def shortexper_diffcheck(experiment, control, location, outdir):
     co2_min = min(co2_min, mn)
     co2_max = max(co2_max, mx)
 
-    co2_sfc_min = min(co2_sfc_min, co2(eta=1).min())
-    co2_sfc_max = max(co2_sfc_max, co2(eta=1).max())
+    co2_sfc_min = min(co2_sfc_min, co2(hybrid=1.0).min())
+    co2_sfc_max = max(co2_sfc_max, co2(hybrid=1.0).max())
 
   # Do the plots
-  for i,dataset in enumerate([experiment,control]):
+  for i,dataset in enumerate(models):
 
     if dataset is None: continue
 
@@ -62,8 +77,8 @@ def shortexper_diffcheck(experiment, control, location, outdir):
     # TODO: proper vertical interpolation
     gz = dataset.get_data(location,'geopotential_height')(i_time=0).squeeze()
     height = Height(gz.get())
-    ktn = ktn.replace_axes(eta=height)
-    co2 = co2.replace_axes(eta=height)
+    ktn = ktn.replace_axes(hybrid=height)
+    co2 = co2.replace_axes(hybrid=height)
     pbl = dataset.get_data(location,'PBL_height')
     # Adjust pbl to use the same height units for plotting.
     pbl *= Height.plotatts.get('scalefactor',1)
@@ -82,7 +97,7 @@ def shortexper_diffcheck(experiment, control, location, outdir):
     axis.set_ylim([co2_sfc_min,co2_sfc_max])
     axis.legend ([dataset.title, 'Obs'])
 
-  outfile = outdir+"/%s_%s_diffcheck.png"%(experiment.name,location)
+  outfile = outdir+"/%s_%s_diffcheck.png"%('_'.join(m.name for m in models if m is not None),location)
   if not exists(outfile):
     fig.savefig(outfile)
 

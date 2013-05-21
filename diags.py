@@ -95,7 +95,7 @@ except Exception as e:
 # KT sensitivity check
 try:
   from shortexper_diffcheck import shortexper_diffcheck
-  shortexper_diffcheck (experiment=experiment, control=control, location="Toronto", outdir=outdir)
+  shortexper_diffcheck (models=[experiment,control], location="Toronto", outdir=outdir)
 except Exception as e:
   failures.append(['diffcheck', e])
 
