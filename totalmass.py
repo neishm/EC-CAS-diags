@@ -39,6 +39,8 @@ def totalmass (experiment, control, gemfluxes, carbontracker, gemfieldname, gemf
     gem_co2_flux = gem_co2_flux * 3 * 60 * 60
     # Running sum
     gem_co2_flux = gem_co2_flux.cumsum()
+    # Convert from moles to Pg C
+    gem_co2_flux *= 12  # Moles to grams
     gem_co2_flux *= 1E-15  # g to Pg
     # Re-wrap as a PyGeode var
     gem_co2_flux = Var([gem_co2_flux_time], values=gem_co2_flux)

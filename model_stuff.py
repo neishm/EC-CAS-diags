@@ -420,6 +420,8 @@ class GEM_Fluxes(Data):
     self._tmpdir = indir + "/nc_cache"
 
     fluxes = open_multi(indir+"/area_??????????", format=rpn, file2date=file2date_flux, opener=rpnopen)
+    # Convert from g/s to moles/s
+    fluxes = Dataset([v/12. for v in fluxes])
     fluxes = fix_timeaxis(fluxes)
     self.fluxes = fluxes
 
