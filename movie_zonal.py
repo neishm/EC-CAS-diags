@@ -1,5 +1,5 @@
 def create_images (field1, field2=None, field3=None, contours=None, title1='plot1', title2='plot2', title3='plot3', palette=None, norm=None, preview=False, outdir='images'):
-  from contouring import get_range, get_contours
+  from contouring import get_global_range, get_contours
   from plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from plot_shortcuts import pcolor, contour, contourf, Map
 
@@ -18,16 +18,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
   if contours is None:
 
     # Define low and high based on the actual distribution of values.
-    low, high = get_range(field1)
-    if field2 is not None:
-      low2, high2 = get_range(field2)
-      low = min(low,low2)
-      high = max(high,high2)
-    if field3 is not None:
-      low3, high3 = get_range(field3)
-      low = min(low,low3)
-      high = max(high,high3)
-
+    low, high = get_global_range(*[f for f in [field1,field2,field3] if f is not None])
     contours = get_contours(low,high)
 
   # Get the palette to use
