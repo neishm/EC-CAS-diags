@@ -283,9 +283,6 @@ class GEM_Data(Data):
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
   def get_data (self, domain, standard_name):
-    from os.path import exists
-    from os import mkdir
-    from pygeode.formats import netcdf
 
     # Translate the standard name into the name used by GEM.
     try:
@@ -406,21 +403,8 @@ class GEM_Data(Data):
 
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
-    # Make sure the data is in 32-bit precision
-    if data.dtype.name != 'float32':
-      data = data.as_type('float32')
+    return self._cache(data,'%s_%s.nc'%(domain,field))
 
-    if not exists(self._tmpdir): mkdir(self._tmpdir)
-    cachefile = self._tmpdir + '/%s_%s.nc'%(domain,field)
-
-    # Pre-compute the data and save it, if this is the first time using it.
-    if not exists(cachefile):
-      print '===>', cachefile
-      netcdf.save(cachefile, data)
-
-    data = netcdf.open(cachefile)[field]
-
-    return data
 
 del Data
 

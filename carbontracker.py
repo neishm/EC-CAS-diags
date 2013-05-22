@@ -145,9 +145,6 @@ class CarbonTracker_Data(Data):
 
   # Data interface
   def get_data (self, domain, standard_name):
-    from os.path import exists
-    from os import mkdir
-    from pygeode.formats import netcdf
 
     try:
       field = self.local_names[standard_name]
@@ -223,20 +220,6 @@ class CarbonTracker_Data(Data):
 
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
-    # Make sure the data is in 32-bit precision
-    if data.dtype.name != 'float32':
-      data = data.as_type('float32')
-
-    if not exists(self._tmpdir): mkdir(self._tmpdir)
-    cachefile = self._tmpdir + '/%s_%s.nc'%(domain,field)
-
-    # Pre-compute the data and save it, if this is the first time using it.
-    if not exists(cachefile):
-      print '===>', cachefile
-      netcdf.save(cachefile, data)
-
-    data = netcdf.open(cachefile)[field]
-
-    return data
+    return self._cache(data,'%s_%s.nc'%(domain,field))
 
 
