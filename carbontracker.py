@@ -152,7 +152,7 @@ class CarbonTracker_Data(Data):
     try:
       field = self.local_names[standard_name]
     except KeyError:
-      raise ValueError ("No representation of '%s' in the CarbonTracker data."%standard_name)
+      raise KeyError ("No representation of '%s' in the CarbonTracker data."%standard_name)
 
     # Zonal mean (over geopotential height)
     if domain == 'zonalmean_gph':

@@ -53,6 +53,7 @@ else:
   control = None
 
 # CarbonTracker data
+#TODO: limit CT data to time range of experiment.
 from carbontracker import CarbonTracker_Data
 carbontracker = CarbonTracker_Data()
 
@@ -109,7 +110,8 @@ except Exception as e:
 # Total mass CO2
 try:
   from totalmass import totalmass
-  totalmass (experiment=experiment, control=control, carbontracker=carbontracker, gemfieldname='CO2', gemfluxname='ECO2', ctfieldname='CO2', ctfluxname='CO2', outdir=outdir)
+  totalmass (models=[experiment,carbontracker,control], fieldname='CO2', pg_of='C', outdir=outdir)
+  totalmass (models=[experiment,None,control], fieldname='air', pg_of='air', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass', e])
 

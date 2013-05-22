@@ -1,130 +1,81 @@
-def doplot (outfile, title, fields, colors, styles, labels):
+def doplot (outfile, title, fields, colours, styles, labels):
   from pygeode.plot import plotvar
   import matplotlib.pyplot as pl
 
   fig = pl.figure(figsize=(15,12))
   ax = pl.subplot(111)
-  for field, color, style in zip(fields, colors, styles):
+  for field, color, style in zip(fields, colours, styles):
     plotvar (field, color=color, ax=ax, linestyle=style, hold=True)
   ax.set_title(title)
   pl.legend(labels, loc='best')
 
   fig.savefig(outfile)
 
-def totalmass (experiment, control, carbontracker, gemfieldname, gemfluxname, ctfieldname, ctfluxname, outdir):
+def totalmass (models, fieldname, pg_of, outdir):
   from os.path import exists
   from pygeode.var import Var
   from common import molecular_weight as mw
+  from pygeode import timeutils
 
-  # Integrate the CarbonTracker fluxes over time
-  ct_co2_flux = carbontracker.get_data('totalflux',ctfluxname)
-  ct_co2_flux_time = ct_co2_flux.time
-  ct_co2_flux = ct_co2_flux.get()
-  # Integrate over a 3-hour period
-  ct_co2_flux = ct_co2_flux * 3 * 60 * 60
-  # Running sum
-  ct_co2_flux = ct_co2_flux.cumsum()
-  # Convert from moles to Pg C
-  ct_co2_flux *= 12  # Moles to grams
-  ct_co2_flux *= 1E-15  # g to Pg
-  # Re-wrap as a PyGeode var
-  ct_co2_flux = Var([ct_co2_flux_time], values=ct_co2_flux)
+  totalmass_colours = 'blue', 'green', 'red'
+  totalflux_colours = '#C0C0FF', '#C0FFC0', '#FFC0C0'
 
-  # Integrate GEM fluxes over time
-  try:
-    gem_co2_flux = experiment.get_data('totalflux', gemfluxname)
-    gem_co2_flux_time = gem_co2_flux.time
-    gem_co2_flux = gem_co2_flux.get()
-    # Integrate over a 3-hour period
-    gem_co2_flux = gem_co2_flux * 3 * 60 * 60
-    # Running sum
-    gem_co2_flux = gem_co2_flux.cumsum()
-    # Convert from moles to Pg C
-    gem_co2_flux *= 12  # Moles to grams
-    gem_co2_flux *= 1E-15  # g to Pg
-    # Re-wrap as a PyGeode var
-    gem_co2_flux = Var([gem_co2_flux_time], values=gem_co2_flux)
-  except ValueError:
-    gem_co2_flux = None
+  # Set up whatever plots we can do
+  fields = []
+  colours = []
+  styles = []
+  labels = []
 
-  # Limit CarbonTracker to experiment range
-  t0 = float(experiment.dm.time[0])
-  t1 = float(experiment.dm.time[-1])
+  for i,model in enumerate(models):
+    if model is None: continue
 
-  # CO2 mass (Pg C)
-
-  # Convert from Pg CO2 to Pg C for the plot.
-  conversion = mw['C'] / mw['CO2']
-  exper_mass = experiment.get_data('totalmass', gemfieldname) * conversion
-  # Special case: CO2 plot includes CO2 background field
-  exper_bgmass = None
-  if gemfieldname == 'CO2':
-    try:
-      exper_bgmass = experiment.get_data('totalmass', 'CO2_background') * conversion
-    except ValueError:
-      exper_bgmass = None
-  ct_mass = carbontracker.get_data('totalmass',ctfieldname)(time=(t0,t1)) * conversion
-
-  ct_co2_flux = ct_co2_flux(time=(t0,t1))
-
-  # Offset the flux mass
-  ct_co2_flux += float(ct_mass(time=t0).get().squeeze())
-  if gem_co2_flux is not None:
-    gem_co2_flux += float(exper_mass(time=t0).get().squeeze())
-
-  fields = [exper_mass]
-  colors = ['blue']
-  styles = ['-']
-  labels = [experiment.title]
-
-  if exper_bgmass is not None:
-    fields.append(exper_bgmass)
-    colors.append('blue')
-    styles.append(':')
-    labels.append('background')
-
-  if gem_co2_flux is not None:
-    fields.append(gem_co2_flux)
-    colors.append('#C0C0FF')
+    # Total mass
+    # Possibly change plot units (e.g. Pg CO2 -> Pg C)
+    mass = model.get_data('totalmass',fieldname) / mw[fieldname] * mw[pg_of]
+    fields.append(mass)
+    colours.append(totalmass_colours[i])
     styles.append('-')
-    labels.append('GEM flux')
+    labels.append(model.title)
 
-  fields.extend([ct_mass, ct_co2_flux])
-  colors.extend(['green', '#C0FFC0'])
-  styles.extend(['-', '-'])
-  labels.extend(['CarbonTracker', 'CT flux'])
-
-  if control is not None:
-    control_mass = control.get_data('totalmass', 'CO2') * conversion
-    fields.extend([control_mass])
-    colors.extend(['red'])
-    styles.extend(['-'])
-    labels.extend([control.title])
+    # Total mass of background field
     try:
-      control_bgmass = control.get_data('totalmass', 'CO2_background') * conversion
-      fields.extend([control_bgmass])
-      colors.extend(['red'])
-      styles.extend([':'])
-      labels.extend(['control bg'])
-    except KeyError: pass
+      # Possibly change plot units (e.g. Pg CO2 -> Pg C)
+      mass = model.get_data('totalmass',fieldname+'_background') / mw[fieldname] * mw[pg_of]
+      fields.append(mass)
+      colours.append(totalmass_colours[i])
+      styles.append(':')
+      labels.append('background')
+    except KeyError: pass  # Background values not available
 
-  outfile = outdir + "/%s_totalmass_%s.png"%(experiment.name,gemfieldname)
-  if not exists(outfile):
-    doplot (outfile, "Total mass %s (Pg C)"%gemfieldname, fields, colors, styles, labels)
+    # Total flux, integrated in time
+    try:
+      totalflux = model.get_data('totalflux',fieldname)
+      time = totalflux.time
+      totalflux = totalflux.get()
+      # Get time interval
+      dt = timeutils.delta(time, units='seconds')
+      # Integrate over the flux period
+      totalflux = totalflux * dt
+      # Running sum
+      totalflux = totalflux.cumsum()
+      # Convert from moles to Pg
+      totalflux *= mw[pg_of]
+      totalflux *= 1E-15  # g to Pg
+      # Re-wrap as a PyGeode var
+      totalflux = Var([time], values=totalflux)
+      # Offset the flux mass
+      totalflux += float(mass(i_time=0).get().squeeze())
+      fields.append(totalflux)
+      colours.append(totalflux_colours[i])
+      styles.append('-')
+      labels.append('integrated flux')
+    except KeyError: pass  # No flux available
 
-  # Air mass
-  exper_airmass = experiment.get_data('totalmass', 'air')
-  fields = [exper_airmass]
-  colors = ['blue']
-  styles = ['-']
-  labels = [experiment.title]
-  if control is not None:
-    control_airmass = control.get_data('totalmass', 'air')
-    fields.append(control_airmass)
-    colors.append('red')
-    styles.append('-')
-    labels.append(control.title)
-  outfile = outdir + "/%s_totalmass_air.png"%experiment.name
+  outfile = outdir + "/%s_totalmass_%s.png"%('_'.join(m.name for m in models if m is not None),fieldname)
   if not exists(outfile):
-    doplot (outfile, "Total air mass (Pg)", fields, colors, styles, labels)
+    if pg_of == fieldname:
+      title = "Total mass %s (Pg)"%fieldname
+    else:
+      title = "Total mass %s (Pg %s)"%(fieldname,pg_of)
+    doplot (outfile, title, fields, colours, styles, labels)
 

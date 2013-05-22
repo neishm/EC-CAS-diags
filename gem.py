@@ -273,12 +273,12 @@ class GEM_Data(Data):
   def _find_sfc_field (self, name):
     for dataset in self.dm, self.km, self.pm:
       if name in dataset: return dataset[name]
-    raise ValueError ("%s not found in model surface data."%name)
+    raise KeyError ("%s not found in model surface data."%name)
 
   def _find_3d_field (self, name):
     for dataset in self.dm_3d, self.km_3d, self.pm_3d:
       if name in dataset: return dataset[name]
-    raise ValueError ("%s not found in model 3d data."%name)
+    raise KeyError ("%s not found in model 3d data."%name)
 
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
@@ -291,7 +291,7 @@ class GEM_Data(Data):
     try:
       field = self.local_names[standard_name]
     except KeyError:
-      raise ValueError ("Can't find a variable representing '%s' in the model."%standard_name)
+      raise KeyError ("Can't find a variable representing '%s' in the model."%standard_name)
 
     # Determine which data is needed
 
@@ -394,7 +394,9 @@ class GEM_Data(Data):
     # Integrated flux (if available)
     elif domain == 'totalflux':
       if not hasattr(self,'fluxes'):
-        raise ValueError ("Can't compute a total flux, because no fluxes are identified with this run.")
+        raise KeyError ("Can't compute a total flux, because no fluxes are identified with this run.")
+      # We have a slightly different naming convention for fluxes
+      field = 'E'+field
       # Sum, skipping the last (repeated) longitude
       data = self.fluxes[field].slice[:,:,:-1].sum('lat','lon')
 
