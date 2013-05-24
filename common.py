@@ -44,7 +44,7 @@ def common_taxis (*invars):
       blank = 0
     newvals[:] = blank
     ind = np.searchsorted(newtimes, oldtimes[i])
-    newvals[ind] = invars[i].values
+    newvals[ind] = invars[i].get()
     newvals[np.where(newvals > 1e8)] = blank
     newvars.append(Var([taxis], values=newvals, name=invars[i].name, atts=invars[i].atts))
 

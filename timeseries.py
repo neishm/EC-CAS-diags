@@ -1,37 +1,47 @@
 # CO2 timeseries
 
-def timeseries (models, fieldname, outdir, obstype):
+def timeseries (datasets, fieldname, outdir):
 
   from plot_shortcuts import plot
   from plot_wrapper import Multiplot, Legend
   import matplotlib.pyplot as pl
   from pygeode.timeaxis import months
 
-  if obstype == 'ec':
-    from ec_obs import obs_locations, data as obs_f
-  elif obstype == 'gaw':
-    from gaw_obs import obs_locations, data as obs_f
-  else:
-    raise Exception   # Unknown obs type
-
   from os.path import exists
 
-  models = [m for m in models if m is not None]
+  datasets = [d for d in datasets if d is not None]
 
-  model_data = [m.get_data('sfc',fieldname) for m in models]
+  # Extract all observation locations from the datasets
+  obs_locations = {}
+  for d in datasets:
+    if hasattr(d,'obs_locations'):
+      obs_locations.update(d.obs_locations)
 
-  # Limit the time period to plot
-  model_data = [x(year=2009, month=(6,9)) for x in model_data]
-  obs_f = obs_f(year=2009, month=(6,9))
+#  ##TODO
+#  # Limit the time period to the current experiment
+#  # (sometimes we have a really short experiment)
+#  timeaxis = model_data[0].time
+#  times = timeaxis.get()
+#  time1 = min(times)
+#  time2 = max(times)
+#  obs_f = obs_f(time=(time1,time2))
+#  model_data = [x(time=(time1,time2)) for x in model_data]
 
-  # Limit the time period to the current experiment
-  # (sometimes we have a really short experiment)
-  timeaxis = model_data[0].time
+  # For model data, pre-fetch the surface data
+  sfc_data = []
+  for d in datasets:
+    try:
+      sfc_data.append(d.get_data('sfc',fieldname))
+    except KeyError:
+      sfc_data.append(None)
+
+  # Use the first model data as a basis for the time axis.
+  timeaxis = (s.getaxis('time') for s in sfc_data if s is not None).next()
+  # Limit the range to plot
+  timeaxis = timeaxis(year=2009,month=(6,9))
   times = timeaxis.get()
   time1 = min(times)
   time2 = max(times)
-  obs_f = obs_f(time=(time1,time2))
-  model_data = [x(time=(time1,time2)) for x in model_data]
 
   # Create plots of each location
   xticks = []
@@ -67,14 +77,20 @@ def timeseries (models, fieldname, outdir, obstype):
 
     if lon < 0: lon += 360  # Model data is from longitudes 0 to 360
 
-    series = [x(lat=lat, lon=lon) for x in model_data]
-    # Make the obs the second entry
-    # (to use the same default line colours as older versions of this diagnostic)
-    obs_series = obs_f[location]
-    series = series[:1] + [obs_series] + series[1:]
+    series = []
+    for s,d in zip(sfc_data,datasets):
+      if s is not None:
+        series.append(s(lat=lat, lon=lon))
+      else:
+        # For now, assume that we have exactly one obs dataset,
+        # so this command shouldn't fail.
+        series.append(d.get_data(location,fieldname+'_mean'))
+
+    # Limit the time period to plot
+    series = [x(time=(time1,time2)) for x in series]
 
     theplot = plot (*series, title=title,
-           xlabel='', ylabel='CO2 ppmV', xticks=xticks, xticklabels=xticklabels)
+           xlabel='', ylabel='%s ppmV'%fieldname, xticks=xticks, xticklabels=xticklabels)
     plots.append (theplot)
 
 
@@ -85,14 +101,13 @@ def timeseries (models, fieldname, outdir, obstype):
 
     theplots = plots[i:i+4]
     # Put a legend on the last plot
-    labels = [m.title for m in models]
-    labels = labels[:1] + ['Obs'] + labels[1:]
+    labels = [d.title for d in datasets]
     theplots[-1] = Legend(theplots[-1], labels)
 
     theplots = Multiplot([[p] for p in theplots])
     theplots.render(figure=fig)
 
-    outfile = "%s/%s_timeseries_%s_%s%02d.png"%(outdir,'_'.join(m.name for m in models),fieldname,obstype,i/4+1)
+    outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in datasets),fieldname,i/4+1)
     if not exists(outfile):
       fig.savefig(outfile)
 

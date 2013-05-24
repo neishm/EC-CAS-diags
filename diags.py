@@ -57,6 +57,13 @@ else:
 from carbontracker import CarbonTracker_Data
 carbontracker = CarbonTracker_Data()
 
+# Observation data
+from ec_station_data import EC_Station_Data
+ec_obs = EC_Station_Data()
+from gaw_station_data import GAW_Station_Data
+gaw_obs = GAW_Station_Data()
+
+
 # Dump the output files to a subdirectory of the experiment data
 from os.path import exists
 from os import mkdir
@@ -64,18 +71,14 @@ outdir = experiment_dir+"/diags"
 if not exists(outdir):
   mkdir(outdir)
 
-# Some obs data that's needed by certain diagnostics
-from ec_to_nc import ec_to_nc
-ec_to_nc()
-
 # Some standard diagnostics
 failures = []
 
 # Timeseries
 try:
   from timeseries import timeseries
-  timeseries (models=[experiment,control], fieldname='CO2', outdir=outdir, obstype='ec')
-  timeseries (models=[experiment,control], fieldname='CO2', outdir=outdir, obstype='gaw')
+  timeseries (datasets=[experiment,ec_obs,control], fieldname='CO2', outdir=outdir)
+  timeseries (datasets=[experiment,gaw_obs,control], fieldname='CO2', outdir=outdir)
 except Exception as e:
   failures.append(['timeseries', e])
 
@@ -96,7 +99,7 @@ except Exception as e:
 # KT sensitivity check
 try:
   from shortexper_diffcheck import shortexper_diffcheck
-  shortexper_diffcheck (models=[experiment,control], location="Toronto", outdir=outdir)
+  shortexper_diffcheck (models=[experiment,control], obs=ec_obs, location="Toronto", outdir=outdir)
 except Exception as e:
   failures.append(['diffcheck', e])
 

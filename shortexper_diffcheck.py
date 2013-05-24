@@ -10,17 +10,16 @@ def plotvar(data, *args, **kwargs):
     plotvar_upstream(data, *args, **kwargs)
 
 
-def shortexper_diffcheck(models, location, outdir):
+def shortexper_diffcheck(models, obs, location, outdir):
   from pygeode.axis import Height
-  from ec_obs import obs_locations, data as obs
   from os.path import exists
   from contouring import get_range, get_contours
   from matplotlib import pyplot as pl
   import numpy as np
 
-  lat, lon, country = obs_locations[location]
+  lat, lon, country = obs.obs_locations[location]
   lon += 360
-  co2_obs = obs[location]
+  co2_obs = obs.get_data(location,'CO2_mean')
   # Limit to the length of the experiment
   test_field = models[0].get_data(location,'CO2')
   time = test_field.time.values
