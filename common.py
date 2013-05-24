@@ -22,6 +22,7 @@ def best_type (x):
   return x
 
 # Put all variables on a common (and regularly spaced) time axis
+# Also, filter out bad values
 def common_taxis (*invars):
   import numpy as np
   from pygeode.timeaxis import StandardTime
@@ -44,6 +45,7 @@ def common_taxis (*invars):
     newvals[:] = blank
     ind = np.searchsorted(newtimes, oldtimes[i])
     newvals[ind] = invars[i].values
+    newvals[np.where(newvals > 1e8)] = blank
     newvars.append(Var([taxis], values=newvals, name=invars[i].name, atts=invars[i].atts))
 
   return newvars

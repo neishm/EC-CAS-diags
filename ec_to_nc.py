@@ -1,33 +1,5 @@
 # Convert EC station obs to netcdf
 
-# Put all variables on a common (and regularly spaced) time axis
-# Also, filter out bad values
-def common_taxis (*invars):
-  import numpy as np
-  from pygeode.timeaxis import StandardTime
-  from pygeode import Var
-  newvars = []
-  startdate=dict(year=1950)  # arbitrary (but consistent) start date
-  oldtimes = [var.time.reltime(units='hours',startdate=startdate) for var in invars]
-  firsttime = min(times[0] for times in oldtimes)
-  lasttime = max(times[-1] for times in oldtimes)
-  newtimes = np.arange(firsttime, lasttime+1)
-  taxis = StandardTime (values = newtimes, units='hours', startdate=startdate)
-  # Adjust to a better start date
-  taxis = StandardTime (units='hours', **taxis.auxarrays)
-  for i in range(len(invars)):
-    newvals = np.zeros(len(newtimes), dtype=invars[i].dtype)
-    if newvals.dtype.name.startswith('float'):
-      blank = float('nan')
-    else:
-      blank = 0
-    newvals[:] = blank
-    ind = np.searchsorted(newtimes, oldtimes[i])
-    newvals[ind] = invars[i].values
-    newvals[np.where(newvals > 1e8)] = blank
-    newvars.append(Var([taxis], values=newvals, name=invars[i].name))
-
-  return newvars
 
 # Grab data from a single file
 def getdata (filename):
@@ -35,6 +7,7 @@ def getdata (filename):
   import numpy as np
   from pygeode.timeaxis import StandardTime
   from pygeode import Var
+  from common import common_taxis
 
   f = open(filename, "r")
   header = f.readline()
