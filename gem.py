@@ -250,9 +250,10 @@ class GEM_Data(Data):
           new_field.name = co2_name
           dataset = dataset.replace_vars({co2_name:new_field})
       # Convert GZ units (from decametres to metres)
-      GZ = dataset['GZ']*10
-      GZ.name = 'GZ'
-      dataset = dataset.replace_vars(GZ=GZ)
+      if 'GZ' in dataset:
+        GZ = dataset['GZ']*10
+        GZ.name = 'GZ'
+        dataset = dataset.replace_vars(GZ=GZ)
 
       setattr(self,dataset_name,dataset)
 
