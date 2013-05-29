@@ -8,14 +8,16 @@ matplotlib.use('Agg')
 
 import argparse
 from os.path import exists
+import os
 
 # Extract command-line arguments
 
 parser = argparse.ArgumentParser (description='Do some standard diagnostics on a model run.', epilog="You must have write perimission in the experiment directory to create some intermediate files.")
-parser.add_argument('experiment', help="location of the model output")
-parser.add_argument('--desc', help="short description of the experient", default="Experiment")
-parser.add_argument('--control', help="location of the control run (if desired)", default=None)
-parser.add_argument('--emissions', help="location of the emissions used in the model")
+parser.add_argument('experiment', help="Location of the model output.")
+parser.add_argument('--desc', help="Short description of the experient.", default="Experiment")
+parser.add_argument('--control', help="Location of the control run (if desired).", default=None)
+parser.add_argument('--emissions', help="Location of the model emissions.")
+parser.add_argument('--tmpdir', help="where to put any intermediate files that get generated, if they can't be stored in their usual location.  THIS SHOULD NOT BE IN YOUR HOME DIRECTORY.")
 
 args = parser.parse_args()
 
@@ -27,6 +29,11 @@ if experiment_dir == ".":
 else:
   experiment_name = experiment_dir.rstrip('/').split('/')[-1]
 experiment_title = "%s (%s)"%(args.desc, experiment_name)
+experiment_tmpdir = None
+if not os.access(experiment_dir, os.R_OK | os.W_OK | os.X_OK):
+  print "Can't write into experiment directory - redirecting any generated intermediate files to --tmpdir"
+  assert args.tmpdir is not None, "Need --tmpdir to put intermediate files in."
+  experiment_tmpdir = args.tmpdir
 
 control_dir = args.control
 if control_dir is not None:
@@ -38,35 +45,49 @@ if control_dir is not None:
   else:
     control_name = control_dir.rstrip('/').split('/')[-1]
     control_title = "Control (%s)"%control_name
+  control_tmpdir = None
+  if not os.access(control_dir, os.R_OK | os.W_OK | os.X_OK):
+    print "Can't write into control directory - redirecting any generated intermediate files to --tmpdir"
+    assert args.tmpdir is not None, "Need --tmpdir to put intermediate files in."
+    control_tmpdir = args.tmpdir
 else:
   control_name = None
   control_title = None
 
 
 # Get the data
-from model_stuff import Experiment, Fluxes
-experiment = Experiment(experiment_dir, name=experiment_name, title=experiment_title)
+from gem import GEM_Data
+flux_dir = args.emissions
+experiment = GEM_Data(experiment_dir, flux_dir=flux_dir, name=experiment_name, title=experiment_title, tmpdir=experiment_tmpdir)
 if control_dir is not None:
-  control = Experiment(control_dir, name=control_name, title=control_title)
+  control = GEM_Data(control_dir, flux_dir=None, name=control_name, title=control_title, tmpdir=control_tmpdir)
 else:
   control = None
 
-emissions_dir = args.emissions
-if emissions_dir is not None:
-  fluxes = Fluxes(emissions_dir, name='fluxes', title='fluxes')
-else:
-  fluxes = None
+# CarbonTracker data
+#TODO: limit CT data to time range of experiment.
+from carbontracker import CarbonTracker_Data
+carbontracker = CarbonTracker_Data()
+
+# Observation data
+from ec_station_data import EC_Station_Data
+ec_obs = EC_Station_Data()
+from gaw_station_data import GAW_Station_Data
+gaw_obs = GAW_Station_Data()
+
 
 # Dump the output files to a subdirectory of the experiment data
-from os.path import exists
 from os import mkdir
 outdir = experiment_dir+"/diags"
-if not exists(outdir):
+try:
   mkdir(outdir)
+except OSError:
+  pass   # directory already exists or can't be created
 
-# Some obs data that's needed by certain diagnostics
-from ec_to_nc import ec_to_nc
-ec_to_nc()
+if not exists(outdir) or not os.access (outdir, os.R_OK | os.W_OK | os.X_OK):
+  print "Cannot put diagnostics into %s.  Putting them in --tmpdir instead."%outdir
+  assert args.tmpdir is not None, "Need --tmpdir to put diags in."
+  outdir=args.tmpdir
 
 # Some standard diagnostics
 failures = []
@@ -74,16 +95,15 @@ failures = []
 # Timeseries
 try:
   from timeseries import timeseries
-  timeseries (experiment=experiment, control=control, outdir=outdir, obstype='ec')
-  timeseries (experiment=experiment, control=control, outdir=outdir, obstype='gaw')
+  timeseries (datasets=[experiment,ec_obs,control], fieldname='CO2', outdir=outdir)
+  timeseries (datasets=[experiment,gaw_obs,control], fieldname='CO2', outdir=outdir)
 except Exception as e:
   failures.append(['timeseries', e])
 
 # Zonal mean movies
 try:
   from movie_zonal import movie_zonal
-  movie_zonal(gemfield = 'CO2', ctfield = 'co2', offset =    0, experiment=experiment, control=control, outdir=outdir)
-  movie_zonal(gemfield = 'CLA', ctfield = 'bio', offset = -100, experiment=experiment, control=control, outdir=outdir)
+  movie_zonal(models=[experiment,control,carbontracker], fieldname='CO2', outdir=outdir)
 except Exception as e:
   failures.append(['movie_zonal', e])
 
@@ -97,21 +117,22 @@ except Exception as e:
 # KT sensitivity check
 try:
   from shortexper_diffcheck import shortexper_diffcheck
-  shortexper_diffcheck (experiment=experiment, control=control, location="Toronto", outdir=outdir)
+  shortexper_diffcheck (models=[experiment,control], obs=ec_obs, location="Toronto", outdir=outdir)
 except Exception as e:
   failures.append(['diffcheck', e])
 
 # XCO2
 try:
-  from xco2 import xco2
-  xco2 (experiment=experiment, control=control, outdir=outdir)
+  from xcol import xcol
+  xcol (models=[experiment,control,carbontracker], fieldname='CO2', outdir=outdir)
 except Exception as e:
   failures.append(['xco2', e])
 
 # Total mass CO2
 try:
   from totalmass import totalmass
-  totalmass (experiment=experiment, control=control, gemfluxes=fluxes, outdir=outdir)
+  totalmass (models=[experiment,carbontracker,control], fieldname='CO2', pg_of='C', outdir=outdir)
+  totalmass (models=[experiment,None,control], fieldname='air', pg_of='air', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass', e])
 

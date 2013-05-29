@@ -54,73 +54,42 @@ def file2date_flux (filename):
   return out
 
 
-# Save intermediate netcdf files (for faster access)
-def nc_cache (dirname, data):
-
-  from os.path import exists
-  from os import mkdir
-  from pygeode.formats import netcdf as nc
-  from pygeode.formats.multifile import openall
-  from common import fix_timeaxis
-
-  if not exists(dirname): mkdir(dirname)
-
-  for datatype in sorted(data.keys()):
-   taxis = data[datatype].time
-
-   # Save the data in netcdf files, 1 file per month
-   for year in sorted(set(taxis.year)):
-    for month in sorted(set(taxis(year=year).month)):
-      if len(taxis(year=year,month=month)) == 1:
-        print "skipping year %d month %d - only one timestep available"%(year,month)
-        continue
-      filename = dirname+"/%04d%02d_%s.nc"%(year,month,datatype)
-      if exists(filename):
-        print "skipping '%s' - already exists"%filename
-        continue
-      print "===> %s"%filename
-      nc.save (filename, data[datatype](year=year,month=month))#, version=4)
-
-  # Reload the data from these files
-  data = dict(data)
-  for datatype in sorted(data.keys()):
-    data[datatype] = openall(files=dirname+"/*_%s.nc"%datatype, format=nc)
-    data[datatype] = fix_timeaxis(data[datatype])
-
-  return data
-
-
 # Convert zonal mean data (on height)
-def to_gph (dataset, dm):
+def to_gph (var, GZ):
   from pygeode.interp import interpolate
   from pygeode.axis import Height
   from pygeode.dataset import Dataset
   import numpy as np
-  height = Height(range(68), name='height')
-  varlist = []
-  for var in dataset:
-    if var.hasaxis('eta'):
-      varlist.append(interpolate(var, inaxis='eta', outaxis=height, inx=dm.GZ*10/1000))
-    elif var.hasaxis('zeta'):
-      # Subset GZ on tracer levels (applicable to GEM4 output)
-      GZ_zeta = dm.GZ.zeta.values
-      var_zeta = var.zeta.values
-      indices = []
-      for zeta in var_zeta:
-        indices.append(np.where(GZ_zeta==zeta)[0][0])
-      GZ = dm.GZ(i_zeta=indices)
-      varlist.append(interpolate(var, inaxis='zeta', outaxis=height, inx=GZ*10/1000))
 
-  varlist = [var.transpose(0,3,1,2) for var in varlist]
-  return Dataset(varlist)
+  # Remove extra longitude from the data
+  var = var.slice[:,:,:,:-1]
+  GZ = GZ.slice[:,:,:,:-1]
+
+  height = Height(range(68), name='height')
+
+  if var.hasaxis('eta'):
+    var = interpolate(var, inaxis='eta', outaxis=height, inx=GZ/1000.)
+  elif var.hasaxis('zeta'):
+    # Subset GZ on tracer levels (applicable to GEM4 output)
+    GZ_zeta = GZ.zeta.values
+    var_zeta = var.zeta.values
+    indices = []
+    for zeta in var_zeta:
+      indices.append(np.where(GZ_zeta==zeta)[0][0])
+    GZ = GZ(i_zeta=indices)
+    var = interpolate(var, inaxis='zeta', outaxis=height, inx=GZ/1000.)
+
+  var = var.transpose(0,3,1,2)
+  return var
 
 
 # New data interface - get data as needed on-the-fly.
 # Replaces pre-computing everything with nc_cache.
 # This should be faster, since we only compute what we need.
 
-class Experiment(object):
-  def __init__ (self, indir, name, title):
+from data_interface import Data
+class GEM_Data(Data):
+  def __init__ (self, experiment_dir, flux_dir, name, title, tmpdir=None):
     from pygeode.formats.multifile import open_multi
     from pygeode.formats import rpn
     from pygeode.dataset import Dataset
@@ -128,9 +97,25 @@ class Experiment(object):
     from pygeode.axis import ZAxis
     from common import fix_timeaxis
 
+    indir = experiment_dir
+
     self.name = name
     self.title = title
-    self._tmpdir = indir + "/nc_cache"
+    self._cachedir = indir + "/nc_cache"
+    self._tmpdir = tmpdir
+    if self._tmpdir is None:
+      self._tmpdir = self._cachedir
+
+    ##############################
+    # Fluxes
+    ##############################
+
+    if flux_dir is not None:
+      fluxes = open_multi(flux_dir+"/area_??????????", format=rpn, file2date=file2date_flux, opener=rpnopen)
+      # Convert from g/s to moles/s
+      fluxes = Dataset([(v/12.).rename(v.name) for v in fluxes])
+      fluxes = fix_timeaxis(fluxes)
+      self.fluxes = fluxes
 
     ##############################
     # Data with vertical extent
@@ -245,33 +230,92 @@ class Experiment(object):
       self.pm_3d += dxdy
       self.pm += dxdy
 
+    ##############################
+    # Unit conversions
+    ##############################
+
+    # CO2 tracers are in ug/kg, but we'd like to have ppm for diagnostics.
+    # Conversion factor (from ug C / kg air to ppm)
+    from common import molecular_weight as mw
+    convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
+    for dataset_name in 'dm', 'dm_3d':
+      dataset = getattr(self,dataset_name)
+      # Convert CO2 units
+      for co2_name in 'CO2', 'CO2B', 'CFF', 'CBB', 'COC', 'CLA':
+        if co2_name in dataset:
+          new_field = dataset[co2_name]*convert_CO2
+          new_field.name = co2_name
+          dataset = dataset.replace_vars({co2_name:new_field})
+      # Some fields were offset to avoid negative values in the model
+      for co2_name in 'COC', 'CLA':
+        if co2_name in dataset:
+          new_field = dataset[co2_name] - 100
+          new_field.name = co2_name
+          dataset = dataset.replace_vars({co2_name:new_field})
+      # Convert GZ units (from decametres to metres)
+      if 'GZ' in dataset:
+        GZ = dataset['GZ']*10
+        GZ.name = 'GZ'
+        dataset = dataset.replace_vars(GZ=GZ)
+
+      setattr(self,dataset_name,dataset)
+
+
+  # Helper functions - find the field (look in dm,km,pm,etc. files)
+
+  # Instead of renaming all the variables in the model, patch on a mapping
+  # to "standard" names.
+  local_names = {
+    'CO2':'CO2',
+    'CO2_background':'CO2B',
+    'geopotential_height':'GZ',
+    'eddy_diffusivity':'KTN',
+    'PBL_height':'H',
+    'air':'air'
+  }
+
+  def _find_sfc_field (self, name):
+    for dataset in self.dm, self.km, self.pm:
+      if name in dataset: return dataset[name]
+    raise KeyError ("%s not found in model surface data."%name)
+
+  def _find_3d_field (self, name):
+    for dataset in self.dm_3d, self.km_3d, self.pm_3d:
+      if name in dataset: return dataset[name]
+    raise KeyError ("%s not found in model 3d data."%name)
+
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
-  def get_data (self, filetype, domain, field):
-    from os.path import exists
-    from os import mkdir
-    from pygeode.formats import netcdf
+  def get_data (self, domain, standard_name):
 
-    assert filetype in ('dm', 'km', 'pm')
-    assert domain in ('sfc', 'zonalmean_gph', 'totalcolumn', 'avgcolumn', 'totalmass', 'Toronto')
-
-    g = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
+    # Translate the standard name into the name used by GEM.
+    try:
+      field = self.local_names[standard_name]
+    except KeyError:
+      raise KeyError ("Can't find a variable representing '%s' in the model."%standard_name)
 
     # Determine which data is needed
+
+    # Surface data (lowest model level)
     if domain == 'sfc':
-      data = getattr(self,filetype)[field]
+      data = self._find_sfc_field(field)
+    # Zonal mean, with data interpolated to a fixed set of geopotential heights
     elif domain == 'zonalmean_gph':
-      data = getattr(self,filetype+'_3d')
-      data = to_gph(data,self.dm_3d).nanmean('lon')
-      data = data[field]
+      data = self._find_3d_field(field)
+      GZ = self._find_3d_field('GZ')
+      data = to_gph(data,GZ).nanmean('lon')
+    # "total column" (in kg/m2)
     elif domain == 'totalcolumn':
       from pygeode.axis import ZAxis
       from pygeode.var import Var
+      from common import molecular_weight as mw, grav as g
 
-      dataset = getattr(self,filetype+'_3d')
-      test_field = (v for v in dataset if v.hasaxis(ZAxis)).next()
+      # Convert from ppm to kg / kg
+      conversion = 1E-6 * mw['CO2'] / mw['air']
 
-      Ps = self.dm_3d['P0'] * 100
+      test_field = self._find_3d_field('CO2')
+
+      Ps = self.dm_3d['P0'] * 100 # Get Ps on 3D field time frequency
       sigma = self.pm_3d['SIGM']
 
       # Case 1 - GEM3 (unstaggered) levels
@@ -279,9 +323,9 @@ class Experiment(object):
         # Compute mixing ratio at half levels
         # Special case: air mass (not an actual output field)
         if field is 'air':
-          c_half = 1E9   # ug/kg
+          c_half = 1
         else:
-          c = getattr(self,filetype+'_3d')[field]
+          c = self._find_3d_field(field) * conversion
           # Interpolate concentration to half levels
           c1 = c.slice[:,:-1,:,:]
           c2 = c.slice[:,1:,:,:]
@@ -302,9 +346,9 @@ class Experiment(object):
       # Case 2 - GEM4 (staggered levels)
       elif test_field.hasaxis("zeta"):
         if field is 'air':
-          c_kp1 = 1E9   # ug/kg
+          c_kp1 = 1
         else:
-          c = getattr(self,filetype+'_3d')[field]
+          c = self._find_3d_field(field) * conversion
           # Assuming we have an unused "surface" diagnositic level
           assert 1.0 in c.getaxis("zeta").values
           c_kp1 = c.slice[:,1:-1,:,:]
@@ -322,96 +366,49 @@ class Experiment(object):
 
       else: raise Exception   # Unrecognized vertical coordinate
 
+    # Average column (ppm)
     elif domain == 'avgcolumn':
-      # Total column (ug)
-      tc = self.get_data(filetype, 'totalcolumn', field)
-      sigma = self.pm_3d['SIGM']
-      sigma_top = sigma.slice[:,0,:,:].squeeze()
-      #sigma_bottom = sigma.slice[:,-1,:,:].squeeze()
-      sigma_bottom = 1
-      Ps = self.dm_3d['P0'] * 100
-      # Total mass dry air (ug)
-      Mair = 1E9 * Ps / g * (sigma_bottom - sigma_top)
+      from common import molecular_weight as mw
+      # Total column (kg/m2)
+      tc = self.get_data('totalcolumn', standard_name)
+      # Total column air (kg/m2)
+      Mair = self.get_data('totalcolumn', 'air')
+      # Compute the mass mixing ratio
       data = tc / Mair
+      # Convert kg/kg to ppm
+      data *= mw['air']/mw['CO2'] * 1E6
+
       data.name = field
 
     elif domain == 'totalmass':
-      # Total column (ug)
-      tc = self.get_data(filetype, 'totalcolumn', field)
+      # Total column (kg C/m2)
+      tc = self.get_data('totalcolumn', standard_name)
       area = self.pm_3d['DX']
-      # Mass per grid area (ug)
+      # Mass per grid area (kg)
       # Assume global grid - remove repeated longitude
       mass = (tc * area).slice[:,:,:-1].sum('lat','lon')
-      # Convert from ug to Pg
-      mass *= 1E-21
+      # Convert from kg to Pg
+      mass *= 1E-12
       data = mass
       data.name = field
 
-    elif domain == 'Toronto':
-      data = getattr(self,filetype+'_3d')[field]
-      data = data.squeeze(lat=43.7833,lon=280.5333)
-    else: raise Exception
-
-    # Make sure the data is in 32-bit precision
-    if data.dtype.name != 'float32':
-      data = data.as_type('float32')
-
-    if not exists(self._tmpdir): mkdir(self._tmpdir)
-    cachefile = self._tmpdir + '/%s_%s_%s.nc'%(filetype,domain,field)
-
-    # Pre-compute the data and save it, if this is the first time using it.
-    if not exists(cachefile):
-      print '===>', cachefile
-      netcdf.save(cachefile, data)
-
-    data = netcdf.open(cachefile)[field]
-
-    return data
-
-class Fluxes(object):
-  def __init__ (self, indir, name, title):
-    from pygeode.formats.multifile import open_multi
-    from pygeode.formats import rpn
-    from pygeode.dataset import Dataset
-    from glob import glob
-    from pygeode.axis import ZAxis
-    from common import fix_timeaxis
-
-    self.name = name
-    self.title = title
-    self._tmpdir = indir + "/nc_cache"
-
-    fluxes = open_multi(indir+"/area_??????????", format=rpn, file2date=file2date_flux, opener=rpnopen)
-    fluxes = fix_timeaxis(fluxes)
-    self.fluxes = fluxes
-
-  def get_data (self, domain, field):
-    from os.path import exists
-    from os import mkdir
-    from pygeode.formats import netcdf
-
-    assert domain in ('sum',)
-
-    # Determine which data is needed
-    if domain == 'sum':
+    # Integrated flux (if available)
+    elif domain == 'totalflux':
+      if not hasattr(self,'fluxes'):
+        raise KeyError ("Can't compute a total flux, because no fluxes are identified with this run.")
+      # We have a slightly different naming convention for fluxes
+      field = 'E'+field
       # Sum, skipping the last (repeated) longitude
       data = self.fluxes[field].slice[:,:,:-1].sum('lat','lon')
-    else: raise Exception
 
-    # Make sure the data is in 32-bit precision
-    if data.dtype.name != 'float32':
-      data = data.as_type('float32')
+    elif domain == 'Toronto':
+      data = self._find_3d_field(field)
+      data = data.squeeze(lat=43.7833,lon=280.5333)
 
-    if not exists(self._tmpdir): mkdir(self._tmpdir)
-    cachefile = self._tmpdir + '/%s_%s.nc'%(domain,field)
+    else: raise ValueError ("Unknown domain '%s'"%domain)
 
-    # Pre-compute the data and save it, if this is the first time using it.
-    if not exists(cachefile):
-      print '===>', cachefile
-      netcdf.save(cachefile, data)
+    return self._cache(data,'%s_%s_%s.nc'%(self.name,domain,field))
 
-    data = netcdf.open(cachefile)[field]
 
-    return data
-
+del Data
 

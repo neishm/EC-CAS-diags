@@ -1,7 +1,8 @@
 # Functions / constants common to multiple modules
 
-# Conversion factor (from ug C / kg air to ppmV)
-convert_CO2 = 1/414.22161
+# Molecular weights
+molecular_weight = {'CO2':44.01, 'C':12., 'air':28.97}
+grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
 # Normalize the time axes to the same start date / units
 def fix_timeaxis (data):
@@ -21,6 +22,7 @@ def best_type (x):
   return x
 
 # Put all variables on a common (and regularly spaced) time axis
+# Also, filter out bad values
 def common_taxis (*invars):
   import numpy as np
   from pygeode.timeaxis import StandardTime
@@ -42,7 +44,8 @@ def common_taxis (*invars):
       blank = 0
     newvals[:] = blank
     ind = np.searchsorted(newtimes, oldtimes[i])
-    newvals[ind] = invars[i].values
+    newvals[ind] = invars[i].get()
+    newvals[np.where(newvals > 1e8)] = blank
     newvars.append(Var([taxis], values=newvals, name=invars[i].name, atts=invars[i].atts))
 
   return newvars

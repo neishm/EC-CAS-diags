@@ -48,20 +48,11 @@ def get_contours(low,high):
 # (discard the bottom and top 0.1%, so our range at least covers 99.8% of the plot)
 def get_range (var):
   import numpy as np
-  sample = var
-  sample = sample.get().flatten()
-  # Filter out NaN values
-  sample = sample[np.isfinite(sample)]
-  sample.sort()
-  N = len(sample)
-#  print '?? N:', N
-  low = sample[int(round((N-1)*0.001))]
-  high = sample[int(round((N-1)*0.999))]
-  return low, high
+  #NOTE: these ranges are already handled in the data cache
+  return var.atts['low'], var.atts['high']
 
 # Get a global range that covers multiple fields
 def get_global_range (*vars):
-  lows, highs = zip(*[get_range(var) for var in vars])
-  low = min(lows)
-  high = max(highs)
+  low = min(var.atts['low'] for var in vars)
+  high = max(var.atts['high'] for var in vars)
   return low, high

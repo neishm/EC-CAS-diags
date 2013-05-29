@@ -1,5 +1,5 @@
 def create_images (field1, field2=None, field3=None, contours=None, title1='plot1', title2='plot2', title3='plot3', palette=None, norm=None, preview=False, outdir='images'):
-  from contouring import get_range, get_contours
+  from contouring import get_global_range, get_contours
   from plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from plot_shortcuts import pcolor, contour, contourf, Map
 
@@ -9,6 +9,8 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
   from os import makedirs
   import numpy as np
 
+  from pygeode.progress import PBar
+
   # Create output directory?
   if not exists(outdir): makedirs(outdir)
 
@@ -16,16 +18,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
   if contours is None:
 
     # Define low and high based on the actual distribution of values.
-    low, high = get_range(field1)
-    if field2 is not None:
-      low2, high2 = get_range(field2)
-      low = min(low,low2)
-      high = max(high,high2)
-    if field3 is not None:
-      low3, high3 = get_range(field3)
-      low = min(low,low3)
-      high = max(high,high3)
-
+    low, high = get_global_range(*[f for f in [field1,field2,field3] if f is not None])
     contours = get_contours(low,high)
 
   # Get the palette to use
@@ -41,8 +34,11 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
   # Adjust the defaults of the subplots (the defaults give too much blank space on the sides)
   plt.subplots_adjust (left=0.06, right=0.96)
 
+  print "Saving zonal mean %s images"%field1.name
+  pbar = PBar()
+
   # Loop over all available times
-  for t in range(len(field1.time)):
+  for i,t in enumerate(range(len(field1.time))):
 
     data = field1(i_time=t)
     year = data.time.year[0]
@@ -56,10 +52,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
     date = "%04d-%02d-%02d %02dz"%(year,month,day,hour)
     fname = "%s/%04d%02d%02d%02d.png"%(outdir,year,month,day,hour)
     if exists(fname) and preview is False:
-      print date, '(exists)'
       continue
-    else:
-      print date
 
     # 1st plot
     data = field1(year=year,month=month,day=day,hour=hour)
@@ -88,9 +81,11 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
     plot = Multiplot([[p for p in plot1,plot2,plot3 if p is not None]])
 
     plot.render(figure=fig)
+
     if preview is False:
       fig.savefig(fname)
       fig.clear()
+      pbar.update(i*100/len(field1.time))
     else:
       break
 
@@ -99,31 +94,23 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
 
   plt.close(fig)
 
-def movie_zonal (gemfield, ctfield, offset, outdir, experiment, control):
+def movie_zonal (models, fieldname, outdir):
 
-  from carbontracker import data as ct
+  assert len(models) > 0
+  assert len(models) <= 3  # too many things to plot
+  models = [m for m in models if m is not None]
 
-  ct_co2 = ct['zonalmean_gph_24h'][ctfield]
+  imagedir=outdir+"/images_%s_zonal%s"%('_'.join(m.name for m in models), fieldname)
 
-  from common import convert_CO2
+  fields = [m.get_data('zonalmean_gph',fieldname) for m in models]
+  titles = [m.title for m in models]
 
-  if control is not None:
-    control_co2 = control.get_data('dm','zonalmean_gph',gemfield) * convert_CO2 + offset
-  else:
-    control_co2 = None
-  exper_co2 = experiment.get_data('dm','zonalmean_gph',gemfield) * convert_CO2 + offset
+  while len(fields) < 3: fields += [None]
+  while len(titles) < 3: titles += [None]
 
-  imagedir=outdir+"/images_%s_zonal%s"%(experiment.name, ctfield)
+  create_images (field1=fields[0], field2=fields[1], field3=fields[2], title1=titles[0], title2=titles[1], title3=titles[2],preview=False, outdir=imagedir)
 
-  if control is not None:
-
-    create_images (exper_co2, control_co2, ct_co2, title1=experiment.title, title2=control.title, title3='CarbonTracker',preview=False, outdir=imagedir)
-
-  else:
-
-    create_images (exper_co2, ct_co2, title1=experiment.title, title2='CarbonTracker',preview=False, outdir=imagedir)
-
-  moviefile = "%s/%s_zonal%s.avi"%(outdir,experiment.name,ctfield)
+  moviefile = "%s/%s_zonal%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname)
 
   from os import system
   from os.path import exists
