@@ -88,9 +88,12 @@ def ct_zonal_24h (field,gph):
 from data_interface import Data
 class CarbonTracker_Data(Data):
 
-  def __init__ (self):
+  def __init__ (self, tmpdir=None):
 
-    self._tmpdir = '/wrk1/EC-CAS/CarbonTracker/nc_cache'
+    self._cachedir = '/wrk1/EC-CAS/CarbonTracker/nc_cache'
+    self._tmpdir = tmpdir
+    if self._tmpdir is None:
+      self._tmpdir = self._cachedir
 
     molefractions = ct_open("/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc")
     molefractions = molefractions - 'date_components' - 'decimal_date'
@@ -133,7 +136,7 @@ class CarbonTracker_Data(Data):
     self.P0 = P0
 
     # Higher-level information about the data
-    self.name = 'CT2011'
+    self.name = 'CT2010'
     self.title = 'CarbonTracker'
 
   # Translate CarbonTracker variable names into some "standard" naming convention.
@@ -220,6 +223,6 @@ class CarbonTracker_Data(Data):
 
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
-    return self._cache(data,'%s_%s.nc'%(domain,field))
+    return self._cache(data,'%s_%s_%s.nc'%(self.name,domain,field))
 
 

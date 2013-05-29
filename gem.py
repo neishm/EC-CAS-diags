@@ -89,7 +89,7 @@ def to_gph (var, GZ):
 
 from data_interface import Data
 class GEM_Data(Data):
-  def __init__ (self, experiment_dir, flux_dir, name, title):
+  def __init__ (self, experiment_dir, flux_dir, name, title, tmpdir=None):
     from pygeode.formats.multifile import open_multi
     from pygeode.formats import rpn
     from pygeode.dataset import Dataset
@@ -101,7 +101,10 @@ class GEM_Data(Data):
 
     self.name = name
     self.title = title
-    self._tmpdir = indir + "/nc_cache"
+    self._cachedir = indir + "/nc_cache"
+    self._tmpdir = tmpdir
+    if self._tmpdir is None:
+      self._tmpdir = self._cachedir
 
     ##############################
     # Fluxes
@@ -404,7 +407,7 @@ class GEM_Data(Data):
 
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
-    return self._cache(data,'%s_%s.nc'%(domain,field))
+    return self._cache(data,'%s_%s_%s.nc'%(self.name,domain,field))
 
 
 del Data

@@ -14,7 +14,10 @@ class Data(object):
       data = data.as_type('float32')
 
     if not exists(self._tmpdir): mkdir(self._tmpdir)
-    cachefile = self._tmpdir + '/' + filename
+
+    cachefile = self._cachedir + '/' + filename
+    if not exists(cachefile):
+      cachefile = self._tmpdir + '/' + filename
 
     # Pre-compute the data and save it, if this is the first time using it.
     if not exists(cachefile):
