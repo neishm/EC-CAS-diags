@@ -1,18 +1,8 @@
-# Temporary work-around for PyGeode issue #36
-# (http://code.google.com/p/pygeode/issues/detail?id=36)
-def plotvar(data, *args, **kwargs):
-  from pygeode.plot import plotvar as plotvar_upstream
-  if data.hasaxis('height'):
-    height = data.height.values
-    plotvar_upstream(data, *args, **kwargs)
-    data.height.values = height
-  else:
-    plotvar_upstream(data, *args, **kwargs)
-
 
 def shortexper_diffcheck(models, obs, location, outdir):
   from pygeode.axis import Height
   from os.path import exists
+  from pygeode.plot import plotvar
   from contouring import get_range, get_contours
   from matplotlib import pyplot as pl
   import numpy as np
