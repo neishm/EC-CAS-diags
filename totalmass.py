@@ -20,6 +20,11 @@ def totalmass (models, fieldname, pg_of, outdir):
   totalmass_colours = 'blue', 'green', 'red'
   totalflux_colours = '#C0C0FF', '#C0FFC0', '#FFC0C0'
 
+  # Find common time period
+  #TODO:  a method to query the time axis from the model without needing to grab an actual diagnostic field.
+  t0 = max(m.get_data('totalmass',fieldname).time.values[0] for m in models if m is not None)
+  t1 = min(m.get_data('totalmass',fieldname).time.values[-1] for m in models if m is not None)
+
   # Set up whatever plots we can do
   fields = []
   colours = []
@@ -32,6 +37,7 @@ def totalmass (models, fieldname, pg_of, outdir):
     # Total mass
     # Possibly change plot units (e.g. Pg CO2 -> Pg C)
     mass = model.get_data('totalmass',fieldname) / mw[fieldname] * mw[pg_of]
+    mass = mass(time=(t0,t1))   # Limit time period to plot
     fields.append(mass)
     colours.append(totalmass_colours[i])
     styles.append('-')
@@ -41,6 +47,7 @@ def totalmass (models, fieldname, pg_of, outdir):
     try:
       # Possibly change plot units (e.g. Pg CO2 -> Pg C)
       mass = model.get_data('totalmass',fieldname+'_background') / mw[fieldname] * mw[pg_of]
+      mass = mass(time=(t0,t1))
       fields.append(mass)
       colours.append(totalmass_colours[i])
       styles.append(':')
@@ -65,6 +72,8 @@ def totalmass (models, fieldname, pg_of, outdir):
       totalflux = Var([time], values=totalflux)
       # Offset the flux mass
       totalflux += float(mass(i_time=0).get().squeeze())
+      # Limit the time period to plot
+      totalflux = totalflux(time=(t0,t1))
       fields.append(totalflux)
       colours.append(totalflux_colours[i])
       styles.append('-')
