@@ -54,6 +54,12 @@ else:
   control_name = None
   control_title = None
 
+# Check for 'model' subdirectory for experiment
+rootdir = experiment_dir
+if exists(experiment_dir+"/model"):
+  experiment_dir += "/model"
+if control_dir is not None and exists(control_dir+"/model"):
+  control_dir += "/model"
 
 # Get the data
 from gem import GEM_Data
@@ -78,7 +84,7 @@ gaw_obs = GAW_Station_Data()
 
 # Dump the output files to a subdirectory of the experiment data
 from os import mkdir
-outdir = experiment_dir+"/diags"
+outdir = rootdir+"/diags"
 try:
   mkdir(outdir)
 except OSError:
