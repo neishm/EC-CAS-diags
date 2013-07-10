@@ -19,7 +19,7 @@ def rpnopen_sfconly (filename):
 def file2date (filename):
   from re import search
   from datetime import datetime, timedelta
-  out = search('[dkp][m](?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)(?P<units>([mh]|))$', filename).groupdict()
+  out = search('([dkp][m]|)(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)(?P<units>([mh]|))$', filename).groupdict()
   units = out.pop('units')
   out = dict([k,int(v)] for k,v in out.items())
   offset = out.pop('offset')
@@ -122,7 +122,7 @@ class GEM_Data(Data):
     ##############################
 
     # Open a single day of data, to determine at what times 3D data is saved.
-    files_24h = sorted(glob(indir+"/dm*_024*"))
+    files_24h = sorted(glob(indir+"/*_024*"))
     testfile = files_24h[0]
     del files_24h
     testfile = rpn.open(testfile)
@@ -133,8 +133,9 @@ class GEM_Data(Data):
     month = int(testfile.time.month[0])
     day = int(testfile.time.day[0])
     del testfile
-    testfiles = sorted(glob(indir+"/dm%04d%02d%02d00_???*"%(year,month,day)))
+    testfiles = sorted(glob(indir+"/*%04d%02d%02d00_???*"%(year,month,day)))
     testfiles = [rpn.open(f) for f in testfiles]
+    testfiles = [f for f in testfiles if 'CO2' in f]
     times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f['CO2'].getaxis(ZAxis).values) == levels]
     # Ignore 0h files, since we're already using the 24h forecasts
     if 0 in times_with_3d:
@@ -143,20 +144,26 @@ class GEM_Data(Data):
     dm_3d = [indir+"/dm*_%03d*"%h for h in times_with_3d]
     km_3d = [indir+"/km*_%03d*"%h for h in times_with_3d]
     pm_3d = [indir+"/pm*_%03d*"%h for h in times_with_3d]
+    # Sometimes the model outputs a single file with all buses.
+    combined_3d = [indir+"/[0-9]*_%03d*"%h for h in times_with_3d]
 
     # Open the 3D files
+    if any(len(glob(x))>0 for x in combined_3d):
+      combined_3d = open_multi(combined_3d, opener=rpnopen, file2date=file2date)
+      combined_3d = fix_timeaxis(combined_3d)
+    else: combined_3d = Dataset([])
     if any(len(glob(x))>0 for x in dm_3d):
       dm_3d = open_multi(dm_3d, opener=rpnopen, file2date=file2date)
       self.dm_3d = fix_timeaxis(dm_3d)
-    else: self.dm_3d = Dataset([])
+    else: self.dm_3d = combined_3d
     if any(len(glob(x))>0 for x in km_3d):
       km_3d = open_multi(km_3d, opener=rpnopen, file2date=file2date)
       self.km_3d = fix_timeaxis(km_3d)
-    else: self.km_3d = Dataset([])
+    else: self.km_3d = combined_3d
     if any(len(glob(x))>0 for x in pm_3d):
       pm_3d = open_multi(pm_3d, opener=rpnopen, file2date=file2date)
       self.pm_3d = fix_timeaxis(pm_3d)
-    else: self.pm_3d = Dataset([])
+    else: self.pm_3d = combined_3d
 
 
 
@@ -166,21 +173,29 @@ class GEM_Data(Data):
 
     # Assume surface data is available in every output time.
     # Ignore 0h output - use 24h output instead.
+
+    # Sometimes the model outputs a single file with all buses.
+    combined = [indir+"/[0-9]*_%03d*"%i for i in range(1,25)]
+    if any(len(glob(x))>0 for x in combined):
+      combined = open_multi(combined, opener=rpnopen_sfconly, file2date=file2date)
+      combined= fix_timeaxis(combined)
+    else: combined = Dataset([])
+
     dm = [indir+"/dm*_%03d*"%i for i in range(1,25)]
     if any(len(glob(x))>0 for x in dm):
       dm = open_multi(dm, opener=rpnopen_sfconly, file2date=file2date)
       self.dm = fix_timeaxis(dm)
-    else: self.dm = Dataset([])
+    else: self.dm = combined
     km = [indir+"/km*_%03d*"%i for i in range(1,25)]
     if any(len(glob(x))>0 for x in km):
       km = open_multi(km, opener=rpnopen_sfconly, file2date=file2date)
       self.km = fix_timeaxis(km)
-    else: self.km = Dataset([])
+    else: self.km = combined
     pm = [indir+"/pm*_%03d*"%i for i in range(1,25)]
     if any(len(glob(x))>0 for x in pm):
       pm = open_multi(pm, opener=rpnopen_sfconly, file2date=file2date)
       self.pm = fix_timeaxis(pm)
-    else: self.pm = Dataset([])
+    else: self.pm = combined
 
     ##############################
     # Derived fields
