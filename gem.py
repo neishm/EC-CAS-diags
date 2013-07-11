@@ -127,7 +127,7 @@ class GEM_Data(Data):
     del files_24h
     testfile = rpn.open(testfile)
     # Assume we have 3D output for at least the 24h forecasts
-    levels = list(testfile['CO2'].getaxis(ZAxis).values)
+    levels = list(testfile['CH4'].getaxis(ZAxis).values)
     # Get the rest of the files for this day, check the levels
     year = int(testfile.time.year[0])
     month = int(testfile.time.month[0])
@@ -135,8 +135,8 @@ class GEM_Data(Data):
     del testfile
     testfiles = sorted(glob(indir+"/*%04d%02d%02d00_???*"%(year,month,day)))
     testfiles = [rpn.open(f) for f in testfiles]
-    testfiles = [f for f in testfiles if 'CO2' in f]
-    times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f['CO2'].getaxis(ZAxis).values) == levels]
+    testfiles = [f for f in testfiles if 'CH4' in f]
+    times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f['CH4'].getaxis(ZAxis).values) == levels]
     # Ignore 0h files, since we're already using the 24h forecasts
     if 0 in times_with_3d:
       times_with_3d.remove(0)
@@ -253,6 +253,7 @@ class GEM_Data(Data):
     # Conversion factor (from ug C / kg air to ppm)
     from common import molecular_weight as mw
     convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
+    convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
     for dataset_name in 'dm', 'dm_3d':
       dataset = getattr(self,dataset_name)
       # Convert CO2 units
@@ -261,6 +262,12 @@ class GEM_Data(Data):
           new_field = dataset[co2_name]*convert_CO2
           new_field.name = co2_name
           dataset = dataset.replace_vars({co2_name:new_field})
+      # Convert CH4 units
+      for ch4_name in 'CH4', 'CH4B', 'CHFF', 'CHBB', 'CHOC', 'CHNA', 'CHAG':
+        if ch4_name in dataset:
+          new_field = dataset[ch4_name]*convert_CH4
+          new_field.name = ch4_name
+          dataset = dataset.replace_vars({ch4_name:new_field})
       # Some fields were offset to avoid negative values in the model
       for co2_name in 'COC', 'CLA':
         if co2_name in dataset:
@@ -282,6 +289,7 @@ class GEM_Data(Data):
   # to "standard" names.
   local_names = {
     'CO2':'CO2',
+    'CH4':'CH4',
     'CO2_background':'CO2B',
     'geopotential_height':'GZ',
     'eddy_diffusivity':'KTN',
@@ -326,9 +334,9 @@ class GEM_Data(Data):
       from common import molecular_weight as mw, grav as g
 
       # Convert from ppm to kg / kg
-      conversion = 1E-6 * mw['CO2'] / mw['air']
+      conversion = 1E-6 * mw['CH4'] / mw['air']
 
-      test_field = self._find_3d_field('CO2')
+      test_field = self._find_3d_field('CH4')
 
       Ps = self.dm_3d['P0'] * 100 # Get Ps on 3D field time frequency
       sigma = self.pm_3d['SIGM']
@@ -391,7 +399,7 @@ class GEM_Data(Data):
       # Compute the mass mixing ratio
       data = tc / Mair
       # Convert kg/kg to ppm
-      data *= mw['air']/mw['CO2'] * 1E6
+      data *= mw['air']/mw[standard_name] * 1E6
 
       data.name = field
 

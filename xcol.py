@@ -38,10 +38,13 @@ def xcol (models, fieldname, outdir):
   clevs = get_contours(low, high)
 
   # Generate each individual frame
-  assert len(model_data) in (2,3)
+  #assert len(model_data) in (1,2,3)
   if len(model_data) == 3:
     fig = pl.figure(figsize=(8,10))
     n = 3
+  elif len(model_data) == 1:
+    fig = pl.figure(figsize=(10,5))
+    n = 1
   else:
     fig = pl.figure(figsize=(10,8))
     n = 2

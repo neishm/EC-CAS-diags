@@ -38,7 +38,7 @@ def timeseries (datasets, fieldname, outdir):
   # Use the first model data as a basis for the time axis.
   timeaxis = (s.getaxis('time') for s in sfc_data if s is not None).next()
   # Limit the range to plot
-  timeaxis = timeaxis(year=2009,month=(6,9))
+  #timeaxis = timeaxis(year=2009,month=(6,9))
   times = timeaxis.get()
   time1 = min(times)
   time2 = max(times)
@@ -81,10 +81,13 @@ def timeseries (datasets, fieldname, outdir):
     for s,d in zip(sfc_data,datasets):
       if s is not None:
         series.append(s(lat=lat, lon=lon))
-      else:
+  #   Temporarily removed because CH4 obs not available yet
+  #   else:
         # For now, assume that we have exactly one obs dataset,
         # so this command shouldn't fail.
-        series.append(d.get_data(location,fieldname+'_mean'))
+  
+  #   Temporarily removed because CH4 obs not available yet
+        #series.append(d.get_data(location,fieldname+'_mean'))
 
     # Limit the time period to plot
     series = [x(time=(time1,time2)) for x in series]
@@ -111,5 +114,5 @@ def timeseries (datasets, fieldname, outdir):
     if not exists(outfile):
       fig.savefig(outfile)
 
-  pl.close(fig)
+    pl.close(fig)
 

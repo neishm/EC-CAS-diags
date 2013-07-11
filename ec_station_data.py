@@ -86,8 +86,8 @@ class EC_Station_Data (Data):
       raise KeyError ("Expected something of the form FIELD_STAT")
 
     fieldname, stat = product.rsplit('_',2)
-    if fieldname != 'CO2':
-      raise KeyError("Only CO2 data is available from this interface")
+    #if fieldname != 'CO2':
+    #  raise KeyError("Only CO2 data is available from this interface")
 
     return self.data[station+'_'+stat]
 
