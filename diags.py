@@ -128,7 +128,7 @@ try:
 except Exception as e:
   failures.append(['diffcheck', e])
 
-# XCO2
+# XCH4
 try:
   from xcol import xcol
   xcol (models=[experiment,control,None], fieldname='CH4', outdir=outdir)
@@ -136,7 +136,7 @@ except Exception as e:
   failures.append(['xch4', e])
   raise
 
-# Total mass CO2
+# Total mass CH4
 try:
   from totalmass import totalmass
   totalmass (models=[experiment,None,control], fieldname='CH4', pg_of='CH4', outdir=outdir)

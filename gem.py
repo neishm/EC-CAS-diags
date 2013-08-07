@@ -261,6 +261,7 @@ class GEM_Data(Data):
         if co2_name in dataset:
           new_field = dataset[co2_name]*convert_CO2
           new_field.name = co2_name
+          new_field.atts['units'] = 'ppm'
           dataset = dataset.replace_vars({co2_name:new_field})
       # Convert CH4 units
       for ch4_name in 'CH4', 'CH4B', 'CHFF', 'CHBB', 'CHOC', 'CHNA', 'CHAG':
@@ -334,7 +335,7 @@ class GEM_Data(Data):
       from common import molecular_weight as mw, grav as g
 
       # Convert from ppm to kg / kg
-      conversion = 1E-6 * mw['CH4'] / mw['air']
+      conversion = 1E-6 * mw[standard_name] / mw['air']
 
       test_field = self._find_3d_field('CH4')
 

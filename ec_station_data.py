@@ -60,13 +60,13 @@ class EC_Station_Data (Data):
     from pygeode.dataset import Dataset
     from common import common_taxis, fix_timeaxis
 
-    cachefile = './ec_co2.nc'
+    cachefile = './ec_obs.nc'
     if not exists(cachefile):
       data = []
       for station in self.obs_locations.keys():
         filename = '%s/%s/%s-CO2-Hourly.DAT'%(self.indir,station,station)
         stuff = read_station_data(filename)
-        stuff = [var.rename(station+'_'+var.name) for var in stuff]
+        stuff = [var.rename(station+'_'+field+'_'+var.name) for var in stuff]
 
         # Fix Egbert (only has measurements every *other* hour, on odd hours)
         if station == 'Egbert':
@@ -86,10 +86,8 @@ class EC_Station_Data (Data):
       raise KeyError ("Expected something of the form FIELD_STAT")
 
     fieldname, stat = product.rsplit('_',2)
-    #if fieldname != 'CO2':
-    #  raise KeyError("Only CO2 data is available from this interface")
 
-    return self.data[station+'_'+stat]
+    return self.data[station+'_'+fieldname+'_'+stat]
 
 
 del Data

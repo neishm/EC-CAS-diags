@@ -81,19 +81,17 @@ def timeseries (datasets, fieldname, outdir):
     for s,d in zip(sfc_data,datasets):
       if s is not None:
         series.append(s(lat=lat, lon=lon))
-  #   Temporarily removed because CH4 obs not available yet
-  #   else:
+      else:
         # For now, assume that we have exactly one obs dataset,
         # so this command shouldn't fail.
-  
-  #   Temporarily removed because CH4 obs not available yet
-        #series.append(d.get_data(location,fieldname+'_mean'))
+        series.append(d.get_data(location,fieldname+'_mean'))
 
     # Limit the time period to plot
     series = [x(time=(time1,time2)) for x in series]
 
+    units = series[0].atts.get('units','')
     theplot = plot (*series, title=title,
-           xlabel='', ylabel='%s ppmV'%fieldname, xticks=xticks, xticklabels=xticklabels)
+           xlabel='', ylabel='%s %s'%(fieldname,units), xticks=xticks, xticklabels=xticklabels)
     plots.append (theplot)
 
 
