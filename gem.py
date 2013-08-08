@@ -268,6 +268,7 @@ class GEM_Data(Data):
         if ch4_name in dataset:
           new_field = dataset[ch4_name]*convert_CH4
           new_field.name = ch4_name
+          new_field.atts['units'] = 'ppm'
           dataset = dataset.replace_vars({ch4_name:new_field})
       # Some fields were offset to avoid negative values in the model
       for co2_name in 'COC', 'CLA':
@@ -328,6 +329,7 @@ class GEM_Data(Data):
       data = self._find_3d_field(field)
       GZ = self._find_3d_field('GZ')
       data = to_gph(data,GZ).nanmean('lon')
+      data.atts['units'] = 'ppm'
     # "total column" (in kg/m2)
     elif domain == 'totalcolumn':
       from pygeode.axis import ZAxis
@@ -403,9 +405,10 @@ class GEM_Data(Data):
       data *= mw['air']/mw[standard_name] * 1E6
 
       data.name = field
+      data.atts['units'] = 'ppm'
 
     elif domain == 'totalmass':
-      # Total column (kg C/m2)
+      # Total column (kg /m2)
       tc = self.get_data('totalcolumn', standard_name)
       area = self.pm_3d['DX']
       # Mass per grid area (kg)

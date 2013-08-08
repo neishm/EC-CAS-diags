@@ -2,6 +2,10 @@
 
 # Molecular weights
 molecular_weight = {'CO2':44.01, 'CH4':16.04, 'C':12., 'air':28.97}
+
+# Unit conversion
+unit_scale = {'ppm':1E6, 'ppb':1E9}
+
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
 # Normalize the time axes to the same start date / units

@@ -9,6 +9,8 @@ def timeseries (datasets, fieldname, outdir):
 
   from os.path import exists
 
+  from common import unit_scale
+
   datasets = [d for d in datasets if d is not None]
 
   # Extract all observation locations from the datasets
@@ -33,6 +35,7 @@ def timeseries (datasets, fieldname, outdir):
     try:
       sfc_data.append(d.get_data('sfc',fieldname))
     except KeyError:
+      # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_data.append(None)
 
   # Use the first model data as a basis for the time axis.
@@ -78,20 +81,30 @@ def timeseries (datasets, fieldname, outdir):
     if lon < 0: lon += 360  # Model data is from longitudes 0 to 360
 
     series = []
+    plot_units = ''
     for s,d in zip(sfc_data,datasets):
       if s is not None:
         series.append(s(lat=lat, lon=lon))
       else:
-        # For now, assume that we have exactly one obs dataset,
+        # For now, assume that we have an obs dataset,
         # so this command shouldn't fail.
-        series.append(d.get_data(location,fieldname+'_mean'))
+        data = d.get_data(location,fieldname+'_mean')
+        series.append(data)
+        plot_units = data.atts['units']
+
+    # Scale to the plot units
+    for i,x in enumerate(series):
+      input_units = x.atts['units']
+      if input_units == plot_units: continue  # already in the correct units
+      x = x / unit_scale[input_units] * unit_scale[plot_units]
+      x.name = fieldname
+      series[i] = x
 
     # Limit the time period to plot
     series = [x(time=(time1,time2)) for x in series]
 
-    units = series[0].atts.get('units','')
     theplot = plot (*series, title=title,
-           xlabel='', ylabel='%s %s'%(fieldname,units), xticks=xticks, xticklabels=xticklabels)
+           xlabel='', ylabel='%s %s'%(fieldname,plot_units), xticks=xticks, xticklabels=xticklabels)
     plots.append (theplot)
 
 
