@@ -127,7 +127,8 @@ class GEM_Data(Data):
     del files_24h
     testfile = rpn.open(testfile)
     # Assume we have 3D output for at least the 24h forecasts
-    levels = list(testfile['CH4'].getaxis(ZAxis).values)
+    testfield = 'CH4'
+    levels = list(testfile[testfield].getaxis(ZAxis).values)
     # Get the rest of the files for this day, check the levels
     year = int(testfile.time.year[0])
     month = int(testfile.time.month[0])
@@ -135,8 +136,8 @@ class GEM_Data(Data):
     del testfile
     testfiles = sorted(glob(indir+"/*%04d%02d%02d00_???*"%(year,month,day)))
     testfiles = [rpn.open(f) for f in testfiles]
-    testfiles = [f for f in testfiles if 'CH4' in f]
-    times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f['CH4'].getaxis(ZAxis).values) == levels]
+    testfiles = [f for f in testfiles if testfield in f]
+    times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f[testfield].getaxis(ZAxis).values) == levels]
     # Ignore 0h files, since we're already using the 24h forecasts
     if 0 in times_with_3d:
       times_with_3d.remove(0)
@@ -339,13 +340,11 @@ class GEM_Data(Data):
       # Convert from ppm to kg / kg
       conversion = 1E-6 * mw[standard_name] / mw['air']
 
-      test_field = self._find_3d_field('CH4')
-
       Ps = self.dm_3d['P0'] * 100 # Get Ps on 3D field time frequency
       sigma = self.pm_3d['SIGM']
 
       # Case 1 - GEM3 (unstaggered) levels
-      if test_field.hasaxis("eta"):
+      if sigma.hasaxis("eta"):
         # Compute mixing ratio at half levels
         # Special case: air mass (not an actual output field)
         if field is 'air':
@@ -370,7 +369,7 @@ class GEM_Data(Data):
         data.name = field
 
       # Case 2 - GEM4 (staggered levels)
-      elif test_field.hasaxis("zeta"):
+      elif sigma.hasaxis("zeta"):
         if field is 'air':
           c_kp1 = 1
         else:
