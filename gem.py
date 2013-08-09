@@ -315,10 +315,11 @@ class GEM_Data(Data):
   def get_data (self, domain, standard_name):
 
     # Translate the standard name into the name used by GEM.
-    try:
+    if standard_name in self.local_names:
       field = self.local_names[standard_name]
-    except KeyError:
-      raise KeyError ("Can't find a variable representing '%s' in the model."%standard_name)
+    else:
+      # No field name translation
+      field = standard_name
 
     # Determine which data is needed
 
