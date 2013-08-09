@@ -101,7 +101,7 @@ failures = []
 # Timeseries
 try:
   from timeseries import timeseries
-  timeseries (datasets=[experiment,ec_obs,control], fieldname='CH4', outdir=outdir)
+  timeseries (datasets=[experiment,ec_obs,control], fieldname='CH4', units='ppb', outdir=outdir)
   #timeseries (datasets=[experiment,gaw_obs,control], fieldname='CH4', outdir=outdir)
 except Exception as e:
   failures.append(['timeseries', e])
@@ -110,7 +110,7 @@ except Exception as e:
 # Zonal mean movies
 try:
   from movie_zonal import movie_zonal
-  movie_zonal(models=[experiment,control,None], fieldname='CH4', outdir=outdir)
+  movie_zonal(models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['movie_zonal', e])
 
@@ -131,7 +131,7 @@ except Exception as e:
 # XCH4
 try:
   from xcol import xcol
-  xcol (models=[experiment,control,None], fieldname='CH4', outdir=outdir)
+  xcol (models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['xch4', e])
   raise

@@ -1,6 +1,6 @@
 # CO2 timeseries
 
-def timeseries (datasets, fieldname, outdir):
+def timeseries (datasets, fieldname, units, outdir):
 
   from plot_shortcuts import plot
   from plot_wrapper import Multiplot, Legend
@@ -90,13 +90,12 @@ def timeseries (datasets, fieldname, outdir):
         # so this command shouldn't fail.
         data = d.get_data(location,fieldname+'_mean')
         series.append(data)
-        plot_units = data.atts['units']
 
     # Scale to the plot units
     for i,x in enumerate(series):
       input_units = x.atts['units']
-      if input_units == plot_units: continue  # already in the correct units
-      x = x / unit_scale[input_units] * unit_scale[plot_units]
+      if input_units == units: continue  # already in the correct units
+      x = x / unit_scale[input_units] * unit_scale[units]
       x.name = fieldname
       series[i] = x
 
@@ -104,7 +103,7 @@ def timeseries (datasets, fieldname, outdir):
     series = [x(time=(time1,time2)) for x in series]
 
     theplot = plot (*series, title=title,
-           xlabel='', ylabel='%s %s'%(fieldname,plot_units), xticks=xticks, xticklabels=xticklabels)
+           xlabel='', ylabel='%s %s'%(fieldname,units), xticks=xticks, xticklabels=xticklabels)
     plots.append (theplot)
 
 
