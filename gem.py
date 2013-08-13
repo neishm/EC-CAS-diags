@@ -127,7 +127,8 @@ class GEM_Data(Data):
     del files_24h
     testfile = rpn.open(testfile)
     # Assume we have 3D output for at least the 24h forecasts
-    testfield = 'CH4'
+    # Also, assume that 3D tracer output has corresponding 3D GZ output.
+    testfield = 'GZ'
     levels = list(testfile[testfield].getaxis(ZAxis).values)
     # Get the rest of the files for this day, check the levels
     year = int(testfile.time.year[0])
