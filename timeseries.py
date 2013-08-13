@@ -1,6 +1,6 @@
 # CO2 timeseries
 
-def timeseries (datasets, fieldname, units, outdir):
+def timeseries (datasets, fieldname, units, outdir, plot_months=None):
 
   from plot_shortcuts import plot
   from plot_wrapper import Multiplot, Legend
@@ -41,7 +41,8 @@ def timeseries (datasets, fieldname, units, outdir):
   # Use the first model data as a basis for the time axis.
   timeaxis = (s.getaxis('time') for s in sfc_data if s is not None).next()
   # Limit the range to plot
-  #timeaxis = timeaxis(year=2009,month=(6,9))
+  if plot_months is not None:
+    timeaxis = timeaxis(year=2009,month=plot_months)
   times = timeaxis.get()
   time1 = min(times)
   time2 = max(times)
