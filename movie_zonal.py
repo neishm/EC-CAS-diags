@@ -1,3 +1,16 @@
+def rescale (field, units):
+  from common import unit_scale
+  input_units = field.atts['units']
+  if input_units == units: return field
+  low = field.atts['low']
+  high = field.atts['high']
+  name = field.name
+  field = field / unit_scale[input_units] * unit_scale[units]
+  field.name = name
+  field.atts['low'] = low / unit_scale[input_units] * unit_scale[units]
+  field.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
+  return field
+
 def create_images (field1, field2=None, field3=None, contours=None, title1='plot1', title2='plot2', title3='plot3', palette=None, norm=None, preview=False, outdir='images'):
   from contouring import get_global_range, get_contours
   from plot_wrapper import Colorbar, Plot, Overlay, Multiplot
@@ -94,7 +107,9 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
 
   plt.close(fig)
 
-def movie_zonal (models, fieldname, outdir):
+def movie_zonal (models, fieldname, units, outdir):
+
+  from common import unit_scale
 
   assert len(models) > 0
   assert len(models) <= 3  # too many things to plot
@@ -103,6 +118,10 @@ def movie_zonal (models, fieldname, outdir):
   imagedir=outdir+"/images_%s_zonal%s"%('_'.join(m.name for m in models), fieldname)
 
   fields = [m.get_data('zonalmean_gph',fieldname) for m in models]
+
+  # Unit conversion
+  fields = [rescale(f,units) for f in fields]
+
   titles = [m.title for m in models]
 
   while len(fields) < 3: fields += [None]

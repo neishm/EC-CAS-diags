@@ -4,8 +4,8 @@
 # comparable to satellite observations.
 
 # Get column average
-def get_xcol (experiment, fieldname):
-  from common import rotate_grid
+def get_xcol (experiment, fieldname, units):
+  from common import rotate_grid, unit_scale
 
   xcol = experiment.get_data('avgcolumn', fieldname)
 
@@ -13,11 +13,20 @@ def get_xcol (experiment, fieldname):
   if xcol.lon[1] < 0:
     xcol = rotate_grid(xcol)
 
+  # Convert to the required units
+  input_units = xcol.atts['units']
+  if input_units != units:
+    low = xcol.atts['low']
+    high = xcol.atts['high']
+    xcol = xcol / unit_scale[input_units] * unit_scale[units]
+    xcol.atts['low'] = low / unit_scale[input_units] * unit_scale[units]
+    xcol.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
+
   xcol.name = experiment.title  # Verbose name for plotting
   return xcol
 
 
-def xcol (models, fieldname, outdir):
+def xcol (models, fieldname, units, outdir):
   import matplotlib.pyplot as pl
   from contouring import get_global_range, get_contours
   from pygeode.plot import plotvar
@@ -32,16 +41,19 @@ def xcol (models, fieldname, outdir):
   imagedir = outdir + "/images_%s_%s"%('_'.join(m.name for m in models),plotname)
   if not exists(imagedir): makedirs(imagedir)
 
-  model_data = [get_xcol(m,fieldname) for m in models]
+  model_data = [get_xcol(m,fieldname,units) for m in models]
 
   low, high = get_global_range (*model_data)
   clevs = get_contours(low, high)
 
   # Generate each individual frame
-  assert len(model_data) in (2,3)
+  #assert len(model_data) in (1,2,3)
   if len(model_data) == 3:
     fig = pl.figure(figsize=(8,10))
     n = 3
+  elif len(model_data) == 1:
+    fig = pl.figure(figsize=(10,5))
+    n = 1
   else:
     fig = pl.figure(figsize=(10,8))
     n = 2

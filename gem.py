@@ -112,8 +112,7 @@ class GEM_Data(Data):
 
     if flux_dir is not None:
       fluxes = open_multi(flux_dir+"/area_??????????", format=rpn, file2date=file2date_flux, opener=rpnopen)
-      # Convert from g/s to moles/s
-      fluxes = Dataset([(v/12.).rename(v.name) for v in fluxes])
+      # Note: Internal units are g/s
       fluxes = fix_timeaxis(fluxes)
       self.fluxes = fluxes
 
@@ -127,7 +126,9 @@ class GEM_Data(Data):
     del files_24h
     testfile = rpn.open(testfile)
     # Assume we have 3D output for at least the 24h forecasts
-    levels = list(testfile['CO2'].getaxis(ZAxis).values)
+    # Also, assume that 3D tracer output has corresponding 3D GZ output.
+    testfield = 'GZ'
+    levels = list(testfile[testfield].getaxis(ZAxis).values)
     # Get the rest of the files for this day, check the levels
     year = int(testfile.time.year[0])
     month = int(testfile.time.month[0])
@@ -135,8 +136,8 @@ class GEM_Data(Data):
     del testfile
     testfiles = sorted(glob(indir+"/*%04d%02d%02d00_???*"%(year,month,day)))
     testfiles = [rpn.open(f) for f in testfiles]
-    testfiles = [f for f in testfiles if 'CO2' in f]
-    times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f['CO2'].getaxis(ZAxis).values) == levels]
+    testfiles = [f for f in testfiles if testfield in f]
+    times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f[testfield].getaxis(ZAxis).values) == levels]
     # Ignore 0h files, since we're already using the 24h forecasts
     if 0 in times_with_3d:
       times_with_3d.remove(0)
@@ -253,6 +254,7 @@ class GEM_Data(Data):
     # Conversion factor (from ug C / kg air to ppm)
     from common import molecular_weight as mw
     convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
+    convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
     for dataset_name in 'dm', 'dm_3d':
       dataset = getattr(self,dataset_name)
       # Convert CO2 units
@@ -260,7 +262,15 @@ class GEM_Data(Data):
         if co2_name in dataset:
           new_field = dataset[co2_name]*convert_CO2
           new_field.name = co2_name
+          new_field.atts['units'] = 'ppm'
           dataset = dataset.replace_vars({co2_name:new_field})
+      # Convert CH4 units
+      for ch4_name in 'CH4', 'CH4B', 'CHFF', 'CHBB', 'CHOC', 'CHNA', 'CHAG':
+        if ch4_name in dataset:
+          new_field = dataset[ch4_name]*convert_CH4
+          new_field.name = ch4_name
+          new_field.atts['units'] = 'ppm'
+          dataset = dataset.replace_vars({ch4_name:new_field})
       # Some fields were offset to avoid negative values in the model
       for co2_name in 'COC', 'CLA':
         if co2_name in dataset:
@@ -282,6 +292,7 @@ class GEM_Data(Data):
   # to "standard" names.
   local_names = {
     'CO2':'CO2',
+    'CH4':'CH4',
     'CO2_background':'CO2B',
     'geopotential_height':'GZ',
     'eddy_diffusivity':'KTN',
@@ -304,10 +315,11 @@ class GEM_Data(Data):
   def get_data (self, domain, standard_name):
 
     # Translate the standard name into the name used by GEM.
-    try:
+    if standard_name in self.local_names:
       field = self.local_names[standard_name]
-    except KeyError:
-      raise KeyError ("Can't find a variable representing '%s' in the model."%standard_name)
+    else:
+      # No field name translation
+      field = standard_name
 
     # Determine which data is needed
 
@@ -319,6 +331,7 @@ class GEM_Data(Data):
       data = self._find_3d_field(field)
       GZ = self._find_3d_field('GZ')
       data = to_gph(data,GZ).nanmean('lon')
+      data.atts['units'] = 'ppm'
     # "total column" (in kg/m2)
     elif domain == 'totalcolumn':
       from pygeode.axis import ZAxis
@@ -326,15 +339,13 @@ class GEM_Data(Data):
       from common import molecular_weight as mw, grav as g
 
       # Convert from ppm to kg / kg
-      conversion = 1E-6 * mw['CO2'] / mw['air']
-
-      test_field = self._find_3d_field('CO2')
+      conversion = 1E-6 * mw[standard_name] / mw['air']
 
       Ps = self.dm_3d['P0'] * 100 # Get Ps on 3D field time frequency
       sigma = self.pm_3d['SIGM']
 
       # Case 1 - GEM3 (unstaggered) levels
-      if test_field.hasaxis("eta"):
+      if sigma.hasaxis("eta"):
         # Compute mixing ratio at half levels
         # Special case: air mass (not an actual output field)
         if field is 'air':
@@ -359,7 +370,7 @@ class GEM_Data(Data):
         data.name = field
 
       # Case 2 - GEM4 (staggered levels)
-      elif test_field.hasaxis("zeta"):
+      elif sigma.hasaxis("zeta"):
         if field is 'air':
           c_kp1 = 1
         else:
@@ -391,12 +402,13 @@ class GEM_Data(Data):
       # Compute the mass mixing ratio
       data = tc / Mair
       # Convert kg/kg to ppm
-      data *= mw['air']/mw['CO2'] * 1E6
+      data *= mw['air']/mw[standard_name] * 1E6
 
       data.name = field
+      data.atts['units'] = 'ppm'
 
     elif domain == 'totalmass':
-      # Total column (kg C/m2)
+      # Total column (kg /m2)
       tc = self.get_data('totalcolumn', standard_name)
       area = self.pm_3d['DX']
       # Mass per grid area (kg)
@@ -409,12 +421,16 @@ class GEM_Data(Data):
 
     # Integrated flux (if available)
     elif domain == 'totalflux':
+      from common import molecular_weight as mw
       if not hasattr(self,'fluxes'):
         raise KeyError ("Can't compute a total flux, because no fluxes are identified with this run.")
       # We have a slightly different naming convention for fluxes
       field = 'E'+field
       # Sum, skipping the last (repeated) longitude
       data = self.fluxes[field].slice[:,:,:-1].sum('lat','lon')
+      # Convert from g/s to moles/s
+      data /= mw[standard_name]
+      data.name = field
 
     elif domain == 'Toronto':
       data = self._find_3d_field(field)

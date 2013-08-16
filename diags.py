@@ -101,15 +101,16 @@ failures = []
 # Timeseries
 try:
   from timeseries import timeseries
-  timeseries (datasets=[experiment,ec_obs,control], fieldname='CO2', outdir=outdir)
-  timeseries (datasets=[experiment,gaw_obs,control], fieldname='CO2', outdir=outdir)
+  timeseries (datasets=[experiment,ec_obs,control], fieldname='CH4', units='ppb', outdir=outdir)
+  #timeseries (datasets=[experiment,gaw_obs,control], fieldname='CH4', outdir=outdir)
 except Exception as e:
   failures.append(['timeseries', e])
+  raise
 
 # Zonal mean movies
 try:
   from movie_zonal import movie_zonal
-  movie_zonal(models=[experiment,control,carbontracker], fieldname='CO2', outdir=outdir)
+  movie_zonal(models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['movie_zonal', e])
 
@@ -127,17 +128,18 @@ try:
 except Exception as e:
   failures.append(['diffcheck', e])
 
-# XCO2
+# XCH4
 try:
   from xcol import xcol
-  xcol (models=[experiment,control,carbontracker], fieldname='CO2', outdir=outdir)
+  xcol (models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
-  failures.append(['xco2', e])
+  failures.append(['xch4', e])
+  raise
 
-# Total mass CO2
+# Total mass CH4
 try:
   from totalmass import totalmass
-  totalmass (models=[experiment,carbontracker,control], fieldname='CO2', pg_of='C', outdir=outdir)
+  totalmass (models=[experiment,None,control], fieldname='CH4', pg_of='CH4', outdir=outdir)
   totalmass (models=[experiment,None,control], fieldname='air', pg_of='air', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass', e])

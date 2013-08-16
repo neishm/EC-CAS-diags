@@ -1,6 +1,6 @@
 # CO2 timeseries
 
-def timeseries (datasets, fieldname, outdir):
+def timeseries (datasets, fieldname, units, outdir, plot_months=None):
 
   from plot_shortcuts import plot
   from plot_wrapper import Multiplot, Legend
@@ -8,6 +8,8 @@ def timeseries (datasets, fieldname, outdir):
   from pygeode.timeaxis import months
 
   from os.path import exists
+
+  from common import unit_scale
 
   datasets = [d for d in datasets if d is not None]
 
@@ -33,12 +35,14 @@ def timeseries (datasets, fieldname, outdir):
     try:
       sfc_data.append(d.get_data('sfc',fieldname))
     except KeyError:
+      # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_data.append(None)
 
   # Use the first model data as a basis for the time axis.
   timeaxis = (s.getaxis('time') for s in sfc_data if s is not None).next()
   # Limit the range to plot
-  timeaxis = timeaxis(year=2009,month=(6,9))
+  if plot_months is not None:
+    timeaxis = timeaxis(year=2009,month=plot_months)
   times = timeaxis.get()
   time1 = min(times)
   time2 = max(times)
@@ -78,19 +82,29 @@ def timeseries (datasets, fieldname, outdir):
     if lon < 0: lon += 360  # Model data is from longitudes 0 to 360
 
     series = []
+    plot_units = ''
     for s,d in zip(sfc_data,datasets):
       if s is not None:
         series.append(s(lat=lat, lon=lon))
       else:
-        # For now, assume that we have exactly one obs dataset,
+        # For now, assume that we have an obs dataset,
         # so this command shouldn't fail.
-        series.append(d.get_data(location,fieldname+'_mean'))
+        data = d.get_data(location,fieldname+'_mean')
+        series.append(data)
+
+    # Scale to the plot units
+    for i,x in enumerate(series):
+      input_units = x.atts['units']
+      if input_units == units: continue  # already in the correct units
+      x = x / unit_scale[input_units] * unit_scale[units]
+      x.name = fieldname
+      series[i] = x
 
     # Limit the time period to plot
     series = [x(time=(time1,time2)) for x in series]
 
     theplot = plot (*series, title=title,
-           xlabel='', ylabel='%s ppmV'%fieldname, xticks=xticks, xticklabels=xticklabels)
+           xlabel='', ylabel='%s %s'%(fieldname,units), xticks=xticks, xticklabels=xticklabels)
     plots.append (theplot)
 
 
@@ -111,5 +125,5 @@ def timeseries (datasets, fieldname, outdir):
     if not exists(outfile):
       fig.savefig(outfile)
 
-  pl.close(fig)
+    pl.close(fig)
 
