@@ -112,8 +112,7 @@ class GEM_Data(Data):
 
     if flux_dir is not None:
       fluxes = open_multi(flux_dir+"/area_??????????", format=rpn, file2date=file2date_flux, opener=rpnopen)
-      # Convert from g/s to moles/s
-      fluxes = Dataset([(v/12.).rename(v.name) for v in fluxes])
+      # Note: Internal units are g/s
       fluxes = fix_timeaxis(fluxes)
       self.fluxes = fluxes
 
@@ -422,12 +421,16 @@ class GEM_Data(Data):
 
     # Integrated flux (if available)
     elif domain == 'totalflux':
+      from common import molecular_weight as mw
       if not hasattr(self,'fluxes'):
         raise KeyError ("Can't compute a total flux, because no fluxes are identified with this run.")
       # We have a slightly different naming convention for fluxes
       field = 'E'+field
       # Sum, skipping the last (repeated) longitude
       data = self.fluxes[field].slice[:,:,:-1].sum('lat','lon')
+      # Convert from g/s to moles/s
+      data /= mw[standard_name]
+      data.name = field
 
     elif domain == 'Toronto':
       data = self._find_3d_field(field)
