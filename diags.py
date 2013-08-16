@@ -98,21 +98,30 @@ if not exists(outdir) or not os.access (outdir, os.R_OK | os.W_OK | os.X_OK):
 # Some standard diagnostics
 failures = []
 
-# Timeseries
+from timeseries import timeseries
+# CO2 Timeseries
 try:
-  from timeseries import timeseries
-  timeseries (datasets=[experiment,ec_obs,control], fieldname='CH4', units='ppb', outdir=outdir)
-  #timeseries (datasets=[experiment,gaw_obs,control], fieldname='CH4', outdir=outdir)
+  timeseries (datasets=[experiment,ec_obs,control], fieldname='CO2', units='ppm', outdir=outdir)
+  timeseries (datasets=[experiment,gaw_obs,control], fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
-  failures.append(['timeseries', e])
-  raise
-
-# Zonal mean movies
+  failures.append(['CO2 timeseries', e])
+# CH4 Timeseries
 try:
-  from movie_zonal import movie_zonal
+  timeseries (datasets=[experiment,ec_obs,control], fieldname='CH4', units='ppb', outdir=outdir)
+except Exception as e:
+  failures.append(['CH4 timeseries', e])
+
+from movie_zonal import movie_zonal
+# CO2 Zonal mean movies
+try:
+  movie_zonal(models=[experiment,control,carbontracker], fieldname='CO2', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['CO2 movie_zonal', e])
+# CH4 Zonal mean movies
+try:
   movie_zonal(models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
-  failures.append(['movie_zonal', e])
+  failures.append(['CH4 movie_zonal', e])
 
 # Count of CO2 'holes'
 try:
@@ -128,21 +137,34 @@ try:
 except Exception as e:
   failures.append(['diffcheck', e])
 
+from xcol import xcol
+# XCO2
+try:
+  xcol (models=[experiment,control,carbontracker], fieldname='CO2', units='ppb', outdir=outdir)
+except Exception as e:
+  failures.append(['XCO2', e])
 # XCH4
 try:
-  from xcol import xcol
   xcol (models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
-  failures.append(['xch4', e])
-  raise
+  failures.append(['XCH4', e])
 
+from totalmass import totalmass
+# Total mass CO2
+try:
+  totalmass (models=[experiment,carbontracker,control], fieldname='CO2', pg_of='C', outdir=outdir)
+except Exception as e:
+  failures.append(['totalmass CO2', e])
 # Total mass CH4
 try:
-  from totalmass import totalmass
   totalmass (models=[experiment,None,control], fieldname='CH4', pg_of='CH4', outdir=outdir)
+except Exception as e:
+  failures.append(['totalmass CH4', e])
+# Total mass air
+try:
   totalmass (models=[experiment,None,control], fieldname='air', pg_of='air', outdir=outdir)
 except Exception as e:
-  failures.append(['totalmass', e])
+  failures.append(['totalmass air', e])
 
 # Report any diagnostics that failed to run
 if len(failures) > 0:
