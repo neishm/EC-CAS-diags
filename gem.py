@@ -205,33 +205,28 @@ class GEM_Data(Data):
     # (Things that may not have been output from the model, but that we can
     #  compute)
 
-    # Sigma levels through debug field?
-    # (works around Mantis issue #2355)
-    for (SIGMA_name, DBG_name) in [('SIGM','3DB1'),('SIGT','3DB2')]:
-      if SIGMA_name not in self.pm_3d and DBG_name in self.pm_3d:
-        # Note: the debug field is missing surface values, have to re-create.
-        from pygeode.var import concat
-        from pygeode.var import Var
-        import numpy as np
-        sigma = self.pm_3d[DBG_name]
-        sigma_bottom = sigma.slice[:,-1,:,:]
-        # Override the values
-        sigma_bottom = Var(axes=sigma_bottom.axes, values=np.ones(sigma_bottom.shape))
-        sigma_rest = sigma.slice[:,:-1,:,:]
-        # Recombine
-        sigma = concat(sigma_rest,sigma_bottom)
-        sigma.name = SIGMA_name
-        self.pm_3d += sigma
-
-    # Sigma levels - generated for GEM3 levels
-    # Assume this is usually available in the physics bus
+    # Sigma levels (momentum)
     if 'SIGM' not in self.pm_3d:
-      test_field = (v for v in self.dm_3d if v.hasaxis(ZAxis)).next()
-      assert test_field.hasaxis('eta')  # only works for 'eta' coordinates.
+      GZ = self.dm_3d.GZ
       Ps = self.dm_3d['P0'] * 100
-      A = self.dm_3d.eta.auxasvar('A')
-      B = self.dm_3d.eta.auxasvar('B')
-      P = A + B * Ps
+      if GZ.hasaxis('eta'):
+        A = GZ.eta.auxasvar('A')
+        B = GZ.eta.auxasvar('B')
+        P = A + B * Ps
+      elif GZ.hasaxis('zeta'):
+        from pygeode.formats.fstd import LogHybrid
+        from pygeode.formats.fstd_core import decode_levels
+        from pygeode.ufunc import exp, log
+        # Construct a momentum level axis from the prescribed momentum levels
+        A = GZ.zeta.atts['a_m']
+        B = GZ.zeta.atts['b_m']
+        hy, kind = decode_levels(GZ.zeta.atts['ip1_m'])
+        z = LogHybrid(values=hy, A=A, B=B)
+        A = z.auxasvar('A')
+        B = z.auxasvar('B')
+        # Compute pressure
+        P = exp(A + B * log(Ps/100000))
+      else: raise TypeError("unknown vertical axis")
       P = P.transpose('time','eta','lat','lon')
       sigma = P / Ps
       sigma.name = 'SIGM'
