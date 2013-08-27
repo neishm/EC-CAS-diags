@@ -13,8 +13,9 @@ def rpnopen_sfconly (filename):
 def file2date (filename):
   from re import search
   from datetime import datetime, timedelta
-  out = search('([dkp][m]|)(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)(?P<units>([mh]|))$', filename).groupdict()
+  out = search('([dkp][m]|)(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)(?P<units>([mh]|))(?P<enkf_ext>_chmmean|)$', filename).groupdict()
   units = out.pop('units')
+  enkf_ext = out.pop('enkf_ext')
   out = dict([k,int(v)] for k,v in out.items())
   offset = out.pop('offset')
 
@@ -25,6 +26,13 @@ def file2date (filename):
   elif units == 'h' or units == '':
     out += timedelta (hours=offset)
   else: raise Exception
+
+  # We have to be careful with the forecast hour in the file.
+  # For EnKF, we have data before this forecast hour as well.
+  if enkf_ext != '':
+    out -= timedelta (hours=6)  #TODO: remove hard-coded EnKF cycle time
+    # Add back the first time we output
+    out += timedelta (hours=3)
 
   # Convert back to dictionary
   out = dict(year=out.year, month=out.month, day=out.day, hour=out.hour, minute=out.minute)
@@ -114,83 +122,111 @@ class GEM_Data(Data):
     # Data with vertical extent
     ##############################
 
-    # Open a single day of data, to determine at what times 3D data is saved.
-    files_24h = sorted(glob(indir+"/*_024*"))
-    testfile = files_24h[0]
-    del files_24h
-    testfile = rpn.open(testfile)
-    # Assume we have 3D output for at least the 24h forecasts
-    # Also, assume that 3D tracer output has corresponding 3D GZ output.
-    testfield = 'GZ'
-    levels = list(testfile[testfield].getaxis(ZAxis).values)
-    # Get the rest of the files for this day, check the levels
-    year = int(testfile.time.year[0])
-    month = int(testfile.time.month[0])
-    day = int(testfile.time.day[0])
-    del testfile
-    testfiles = sorted(glob(indir+"/*%04d%02d%02d00_???*"%(year,month,day)))
-    testfiles = [rpn.open(f) for f in testfiles]
-    testfiles = [f for f in testfiles if testfield in f]
-    times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f[testfield].getaxis(ZAxis).values) == levels]
-    # Ignore 0h files, since we're already using the 24h forecasts
-    if 0 in times_with_3d:
-      times_with_3d.remove(0)
+    # First case - we have EnKF data (mean state)
+    if len(glob(indir+"/*_???_chmmean")) > 0:
+      # The output frequency is pretty much hard-coded on the EnKF side right
+      # now, so don't bother trying to generalize.
+      # (Can't properly test a generalization anyway)
 
-    dm_3d = [indir+"/dm*_%03d*"%h for h in times_with_3d]
-    km_3d = [indir+"/km*_%03d*"%h for h in times_with_3d]
-    pm_3d = [indir+"/pm*_%03d*"%h for h in times_with_3d]
-    # Sometimes the model outputs a single file with all buses.
-    combined_3d = [indir+"/[0-9]*_%03d*"%h for h in times_with_3d]
-
-    # Open the 3D files
-    if any(len(glob(x))>0 for x in combined_3d):
-      combined_3d = open_multi(combined_3d, opener=rpnopen, file2date=file2date)
+      combined_3d = open_multi(indir+"/[0-9]*_???_chmmean", opener=rpnopen, file2date=file2date)
       combined_3d = fix_timeaxis(combined_3d)
-    else: combined_3d = Dataset([])
-    if any(len(glob(x))>0 for x in dm_3d):
-      dm_3d = open_multi(dm_3d, opener=rpnopen, file2date=file2date)
-      self.dm_3d = fix_timeaxis(dm_3d)
-    else: self.dm_3d = combined_3d
-    if any(len(glob(x))>0 for x in km_3d):
-      km_3d = open_multi(km_3d, opener=rpnopen, file2date=file2date)
-      self.km_3d = fix_timeaxis(km_3d)
-    else: self.km_3d = combined_3d
-    if any(len(glob(x))>0 for x in pm_3d):
-      pm_3d = open_multi(pm_3d, opener=rpnopen, file2date=file2date)
-      self.pm_3d = fix_timeaxis(pm_3d)
-    else: self.pm_3d = combined_3d
+
+      # The EnKF doesn't output the individual pm/dm files, but make a fake
+      # reference to them (pointing to the combined files) so the legacy
+      # diagnostic code will work.
+      self.km_3d = combined_3d
+      self.dm_3d = combined_3d
+      self.pm_3d = combined_3d
+
+      # The surface output is the same frequency as the 3D output
+      # (no special high-frequency surface output)
+      combined = combined_3d(eta=1,zeta=1).squeeze()
+      self.km = combined
+      self.dm = combined
+      self.pm = combined
 
 
+    # Second case - we have a single model integration
+    else:
+      # Open a single day of data, to determine at what times 3D data is saved.
+      files_24h = sorted(glob(indir+"/*_024*"))
+      testfile = files_24h[0]
+      del files_24h
+      testfile = rpn.open(testfile)
+      # Assume we have 3D output for at least the 24h forecasts
+      # Also, assume that 3D tracer output has corresponding 3D GZ output.
+      testfield = 'GZ'
+      levels = list(testfile[testfield].getaxis(ZAxis).values)
+      # Get the rest of the files for this day, check the levels
+      year = int(testfile.time.year[0])
+      month = int(testfile.time.month[0])
+      day = int(testfile.time.day[0])
+      del testfile
+      testfiles = sorted(glob(indir+"/*%04d%02d%02d00_???*"%(year,month,day)))
+      testfiles = [rpn.open(f) for f in testfiles]
+      testfiles = [f for f in testfiles if testfield in f]
+      times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f[testfield].getaxis(ZAxis).values) == levels]
+      # Ignore 0h files, since we're already using the 24h forecasts
+      if 0 in times_with_3d:
+        times_with_3d.remove(0)
 
-    ##############################
-    # Surface data
-    ##############################
+      dm_3d = [indir+"/dm*_%03d*"%h for h in times_with_3d]
+      km_3d = [indir+"/km*_%03d*"%h for h in times_with_3d]
+      pm_3d = [indir+"/pm*_%03d*"%h for h in times_with_3d]
+      # Sometimes the model outputs a single file with all buses.
+      combined_3d = [indir+"/[0-9]*_%03d*"%h for h in times_with_3d]
 
-    # Assume surface data is available in every output time.
-    # Ignore 0h output - use 24h output instead.
+      # Open the 3D files
+      if any(len(glob(x))>0 for x in combined_3d):
+        combined_3d = open_multi(combined_3d, opener=rpnopen, file2date=file2date)
+        combined_3d = fix_timeaxis(combined_3d)
+      else: combined_3d = Dataset([])
+      if any(len(glob(x))>0 for x in dm_3d):
+        dm_3d = open_multi(dm_3d, opener=rpnopen, file2date=file2date)
+        self.dm_3d = fix_timeaxis(dm_3d)
+      else: self.dm_3d = combined_3d
+      if any(len(glob(x))>0 for x in km_3d):
+        km_3d = open_multi(km_3d, opener=rpnopen, file2date=file2date)
+        self.km_3d = fix_timeaxis(km_3d)
+      else: self.km_3d = combined_3d
+      if any(len(glob(x))>0 for x in pm_3d):
+        pm_3d = open_multi(pm_3d, opener=rpnopen, file2date=file2date)
+        self.pm_3d = fix_timeaxis(pm_3d)
+      else: self.pm_3d = combined_3d
 
-    # Sometimes the model outputs a single file with all buses.
-    combined = [indir+"/[0-9]*_%03d*"%i for i in range(1,25)]
-    if any(len(glob(x))>0 for x in combined):
-      combined = open_multi(combined, opener=rpnopen_sfconly, file2date=file2date)
-      combined= fix_timeaxis(combined)
-    else: combined = Dataset([])
+      ##############################
+      # Surface data (non-EnKF data)
+      ##############################
 
-    dm = [indir+"/dm*_%03d*"%i for i in range(1,25)]
-    if any(len(glob(x))>0 for x in dm):
-      dm = open_multi(dm, opener=rpnopen_sfconly, file2date=file2date)
-      self.dm = fix_timeaxis(dm)
-    else: self.dm = combined
-    km = [indir+"/km*_%03d*"%i for i in range(1,25)]
-    if any(len(glob(x))>0 for x in km):
-      km = open_multi(km, opener=rpnopen_sfconly, file2date=file2date)
-      self.km = fix_timeaxis(km)
-    else: self.km = combined
-    pm = [indir+"/pm*_%03d*"%i for i in range(1,25)]
-    if any(len(glob(x))>0 for x in pm):
-      pm = open_multi(pm, opener=rpnopen_sfconly, file2date=file2date)
-      self.pm = fix_timeaxis(pm)
-    else: self.pm = combined
+      # Assume surface data is available in every output time.
+      # Ignore 0h output - use 24h output instead.
+
+      # Sometimes the model outputs a single file with all buses.
+      combined = [indir+"/[0-9]*_%03d*"%i for i in range(1,25)]
+      if any(len(glob(x))>0 for x in combined):
+        combined = open_multi(combined, opener=rpnopen_sfconly, file2date=file2date)
+        combined= fix_timeaxis(combined)
+      else: combined = Dataset([])
+
+      dm = [indir+"/dm*_%03d*"%i for i in range(1,25)]
+      if any(len(glob(x))>0 for x in dm):
+        dm = open_multi(dm, opener=rpnopen_sfconly, file2date=file2date)
+        self.dm = fix_timeaxis(dm)
+      else: self.dm = combined
+      km = [indir+"/km*_%03d*"%i for i in range(1,25)]
+      if any(len(glob(x))>0 for x in km):
+        km = open_multi(km, opener=rpnopen_sfconly, file2date=file2date)
+        self.km = fix_timeaxis(km)
+      else: self.km = combined
+      pm = [indir+"/pm*_%03d*"%i for i in range(1,25)]
+      if any(len(glob(x))>0 for x in pm):
+        pm = open_multi(pm, opener=rpnopen_sfconly, file2date=file2date)
+        self.pm = fix_timeaxis(pm)
+      else: self.pm = combined
+
+    # End of EnKF / non-EnKF input mapping
+
+
 
     ##############################
     # Derived fields
