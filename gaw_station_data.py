@@ -66,6 +66,9 @@ def read_station_data (filename):
 
     last_attname = attname
 
+  # Add units
+  atts['units'] = 'ppm'
+
   # Wrap in PyGeode Var
   time = StandardTime(year=year, month=month, day=day, hour=hour, minute=minute, units='hours')
   data = Var([time], values=values, name=station_name, atts=atts)
