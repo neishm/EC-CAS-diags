@@ -201,21 +201,24 @@ class GEM_Data(Data):
 
     # Sigma levels (momentum)
     if 'SIGM' not in self.pm_3d:
-      GZ = self.dm_3d.GZ
+      try:
+        testfield = self.dm_3d.GZ
+      except AttributeError:
+        testfield = self.dm_3d.TT
       Ps = self.dm_3d['P0'] * 100
-      if GZ.hasaxis('eta'):
-        A = GZ.eta.auxasvar('A')
-        B = GZ.eta.auxasvar('B')
+      if testfield.hasaxis('eta'):
+        A = testfield.eta.auxasvar('A')
+        B = testfield.eta.auxasvar('B')
         P = A + B * Ps
         P = P.transpose('time','eta','lat','lon')
-      elif GZ.hasaxis('zeta'):
+      elif testfield.hasaxis('zeta'):
         from pygeode.formats.fstd import LogHybrid
         from pygeode.formats.fstd_core import decode_levels
         from pygeode.ufunc import exp, log
         # Construct a momentum level axis from the prescribed momentum levels
-        A = GZ.zeta.atts['a_m']
-        B = GZ.zeta.atts['b_m']
-        hy, kind = decode_levels(GZ.zeta.atts['ip1_m'])
+        A = testfield.zeta.atts['a_m']
+        B = testfield.zeta.atts['b_m']
+        hy, kind = decode_levels(testfield.zeta.atts['ip1_m'])
         z = LogHybrid(values=hy, A=A, B=B)
         A = z.auxasvar('A')
         B = z.auxasvar('B')
