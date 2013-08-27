@@ -158,10 +158,12 @@ class CarbonTracker_Data(Data):
     if domain == 'zonalmean_gph':
       data = self.molefractions[field]
       data = ct_zonal_24h(data,self.molefractions.gph)
+      data.atts['units'] = 'ppm'
 
     # "surface" data (lowest level of molefractions dataset)
     elif domain == 'sfc':
       data = self.molefractions[field](i_level=0)
+      data.atts['units'] = 'ppm'
 
     # Total column
     elif domain == 'totalcolumn':
@@ -201,6 +203,7 @@ class CarbonTracker_Data(Data):
       data *= mw['air']/mw['CO2'] * 1E6
 
       data.name = field
+      data.atts['units'] = 'ppm'
 
     # Total mass
     elif domain == 'totalmass':
@@ -223,6 +226,9 @@ class CarbonTracker_Data(Data):
 
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
-    return self._cache(data,'%s_%s_%s.nc'%(self.name,domain,field))
-
+    units = data.atts.get('units',None)
+    data = self._cache(data,'%s_%s_%s.nc'%(self.name,domain,field))
+    if units is not None:
+      data.atts['units'] = units
+    return data
 
