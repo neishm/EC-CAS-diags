@@ -1,13 +1,7 @@
 
 def rpnopen (filename):
-  from pygeode.formats import rpn
-  try:
-    # For RPN interface v0.6+
-    f = rpn.open(filename, squash_forecasts=True)
-  except TypeError:
-    # For RPN interface < v0.6
-    f = rpn.open(filename)
-  f = f.squeeze()
+  from pygeode.formats import fstd
+  f = fstd.open(filename, squash_forecasts=True)
   return f
 
 def rpnopen_sfconly (filename):
@@ -91,7 +85,7 @@ from data_interface import Data
 class GEM_Data(Data):
   def __init__ (self, experiment_dir, flux_dir, name, title, tmpdir=None):
     from pygeode.formats.multifile import open_multi
-    from pygeode.formats import rpn
+    from pygeode.formats import fstd as rpn
     from pygeode.dataset import Dataset
     from glob import glob
     from pygeode.axis import ZAxis
@@ -213,6 +207,7 @@ class GEM_Data(Data):
         A = GZ.eta.auxasvar('A')
         B = GZ.eta.auxasvar('B')
         P = A + B * Ps
+        P = P.transpose('time','eta','lat','lon')
       elif GZ.hasaxis('zeta'):
         from pygeode.formats.fstd import LogHybrid
         from pygeode.formats.fstd_core import decode_levels
@@ -226,8 +221,8 @@ class GEM_Data(Data):
         B = z.auxasvar('B')
         # Compute pressure
         P = exp(A + B * log(Ps/100000))
+        P = P.transpose('time','zeta','lat','lon')
       else: raise TypeError("unknown vertical axis")
-      P = P.transpose('time','eta','lat','lon')
       sigma = P / Ps
       sigma.name = 'SIGM'
       self.pm_3d += sigma
