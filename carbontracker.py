@@ -223,6 +223,12 @@ class CarbonTracker_Data(Data):
       fluxvar = self.fluxes[field]
       data = (fluxvar*fluxes_dxdy).sum('lat','lon')
       data.name = field
+      # The time is the *midpoint* of the flux period.
+      # Rewind to the *start* of the flux period (-1.5 hours)
+      time = data.time
+      assert time.units == 'days'
+      time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
+      data = data.replace_axes(time=time)
 
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
