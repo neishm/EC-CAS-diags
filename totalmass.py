@@ -65,6 +65,9 @@ def totalmass (models, fieldname, pg_of, outdir):
       totalflux = totalflux * dt
       # Running sum
       totalflux = totalflux.cumsum()
+      # Initial time is *after* the first sum
+      assert time.units == 'days'
+      time = time.__class__(values=time.values+dt/86400., units='days', startdate=time.startdate)
       # Convert from moles to Pg
       totalflux *= mw[pg_of]
       totalflux *= 1E-15  # g to Pg
