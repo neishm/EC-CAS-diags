@@ -197,6 +197,31 @@ def plot (*args, **kwargs):
   return Plot(*outargs, **kwargs)
 
 
+# Do a filled std plot (single value)
+def plot_stdfill (y, std, **kwargs):
+  from plot_wrapper import Plot, FillBetween, Overlay
+  import numpy as np
+
+  x = y.squeeze().axes[0]
+
+  axes_args, y = get_axes_args(y)
+  std_axes_args, std = get_axes_args(std)
+
+  # Apply the custom axes args
+  kwargs = dict(axes_args, **kwargs)
+
+  # Strip out Var structure
+  x = x.get()
+  y = y.get()
+  std = std.get()
+
+  lineplot = Plot (x, y, **kwargs)
+  kwargs['linewidth'] = 0
+  kwargs['alpha'] = 0.5
+  fillplot = FillBetween (x, y-std, y+std, np.isfinite(y), **kwargs)
+
+  return Overlay(fillplot, lineplot)
+
 # Do many 1D line plots
 # (A higher-level extension, no analogue in matplotlib)
 def spaghetti (var, data_axis, **kwargs):
