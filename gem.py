@@ -245,6 +245,7 @@ class GEM_Data(Data):
     from common import molecular_weight as mw
     convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
     convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
+    convert_CO2_flux = mw['CO2'] / mw['C']
     for dataset_name in 'dm', 'dm_3d':
       dataset = getattr(self,dataset_name)
       # Convert CO2 units
@@ -275,6 +276,13 @@ class GEM_Data(Data):
 
       setattr(self,dataset_name,dataset)
 
+    # Convert CO2 flux units (g/s C to g/s CO2)
+    for co2_name in 'ECO2', 'ECFF', 'ECBB', 'ECOC', 'ECLA':
+      if co2_name in self.fluxes:
+        new_field = self.fluxes[co2_name]*convert_CO2_flux
+        new_field.name = co2_name
+        new_field.atts['units'] = 'g/s'
+        self.fluxes = self.fluxes.replace_vars({co2_name:new_field})
 
   # Helper functions - find the field (look in dm,km,pm,etc. files)
 
