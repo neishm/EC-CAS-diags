@@ -40,6 +40,14 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_data.append(None)
 
+  sfc_std = []
+  for d in datasets:
+    try:
+      sfc_std.append(d.get_data('sfc',fieldname,'std'))
+    except KeyError:
+      # Put a 'None' placeholder to indicate this isn't model surface data
+      sfc_std.append(None)
+
   # Use the first model data as a basis for the time axis.
   timeaxis = (s.getaxis('time') for s in sfc_data if s is not None).next()
   # Limit the range to plot
@@ -86,10 +94,13 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
     series = []
     std = []
     plot_units = ''
-    for s,d in zip(sfc_data,datasets):
+    for s,sd,d in zip(sfc_data,sfc_std,datasets):
       if s is not None:
         series.append(s(lat=lat, lon=lon))
-        std.append(None)  #TODO: model std (for EnKF)
+        if sd is not None:
+          std.append(sd(lat=lat,lon=lon))
+        else:
+          std.append(None)
       else:
         # For now, assume that we have an obs dataset,
         # so this command shouldn't fail.
