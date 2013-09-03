@@ -13,6 +13,7 @@ def read_station_data (filename):
   hour = []
   minute = []
   values = []
+  std = []
   try:
 
     for line in f:
@@ -40,9 +41,13 @@ def read_station_data (filename):
         if co2 < 0: co2 = float('nan')
         values.append(co2)
 
+        sd = float(sd)
+        if sd < 0: sd = float('nan')
+        std.append(sd)
+
   except ValueError:
     print 'skipping %s - bad formatting'%filename
-    return None
+    return [None,None]
 
   # Get station name
   assert 'STATION NAME:' in comments[6]
@@ -71,9 +76,10 @@ def read_station_data (filename):
 
   # Wrap in PyGeode Var
   time = StandardTime(year=year, month=month, day=day, hour=hour, minute=minute, units='hours')
-  data = Var([time], values=values, name=station_name, atts=atts)
+  mean = Var([time], values=values, name=station_name+'_CO2_mean', atts=atts)
+  std = Var([time], values=std, name=station_name+'_CO2_std', atts=atts)
 
-  return data
+  return [mean,std]
 
 
 from data_interface import Data
@@ -96,10 +102,20 @@ class GAW_Station_Data (Data):
 
     if not exists(cachefile):
 
-      data = [read_station_data(filename) for filename in glob (self.indir+"/*.dat")]
+      data = sum([read_station_data(filename) for filename in glob (self.indir+"/*.dat")],[])
       # Filter out bad data
       data = [d for d in data if d is not None]
       data = common_taxis(*data)
+
+      # Use only one version of each station (first file found)
+      unique_names = []
+      unique = []
+      for d in data:
+        if d.name in unique_names: continue
+        unique_names.append(d.name)
+        unique.append(d)
+      data = unique
+
       data = Dataset(data)
       data = fix_timeaxis(data)
       netcdf.save(cachefile, data)
@@ -116,18 +132,18 @@ class GAW_Station_Data (Data):
         country = var.atts['country_territory']
       else:
         country = var.atts['country_teritory']
-      obs_locations[var.name] = (lat, lon, country)
+      obs_locations[var.name.rsplit('_',2)[0]] = (lat, lon, country)
     del var, lat, lon, country
 
     # Fix Egbert data - they're missing every other hour
-    data = data.replace_vars(Egbert = data.Egbert.slice[1::2])
+    data = data.replace_vars(Egbert_CO2_mean = data.Egbert_CO2_mean.slice[1::2],
+                             Egbert_CO2_std = data.Egbert_CO2_std.slice[1::2])
 
     self.data = data
     self.obs_locations = obs_locations
 
   def get_data (self, station, product):
-    if product != 'CO2_mean': raise KeyError ("Only CO2_mean data available")
-    return self.data[station]
+    return self.data[station+'_'+product]
 
 
 del Data
