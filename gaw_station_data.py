@@ -142,8 +142,8 @@ class GAW_Station_Data (Data):
     self.data = data
     self.obs_locations = obs_locations
 
-  def get_data (self, station, product):
-    return self.data[station+'_'+product]
+  def get_data (self, station, field, stat='mean'):
+    return self.data[station+'_'+field+'_'+stat]
 
 
 del Data

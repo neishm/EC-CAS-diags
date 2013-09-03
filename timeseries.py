@@ -93,9 +93,9 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
       else:
         # For now, assume that we have an obs dataset,
         # so this command shouldn't fail.
-        data = d.get_data(location,fieldname+'_mean')
+        data = d.get_data(location,fieldname,'mean')
         series.append(data)
-        std.append(d.get_data(location,fieldname+'_std'))
+        std.append(d.get_data(location,fieldname,'std'))
 
     # Scale to the plot units
     for i,x in enumerate(series):

@@ -340,7 +340,10 @@ class GEM_Data(Data):
 
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
-  def get_data (self, domain, standard_name):
+  def get_data (self, domain, standard_name, stat='mean'):
+
+    if stat != 'mean':
+      raise KeyError("Can only provide mean data at the moment")
 
     # Translate the standard name into the name used by GEM.
     if standard_name in self.local_names:
@@ -424,7 +427,7 @@ class GEM_Data(Data):
     elif domain == 'avgcolumn':
       from common import molecular_weight as mw
       # Total column (kg/m2)
-      tc = self.get_data('totalcolumn', standard_name)
+      tc = self.get_data('totalcolumn', standard_name, stat)
       # Total column air (kg/m2)
       Mair = self.get_data('totalcolumn', 'air')
       # Compute the mass mixing ratio
