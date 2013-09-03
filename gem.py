@@ -13,7 +13,7 @@ def rpnopen_sfconly (filename):
 def file2date (filename):
   from re import search
   from datetime import datetime, timedelta
-  out = search('([dkp][m]|)(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)(?P<units>([mh]|))(?P<enkf_ext>_chmmean|)$', filename).groupdict()
+  out = search('([dkp][m]|)(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)(?P<units>([mh]|))(?P<enkf_ext>_(chmmean|chmstd)|)$', filename).groupdict()
   units = out.pop('units')
   enkf_ext = out.pop('enkf_ext')
   out = dict([k,int(v)] for k,v in out.items())
@@ -137,6 +137,10 @@ class GEM_Data(Data):
       # (no special high-frequency surface output)
       combined = combined_3d(eta=1,zeta=1).squeeze()
 
+      stddev_3d = open_multi(indir+"/[0-9]*_???_chmstd", opener=rpnopen, file2date=file2date)
+      stddev_3d = fix_timeaxis(stddev_3d)
+      stddev_sfc = stddev_3d(eta=1,zeta=1).squeeze()
+
 
     # Second case - we have a single model integration
     else:
@@ -216,10 +220,16 @@ class GEM_Data(Data):
         combined= fix_timeaxis(combined)
       else: combined = dm + km + pm
 
+      # We have no ensemble standard deviation for this type of run
+      stddev_3d = Dataset([])
+      stddev_sfc = Dataset([])
+
     # End of EnKF / non-EnKF input mapping
 
     self.combined_3d = combined_3d
     self.combined = combined
+    self.stddev_3d = stddev_3d
+    self.stddev_sfc = stddev_sfc
 
     ##############################
     # Derived fields
@@ -278,7 +288,7 @@ class GEM_Data(Data):
     convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
     convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
     convert_CO2_flux = mw['CO2'] / mw['C']
-    for dataset_name in 'combined', 'combined_3d':
+    for dataset_name in 'combined', 'combined_3d', 'stddev_sfc', 'stddev_3d':
       dataset = getattr(self,dataset_name)
       # Convert CO2 units
       for co2_name in 'CO2', 'CO2B', 'CFF', 'CBB', 'COC', 'CLA':
@@ -330,20 +340,19 @@ class GEM_Data(Data):
     'air':'air'
   }
 
-  def _find_sfc_field (self, name):
-    if name in self.combined: return self.combined[name]
+  def _find_sfc_field (self, name, stat='mean'):
+    if stat == 'mean' and name in self.combined: return self.combined[name]
+    if stat == 'std' and name in self.stddev_sfc: return self.stddev_sfc[name]
     raise KeyError ("%s not found in model surface data."%name)
 
-  def _find_3d_field (self, name):
-    if name in self.combined_3d: return self.combined_3d[name]
-    raise KeyError ("%s not found in model 3d data."%name)
+  def _find_3d_field (self, name, stat='mean'):
+    if stat == 'mean' and name in self.combined_3d: return self.combined_3d[name]
+    if stat == 'std' and name in self.stddev_3d: return self.stddev_3d[name]
+    raise KeyError ("%s (%s) not found in model 3d data."%(name,stat))
 
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
   def get_data (self, domain, standard_name, stat='mean'):
-
-    if stat != 'mean':
-      raise KeyError("Can only provide mean data at the moment")
 
     # Translate the standard name into the name used by GEM.
     if standard_name in self.local_names:
@@ -356,10 +365,10 @@ class GEM_Data(Data):
 
     # Surface data (lowest model level)
     if domain == 'sfc':
-      data = self._find_sfc_field(field)
+      data = self._find_sfc_field(field,stat)
     # Zonal mean, with data interpolated to a fixed set of geopotential heights
     elif domain == 'zonalmean_gph':
-      data = self._find_3d_field(field)
+      data = self._find_3d_field(field,stat)
       GZ = self._find_3d_field('GZ')
       data = to_gph(data,GZ).nanmean('lon')
       data.atts['units'] = 'ppm'
@@ -382,7 +391,7 @@ class GEM_Data(Data):
         if field is 'air':
           c_half = 1
         else:
-          c = self._find_3d_field(field) * conversion
+          c = self._find_3d_field(field,stat) * conversion
           # Interpolate concentration to half levels
           c1 = c.slice[:,:-1,:,:]
           c2 = c.slice[:,1:,:,:]
@@ -405,7 +414,7 @@ class GEM_Data(Data):
         if field is 'air':
           c_kp1 = 1
         else:
-          c = self._find_3d_field(field) * conversion
+          c = self._find_3d_field(field,stat) * conversion
           # Assuming we have an unused "surface" diagnositic level
           assert 1.0 in c.getaxis("zeta").values
           c_kp1 = c.slice[:,1:-1,:,:]
@@ -440,7 +449,7 @@ class GEM_Data(Data):
 
     elif domain == 'totalmass':
       # Total column (kg /m2)
-      tc = self.get_data('totalcolumn', standard_name)
+      tc = self.get_data('totalcolumn', standard_name, stat)
       area = self.combined_3d['DX']
       # Mass per grid area (kg)
       # Assume global grid - remove repeated longitude
@@ -452,6 +461,7 @@ class GEM_Data(Data):
 
     # Integrated flux (if available)
     elif domain == 'totalflux':
+      if stat != 'mean': raise KeyError("Don't have stddev on fluxes")
       from common import molecular_weight as mw
       if not hasattr(self,'fluxes'):
         raise KeyError ("Can't compute a total flux, because no fluxes are identified with this run.")
@@ -464,12 +474,16 @@ class GEM_Data(Data):
       data.name = field
 
     elif domain == 'Toronto':
-      data = self._find_3d_field(field)
+      data = self._find_3d_field(field,stat)
       data = data.squeeze(lat=43.7833,lon=280.5333)
 
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
-    return self._cache(data,'%s_%s_%s.nc'%(self.name,domain,field))
+    if stat == 'mean':
+      filename = '%s_%s_%s.nc'%(self.name,domain,field)
+    else:
+      filename = '%s_%s_%s_%s.nc'%(self.name,stat,domain,field)
+    return self._cache(data,filename)
 
 
 del Data
