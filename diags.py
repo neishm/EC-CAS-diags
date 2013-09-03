@@ -140,7 +140,7 @@ except Exception as e:
 from xcol import xcol
 # XCO2
 try:
-  xcol (models=[experiment,control,carbontracker], fieldname='CO2', units='ppb', outdir=outdir)
+  xcol (models=[experiment,control,carbontracker], fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCO2', e])
 # XCH4
