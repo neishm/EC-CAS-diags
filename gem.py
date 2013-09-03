@@ -117,6 +117,8 @@ class GEM_Data(Data):
       # Note: Internal units are g/s
       fluxes = fix_timeaxis(fluxes)
       self.fluxes = fluxes
+    else:
+      self.fluxes = Dataset([])
 
     ##############################
     # Data with vertical extent
