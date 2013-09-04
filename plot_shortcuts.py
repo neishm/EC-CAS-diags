@@ -218,7 +218,7 @@ def plot_stdfill (y, std, **kwargs):
   lineplot = Plot (x, y, **kwargs)
   kwargs['linewidth'] = 0
   kwargs['alpha'] = 0.5
-  fillplot = FillBetween (x, y-std, y+std, np.isfinite(y), **kwargs)
+  fillplot = FillBetween (x, y-std, y+std, np.isfinite(y+std), **kwargs)
 
   return Overlay(fillplot, lineplot)
 
