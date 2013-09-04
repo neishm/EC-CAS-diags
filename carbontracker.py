@@ -147,7 +147,10 @@ class CarbonTracker_Data(Data):
   }
 
   # Data interface
-  def get_data (self, domain, standard_name):
+  def get_data (self, domain, standard_name, stat='mean'):
+
+    if stat != 'mean':
+      raise KeyError("No '%s' stat available for CarbonTracker"%stat)
 
     try:
       field = self.local_names[standard_name]

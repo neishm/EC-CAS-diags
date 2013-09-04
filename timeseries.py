@@ -2,14 +2,16 @@
 
 def timeseries (datasets, fieldname, units, outdir, plot_months=None):
 
-  from plot_shortcuts import plot
-  from plot_wrapper import Multiplot, Legend
+  from plot_shortcuts import plot, plot_stdfill
+  from plot_wrapper import Multiplot, Legend, Overlay
   import matplotlib.pyplot as pl
   from pygeode.timeaxis import months
 
   from os.path import exists
 
   from common import unit_scale
+
+  line_colours = ['blue', 'green', 'red']
 
   datasets = [d for d in datasets if d is not None]
 
@@ -37,6 +39,14 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_data.append(None)
+
+  sfc_std = []
+  for d in datasets:
+    try:
+      sfc_std.append(d.get_data('sfc',fieldname,'std'))
+    except KeyError:
+      # Put a 'None' placeholder to indicate this isn't model surface data
+      sfc_std.append(None)
 
   # Use the first model data as a basis for the time axis.
   timeaxis = (s.getaxis('time') for s in sfc_data if s is not None).next()
@@ -82,15 +92,21 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
     if lon < 0: lon += 360  # Model data is from longitudes 0 to 360
 
     series = []
+    std = []
     plot_units = ''
-    for s,d in zip(sfc_data,datasets):
+    for s,sd,d in zip(sfc_data,sfc_std,datasets):
       if s is not None:
         series.append(s(lat=lat, lon=lon))
+        if sd is not None:
+          std.append(sd(lat=lat,lon=lon))
+        else:
+          std.append(None)
       else:
         # For now, assume that we have an obs dataset,
         # so this command shouldn't fail.
-        data = d.get_data(location,fieldname+'_mean')
+        data = d.get_data(location,fieldname,'mean')
         series.append(data)
+        std.append(d.get_data(location,fieldname,'std'))
 
     # Scale to the plot units
     for i,x in enumerate(series):
@@ -99,11 +115,22 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
       x = x / unit_scale[input_units] * unit_scale[units]
       x.name = fieldname
       series[i] = x
+      if std[i] is not None:
+        std[i] = std[i] / unit_scale[input_units] * unit_scale[units]
 
     # Limit the time period to plot
     series = [x(time=(time1,time2)) for x in series]
+    std = [s(time=(time1,time2)) if s is not None else None for s in std]
 
-    theplot = plot (*series, title=title,
+    parts = []
+    for i in range(len(series)):
+      color=line_colours[i]
+      if std[i] is not None:
+        parts.append(plot_stdfill(series[i],2*std[i],color=color))
+      else:
+        parts.append(plot(series[i],color=color))
+
+    theplot = Overlay (*parts, title=title,
            xlabel='', ylabel='%s %s'%(fieldname,units), xticks=xticks, xticklabels=xticklabels)
     plots.append (theplot)
 

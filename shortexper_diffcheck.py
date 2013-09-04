@@ -9,7 +9,7 @@ def shortexper_diffcheck(models, obs, location, outdir):
 
   lat, lon, country = obs.obs_locations[location]
   lon += 360
-  co2_obs = obs.get_data(location,'CO2_mean')
+  co2_obs = obs.get_data(location,'CO2')
   # Limit to the length of the experiment
   test_field = models[0].get_data(location,'CO2')
   time = test_field.time.values

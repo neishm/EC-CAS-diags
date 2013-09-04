@@ -13,8 +13,9 @@ def rpnopen_sfconly (filename):
 def file2date (filename):
   from re import search
   from datetime import datetime, timedelta
-  out = search('([dkp][m]|)(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)(?P<units>([mh]|))$', filename).groupdict()
+  out = search('([dkp][m]|)(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)(?P<units>([mh]|))(?P<enkf_ext>_(chmmean|chmstd)|)$', filename).groupdict()
   units = out.pop('units')
+  enkf_ext = out.pop('enkf_ext')
   out = dict([k,int(v)] for k,v in out.items())
   offset = out.pop('offset')
 
@@ -25,6 +26,13 @@ def file2date (filename):
   elif units == 'h' or units == '':
     out += timedelta (hours=offset)
   else: raise Exception
+
+  # We have to be careful with the forecast hour in the file.
+  # For EnKF, we have data before this forecast hour as well.
+  if enkf_ext != '':
+    out -= timedelta (hours=6)  #TODO: remove hard-coded EnKF cycle time
+    # Add back the first time we output
+    out += timedelta (hours=3)
 
   # Convert back to dictionary
   out = dict(year=out.year, month=out.month, day=out.day, hour=out.hour, minute=out.minute)
@@ -109,88 +117,119 @@ class GEM_Data(Data):
       # Note: Internal units are g/s
       fluxes = fix_timeaxis(fluxes)
       self.fluxes = fluxes
+    else:
+      self.fluxes = Dataset([])
 
     ##############################
     # Data with vertical extent
     ##############################
 
-    # Open a single day of data, to determine at what times 3D data is saved.
-    files_24h = sorted(glob(indir+"/*_024*"))
-    testfile = files_24h[0]
-    del files_24h
-    testfile = rpn.open(testfile)
-    # Assume we have 3D output for at least the 24h forecasts
-    # Also, assume that 3D tracer output has corresponding 3D GZ output.
-    testfield = 'GZ'
-    levels = list(testfile[testfield].getaxis(ZAxis).values)
-    # Get the rest of the files for this day, check the levels
-    year = int(testfile.time.year[0])
-    month = int(testfile.time.month[0])
-    day = int(testfile.time.day[0])
-    del testfile
-    testfiles = sorted(glob(indir+"/*%04d%02d%02d00_???*"%(year,month,day)))
-    testfiles = [rpn.open(f) for f in testfiles]
-    testfiles = [f for f in testfiles if testfield in f]
-    times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f[testfield].getaxis(ZAxis).values) == levels]
-    # Ignore 0h files, since we're already using the 24h forecasts
-    if 0 in times_with_3d:
-      times_with_3d.remove(0)
+    # First case - we have EnKF data (mean state)
+    if len(glob(indir+"/*_???_chmmean")) > 0:
+      # The output frequency is pretty much hard-coded on the EnKF side right
+      # now, so don't bother trying to generalize.
+      # (Can't properly test a generalization anyway)
 
-    dm_3d = [indir+"/dm*_%03d*"%h for h in times_with_3d]
-    km_3d = [indir+"/km*_%03d*"%h for h in times_with_3d]
-    pm_3d = [indir+"/pm*_%03d*"%h for h in times_with_3d]
-    # Sometimes the model outputs a single file with all buses.
-    combined_3d = [indir+"/[0-9]*_%03d*"%h for h in times_with_3d]
-
-    # Open the 3D files
-    if any(len(glob(x))>0 for x in combined_3d):
-      combined_3d = open_multi(combined_3d, opener=rpnopen, file2date=file2date)
+      combined_3d = open_multi(indir+"/[0-9]*_???_chmmean", opener=rpnopen, file2date=file2date)
       combined_3d = fix_timeaxis(combined_3d)
-    else: combined_3d = Dataset([])
-    if any(len(glob(x))>0 for x in dm_3d):
-      dm_3d = open_multi(dm_3d, opener=rpnopen, file2date=file2date)
-      self.dm_3d = fix_timeaxis(dm_3d)
-    else: self.dm_3d = combined_3d
-    if any(len(glob(x))>0 for x in km_3d):
-      km_3d = open_multi(km_3d, opener=rpnopen, file2date=file2date)
-      self.km_3d = fix_timeaxis(km_3d)
-    else: self.km_3d = combined_3d
-    if any(len(glob(x))>0 for x in pm_3d):
-      pm_3d = open_multi(pm_3d, opener=rpnopen, file2date=file2date)
-      self.pm_3d = fix_timeaxis(pm_3d)
-    else: self.pm_3d = combined_3d
+
+      # The surface output is the same frequency as the 3D output
+      # (no special high-frequency surface output)
+      combined = combined_3d(eta=1,zeta=1).squeeze()
+
+      stddev_3d = open_multi(indir+"/[0-9]*_???_chmstd", opener=rpnopen, file2date=file2date)
+      stddev_3d = fix_timeaxis(stddev_3d)
+      stddev_sfc = stddev_3d(eta=1,zeta=1).squeeze()
 
 
+    # Second case - we have a single model integration
+    else:
+      # Open a single day of data, to determine at what times 3D data is saved.
+      files_24h = sorted(glob(indir+"/*_024*"))
+      testfile = files_24h[0]
+      del files_24h
+      testfile = rpn.open(testfile)
+      # Assume we have 3D output for at least the 24h forecasts
+      # Also, assume that 3D tracer output has corresponding 3D GZ output.
+      testfield = 'GZ'
+      levels = list(testfile[testfield].getaxis(ZAxis).values)
+      # Get the rest of the files for this day, check the levels
+      year = int(testfile.time.year[0])
+      month = int(testfile.time.month[0])
+      day = int(testfile.time.day[0])
+      del testfile
+      testfiles = sorted(glob(indir+"/*%04d%02d%02d00_???*"%(year,month,day)))
+      testfiles = [rpn.open(f) for f in testfiles]
+      testfiles = [f for f in testfiles if testfield in f]
+      times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f[testfield].getaxis(ZAxis).values) == levels]
+      # Ignore 0h files, since we're already using the 24h forecasts
+      if 0 in times_with_3d:
+        times_with_3d.remove(0)
 
-    ##############################
-    # Surface data
-    ##############################
+      dm_3d = [indir+"/dm*_%03d*"%h for h in times_with_3d]
+      km_3d = [indir+"/km*_%03d*"%h for h in times_with_3d]
+      pm_3d = [indir+"/pm*_%03d*"%h for h in times_with_3d]
+      combined_3d = [indir+"/[0-9]*_%03d*"%h for h in times_with_3d]
 
-    # Assume surface data is available in every output time.
-    # Ignore 0h output - use 24h output instead.
+      # Open the 3D files
+      if any(len(glob(x))>0 for x in dm_3d):
+        dm_3d = open_multi(dm_3d, opener=rpnopen, file2date=file2date)
+        dm_3d = fix_timeaxis(dm_3d)
+      else: dm_3d = Dataset([])
+      if any(len(glob(x))>0 for x in km_3d):
+        km_3d = open_multi(km_3d, opener=rpnopen, file2date=file2date)
+        km_3d = fix_timeaxis(km_3d)
+      else: km_3d = Dataset([])
+      if any(len(glob(x))>0 for x in pm_3d):
+        pm_3d = open_multi(pm_3d, opener=rpnopen, file2date=file2date)
+        pm_3d = fix_timeaxis(pm_3d)
+      else: pm_3d = Dataset([])
 
-    # Sometimes the model outputs a single file with all buses.
-    combined = [indir+"/[0-9]*_%03d*"%i for i in range(1,25)]
-    if any(len(glob(x))>0 for x in combined):
-      combined = open_multi(combined, opener=rpnopen_sfconly, file2date=file2date)
-      combined= fix_timeaxis(combined)
-    else: combined = Dataset([])
+      if any(len(glob(x))>0 for x in combined_3d):
+        combined_3d = open_multi(combined_3d, opener=rpnopen, file2date=file2date)
+        combined_3d = fix_timeaxis(combined_3d)
+      else: combined_3d = dm_3d + km_3d + pm_3d
 
-    dm = [indir+"/dm*_%03d*"%i for i in range(1,25)]
-    if any(len(glob(x))>0 for x in dm):
-      dm = open_multi(dm, opener=rpnopen_sfconly, file2date=file2date)
-      self.dm = fix_timeaxis(dm)
-    else: self.dm = combined
-    km = [indir+"/km*_%03d*"%i for i in range(1,25)]
-    if any(len(glob(x))>0 for x in km):
-      km = open_multi(km, opener=rpnopen_sfconly, file2date=file2date)
-      self.km = fix_timeaxis(km)
-    else: self.km = combined
-    pm = [indir+"/pm*_%03d*"%i for i in range(1,25)]
-    if any(len(glob(x))>0 for x in pm):
-      pm = open_multi(pm, opener=rpnopen_sfconly, file2date=file2date)
-      self.pm = fix_timeaxis(pm)
-    else: self.pm = combined
+
+      ##############################
+      # Surface data (non-EnKF data)
+      ##############################
+
+      # Assume surface data is available in every output time.
+      # Ignore 0h output - use 24h output instead.
+
+      dm = [indir+"/dm*_%03d*"%i for i in range(1,25)]
+      if any(len(glob(x))>0 for x in dm):
+        dm = open_multi(dm, opener=rpnopen_sfconly, file2date=file2date)
+        dm = fix_timeaxis(dm)
+      else: dm = Dataset([])
+      km = [indir+"/km*_%03d*"%i for i in range(1,25)]
+      if any(len(glob(x))>0 for x in km):
+        km = open_multi(km, opener=rpnopen_sfconly, file2date=file2date)
+        km = fix_timeaxis(km)
+      else: km = Dataset([])
+      pm = [indir+"/pm*_%03d*"%i for i in range(1,25)]
+      if any(len(glob(x))>0 for x in pm):
+        pm = open_multi(pm, opener=rpnopen_sfconly, file2date=file2date)
+        pm = fix_timeaxis(pm)
+      else: pm = Dataset([])
+
+      combined = [indir+"/[0-9]*_%03d*"%i for i in range(1,25)]
+      if any(len(glob(x))>0 for x in combined):
+        combined = open_multi(combined, opener=rpnopen_sfconly, file2date=file2date)
+        combined= fix_timeaxis(combined)
+      else: combined = dm + km + pm
+
+      # We have no ensemble standard deviation for this type of run
+      stddev_3d = Dataset([])
+      stddev_sfc = Dataset([])
+
+    # End of EnKF / non-EnKF input mapping
+
+    self.combined_3d = combined_3d
+    self.combined = combined
+    self.stddev_3d = stddev_3d
+    self.stddev_sfc = stddev_sfc
 
     ##############################
     # Derived fields
@@ -200,22 +239,25 @@ class GEM_Data(Data):
     #  compute)
 
     # Sigma levels (momentum)
-    if 'SIGM' not in self.pm_3d:
-      GZ = self.dm_3d.GZ
-      Ps = self.dm_3d['P0'] * 100
-      if GZ.hasaxis('eta'):
-        A = GZ.eta.auxasvar('A')
-        B = GZ.eta.auxasvar('B')
+    if 'SIGM' not in self.combined_3d:
+      try:
+        testfield = self.combined_3d.GZ
+      except AttributeError:
+        testfield = self.combined_3d.TT
+      Ps = self.combined_3d['P0'] * 100
+      if testfield.hasaxis('eta'):
+        A = testfield.eta.auxasvar('A')
+        B = testfield.eta.auxasvar('B')
         P = A + B * Ps
         P = P.transpose('time','eta','lat','lon')
-      elif GZ.hasaxis('zeta'):
+      elif testfield.hasaxis('zeta'):
         from pygeode.formats.fstd import LogHybrid
         from pygeode.formats.fstd_core import decode_levels
         from pygeode.ufunc import exp, log
         # Construct a momentum level axis from the prescribed momentum levels
-        A = GZ.zeta.atts['a_m']
-        B = GZ.zeta.atts['b_m']
-        hy, kind = decode_levels(GZ.zeta.atts['ip1_m'])
+        A = testfield.zeta.atts['a_m']
+        B = testfield.zeta.atts['b_m']
+        hy, kind = decode_levels(testfield.zeta.atts['ip1_m'])
         z = LogHybrid(values=hy, A=A, B=B)
         A = z.auxasvar('A')
         B = z.auxasvar('B')
@@ -225,16 +267,16 @@ class GEM_Data(Data):
       else: raise TypeError("unknown vertical axis")
       sigma = P / Ps
       sigma.name = 'SIGM'
-      self.pm_3d += sigma
+      self.combined_3d += sigma
 
 
 
     # Grid cell areas
-    if 'DX' not in self.pm_3d:
+    if 'DX' not in self.combined_3d:
       from common import get_area
-      dxdy = get_area(self.dm.lat, self.dm.lon)
-      self.pm_3d += dxdy
-      self.pm += dxdy
+      dxdy = get_area(self.combined.lat, self.combined.lon)
+      self.combined_3d += dxdy
+      self.combined += dxdy
 
     ##############################
     # Unit conversions
@@ -246,7 +288,7 @@ class GEM_Data(Data):
     convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
     convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
     convert_CO2_flux = mw['CO2'] / mw['C']
-    for dataset_name in 'dm', 'dm_3d':
+    for dataset_name in 'combined', 'combined_3d', 'stddev_sfc', 'stddev_3d':
       dataset = getattr(self,dataset_name)
       # Convert CO2 units
       for co2_name in 'CO2', 'CO2B', 'CFF', 'CBB', 'COC', 'CLA':
@@ -298,19 +340,19 @@ class GEM_Data(Data):
     'air':'air'
   }
 
-  def _find_sfc_field (self, name):
-    for dataset in self.dm, self.km, self.pm:
-      if name in dataset: return dataset[name]
+  def _find_sfc_field (self, name, stat='mean'):
+    if stat == 'mean' and name in self.combined: return self.combined[name]
+    if stat == 'std' and name in self.stddev_sfc: return self.stddev_sfc[name]
     raise KeyError ("%s not found in model surface data."%name)
 
-  def _find_3d_field (self, name):
-    for dataset in self.dm_3d, self.km_3d, self.pm_3d:
-      if name in dataset: return dataset[name]
-    raise KeyError ("%s not found in model 3d data."%name)
+  def _find_3d_field (self, name, stat='mean'):
+    if stat == 'mean' and name in self.combined_3d: return self.combined_3d[name]
+    if stat == 'std' and name in self.stddev_3d: return self.stddev_3d[name]
+    raise KeyError ("%s (%s) not found in model 3d data."%(name,stat))
 
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
-  def get_data (self, domain, standard_name):
+  def get_data (self, domain, standard_name, stat='mean'):
 
     # Translate the standard name into the name used by GEM.
     if standard_name in self.local_names:
@@ -323,10 +365,10 @@ class GEM_Data(Data):
 
     # Surface data (lowest model level)
     if domain == 'sfc':
-      data = self._find_sfc_field(field)
+      data = self._find_sfc_field(field,stat)
     # Zonal mean, with data interpolated to a fixed set of geopotential heights
     elif domain == 'zonalmean_gph':
-      data = self._find_3d_field(field)
+      data = self._find_3d_field(field,stat)
       GZ = self._find_3d_field('GZ')
       data = to_gph(data,GZ).nanmean('lon')
       data.atts['units'] = 'ppm'
@@ -339,8 +381,8 @@ class GEM_Data(Data):
       # Convert from ppm to kg / kg
       conversion = 1E-6 * mw[standard_name] / mw['air']
 
-      Ps = self.dm_3d['P0'] * 100 # Get Ps on 3D field time frequency
-      sigma = self.pm_3d['SIGM']
+      Ps = self.combined_3d['P0'] * 100 # Get Ps on 3D field time frequency
+      sigma = self.combined_3d['SIGM']
 
       # Case 1 - GEM3 (unstaggered) levels
       if sigma.hasaxis("eta"):
@@ -349,7 +391,7 @@ class GEM_Data(Data):
         if field is 'air':
           c_half = 1
         else:
-          c = self._find_3d_field(field) * conversion
+          c = self._find_3d_field(field,stat) * conversion
           # Interpolate concentration to half levels
           c1 = c.slice[:,:-1,:,:]
           c2 = c.slice[:,1:,:,:]
@@ -372,7 +414,7 @@ class GEM_Data(Data):
         if field is 'air':
           c_kp1 = 1
         else:
-          c = self._find_3d_field(field) * conversion
+          c = self._find_3d_field(field,stat) * conversion
           # Assuming we have an unused "surface" diagnositic level
           assert 1.0 in c.getaxis("zeta").values
           c_kp1 = c.slice[:,1:-1,:,:]
@@ -394,7 +436,7 @@ class GEM_Data(Data):
     elif domain == 'avgcolumn':
       from common import molecular_weight as mw
       # Total column (kg/m2)
-      tc = self.get_data('totalcolumn', standard_name)
+      tc = self.get_data('totalcolumn', standard_name, stat)
       # Total column air (kg/m2)
       Mair = self.get_data('totalcolumn', 'air')
       # Compute the mass mixing ratio
@@ -407,8 +449,8 @@ class GEM_Data(Data):
 
     elif domain == 'totalmass':
       # Total column (kg /m2)
-      tc = self.get_data('totalcolumn', standard_name)
-      area = self.pm_3d['DX']
+      tc = self.get_data('totalcolumn', standard_name, stat)
+      area = self.combined_3d['DX']
       # Mass per grid area (kg)
       # Assume global grid - remove repeated longitude
       mass = (tc * area).slice[:,:,:-1].sum('lat','lon')
@@ -419,6 +461,7 @@ class GEM_Data(Data):
 
     # Integrated flux (if available)
     elif domain == 'totalflux':
+      if stat != 'mean': raise KeyError("Don't have stddev on fluxes")
       from common import molecular_weight as mw
       if not hasattr(self,'fluxes'):
         raise KeyError ("Can't compute a total flux, because no fluxes are identified with this run.")
@@ -431,12 +474,16 @@ class GEM_Data(Data):
       data.name = field
 
     elif domain == 'Toronto':
-      data = self._find_3d_field(field)
+      data = self._find_3d_field(field,stat)
       data = data.squeeze(lat=43.7833,lon=280.5333)
 
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
-    return self._cache(data,'%s_%s_%s.nc'%(self.name,domain,field))
+    if stat == 'mean':
+      filename = '%s_%s_%s.nc'%(self.name,domain,field)
+    else:
+      filename = '%s_%s_%s_%s.nc'%(self.name,stat,domain,field)
+    return self._cache(data,filename)
 
 
 del Data

@@ -83,12 +83,7 @@ class EC_Station_Data (Data):
     self.data = netcdf.open(cachefile)
 
   # Get some data at a station (e.g. CO2_mean)
-  def get_data (self, station, product):
-
-    if '_' not in product:
-      raise KeyError ("Expected something of the form FIELD_STAT")
-
-    fieldname, stat = product.rsplit('_',2)
+  def get_data (self, station, fieldname, stat='mean'):
 
     return self.data[station+'_'+fieldname+'_'+stat]
 

@@ -12,7 +12,7 @@ def split_axes_args (all_args):
   axes_args = {}
   other_args = {}
   for argname, argval in all_args.items():
-    if hasattr(pl.Axes, 'set_'+argname):
+    if hasattr(pl.Axes, 'set_'+argname) and argname not in ['alpha']:
       axes_args[argname] = argval
     else:
       other_args[argname] = argval
@@ -101,6 +101,11 @@ class Plot(PlotWrapper):
 class ErrorBar(PlotWrapper):
   def _doplot (self, figure, pl, axes, transform):
     pl.errorbar(*self.plot_args, **self.plot_kwargs)
+
+# Fill between two lines
+class FillBetween(PlotWrapper):
+  def _doplot (self, figure, pl, axes, transform):
+    pl.fill_between (*self.plot_args, **self.plot_kwargs)
 
 # Both contour-type plots (contour/contourf) use the same input argument
 # conventions, so only need to define the transformation method once.
