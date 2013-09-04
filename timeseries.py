@@ -126,7 +126,7 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
     for i in range(len(series)):
       color=line_colours[i]
       if std[i] is not None:
-        parts.append(plot_stdfill(series[i],std[i],color=color))
+        parts.append(plot_stdfill(series[i],2*std[i],color=color))
       else:
         parts.append(plot(series[i],color=color))
 
