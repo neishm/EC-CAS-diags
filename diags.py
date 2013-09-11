@@ -143,6 +143,12 @@ try:
   xcol (models=[experiment,control,carbontracker], fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCO2', e])
+# Average column of CO2 std
+try:
+  xcol (models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='std')
+except Exception as e:
+  failures.append(['XCO2std', e])
+
 # XCH4
 try:
   xcol (models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)

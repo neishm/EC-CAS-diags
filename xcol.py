@@ -4,10 +4,10 @@
 # comparable to satellite observations.
 
 # Get column average
-def get_xcol (experiment, fieldname, units):
+def get_xcol (experiment, fieldname, units, stat):
   from common import rotate_grid, unit_scale
 
-  xcol = experiment.get_data('avgcolumn', fieldname)
+  xcol = experiment.get_data('avgcolumn', fieldname, stat)
 
   # Rotate the longitudes to 0,360
   if xcol.lon[1] < 0:
@@ -26,7 +26,7 @@ def get_xcol (experiment, fieldname, units):
   return xcol
 
 
-def xcol (models, fieldname, units, outdir):
+def xcol (models, fieldname, units, outdir, stat='mean'):
   import matplotlib.pyplot as pl
   from contouring import get_global_range, get_contours
   from pygeode.plot import plotvar
@@ -35,13 +35,14 @@ def xcol (models, fieldname, units, outdir):
   from os import makedirs
 
   plotname = 'X'+fieldname
+  if stat != 'mean': plotname += '_' + stat
 
   models = [m for m in models if m is not None]
 
   imagedir = outdir + "/images_%s_%s"%('_'.join(m.name for m in models),plotname)
   if not exists(imagedir): makedirs(imagedir)
 
-  model_data = [get_xcol(m,fieldname,units) for m in models]
+  model_data = [get_xcol(m,fieldname,units,stat) for m in models]
 
   low, high = get_global_range (*model_data)
   clevs = get_contours(low, high)
