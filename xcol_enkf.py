@@ -4,10 +4,10 @@
 # comparable to satellite observations.
 
 # Get column average
-def get_xcol (experiment, fieldname, units):
+def get_xcol (experiment, fieldname, units, stat):
   from common import rotate_grid, unit_scale
 
-  xcol = experiment.get_data('avgcolumn', fieldname)
+  xcol = experiment.get_data('avgcolumn', fieldname, stat)
 
   # Rotate the longitudes to 0,360
   if xcol.lon[1] < 0:
@@ -22,29 +22,26 @@ def get_xcol (experiment, fieldname, units):
     xcol.atts['low'] = low / unit_scale[input_units] * unit_scale[units]
     xcol.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
 
-  xcol.name = experiment.title  # Verbose name for plotting
+  xcol.name = fieldname+' '+stat  # Verbose name for plotting
   return xcol
 
 
-def xcol (models, fieldname, units, outdir):
+def xcol_enkf (model, fieldname, units, outdir):
   import matplotlib.pyplot as pl
-  from contouring import get_global_range, get_contours
+  from contouring import get_range, get_contours
   from pygeode.plot import plotvar
   from pygeode.progress import PBar
   from os.path import exists
   from os import makedirs
 
-  plotname = 'X'+fieldname
+  plotname = 'X'+fieldname+'_stats'
 
-  models = [m for m in models if m is not None]
-
-  imagedir = outdir + "/images_%s_%s"%('_'.join(m.name for m in models),plotname)
+  imagedir = outdir + "/images_%s_%s"%(model.name,plotname)
   if not exists(imagedir): makedirs(imagedir)
 
-  model_data = [get_xcol(m,fieldname,units) for m in models]
+  model_data = [get_xcol(model,fieldname,units,stat) for stat in ('mean','std')]
 
-  low, high = get_global_range (*model_data)
-  clevs = get_contours(low, high)
+  clevs = [get_contours(*get_range(m)) for m in model_data]
 
   # Generate each individual frame
   #assert len(model_data) in (1,2,3)
@@ -73,14 +70,14 @@ def xcol (models, fieldname, units, outdir):
 
     for k in range(n):
       ax = pl.subplot(n,1,k+1)
-      plotvar (model_data[k](time=t), ax=ax, clevs=clevs)
+      plotvar (model_data[k](time=t), ax=ax, clevs=clevs[k])
 
     fig.savefig(outfile)
 
     pbar.update(i*100./len(times))
 
   # Generate the movie
-  moviefile = "%s/%s_%s.avi"%(outdir,'_'.join(m.name for m in models),plotname)
+  moviefile = "%s/%s_%s.avi"%(outdir,model.name,plotname)
   from os import system
   if not exists(moviefile):
     system("mencoder -o %s mf://%s/*.png -ovc lavc -lavcopts vcodec=msmpeg4v2"%(moviefile, imagedir))
