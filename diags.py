@@ -117,6 +117,11 @@ try:
   movie_zonal(models=[experiment,control,carbontracker], fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['CO2 movie_zonal', e])
+# CO2 Zonal mean of spread
+try:
+  movie_zonal(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='std')
+except Exception as e:
+  failures.append(['CO2 movie_zonal spread', e])
 # CH4 Zonal mean movies
 try:
   movie_zonal(models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)
