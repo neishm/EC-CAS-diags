@@ -5,6 +5,7 @@ class Data(object):
   # Cache the given data, with the given filename
   def _cache(self,data,filename):
     from pygeode.formats import netcdf
+    from pygeode.formats.fstd import detect_fstd_axes
     from os.path import exists
     from os import mkdir
     import numpy as np
@@ -40,7 +41,9 @@ class Data(object):
 
       netcdf.save(cachefile, data)
 
-    data = netcdf.open(cachefile).vars[0]
+    data = netcdf.open(cachefile).vars
+    detect_fstd_axes(data)  # Recreate Hybrid / LogHybrid axes
+    data = data[0]    # Only have the one variable in the file
 
     return data
 
