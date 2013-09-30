@@ -136,8 +136,8 @@ class GAW_Station_Data (Data):
     del var, lat, lon, country
 
     # Fix Egbert data - they're missing every other hour
-    data = data.replace_vars(Egbert_CO2_mean = data.Egbert_CO2_mean.slice[1::2],
-                             Egbert_CO2_std = data.Egbert_CO2_std.slice[1::2])
+    data = data.replace_vars(Egbert_CO2_mean = data.Egbert_CO2_mean.slice[1::2].rename_axes(time='time01'),
+                             Egbert_CO2_std = data.Egbert_CO2_std.slice[1::2].rename_axes(time='time01'))
 
     self.data = data
     self.obs_locations = obs_locations
