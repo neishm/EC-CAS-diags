@@ -50,8 +50,10 @@ def shortexper_diffcheck(models, obs, location, outdir):
     co2_min = min(co2_min, mn)
     co2_max = max(co2_max, mx)
 
-    co2_sfc_min = min(co2_sfc_min, co2(hybrid=1.0).min())
-    co2_sfc_max = max(co2_sfc_max, co2(hybrid=1.0).max())
+    if not ( co2.hasaxis("hybrid") or co2.hasaxis("loghybrid") ):
+      raise TypeError("Unrecognized z axis type %s"%co2.getaxis("zaxis"))
+    co2_sfc_min = min(co2_sfc_min, co2(zaxis=1.0).min())
+    co2_sfc_max = max(co2_sfc_max, co2(zaxis=1.0).max())
 
   # Do the plots
   for i,dataset in enumerate(models):
@@ -65,9 +67,13 @@ def shortexper_diffcheck(models, obs, location, outdir):
     # Put the variables on a height coordinate
     # TODO: proper vertical interpolation
     gz = dataset.get_data(location,'geopotential_height')(i_time=0).squeeze()
-    height = Height(gz.get())
-    ktn = ktn.replace_axes(hybrid=height)
-    co2 = co2.replace_axes(hybrid=height)
+    # Match GZ to the tracer levels (in GEM4, GZ has both thermo/momentum levs)
+    co2_iz = np.searchsorted(gz.zaxis.values, co2.zaxis.values)
+    ktn_iz = np.searchsorted(gz.zaxis.values, ktn.zaxis.values)
+    co2_height = Height(gz.get(i_zaxis=co2_iz))
+    ktn_height = Height(gz.get(i_zaxis=ktn_iz))
+    ktn = ktn.replace_axes(zaxis=ktn_height)
+    co2 = co2.replace_axes(zaxis=co2_height)
     pbl = dataset.get_data(location,'PBL_height')
     # Adjust pbl to use the same height units for plotting.
     pbl *= Height.plotatts.get('scalefactor',1)
