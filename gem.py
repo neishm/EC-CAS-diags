@@ -85,12 +85,8 @@ def to_gph (var, GZ):
   return var
 
 
-# New data interface - get data as needed on-the-fly.
-# Replaces pre-computing everything with nc_cache.
-# This should be faster, since we only compute what we need.
-
-from data_interface import Data
-class GEM_Data(Data):
+# GEM data interface
+class GEM_Data (object):
   def __init__ (self, experiment_dir, flux_dir, name, title, tmpdir=None):
     from pygeode.formats.multifile import open_multi
     from pygeode.formats import fstd as rpn
@@ -98,15 +94,13 @@ class GEM_Data(Data):
     from glob import glob
     from pygeode.axis import ZAxis
     from common import fix_timeaxis
+    from cache import Cache
 
     indir = experiment_dir
 
     self.name = name
     self.title = title
-    self._cachedir = indir + "/nc_cache"
-    self._tmpdir = tmpdir
-    if self._tmpdir is None:
-      self._tmpdir = self._cachedir
+    self.cache = Cache(dir = indir + "/nc_cache", fallback_dirs=[tmpdir] if tmpdir is not None else [])
 
     ##############################
     # Fluxes
@@ -480,11 +474,9 @@ class GEM_Data(Data):
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
     if stat == 'mean':
-      filename = '%s_%s_%s.nc'%(self.name,domain,field)
+      prefix = '%s_%s_%s'%(self.name,domain,field)
     else:
-      filename = '%s_%s_%s_%s.nc'%(self.name,stat,domain,field)
-    return self._cache(data,filename)
+      prefix = '%s_%s_%s_%s'%(self.name,stat,domain,field)
+    return self.cache.write(data,prefix)
 
-
-del Data
 
