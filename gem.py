@@ -198,24 +198,24 @@ class GEM_Data(Data):
       # Assume surface data is available in every output time.
       # Ignore 0h output - use 24h output instead.
 
-      dm = [indir+"/dm*_%03d*"%i for i in range(1,25)]
-      if any(len(glob(x))>0 for x in dm):
+      dm = [x for x in glob(indir+"/dm*_*") if not x.endswith("_000") and not x.endswith("_000h")]
+      if len(dm) > 0:
         dm = open_multi(dm, opener=rpnopen_sfconly, file2date=file2date)
         dm = fix_timeaxis(dm)
       else: dm = Dataset([])
-      km = [indir+"/km*_%03d*"%i for i in range(1,25)]
-      if any(len(glob(x))>0 for x in km):
+      km = [x for x in glob(indir+"/km*_*") if not x.endswith("_000") and not x.endswith("_000h")]
+      if len(km) > 0:
         km = open_multi(km, opener=rpnopen_sfconly, file2date=file2date)
         km = fix_timeaxis(km)
       else: km = Dataset([])
-      pm = [indir+"/pm*_%03d*"%i for i in range(1,25)]
-      if any(len(glob(x))>0 for x in pm):
+      pm = [x for x in glob(indir+"/pm*_*") if not x.endswith("_000") and not x.endswith("_000h")]
+      if len(pm) > 0:
         pm = open_multi(pm, opener=rpnopen_sfconly, file2date=file2date)
         pm = fix_timeaxis(pm)
       else: pm = Dataset([])
 
-      combined = [indir+"/[0-9]*_%03d*"%i for i in range(1,25)]
-      if any(len(glob(x))>0 for x in combined):
+      combined = [x for x in glob(indir+"/[0-9]*_*") if not x.endswith("_000") and not x.endswith("_000h")]
+      if len(combined) > 0:
         combined = open_multi(combined, opener=rpnopen_sfconly, file2date=file2date)
         combined= fix_timeaxis(combined)
       else: combined = dm + km + pm
