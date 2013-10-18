@@ -7,30 +7,43 @@ class Cache (object):
     self.save_hook = save_hook
     self.load_hook = load_hook
 
-    for dir in [dir]+fallback_dirs:
+    for write_dir in [dir]+fallback_dirs:
 
       try:
 
-        if not exists(dir):
-          mkdir(dir)
+        if not exists(write_dir):
+          mkdir(write_dir)
 
-        if not isdir(dir):
-          raise IOError ("%s is not a directory"%dir)
+        if not isdir(write_dir):
+          raise IOError ("%s is not a directory"%write_dir)
 
         # Try writing a dummy file, make sure this user has permission to write
         # into this directory.
-        dummy = dir + "/dummy"
+        dummy = write_dir + "/dummy"
         f = file(dummy, 'a')
         f.close()
         remove(dummy)
 
-        self.dir = dir + "/"
+        self.write_dir = write_dir + "/"
+        # Determine all sources for *reading* pre-cached data
+        self.read_dirs = [self.write_dir]
+        if isdir(dir): self.read_dirs += [dir+"/"]
         return
 
       except IOError: continue
       except OSError: continue
 
     raise IOError ("Unable to use any of the specified cache directories %s"%([dir]+fallback_dirs))
+
+  # Internal method - get the appropriate filename.
+  # If it already exists, return the path to the existing file.
+  # Otherwise, return a (non-existent) file inside the write_dir.
+  def _full_path (self, filename):
+    from os.path import exists
+    for dir in self.read_dirs:
+      if exists(dir+filename): return dir+filename
+    return self.write_dir+filename
+
 
   # Write out the data
   def write (self, var, prefix):
@@ -52,7 +65,7 @@ class Cache (object):
     if not var.hasaxis('time'):
       from warnings import warn
       warn ("Untested case - no time axis in data")
-      filename = self.dir + prefix + ".nc"
+      filename = self._full_path(prefix + ".nc")
       if not exists(filename):
         netcdf.save(filename, var)
       return netcdf.open(filename)[var.name]
@@ -86,7 +99,7 @@ class Cache (object):
       hours = [''] * len(taxis)
 
     datestrings = [y+m+d+h for y,m,d,h in zip(years,months,days,hours)]
-    filenames = [self.dir+prefix+"_"+datestring+".nc" for datestring in datestrings]
+    filenames = [self._full_path(prefix+"_"+datestring+".nc") for datestring in datestrings]
 
     # Determine which files aren't created yet
     uncached_stuff = [(i,f) for i,f in enumerate(filenames) if not exists(f)]
@@ -121,7 +134,7 @@ class Cache (object):
     pbar.update(100)
 
     # Compute global range over entire period
-    global_range_file = self.dir+prefix+"_"+datestrings[0]+"-"+datestrings[-1]+".range.txt"
+    global_range_file = self._full_path(prefix+"_"+datestrings[0]+"-"+datestrings[-1]+".range.txt")
     if not exists(global_range_file):
       for filename in filenames:
         global_low = None
