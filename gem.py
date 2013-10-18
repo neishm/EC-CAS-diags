@@ -100,7 +100,8 @@ class GEM_Data (object):
 
     self.name = name
     self.title = title
-    self.cache = Cache(dir = indir + "/nc_cache", fallback_dirs=[tmpdir] if tmpdir is not None else [])
+    fallback_dirs = [tmpdir] if tmpdir is not None else []
+    self.cache = Cache(dir = indir + "/nc_cache", fallback_dirs=fallback_dirs, global_prefix=name+"_")
 
     ##############################
     # Fluxes
@@ -474,9 +475,9 @@ class GEM_Data (object):
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
     if stat == 'mean':
-      prefix = '%s_%s_%s'%(self.name,domain,field)
+      prefix = '%s_%s'%(domain,field)
     else:
-      prefix = '%s_%s_%s_%s'%(self.name,stat,domain,field)
+      prefix = '%s_%s_%s'%(stat,domain,field)
     return self.cache.write(data,prefix)
 
 

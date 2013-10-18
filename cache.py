@@ -1,11 +1,12 @@
 # A place to hold temporary files
 class Cache (object):
-  def __init__ (self, dir, fallback_dirs=[], save_hook=None, load_hook=None):
+  def __init__ (self, dir, fallback_dirs=[], global_prefix='', save_hook=None, load_hook=None):
     from os.path import exists, isdir
     from os import mkdir, remove
 
     self.save_hook = save_hook
     self.load_hook = load_hook
+    self.global_prefix = global_prefix
 
     for write_dir in [dir]+fallback_dirs:
 
@@ -51,6 +52,10 @@ class Cache (object):
     from pygeode.formats import netcdf
     from pygeode.formats.multifile import open_multi
     import numpy as np
+
+    # Apply the global prefix - a generic string that identifies the source
+    # of the cache data
+    prefix = self.global_prefix + prefix
 
     # Apply any hooks for saving the var (extra metadata encoding?)
     if self.save_hook is not None:
