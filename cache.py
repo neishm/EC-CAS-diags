@@ -1,8 +1,11 @@
 # A place to hold temporary files
 class Cache (object):
-  def __init__ (self, dir, fallback_dirs=[]):
+  def __init__ (self, dir, fallback_dirs=[], save_hook=None, load_hook=None):
     from os.path import exists, isdir
     from os import mkdir, remove
+
+    self.save_hook = save_hook
+    self.load_hook = load_hook
 
     for dir in [dir]+fallback_dirs:
 
@@ -35,6 +38,10 @@ class Cache (object):
     from pygeode.formats import netcdf
     from pygeode.formats.multifile import open_multi
     import numpy as np
+
+    # Apply any hooks for saving the var (extra metadata encoding?)
+    if self.save_hook is not None:
+      var = self.save_hook(var)
 
     # Make sure the data is in 32-bit precision
     # (sometimes diagnostics cause a 64-bit output - waste of space)
@@ -134,6 +141,10 @@ class Cache (object):
 
     # Re-load the data
     var = open_multi(filenames, format=netcdf, pattern="_"+pattern+"\.nc")[var.name]
+
+    # Apply any hooks for loading the var (extra metadata decoding?)
+    if self.load_hook is not None:
+      var = self.load_hook(var)
 
     # Read global range
     with open(global_range_file,"r") as f:
