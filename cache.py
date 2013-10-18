@@ -36,6 +36,11 @@ class Cache (object):
     from pygeode.formats.multifile import open_multi
     import numpy as np
 
+    # Make sure the data is in 32-bit precision
+    # (sometimes diagnostics cause a 64-bit output - waste of space)
+    if var.dtype.name != 'float32':
+      var = var.as_type('float32')
+
     # Special case - no time axis
     if not var.hasaxis('time'):
       from warnings import warn
