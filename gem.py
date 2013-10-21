@@ -84,6 +84,14 @@ def to_gph (var, GZ):
   var = var.transpose(0,3,1,2)
   return var
 
+# Wrapper for getting GEM data back out of a cached netcdf file
+# (This will hook into the cache, to preserve FSTD axes after save/reloading)
+def gem_load_cache_hook (var):
+  from pygeode.formats.fstd import detect_fstd_axes
+  data = [var]
+  detect_fstd_axes(data)
+  return data[0]
+
 
 # GEM data interface
 class GEM_Data (object):
@@ -101,7 +109,7 @@ class GEM_Data (object):
     self.name = name
     self.title = title
     fallback_dirs = [tmpdir] if tmpdir is not None else []
-    self.cache = Cache(dir = indir + "/nc_cache", fallback_dirs=fallback_dirs, global_prefix=name+"_")
+    self.cache = Cache(dir = indir + "/nc_cache", fallback_dirs=fallback_dirs, global_prefix=name+"_", load_hook=gem_load_cache_hook)
 
     ##############################
     # Fluxes
