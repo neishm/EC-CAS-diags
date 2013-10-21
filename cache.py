@@ -117,7 +117,7 @@ class Cache (object):
     from pygeode.progress import PBar
     pbar = PBar (message = "Caching %s"%prefix)
     for i,filename in zip(uncached_times, uncached_filenames):
-      pbar.part(i,len(uncached_times))
+      pbar.update(i*100./len(uncached_times))
 
       # Save the data
       data = var(i_time=i).load()
