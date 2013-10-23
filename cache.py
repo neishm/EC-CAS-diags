@@ -57,10 +57,6 @@ class Cache (object):
     # of the cache data
     prefix = self.global_prefix + prefix
 
-    # Apply any hooks for saving the var (extra metadata encoding?)
-    if self.save_hook is not None:
-      var = self.save_hook(var)
-
     # Make sure the data is in 32-bit precision
     # (sometimes diagnostics cause a 64-bit output - waste of space)
     if var.dtype.name != 'float32':
@@ -72,10 +68,15 @@ class Cache (object):
       warn ("Untested case - no time axis in data")
       filename = self._full_path(prefix + ".nc")
       if not exists(filename):
+        if self.save_hook is not None: var = self.save_hook(var)
         netcdf.save(filename, var)
-      return netcdf.open(filename)[var.name]
+      var = netcdf.open(filename)[var.name]
+      if self.load_hook is not None: var = self.load_hook(var)
+      return var
 
     taxis = var.getaxis('time')
+
+    # For the usual case, split the data into individual files for each timestep
 
     # Generate a list of filenames
     pattern = ""
@@ -123,8 +124,21 @@ class Cache (object):
       data = var(i_time=i).load()
       netcdf.save(filename, data)
 
+    pbar.update(100)
+
+
+    # Save into a single, large file (faster access)
+    bigfile = self._full_path(prefix+"_"+datestrings[0]+"-"+datestrings[-1]+".nc")
+    if not exists(bigfile):
+
+      # Open the many small files
+      var = open_multi(filenames, format=netcdf, pattern="_"+pattern+"\.nc")[var.name]
+
+      # Load into memory
+      var = var.load()
+
       # Compute ranges for the data
-      sample = data.values.flatten()
+      sample = var.values.flatten()
       # Filter out NaN values
       sample = sample[np.isfinite(sample)]
       # Get a good range (covers most values)
@@ -132,45 +146,21 @@ class Cache (object):
       N = len(sample)
       low = sample[int(round((N-1)*0.001))]
       high = sample[int(round((N-1)*0.999))]
-      with open(filename+".range.txt", "w") as f:
-        f.write(str(low)+"\n")
-        f.write(str(high)+"\n")
+      var.atts['low'] = low
+      var.atts['high'] = high
 
-    pbar.update(100)
+      # Apply any hooks for saving the var (extra metadata encoding?)
+      if self.save_hook is not None:
+        var = self.save_hook(var)
+      # Re-save back to a big file
+      netcdf.save (bigfile, var)
 
-    # Compute global range over entire period
-    global_range_file = self._full_path(prefix+"_"+datestrings[0]+"-"+datestrings[-1]+".range.txt")
-    if not exists(global_range_file):
-      for filename in filenames:
-        global_low = None
-        global_high = None
-        with open(filename+".range.txt", "r") as f:
-          low = float(f.readline())
-          high = float(f.readline())
-        if global_low is None: global_low = low
-        if global_high is None: global_high = high
-
-        global_low = min(global_low, low)
-        global_high = max(global_high, high)
-
-      with open(global_range_file, "w") as f:
-       f.write(str(global_low)+"\n")
-       f.write(str(global_high)+"\n")
-
-    # Re-load the data
-    var = open_multi(filenames, format=netcdf, pattern="_"+pattern+"\.nc")[var.name]
+    # Load the data from the big file
+    var = netcdf.open(bigfile)[var.name]
 
     # Apply any hooks for loading the var (extra metadata decoding?)
     if self.load_hook is not None:
       var = self.load_hook(var)
-
-    # Read global range
-    with open(global_range_file,"r") as f:
-      low = float(f.readline())
-      high = float(f.readline())
-
-    var.atts['low'] = low
-    var.atts['high'] = high
 
     return var
 
