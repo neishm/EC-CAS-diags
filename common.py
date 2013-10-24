@@ -125,3 +125,87 @@ def get_area (latvar, lonvar):
 
   return dxdy
 
+
+# A Station axis.
+# Each station is a entry along this dimension.
+# Latitude and longitude are provided as auxilary arrays.
+from pygeode.axis import Axis
+class Station (Axis):
+  name = 'station'
+  def _val2str(self, val):  return val  # Value is already a string
+del Axis
+
+# Hook for encoding to a file
+# Roughly follows CF Metadata conventions for station data
+# http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/aphs02.html
+def station_axis_save_hook (var):
+  from pygeode.dataset import asdataset, Dataset
+  import numpy as np
+  from pygeode.var import Var
+  from pygeode.axis import Axis
+  from copy import copy
+
+  if not var.hasaxis('station'): return asdataset(var)
+
+  var = copy(var)  # Shallow copy (so we can muck with the metadata)
+  var.atts = dict(var.atts)
+
+  # Consruct a generic 'station' axis (with a simple integer dimension)
+  station = Axis(name='station', values=np.arange(len(var.station), dtype='int32'))
+
+  # Get the lat/lon coordinates on this generic axis
+  coordinates = [Var(axes=[station], values=val, name=name) for name,val in var.station.auxarrays.items()]
+  var.atts['coordinates'] = ' '.join(c.name for c in coordinates)
+
+  # Construct a 2D character array to hold station names
+  name_strlen = max(len(station_name) for station_name in var.station.values)
+  #TODO: make this a simple dimension (no coordinate values needed!)
+  name_strlen = Axis (values=np.arange(name_strlen, dtype='int32'), name='name_strlen')
+  dtype = '|S'+str(len(name_strlen))  # For a convenient view on the character array
+                                      # (to help popluate it from strings)
+
+  station_name = np.zeros([len(station), len(name_strlen)], dtype='|S1')
+  station_name.view(dtype)[:,0] = var.station.values[:]
+  station_name = Var([station,name_strlen], values=station_name, name='station_name')
+
+  # Replace the station axis in the var (with the simple one created here)
+  var = var.replace_axes(station=station)
+
+  # Return everything needed to recreate the Station coordinate
+  return Dataset([var, station_name]+coordinates)
+
+#TODO: Create a special PyGeode axis class that will write only a dimension
+# entry, no other metadata (BareDimension?)
+
+# Hook for decoding a Station axis from a file.
+# Reconstructs the information from a station_axis_save_hook() call.
+def station_axis_load_hook (dataset):
+  from copy import copy
+
+  # If there is no station axis, then nothing to do.
+  if not any(v.hasaxis('station') for v in dataset.vars):
+    return dataset.vars[0]
+
+  # Find the actual variable (the only thing with a 'coordinates' attribute
+  var = [v for v in dataset if 'coordinates' in v.atts][0]
+
+  # Make a shallow copy of the var (to edit the metadata in-place)
+  var = copy(var)
+  var.atts = dict(var.atts)
+
+  # Find all the coordinates
+  coordinates = {}
+  for c in var.atts['coordinates'].split():
+    coordinates[c] = dataset[c].get()
+  del var.atts['coordinates']
+
+  # Convert the 2D character array to a 1D string array
+  station_name = dataset.station_name
+  station_name = [''.join(s) for s in station_name.get()]
+  station = Station(values=station_name, **coordinates)
+
+  # Replace the station axis
+  var = var.replace_axes(station=station)
+
+  return var
+
