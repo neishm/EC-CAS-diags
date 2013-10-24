@@ -1,6 +1,27 @@
-# A place to hold temporary files
+# Cache interface
+
+
+# Helper methods:
+
+# A default hook for saving data to a file.
+# All it does is wrap the var into a dataset.
+def default_save_hook (var):
+  from pygeode.dataset import asdataset
+  return asdataset(var)
+
+# A default hook for loading data back from a file.
+# All it does is return the first variable it finds (assuming there's only one variable
+# in the file).
+def default_load_hook (dataset):
+  return dataset.vars[0]
+
+
+
+# The Cache object:
+
+
 class Cache (object):
-  def __init__ (self, dir, fallback_dirs=[], global_prefix='', save_hook=None, load_hook=None, split_time=True):
+  def __init__ (self, dir, fallback_dirs=[], global_prefix='', save_hook=default_save_hook, load_hook=default_load_hook, split_time=True):
     from os.path import exists, isdir
     from os import mkdir, remove
 
@@ -69,10 +90,10 @@ class Cache (object):
       warn ("Untested case - no time axis in data")
       filename = self._full_path(prefix + ".nc")
       if not exists(filename):
-        if self.save_hook is not None: var = self.save_hook(var)
-        netcdf.save(filename, var)
-      var = netcdf.open(filename)[var.name]
-      if self.load_hook is not None: var = self.load_hook(var)
+        dataset = self.save_hook(var)
+        netcdf.save(filename, dataset)
+      dataset = netcdf.open(filename)
+      var = self.load_hook(dataset)
       return var
 
     taxis = var.getaxis('time')
@@ -159,19 +180,18 @@ class Cache (object):
       var.atts['high'] = high
 
       # Apply any hooks for saving the var (extra metadata encoding?)
-      if self.save_hook is not None:
-        var = self.save_hook(var)
+      dataset = self.save_hook(var)
       # Re-save back to a big file
-      netcdf.save (bigfile, var)
+      netcdf.save (bigfile, dataset)
 
     # (end of cache file creation)
 
     # Load the data from the big file
-    var = netcdf.open(bigfile)[var.name]
+    dataset = netcdf.open(bigfile)
 
     # Apply any hooks for loading the var (extra metadata decoding?)
-    if self.load_hook is not None:
-      var = self.load_hook(var)
+    var = self.load_hook(dataset)
 
     return var
+
 

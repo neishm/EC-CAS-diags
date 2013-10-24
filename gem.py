@@ -86,9 +86,9 @@ def to_gph (var, GZ):
 
 # Wrapper for getting GEM data back out of a cached netcdf file
 # (This will hook into the cache, to preserve FSTD axes after save/reloading)
-def gem_load_cache_hook (var):
+def gem_load_cache_hook (dataset):
   from pygeode.formats.fstd import detect_fstd_axes
-  data = [var]
+  data = list(dataset.vars)
   detect_fstd_axes(data)
   return data[0]
 
