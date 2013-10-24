@@ -1,6 +1,6 @@
 # A place to hold temporary files
 class Cache (object):
-  def __init__ (self, dir, fallback_dirs=[], global_prefix='', save_hook=None, load_hook=None, split_time=False):
+  def __init__ (self, dir, fallback_dirs=[], global_prefix='', save_hook=None, load_hook=None, split_time=True):
     from os.path import exists, isdir
     from os import mkdir, remove
 
