@@ -73,7 +73,7 @@ else:
 # CarbonTracker data
 #TODO: limit CT data to time range of experiment.
 from carbontracker import CarbonTracker_Data
-carbontracker = CarbonTracker_Data()
+carbontracker = CarbonTracker_Data(tmpdir=args.tmpdir)
 
 # Observation data
 from ec_station_data import EC_Station_Data

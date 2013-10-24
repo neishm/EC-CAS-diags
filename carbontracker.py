@@ -85,15 +85,19 @@ def ct_zonal_24h (field,gph):
 
 # Define the data interface for CarbonTracker
 
-from data_interface import Data
-class CarbonTracker_Data(Data):
+class CarbonTracker_Data (object):
 
   def __init__ (self, tmpdir=None):
 
-    self._cachedir = '/wrk1/EC-CAS/CarbonTracker/nc_cache'
-    self._tmpdir = tmpdir
-    if self._tmpdir is None:
-      self._tmpdir = self._cachedir
+    from cache import Cache
+
+    # Higher-level information about the data
+    self.name = 'CT2010'
+    self.title = 'CarbonTracker'
+
+    cachedir = '/wrk1/EC-CAS/CarbonTracker/nc_cache'
+    fallback_dirs = [tmpdir] if tmpdir is not None else []
+    self.cache = Cache (dir=cachedir, fallback_dirs=fallback_dirs, global_prefix=self.name+'_')
 
     molefractions = ct_open("/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc")
     molefractions = molefractions - 'date_components' - 'decimal_date'
@@ -134,10 +138,6 @@ class CarbonTracker_Data(Data):
     P0 = (2*pmid - A_interface[1])/(B_interface[1]+1)
     P0 = P0.rename('P0')
     self.P0 = P0
-
-    # Higher-level information about the data
-    self.name = 'CT2010'
-    self.title = 'CarbonTracker'
 
   # Translate CarbonTracker variable names into some "standard" naming convention.
   local_names = {
@@ -236,8 +236,6 @@ class CarbonTracker_Data(Data):
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
     units = data.atts.get('units',None)
-    data = self._cache(data,'%s_%s_%s.nc'%(self.name,domain,field))
-    if units is not None:
-      data.atts['units'] = units
+    data = self.cache.write(data,prefix='%s_%s'%(domain,field))
     return data
 
