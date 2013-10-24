@@ -1,12 +1,13 @@
 # A place to hold temporary files
 class Cache (object):
-  def __init__ (self, dir, fallback_dirs=[], global_prefix='', save_hook=None, load_hook=None):
+  def __init__ (self, dir, fallback_dirs=[], global_prefix='', save_hook=None, load_hook=None, split_time=False):
     from os.path import exists, isdir
     from os import mkdir, remove
 
     self.save_hook = save_hook
     self.load_hook = load_hook
     self.global_prefix = global_prefix
+    self.split_time = split_time
 
     for write_dir in [dir]+fallback_dirs:
 
@@ -105,34 +106,42 @@ class Cache (object):
       hours = [''] * len(taxis)
 
     datestrings = [y+m+d+h for y,m,d,h in zip(years,months,days,hours)]
-    filenames = [self._full_path(prefix+"_"+datestring+".nc") for datestring in datestrings]
+    first_date = datestrings[0]
+    last_date = datestrings[-1]
 
-    # Determine which files aren't created yet
-    uncached_stuff = [(i,f) for i,f in enumerate(filenames) if not exists(f)]
-    if len(uncached_stuff) > 0:
-      uncached_times, uncached_filenames = zip(*uncached_stuff)
-    else:
-      uncached_times, uncached_filenames = [], []
-
-    # Loop over each time, save into a cache file
-    from pygeode.progress import PBar
-    pbar = PBar (message = "Caching %s"%prefix)
-    for i,filename in zip(uncached_times, uncached_filenames):
-      pbar.update(i*100./len(uncached_times))
-
-      # Save the data
-      data = var(i_time=i).load()
-      netcdf.save(filename, data)
-
-    pbar.update(100)
-
-
-    # Save into a single, large file (faster access)
+    # Check if we already have the data in the cache
+    # (look for the one big file that gets generated in the last stage)
     bigfile = self._full_path(prefix+"_"+datestrings[0]+"-"+datestrings[-1]+".nc")
     if not exists(bigfile):
 
-      # Open the many small files
-      var = open_multi(filenames, format=netcdf, pattern="_"+pattern+"\.nc")[var.name]
+      # Split into 1 file per timestep?
+      # Useful for model output, where you might extend the data with extra timesteps later.
+      if self.split_time is True:
+        filenames = [self._full_path(prefix+"_"+datestring+".nc") for datestring in datestrings]
+
+        # Determine which files aren't created yet
+        uncached_stuff = [(i,f) for i,f in enumerate(filenames) if not exists(f)]
+        if len(uncached_stuff) > 0:
+          uncached_times, uncached_filenames = zip(*uncached_stuff)
+        else:
+          uncached_times, uncached_filenames = [], []
+
+        # Loop over each time, save into a cache file
+        from pygeode.progress import PBar
+        pbar = PBar (message = "Caching %s"%prefix)
+        for i,filename in zip(uncached_times, uncached_filenames):
+          pbar.update(i*100./len(uncached_times))
+
+          # Save the data
+          data = var(i_time=i)
+          netcdf.save(filename, data)
+
+        pbar.update(100)
+
+        # Open the many small files
+        var = open_multi(filenames, format=netcdf, pattern="_"+pattern+"\.nc")[var.name]
+
+      # (end of time split)
 
       # Load into memory
       var = var.load()
@@ -154,6 +163,8 @@ class Cache (object):
         var = self.save_hook(var)
       # Re-save back to a big file
       netcdf.save (bigfile, var)
+
+    # (end of cache file creation)
 
     # Load the data from the big file
     var = netcdf.open(bigfile)[var.name]
