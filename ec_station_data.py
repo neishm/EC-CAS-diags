@@ -51,6 +51,12 @@ class EC_Station_Data (Data):
     Estevan_Point   = (49.5833, -126.8667, 'Canada'),
     Sable_Island    = (43.9333,  -60.0167, 'Canada'),
     Lac_Labiche     = (54.95,   -112.45, 'Canada'),
+#    Behchoko        = (62.8025, -116.0464, 'Canada'),
+#    Cambridge_Bay   = (69.1172, -105.0531, 'Canada'),
+#    Chapais         = (49.7833, -74.85, 'Canada'),
+#    Churchill       = (58.7692, -94.16917, 'Canada'),
+#    Inuvik          = (68.3617, -133.7306, 'Canada'),
+#    Turkey_Point    = (42.681047,-80.332289, 'Canada'),
   )
 
   def __init__ (self):
