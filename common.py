@@ -135,6 +135,38 @@ class Station (Axis):
   def _val2str(self, val):  return val  # Value is already a string
 del Axis
 
+# Convert a 1D string variable into a 2D character variable
+# (useful for encoding string arrays into netcdf)
+def encode_string_var (var):
+  import numpy as np
+  from pygeode.var import Var
+  from pygeode.axis import Axis
+
+  # Construct a 2D character array to hold strings
+  strlen = max(len(string) for string in var.values)
+  #TODO: make this a simple dimension (no coordinate values needed!)
+  strlen_axis = Axis (values=np.arange(strlen, dtype='int32'), name=var.name+"_strlen")
+  dtype = '|S'+str(strlen)  # For a convenient view on the character array
+                                      # (to help popluate it from strings)
+
+  data = np.zeros(list(var.shape)+[strlen], dtype='|S1')
+  data.view(dtype)[...,0] = var.values
+  var = Var(list(var.axes)+[strlen_axis], values=data, name=var.name+"_name")
+  return var
+
+# Convert a 2D character variable back into a 1D string variable
+def decode_string_var (var):
+  from pygeode.var import Var
+
+  name = var.name
+  if name.endswith('_name'):
+    name = name[:-5]
+  data = [''.join(s) for s in var.get()]
+  return Var(axes=var.axes[:-1], values=data, name=name)
+
+
+
+
 # Hook for encoding to a file
 # Roughly follows CF Metadata conventions for station data
 # http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/aphs02.html
@@ -155,21 +187,18 @@ def station_axis_save_hook (var):
 
   # Get the lat/lon coordinates on this generic axis
   coordinates = [Var(axes=[station], values=val, name=name) for name,val in var.station.auxarrays.items()]
+
   var.atts['coordinates'] = ' '.join(c.name for c in coordinates)
 
-  # Construct a 2D character array to hold station names
-  name_strlen = max(len(station_name) for station_name in var.station.values)
-  #TODO: make this a simple dimension (no coordinate values needed!)
-  name_strlen = Axis (values=np.arange(name_strlen, dtype='int32'), name='name_strlen')
-  dtype = '|S'+str(len(name_strlen))  # For a convenient view on the character array
-                                      # (to help popluate it from strings)
+  # Encode string-based coordinates (such as country)
+  coordinates = [encode_string_var(c) if c.dtype.name.startswith('string') else c for c in coordinates]
 
-  station_name = np.zeros([len(station), len(name_strlen)], dtype='|S1')
-  station_name.view(dtype)[:,0] = var.station.values[:]
-  station_name = Var([station,name_strlen], values=station_name, name='station_name')
+  # Construct a 2D character array to hold station names
+  station_name = encode_string_var(var.station)
 
   # Replace the station axis in the var (with the simple one created here)
   var = var.replace_axes(station=station)
+  station_name = station_name.replace_axes(station=station)
 
   # Return everything needed to recreate the Station coordinate
   return Dataset([var, station_name]+coordinates)
@@ -196,13 +225,15 @@ def station_axis_load_hook (dataset):
   # Find all the coordinates
   coordinates = {}
   for c in var.atts['coordinates'].split():
-    coordinates[c] = dataset[c].get()
+    if c in dataset:
+      coordinates[c] = dataset[c].get()
+    elif c+"_name" in dataset:
+      coordinates[c] = decode_string_var(dataset[c+"_name"]).get()
   del var.atts['coordinates']
 
   # Convert the 2D character array to a 1D string array
-  station_name = dataset.station_name
-  station_name = [''.join(s) for s in station_name.get()]
-  station = Station(values=station_name, **coordinates)
+  station_name = decode_string_var(dataset.station_name)
+  station = Station(values=station_name.values, **coordinates)
 
   # Replace the station axis
   var = var.replace_axes(station=station)
