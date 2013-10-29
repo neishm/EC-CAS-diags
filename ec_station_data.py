@@ -127,7 +127,6 @@ class EC_Station_Data (Data):
   # Get some data at a station (e.g. CO2_mean)
   def get_data (self, station, fieldname, stat='mean'):
     import numpy as np
-    from pygeode.axis import Axis
 
     stations = self.data.station.values
     if station not in stations: raise KeyError
