@@ -133,6 +133,18 @@ from pygeode.axis import Axis
 class Station (Axis):
   name = 'station'
   def _val2str(self, val):  return val  # Value is already a string
+  # Create our own map_to interface, since PyGeode will choke on string arrays
+  def map_to(self, other):
+    if not self.isparentof(other) and not other.isparentof(self): return None
+    stations = list(self.values)
+    indices = []
+    for station in list(other.values):
+      if station not in stations:
+        indices.append(-1)
+      else:
+        indices.append(stations.index(station))
+    return indices
+
 del Axis
 
 # Convert a 1D string variable into a 2D character variable
