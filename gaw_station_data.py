@@ -71,9 +71,6 @@ def read_station_data (filename):
 
     last_attname = attname
 
-  # Add units
-  atts['units'] = 'ppm'
-
   # Wrap in PyGeode Var
   time = StandardTime(year=year, month=month, day=day, hour=hour, minute=minute, units='hours')
   mean = Var([time], values=values, name=station_name+'_CO2_mean', atts=atts)
@@ -82,8 +79,7 @@ def read_station_data (filename):
   return [mean,std]
 
 
-from data_interface import Data
-class GAW_Station_Data (Data):
+class GAW_Station_Data (object):
   name = 'GAW'
   title = 'GAW-2012 Station Obs'
 
@@ -94,9 +90,12 @@ class GAW_Station_Data (Data):
     from glob import glob
     from pygeode.dataset import Dataset
     from pygeode.formats import netcdf
+    from pygeode.var import Var
     from os.path import exists
+    import numpy as np
 
     from common import common_taxis, fix_timeaxis
+    from station_data import make_station_axis, encode_station_data, decode_station_data
 
     cachefile = './gaw_obs.nc'
 
@@ -116,35 +115,67 @@ class GAW_Station_Data (Data):
         unique.append(d)
       data = unique
 
-      data = Dataset(data)
+      # Fill in location info
+      obs_locations = {}
+      for var in data:
+        lat = float(var.atts['latitude'])
+        lon = float(var.atts['longitude'])
+        # Check for mis-spelling of 'territory'
+        if 'country_territory' in var.atts:
+          country = var.atts['country_territory']
+        else:
+          country = var.atts['country_teritory']
+        obs_locations[var.name.rsplit('_',2)[0]] = (lat, lon, country)
+      del var, lat, lon, country
+      self.obs_locations = obs_locations
+
+      # Create a station axis
+      stations = make_station_axis (obs_locations)
+
+      # Find a suitable time axis
+      time = data[0].time
+
+      # Create large arrays to hold the data.
+      co2_mean = np.empty([len(time),len(stations)], dtype='float32')
+      co2_std = np.empty([len(time),len(stations)], dtype='float32')
+
+      station_list = list(stations.values)
+      for var in data:
+        key = var.name
+        if key.endswith('_CO2_mean'):
+          station = key[:-9]
+          s = station_list.index(station)
+          co2_mean[:,s] = var.get()
+        elif key.endswith('_CO2_std'):
+          station = key[:-8]
+          s = station_list.index(station)
+          co2_std[:,s] = var.get()
+        else: raise KeyError
+
+      co2_mean = Var([time,stations], name='CO2_mean', values=co2_mean, atts={'units':'ppm'})
+      co2_std = Var([time,stations], name='CO2_std', values=co2_std, atts={'units':'ppm'})
+
+      data = Dataset([co2_mean, co2_std])
       data = fix_timeaxis(data)
+
+      data = encode_station_data(data)
       netcdf.save(cachefile, data)
 
+      # End of cache file creation
+
     data = netcdf.open(cachefile)
-
-    # Fill in location info
-    obs_locations = {}
-    for var in data:
-      lat = float(var.atts['latitude'])
-      lon = float(var.atts['longitude'])
-      # Check for mis-spelling of 'territory'
-      if 'country_territory' in var.atts:
-        country = var.atts['country_territory']
-      else:
-        country = var.atts['country_teritory']
-      obs_locations[var.name.rsplit('_',2)[0]] = (lat, lon, country)
-    del var, lat, lon, country
-
-    # Fix Egbert data - they're missing every other hour
-    data = data.replace_vars(Egbert_CO2_mean = data.Egbert_CO2_mean.slice[1::2].rename_axes(time='time01'),
-                             Egbert_CO2_std = data.Egbert_CO2_std.slice[1::2].rename_axes(time='time01'))
+    data = decode_station_data(data)
 
     self.data = data
-    self.obs_locations = obs_locations
 
   def get_data (self, station, field, stat='mean'):
-    return self.data[station+'_'+field+'_'+stat]
+    import numpy as np
 
+    stations = self.data.station.values
+    if station not in stations: raise KeyError
 
-del Data
+    s = np.where(stations == station)[0][0]
+
+    return self.data[field+'_'+stat](i_station=s).squeeze('station')
+
 

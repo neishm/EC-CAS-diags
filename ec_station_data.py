@@ -33,8 +33,7 @@ def read_station_data (filename):
   return mean, maxval, minval, std, nval
 
 # Data interface for EC station observations
-from data_interface import Data
-class EC_Station_Data (Data):
+class EC_Station_Data (object):
   name = 'EC'
   title = 'EC Station Obs'
 
@@ -51,6 +50,12 @@ class EC_Station_Data (Data):
     Estevan_Point   = (49.5833, -126.8667, 'Canada'),
     Sable_Island    = (43.9333,  -60.0167, 'Canada'),
     Lac_Labiche     = (54.95,   -112.45, 'Canada'),
+#    Behchoko        = (62.8025, -116.0464, 'Canada'),
+#    Cambridge_Bay   = (69.1172, -105.0531, 'Canada'),
+#    Chapais         = (49.7833, -74.85, 'Canada'),
+#    Churchill       = (58.7692, -94.16917, 'Canada'),
+#    Inuvik          = (68.3617, -133.7306, 'Canada'),
+#    Turkey_Point    = (42.681047,-80.332289, 'Canada'),
   )
 
   def __init__ (self):
@@ -59,35 +64,74 @@ class EC_Station_Data (Data):
     from pygeode.dataset import Dataset
     from common import common_taxis, fix_timeaxis
     from glob import glob
+    from station_data import make_station_axis, encode_station_data, decode_station_data
+    from pygeode.var import Var
+    import numpy as np
 
     cachefile = './ec_obs.nc'
     if not exists(cachefile):
-      data = []
+      data = {}
       for station in self.obs_locations.keys():
        for field,units,indir in [['CO2','ppm',"/wrk1/EC-CAS/surface/EC-2013"], ['CH4','ppb',"/wrk1/EC-CAS/surface_ch4/EC-2013"]]:
         filename = '%s/%s-%s-Hourly*.DAT'%(indir,station,field)
         # Needed for Esther CH4 data (to expand wildcard above)
         filename = glob(filename)[0]
         stuff = read_station_data(filename)
-        stuff = [var.rename(station+'_'+field+'_'+var.name) for var in stuff]
         # Put the expected units in here
         for var in stuff: var.atts['units'] = units
 
-        data.extend(stuff)
+        data[(station,field,'mean')] = stuff[0]
+        data[(station,field,'max')] = stuff[1]
+        data[(station,field,'min')] = stuff[2]
+        data[(station,field,'std')] = stuff[3]
+        data[(station,field,'nval')] = stuff[4]
 
-      data = common_taxis(*data)
-      data = Dataset(data)
+      # Create a common time axis over all data
+      keys, vars = zip(*data.iteritems())
+      vars = common_taxis(*vars)
+      data = dict(zip(keys,vars))
+      time = vars[0].time
+
+      # Create a station axis
+      stations = make_station_axis(self.obs_locations)
+
+      fields = list(set(field for station,field,stat in data.iterkeys()))
+      stats = list(set(stat for station,field,stat in data.iterkeys()))
+
+      # Create the 2D datasets
+      big_data = []
+      for field in fields:
+        for stat in stats:
+          array = np.empty([len(time),len(stations)], dtype='float32')
+          for i, station in enumerate(stations.values):
+            array[:,i] = data[(station,field,stat)].get()
+            units = data[(station,field,stat)].atts['units']
+          var = Var([time,stations], values=array, name=field+'_'+stat)
+          var.atts['units'] = units
+          big_data.append(var)
+
+
+      data = Dataset(big_data)
       data = fix_timeaxis(data)
+
+      # Save the data
+      data = encode_station_data(data)
       netcdf.save(cachefile,data)
 
-    self.data = netcdf.open(cachefile)
+      # End of cache file creation
+
+    data = netcdf.open(cachefile)
+    self.data = decode_station_data(data)
 
   # Get some data at a station (e.g. CO2_mean)
   def get_data (self, station, fieldname, stat='mean'):
+    import numpy as np
 
-    return self.data[station+'_'+fieldname+'_'+stat]
+    stations = self.data.station.values
+    if station not in stations: raise KeyError
 
+    s = np.where(stations == station)[0][0]
 
-del Data
+    return self.data[fieldname+'_'+stat](i_station=s).squeeze('station')
 
 
