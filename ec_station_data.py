@@ -33,8 +33,7 @@ def read_station_data (filename):
   return mean, maxval, minval, std, nval
 
 # Data interface for EC station observations
-from data_interface import Data
-class EC_Station_Data (Data):
+class EC_Station_Data (object):
   name = 'EC'
   title = 'EC Station Obs'
 
@@ -134,7 +133,5 @@ class EC_Station_Data (Data):
     s = np.where(stations == station)[0][0]
 
     return self.data[fieldname+'_'+stat](i_station=s).squeeze('station')
-
-del Data
 
 

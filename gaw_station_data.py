@@ -79,8 +79,7 @@ def read_station_data (filename):
   return [mean,std]
 
 
-from data_interface import Data
-class GAW_Station_Data (Data):
+class GAW_Station_Data (object):
   name = 'GAW'
   title = 'GAW-2012 Station Obs'
 
@@ -179,5 +178,4 @@ class GAW_Station_Data (Data):
 
     return self.data[field+'_'+stat](i_station=s).squeeze('station')
 
-del Data
 
