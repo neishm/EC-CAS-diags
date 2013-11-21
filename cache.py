@@ -17,8 +17,12 @@ def default_load_hook (dataset):
 
 
 
-# The Cache object:
+# Error classes related to caching
 
+class CacheWriteError (IOError): pass
+
+
+# The Cache object:
 
 class Cache (object):
   def __init__ (self, dir, fallback_dirs=[], global_prefix='', save_hook=default_save_hook, load_hook=default_load_hook, split_time=True):
@@ -30,6 +34,9 @@ class Cache (object):
     self.global_prefix = global_prefix
     self.split_time = split_time
 
+    self.read_dirs = []
+    self.write_dir = None
+
     for write_dir in [dir]+fallback_dirs:
 
       try:
@@ -40,6 +47,9 @@ class Cache (object):
         if not isdir(write_dir):
           raise IOError ("%s is not a directory"%write_dir)
 
+        # Determine all sources for *reading* pre-cached data
+        self.read_dirs.append(write_dir+"/")
+
         # Try writing a dummy file, make sure this user has permission to write
         # into this directory.
         dummy = write_dir + "/dummy"
@@ -48,15 +58,11 @@ class Cache (object):
         remove(dummy)
 
         self.write_dir = write_dir + "/"
-        # Determine all sources for *reading* pre-cached data
-        self.read_dirs = [self.write_dir]
-        if isdir(dir): self.read_dirs += [dir+"/"]
         return
 
       except IOError: continue
       except OSError: continue
 
-    raise IOError ("Unable to use any of the specified cache directories %s"%([dir]+fallback_dirs))
 
   # Internal method - get the appropriate filename.
   # If it already exists, return the path to the existing file.
@@ -65,6 +71,8 @@ class Cache (object):
     from os.path import exists
     for dir in self.read_dirs:
       if exists(dir+filename): return dir+filename
+    if self.write_dir is None:
+      raise CacheWriteError ("Nowhere to write files")
     return self.write_dir+filename
 
 
