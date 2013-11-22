@@ -58,6 +58,14 @@ def totalmass (models, fieldname, pg_of, outdir):
     try:
       totalflux = model.get_data('totalflux',fieldname)
       time = totalflux.time
+
+      # Find the closest time in the flux data <= t0
+      tx = max(tx for tx in time.values if tx <= t0)
+
+      # Find the integrated flux mass at time t0.
+      # (Integrate the sub-interval up to t0)
+      starting_mass = totalflux.get(time=tx).squeeze() * (t0-tx)*86400.
+
       totalflux = totalflux.get()
       # Get time interval
       dt = timeutils.delta(time, units='seconds')
@@ -65,6 +73,8 @@ def totalmass (models, fieldname, pg_of, outdir):
       totalflux = totalflux * dt
       # Running sum
       totalflux = totalflux.cumsum()
+      # Set value at t0 to 0
+      totalflux -= float(starting_mass)
       # Initial time is *after* the first sum
       assert time.units == 'days'
       time = time.__class__(values=time.values+dt/86400., units='days', startdate=time.startdate)

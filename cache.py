@@ -81,7 +81,12 @@ class Cache (object):
     from os.path import exists
     from pygeode.formats import netcdf
     from pygeode.formats.multifile import open_multi
+    from common import fix_timeaxis
     import numpy as np
+
+    # Make sure the data is saved with a consistent start date
+    # (makes it easier to plot timeseries data from multiple sources)
+    var = fix_timeaxis(var)
 
     # Apply the global prefix - a generic string that identifies the source
     # of the cache data
@@ -169,6 +174,8 @@ class Cache (object):
 
         # Open the many small files
         var = open_multi(filenames, format=netcdf, pattern="_"+pattern+"\.nc")[var.name]
+        # Use a consistent time axis (override the start date imposed by open_multi)
+        var = fix_timeaxis(var)
 
       # (end of time split)
 
