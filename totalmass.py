@@ -59,12 +59,11 @@ def totalmass (models, fieldname, pg_of, outdir):
       totalflux = model.get_data('totalflux',fieldname)
       time = totalflux.time
 
-      # Find the closest time in the flux data <= t0
-      tx = max(tx for tx in time.values if tx <= t0)
-
-      # Find the integrated flux mass at time t0.
-      # (Integrate the sub-interval up to t0)
-      starting_mass = totalflux.get(time=tx).squeeze() * (t0-tx)*86400.
+      # Find the closest "start" time in the flux data that aligns with the model data
+      try:
+        tx = float(min(set(time.values) & set(mass.time.values)))
+      except ValueError:   # No common timesteps between fluxes and model data?
+        tx = min(tx for tx in time.values if tx > t0)
 
       totalflux = totalflux.get()
       # Get time interval
@@ -73,8 +72,6 @@ def totalmass (models, fieldname, pg_of, outdir):
       totalflux = totalflux * dt
       # Running sum
       totalflux = totalflux.cumsum()
-      # Set value at t0 to 0
-      totalflux -= float(starting_mass)
       # Initial time is *after* the first sum
       assert time.units == 'days'
       time = time.__class__(values=time.values+dt/86400., units='days', startdate=time.startdate)
@@ -84,7 +81,8 @@ def totalmass (models, fieldname, pg_of, outdir):
       # Re-wrap as a PyGeode var
       totalflux = Var([time], values=totalflux)
       # Offset the flux mass
-      totalflux += float(mass(i_time=0).get().squeeze())
+      totalflux -= float(totalflux(time=tx).get().squeeze())
+      totalflux += float(mass(time=tx).get().squeeze())
       # Limit the time period to plot
       totalflux = totalflux(time=(t0,t1))
       fields.append(totalflux)
