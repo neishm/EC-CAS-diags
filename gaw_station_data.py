@@ -81,9 +81,9 @@ def read_station_data (filename):
 
 class GAW_Station_Data (object):
   name = 'GAW'
-  title = 'GAW-2012 Station Obs'
+  title = 'GAW-2014 Station Obs'
 
-  indir = "/wrk1/EC-CAS/surface/GAW-2012/co2/hourly/y2009"
+  indir = "/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2009"
 
   def __init__ (self):
 
