@@ -127,7 +127,6 @@ class GAW_Station_Data (object):
           country = var.atts['country_teritory']
         obs_locations[var.name.rsplit('_',2)[0]] = (lat, lon, country)
       del var, lat, lon, country
-      self.obs_locations = obs_locations
 
       # Create a station axis
       stations = make_station_axis (obs_locations)
@@ -167,6 +166,18 @@ class GAW_Station_Data (object):
     data = decode_station_data(data)
 
     self.data = data
+
+    # Find obs locations from the file
+    #TODO: remove this once the diagnostics use the station axis directly.
+    obs_locations = {}
+    stations = self.data.station.values
+    lats = self.data.station.lat
+    lons = self.data.station.lon
+    countries = self.data.station.country
+    for station,lat,lon,country in zip(stations,lats,lons,countries):
+      obs_locations[station] = (lat,lon,country)
+    self.obs_locations = obs_locations
+
 
   def get_data (self, station, field, stat='mean'):
     import numpy as np
