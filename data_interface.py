@@ -46,20 +46,34 @@ def create_datasets_by_domain (files, opener, post_processor=None):
       if axes not in domains:
         domains.append(axes)
 
-  # For each domain, construct a table of variables and files
-  var_tables = [{} for n in range(len(domains))]
+  # For each domain, construct a table of variables and timesteps
+  var_times = [{} for n in range(len(domains))]
+  var_files = [{} for n in range(len(domains))]
   for f in files:
     d = opener(f)
     for var in d.vars:
       # Extract axis arrays (skip time axis)
       axes = [(type(a),tuple(a.values)) for a in var.axes[1:]]
-      for domain, var_table in zip(domains,var_tables):
+      for domain, var_time, var_file in zip(domains,var_times,var_files):
         # Check if these axes are a subset of the axes of this domain.
         # If so, then we can provide this variable on this domain, for this file. 
         if is_subset_of(domain,axes):
-          if var.name not in var_table: var_table[var.name] = []
-          var_table[var.name].append(f)
+          if var.name not in var_time: var_time[var.name] = []
+          var_time[var.name].extend(time2val(var.time))
+          if var.name not in var_file: var_file[var.name] = []
+          var_file[var.name].append(f)
 
+  # Sort the time axes (and convert to tuples)
+  for var_time in var_times:
+    for var in var_time.iterkeys():
+      var_time[var] = tuple(sorted(var_time[var]))
+
+  # Expand the domains to include time information
+  domain_times = []
+  for domain, var_time in zip(domains,var_times):
+    unique_time_arrays = set(var_time.iteritems())
+    # Permutate over all intersections of these axes
+    #TODO
 
   # Not all variables may be available at the same timesteps (even for the same domain).
   # So, need to 
@@ -67,9 +81,9 @@ def create_datasets_by_domain (files, opener, post_processor=None):
 
   print domains
   print "number of domains:", len(domains)
-#  print var_tables
-  for domain, var_table in zip(domains,var_tables):
-    print sorted(var_table.keys()), tuple(len(a[1]) for a in domain)
+  print var_times
+  for domain, var_time in zip(domains,var_times):
+    print sorted(var_time.keys()), tuple(len(a[1]) for a in domain)
   pass #TODO
   #TODO: allow post-filtering (after multifile merge) for things like unit conversion.
 
@@ -80,6 +94,14 @@ def is_subset_of (axes1, axes2):
 #  axes2 = [a2 for a2 in axes2 if any(a2[0] is a1[0] for a1 in axes1)]
   if len(axes1) != len(axes2): return False
   return all(set(a1[1]) <= set(a2[1]) for a1,a2 in zip(axes1,axes2))
+
+# Helper function - convert a time axis to an array of values
+def time2val (timeaxis):
+  from pygeode.timeutils import reltime
+  startdate = dict(year=2009, month=1, day=1)
+  units = 'hours'
+  return list(reltime(timeaxis, startdate=startdate, units=units))
+
 
 # Test it out
 def opener (filename):
