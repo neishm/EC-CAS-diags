@@ -130,7 +130,7 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
       else:
         parts.append(plot(series[i],color=color))
 
-    theplot = Overlay (*parts, title=title,
+    theplot = Overlay (*parts, title=title.decode('latin-1'),
            xlabel='', ylabel='%s %s'%(fieldname,units), xticks=xticks, xticklabels=xticklabels)
     plots.append (theplot)
 
