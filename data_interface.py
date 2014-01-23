@@ -23,7 +23,6 @@ class DataInterface (object):
 def create_datasets_by_domain (files, opener, post_processor=None):
   from glob import glob
   from pygeode.timeaxis import Time
-  import operator as op
 
   if post_processor is None:
     post_processor = lambda x: x
@@ -43,7 +42,7 @@ def create_datasets_by_domain (files, opener, post_processor=None):
     d = opener(f)
     for var in d.vars:
       # Extract spatial axis arrays
-      spatial_axes = tuple((type(a),tuple(a.values)) for a in var.axes[1:])
+      spatial_axes = frozenset((type(a),frozenset(a.values)) for a in var.axes[1:])
       # Extract time axis
       time_axis = time2val(var.axes[0])
       # Add this info
@@ -63,15 +62,14 @@ def create_datasets_by_domain (files, opener, post_processor=None):
   domain_vars = dict()
   for spatial_axes, timedict in domain_times.iteritems():
     # Split time axis by var
-    vars = reduce(op.or_,timedict.itervalues())
     for var, times in timedict.iteritems():
-      time_axis = ('time',tuple(sorted(times)))
-      axes = (time_axis,)+spatial_axes
-      domain_vars.setdefault(axes,[]).append(var)
+      axes = dict(spatial_axes,time=frozenset(times))
+      axes = frozenset(axes.iteritems())
+      domain_vars.setdefault(axes,set()).add(var)
 
 
   for axes, varlist in domain_vars.iteritems():
-    print '('+','.join("%s:%d"%(getattr(a[0],'name',a[0]),len(a[1])) for a in axes)+'):', varlist
+    print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
 #  print domain_vars
   return
 
@@ -80,10 +78,12 @@ def create_datasets_by_domain (files, opener, post_processor=None):
 
 # Helper function - determine if one domain is a subset of another domain
 def is_subset_of (axes1, axes2):
-  # Eliminate axes that aren't in the second domain.
-  axes1 = [a1 for a1 in axes1 if any(a1[0] is a2[0] for a2 in axes2)]
-  if len(axes1) != len(axes2): return False
-  return all(set(a1[1]) <= set(a2[1]) for a1,a2 in zip(axes1,axes2))
+  axes1 = dict(axes1)
+  axes2 = dict(axes2)
+  for axis in axes2.keys():
+    if axis not in axes1: return False
+    if not (axes1[axis] <= axes2[axis]): return False
+  return True
 
 # Helper function - convert a time axis to an array of values
 def time2val (timeaxis):
