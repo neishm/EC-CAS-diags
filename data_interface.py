@@ -37,7 +37,7 @@ def create_datasets_by_domain (files, opener, post_processor=None):
       files.append(f)
 
   # Get the unique domains from the files
-  # Keys are spatial axes, values are time:vars dictionaries
+  # Keys are spatial axes, values are var:times dictionaries
   domain_times = dict()
   for f in files:
     d = opener(f)
@@ -48,8 +48,7 @@ def create_datasets_by_domain (files, opener, post_processor=None):
       time_axis = time2val(var.axes[0])
       # Add this info
       timedict = domain_times.setdefault(spatial_axes,dict())
-      for time in time_axis:
-        timedict.setdefault(time,set()).add(var.name)
+      timedict.setdefault(var.name,set()).update(time_axis)
 
   # Go back and look for more time steps for the domains.
   # (E.g., we may be able to use 3D fields to extend surface timesteps)
@@ -57,17 +56,16 @@ def create_datasets_by_domain (files, opener, post_processor=None):
     for other_spatial_axes, other_timedict in domain_times.iteritems():
       if other_spatial_axes is spatial_axes: continue
       if is_subset_of(spatial_axes,other_spatial_axes):
-        for time,vars in other_timedict.iteritems():
-          timedict.setdefault(time,set()).update(vars)
+        for var,times in other_timedict.iteritems():
+          timedict.setdefault(var,set()).update(times)
 
   # Build the full domains from the key/value pairs
   domain_vars = dict()
   for spatial_axes, timedict in domain_times.iteritems():
     # Split time axis by var
     vars = reduce(op.or_,timedict.itervalues())
-    for var in vars:
-      time_axis = [time for time,varlist in timedict.iteritems() if var in varlist]
-      time_axis = ('time',tuple(time_axis))
+    for var, times in timedict.iteritems():
+      time_axis = ('time',tuple(sorted(times)))
       axes = (time_axis,)+spatial_axes
       domain_vars.setdefault(axes,[]).append(var)
 
