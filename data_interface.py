@@ -23,6 +23,7 @@ class DataInterface (object):
 def create_datasets_by_domain (files, opener, post_processor=None):
   from glob import glob
   from pygeode.timeaxis import Time
+  import operator as op
 
   if post_processor is None:
     post_processor = lambda x: x
@@ -36,62 +37,53 @@ def create_datasets_by_domain (files, opener, post_processor=None):
       files.append(f)
 
   # Get the unique domains from the files
-  # Domains are lists of axis types and values
-  domains = []
+  # Keys are spatial axes, values are time:vars dictionaries
+  domain_times = dict()
   for f in files:
     d = opener(f)
     for var in d.vars:
-      # Extract axis arrays (skip time axis)
-      axes = [(type(a),tuple(a.values)) for a in var.axes[1:]]
-      if axes not in domains:
-        domains.append(axes)
+      # Extract spatial axis arrays
+      spatial_axes = tuple((type(a),tuple(a.values)) for a in var.axes[1:])
+      # Extract time axis
+      time_axis = time2val(var.axes[0])
+      # Add this info
+      timedict = domain_times.setdefault(spatial_axes,dict())
+      for time in time_axis:
+        timedict.setdefault(time,set()).add(var.name)
 
-  # For each domain, construct a table of variables and timesteps
-  var_times = [{} for n in range(len(domains))]
-  var_files = [{} for n in range(len(domains))]
-  for f in files:
-    d = opener(f)
-    for var in d.vars:
-      # Extract axis arrays (skip time axis)
-      axes = [(type(a),tuple(a.values)) for a in var.axes[1:]]
-      for domain, var_time, var_file in zip(domains,var_times,var_files):
-        # Check if these axes are a subset of the axes of this domain.
-        # If so, then we can provide this variable on this domain, for this file. 
-        if is_subset_of(domain,axes):
-          if var.name not in var_time: var_time[var.name] = []
-          var_time[var.name].extend(time2val(var.time))
-          if var.name not in var_file: var_file[var.name] = []
-          var_file[var.name].append(f)
+  # Go back and look for more time steps for the domains.
+  # (E.g., we may be able to use 3D fields to extend surface timesteps)
+  for spatial_axes, timedict in domain_times.iteritems():
+    for other_spatial_axes, other_timedict in domain_times.iteritems():
+      if other_spatial_axes is spatial_axes: continue
+      if is_subset_of(spatial_axes,other_spatial_axes):
+        for time,vars in other_timedict.iteritems():
+          timedict.setdefault(time,set()).update(vars)
 
-  # Sort the time axes (and convert to tuples)
-  for var_time in var_times:
-    for var in var_time.iterkeys():
-      var_time[var] = tuple(sorted(var_time[var]))
+  # Build the full domains from the key/value pairs
+  domain_vars = dict()
+  for spatial_axes, timedict in domain_times.iteritems():
+    # Split time axis by var
+    vars = reduce(op.or_,timedict.itervalues())
+    for var in vars:
+      time_axis = [time for time,varlist in timedict.iteritems() if var in varlist]
+      time_axis = ('time',tuple(time_axis))
+      axes = (time_axis,)+spatial_axes
+      domain_vars.setdefault(axes,[]).append(var)
 
-  # Expand the domains to include time information
-  domain_times = []
-  for domain, var_time in zip(domains,var_times):
-    unique_time_arrays = set(var_time.iteritems())
-    # Permutate over all intersections of these axes
-    #TODO
 
-  # Not all variables may be available at the same timesteps (even for the same domain).
-  # So, need to 
-  # Define openers for the data (one for each domain)
+  for axes, varlist in domain_vars.iteritems():
+    print '('+','.join("%s:%d"%(getattr(a[0],'name',a[0]),len(a[1])) for a in axes)+'):', varlist
+#  print domain_vars
+  return
 
-  print domains
-  print "number of domains:", len(domains)
-  print var_times
-  for domain, var_time in zip(domains,var_times):
-    print sorted(var_time.keys()), tuple(len(a[1]) for a in domain)
-  pass #TODO
-  #TODO: allow post-filtering (after multifile merge) for things like unit conversion.
+  #TODO
 
 
 # Helper function - determine if one domain is a subset of another domain
 def is_subset_of (axes1, axes2):
-#  # Eliminate axes that aren't in the first domain.
-#  axes2 = [a2 for a2 in axes2 if any(a2[0] is a1[0] for a1 in axes1)]
+  # Eliminate axes that aren't in the second domain.
+  axes1 = [a1 for a1 in axes1 if any(a1[0] is a2[0] for a2 in axes2)]
   if len(axes1) != len(axes2): return False
   return all(set(a1[1]) <= set(a2[1]) for a1,a2 in zip(axes1,axes2))
 
