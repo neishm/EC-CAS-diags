@@ -21,6 +21,8 @@ class DataInterface (object):
 #    a full rescan).
 # 3) Group the data by domain, construct the corresponding datasets.
 def create_datasets_by_domain (files, opener, post_processor=None):
+  #TODO: allow for multiple files with the same time info (but mutually exclusive vars)
+  # e.g., km, pm, dm files
   from glob import glob
   from pygeode.timeaxis import Time
 
@@ -42,12 +44,12 @@ def create_datasets_by_domain (files, opener, post_processor=None):
     d = opener(f)
     for var in d.vars:
       # Extract spatial axis arrays
-      spatial_axes = frozenset((type(a),frozenset(a.values)) for a in var.axes[1:])
+      spatial_axes = frozenset((type(a),tuple(a.values)) for a in var.axes[1:])
       # Extract time axis
-      time_axis = time2val(var.axes[0])
+      time_axis = (f,tuple(time2val(var.axes[0])))
       # Add this info
       timedict = domain_times.setdefault(spatial_axes,dict())
-      timedict.setdefault(var.name,set()).update(time_axis)
+      timedict.setdefault(var.name,set()).add(time_axis)
 
   # Go back and look for more time steps for the domains.
   # (E.g., we may be able to use 3D fields to extend surface timesteps)
@@ -70,10 +72,64 @@ def create_datasets_by_domain (files, opener, post_processor=None):
 
   for axes, varlist in domain_vars.iteritems():
     print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
-#  print domain_vars
-  return
 
+  # Construct a dataset from each domain
+  # Use multifile interface to handle the logistics
+  for domain, vars in domain_vars.iteritems():
+    domain = dict(domain)  # Re-construct dictionary from frozenset
+    full_domain = dict(domain)  # for debugging only
+    # Get list of files to iterate over, and the corresponding times
+    # Also, remove the time info from the domain.
+    files, times = zip(*domain.pop('time'))
+    # Concatenate all times together
+    times = sum(times,())
+
+    # Need a dummy function wrapper to properly bind the variables
+    def make_opener():
+      original_opener = opener
+      target_spatial_axes = domain
+      target_vars = vars
+      target_times = set(times)
+      target_full_domain = domain  # for debugging only
+      def domain_specific_opener(filename):
+        print "called opener on", filename
+        print 'domain: ('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(target_full_domain).iteritems())+'):', target_vars
+        import numpy as np
+        from pygeode.dataset import asdataset
+        d = original_opener(filename)
+        varlist = []
+        for varname in target_vars:
+          var = d[varname]
+          # Extract data on the domain we want
+          slices = []
+          for axis in var.axes:
+            if type(axis) not in target_spatial_axes:
+              slices.append(slice(None))
+              continue
+            target_values = target_spatial_axes[type(axis)]
+            if target_values == tuple(axis.values):
+              slices.append(slice(None))
+              continue
+            sl = []
+            for i,v in enumerate(axis.values):
+              if v in target_values: sl.append(i)
+            assert len(sl) > 0, "Internal error with data_interface - we were promised data, but there's nothing for the specified domain :("
+            # Special case: single integer
+            if len(sl) == 1: sl = sl[0]
+            # Special case: regularly spaced interval
+            elif len(set(np.diff(sl))) == 1:
+              delta = sl[1] - sl[0]
+              sl = slice(sl[0],sl[-1]+1,delta)
+            slices.append(sl)
+          # Apply the slicing
+          var = var.slice[slices]
+          varlist.append(var)
+        return asdataset(varlist)
+      return domain_specific_opener
+    print make_opener()(files[0])
+  return
   #TODO
+
 
 
 # Helper function - determine if one domain is a subset of another domain
@@ -82,7 +138,7 @@ def is_subset_of (axes1, axes2):
   axes2 = dict(axes2)
   for axis in axes2.keys():
     if axis not in axes1: return False
-    if not (axes1[axis] <= axes2[axis]): return False
+    if not (set(axes1[axis]) <= set(axes2[axis])): return False
   return True
 
 # Helper function - convert a time axis to an array of values
