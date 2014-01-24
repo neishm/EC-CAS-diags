@@ -84,6 +84,16 @@ def create_datasets_by_domain (files, opener, post_processor=None):
       if is_subset_of(axes,other_axes):
         varlist.update(other_varlist)
 
+  # Look for redundant domains (all vars / axes available in another domain)
+  for axes, varlist in domain_vars.items():
+    for other_axes, other_varlist in domain_vars.items():
+      if other_axes is axes: continue
+      if is_subset_of(axes,other_axes):
+        if set(varlist) <= set(other_varlist):
+          print "!!!Found a redundant domain:"
+          print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
+          del domain_vars[axes]
+
   print "Final domains:"
   for axes, varlist in domain_vars.iteritems():
     print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
