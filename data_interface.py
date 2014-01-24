@@ -42,7 +42,7 @@ def create_datasets_by_domain (files, opener, post_processor=None):
   domain_times = dict()
   for f in files:
     d = opener(f)
-    for var in d.vars:
+    for var in d:
       # Extract spatial axis arrays
       spatial_axes = frozenset((type(a),tuple(a.values)) for a in var.axes[1:])
       # Extract time axis
@@ -124,7 +124,7 @@ def create_datasets_by_domain (files, opener, post_processor=None):
         d = original_opener(filename)
         varlist = []
         for varname in target_vars:
-          var = d[varname]
+          var = (v for v in d if v.name == varname).next()
           # Extract data on the domain we want
           slices = []
           for axis in var.axes:
@@ -177,7 +177,7 @@ def time2val (timeaxis):
 # Test it out
 def opener (filename):
   from pygeode.formats import fstd
-  data = fstd.open(filename, squash_forecasts=True)
+  data = fstd.open(filename, squash_forecasts=True, raw_list=True)
   # Could do unit conversions here, and add extra fields
   return data
 
