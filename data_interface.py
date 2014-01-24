@@ -51,6 +51,10 @@ def create_datasets_by_domain (files, opener, post_processor=None):
       timedict = domain_times.setdefault(spatial_axes,dict())
       timedict.setdefault(var.name,set()).add(time_axis)
 
+  print "=== Domains after initial pass: ==="
+  for spatial_axes, timedict in domain_times.iteritems():
+    print "("+",".join("%s:%d"%(k.name,len(v)) for k,v in dict(spatial_axes).iteritems())+")", " ".join("%s[%s]"%(var,len(times)) for var,times in timedict.iteritems())
+
   # Go back and look for more time steps for the domains.
   # (E.g., we may be able to use 3D fields to extend surface timesteps)
   for spatial_axes, timedict in domain_times.iteritems():
@@ -59,6 +63,10 @@ def create_datasets_by_domain (files, opener, post_processor=None):
       if is_subset_of(spatial_axes,other_spatial_axes):
         for var,times in other_timedict.iteritems():
           timedict.setdefault(var,set()).update(times)
+
+  print "=== Domains after second pass: ==="
+  for spatial_axes, timedict in domain_times.iteritems():
+    print "("+",".join("%s:%d"%(k.name,len(v)) for k,v in dict(spatial_axes).iteritems())+")", " ".join("%s[%s]"%(var,len(times)) for var,times in timedict.iteritems())
 
   # Build the full domains from the key/value pairs
   domain_vars = dict()
@@ -69,7 +77,14 @@ def create_datasets_by_domain (files, opener, post_processor=None):
       axes = frozenset(axes.iteritems())
       domain_vars.setdefault(axes,set()).add(var)
 
+  # Go back and look for other variables available for the specified times
+  for axes, varlist in domain_vars.iteritems():
+    for other_axes, other_varlist in domain_vars.iteritems():
+      if other_axes is axes: continue
+      if is_subset_of(axes,other_axes):
+        varlist.update(other_varlist)
 
+  print "Final domains:"
   for axes, varlist in domain_vars.iteritems():
     print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
 
