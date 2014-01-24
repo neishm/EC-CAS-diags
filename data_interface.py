@@ -20,11 +20,11 @@ class DataInterface (object):
 # 2) Store this information in a file somewhere (so re-running doesn't require
 #    a full rescan).
 # 3) Group the data by domain, construct the corresponding datasets.
-def create_datasets_by_domain (files, opener, post_processor=None):
+def create_datasets_by_domain (files, opener, file2date, post_processor=None):
   #TODO: allow for multiple files with the same time info (but mutually exclusive vars)
   # e.g., km, pm, dm files
   from glob import glob
-  from pygeode.timeaxis import Time
+  from pygeode.formats.multifile import open_multi
 
   if post_processor is None:
     post_processor = lambda x: x
@@ -51,9 +51,9 @@ def create_datasets_by_domain (files, opener, post_processor=None):
       timedict = domain_times.setdefault(spatial_axes,dict())
       timedict.setdefault(var.name,set()).add(time_axis)
 
-  print "=== Domains after initial pass: ==="
-  for spatial_axes, timedict in domain_times.iteritems():
-    print "("+",".join("%s:%d"%(k.name,len(v)) for k,v in dict(spatial_axes).iteritems())+")", " ".join("%s[%s]"%(var,len(times)) for var,times in timedict.iteritems())
+#  print "=== Domains after initial pass: ==="
+#  for spatial_axes, timedict in domain_times.iteritems():
+#    print "("+",".join("%s:%d"%(k.name,len(v)) for k,v in dict(spatial_axes).iteritems())+")", " ".join("%s[%s]"%(var,len(times)) for var,times in timedict.iteritems())
 
   # Go back and look for more time steps for the domains.
   # (E.g., we may be able to use 3D fields to extend surface timesteps)
@@ -64,9 +64,9 @@ def create_datasets_by_domain (files, opener, post_processor=None):
         for var,times in other_timedict.iteritems():
           timedict.setdefault(var,set()).update(times)
 
-  print "=== Domains after second pass: ==="
-  for spatial_axes, timedict in domain_times.iteritems():
-    print "("+",".join("%s:%d"%(k.name,len(v)) for k,v in dict(spatial_axes).iteritems())+")", " ".join("%s[%s]"%(var,len(times)) for var,times in timedict.iteritems())
+#  print "=== Domains after second pass: ==="
+#  for spatial_axes, timedict in domain_times.iteritems():
+#    print "("+",".join("%s:%d"%(k.name,len(v)) for k,v in dict(spatial_axes).iteritems())+")", " ".join("%s[%s]"%(var,len(times)) for var,times in timedict.iteritems())
 
   # Build the full domains from the key/value pairs
   domain_vars = dict()
@@ -90,16 +90,17 @@ def create_datasets_by_domain (files, opener, post_processor=None):
       if other_axes is axes: continue
       if is_subset_of(axes,other_axes):
         if set(varlist) <= set(other_varlist):
-          print "!!!Found a redundant domain:"
-          print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
+#          print "!!!Found a redundant domain:"
+#          print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
           del domain_vars[axes]
 
-  print "Final domains:"
-  for axes, varlist in domain_vars.iteritems():
-    print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
+#  print "Final domains:"
+#  for axes, varlist in domain_vars.iteritems():
+#    print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
 
   # Construct a dataset from each domain
   # Use multifile interface to handle the logistics
+  datasets = []
   for domain, vars in domain_vars.iteritems():
     domain = dict(domain)  # Re-construct dictionary from frozenset
     full_domain = dict(domain)  # for debugging only
@@ -117,8 +118,8 @@ def create_datasets_by_domain (files, opener, post_processor=None):
       target_times = set(times)
       target_full_domain = domain  # for debugging only
       def domain_specific_opener(filename):
-        print "called opener on", filename
-        print 'domain: ('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(target_full_domain).iteritems())+'):', target_vars
+#        print "called opener on", filename
+#        print 'domain: ('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(target_full_domain).iteritems())+'):', target_vars
         import numpy as np
         from pygeode.dataset import asdataset
         d = original_opener(filename)
@@ -151,9 +152,10 @@ def create_datasets_by_domain (files, opener, post_processor=None):
           varlist.append(var)
         return asdataset(varlist)
       return domain_specific_opener
-    print make_opener()(files[0])
-  return
-  #TODO
+    # Work around a bug in multifile (looks for lists but not tuples)
+    files =  list(files)
+    datasets.append(open_multi(files, opener=make_opener(), file2date=file2date))
+  return datasets
 
 
 
@@ -181,5 +183,19 @@ def opener (filename):
   # Could do unit conversions here, and add extra fields
   return data
 
-create_datasets_by_domain ("/wrk6/neish/mn075/model/20090101*", opener)
+import re
+#date_expr = re.compile("(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_[^/]+$")
+date_expr = re.compile("(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)$")
+def file2date (filename):
+  import re
+  date = re.search(date_expr, filename).groupdict()
+  date = dict([k,int(v)] for k,v in date.iteritems())
+  date['hour'] += date.pop('offset')
+  return date
 
+datasets = create_datasets_by_domain ("/wrk6/neish/mn075/model/20090101*", opener, file2date)
+
+for d in datasets:
+  if len(d.vars) == 1:
+    print d
+    print d.time.values
