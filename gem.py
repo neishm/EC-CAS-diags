@@ -489,6 +489,9 @@ class GEM_Data (object):
       # Convert to moles/m2/s
       area = self.combined_3d['DX']
       if area.hasaxis('time'): area = area(i_time=0).squeeze()
+      area = area.slice[:,:-1]  # remove repeated longitude
+      # Force the same lat/lon from the field (weird bug in PyGeode)
+      area = area.replace_axes(lat=data.lat, lon=data.lon)
       data /= area
       data.name = field
       data.atts['units'] = 'mol m-2 s-1'
