@@ -27,6 +27,7 @@ def create_datasets_by_domain (files, opener, file2date, cache, post_processor=N
   from pygeode.formats.multifile import open_multi
   from os.path import exists
   import cPickle as pickle
+  from pygeode.progress import PBar
 
   if post_processor is None:
     post_processor = lambda x: x
@@ -42,14 +43,17 @@ def create_datasets_by_domain (files, opener, file2date, cache, post_processor=N
   # Get the unique domains from the files
   # Keys are spatial axes, values are var:times dictionaries
 
-  cachefile = cache.local_filename("domains.pickle")
+  cachefile = cache.local_filename("domains")
   if exists(cachefile):
     handled_files, domain_times = pickle.load(open(cachefile,'r'))
   else:
     handled_files = set()
     domain_times = dict()
 
-  for f in files:
+  pbar = PBar (message = "Generating %s"%cachefile)
+
+  for i,f in enumerate(files):
+    pbar.update(i*100./len(files))
     if f in handled_files: continue
     d = opener(f)
     for var in d:
@@ -63,6 +67,7 @@ def create_datasets_by_domain (files, opener, file2date, cache, post_processor=N
     handled_files.add(f)
 
   pickle.dump((handled_files,domain_times), open(cachefile,'w'))
+  pbar.update(100)
 
 #  print "=== Domains after initial pass: ==="
 #  for spatial_axes, timedict in domain_times.iteritems():
