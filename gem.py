@@ -476,6 +476,24 @@ class GEM_Data (object):
       data /= mw[standard_name]
       data.name = field
 
+    elif domain == 'flux':
+      if stat != 'mean': raise KeyError("Don't have stddev on fluxes")
+      from common import molecular_weight as mw
+      if not hasattr(self,'fluxes'):
+        raise KeyError ("No fluxes are identified with this run.")
+      # We have a slightly different naming convention for fluxes
+      field = 'E'+field
+      data = self.fluxes[field].slice[:,:,:-1]
+      # Convert from g/s to moles/s
+      data /= mw[standard_name]
+      # Convert to moles/m2/s
+      area = self.combined_3d['DX']
+      if area.hasaxis('time'): area = area(i_time=0).squeeze()
+      data /= area
+      data.name = field
+      data.atts['units'] = 'mol m-2 s-1'
+      return data # No caching
+
     elif domain == 'Toronto':
       data = self._find_3d_field(field,stat)
       data = data.squeeze(lat=43.7833,lon=280.5333)
