@@ -20,11 +20,13 @@ class DataInterface (object):
 # 2) Store this information in a file somewhere (so re-running doesn't require
 #    a full rescan).
 # 3) Group the data by domain, construct the corresponding datasets.
-def create_datasets_by_domain (files, opener, file2date, post_processor=None):
+def create_datasets_by_domain (files, opener, file2date, cache, post_processor=None):
   #TODO: allow for multiple files with the same time info (but mutually exclusive vars)
   # e.g., km, pm, dm files
   from glob import glob
   from pygeode.formats.multifile import open_multi
+  from os.path import exists
+  import cPickle as pickle
 
   if post_processor is None:
     post_processor = lambda x: x
@@ -39,8 +41,16 @@ def create_datasets_by_domain (files, opener, file2date, post_processor=None):
 
   # Get the unique domains from the files
   # Keys are spatial axes, values are var:times dictionaries
-  domain_times = dict()
+
+  cachefile = cache.local_filename("domains.pickle")
+  if exists(cachefile):
+    handled_files, domain_times = pickle.load(open(cachefile,'r'))
+  else:
+    handled_files = set()
+    domain_times = dict()
+
   for f in files:
+    if f in handled_files: continue
     d = opener(f)
     for var in d:
       # Extract spatial axis arrays
@@ -50,6 +60,9 @@ def create_datasets_by_domain (files, opener, file2date, post_processor=None):
       # Add this info
       timedict = domain_times.setdefault(spatial_axes,dict())
       timedict.setdefault(var.name,set()).add(time_axis)
+    handled_files.add(f)
+
+  pickle.dump((handled_files,domain_times), open(cachefile,'w'))
 
 #  print "=== Domains after initial pass: ==="
 #  for spatial_axes, timedict in domain_times.iteritems():
@@ -193,7 +206,10 @@ def file2date (filename):
   date['hour'] += date.pop('offset')
   return date
 
-datasets = create_datasets_by_domain ("/wrk6/neish/mn075/model/20090101*", opener, file2date)
+from cache import Cache
+cache = Cache(".", global_prefix='mytest_')
+
+datasets = create_datasets_by_domain ("/wrk6/neish/mn075/model/20090101*", opener, file2date, cache)
 
 for d in datasets:
   if len(d.vars) == 1:

@@ -224,3 +224,9 @@ class Cache (object):
     return var
 
 
+  # Generate a filename, in a writeable location.
+  # Assume the file will be read / written outside this class.
+  def local_filename (self, prefix):
+
+    return self.write_dir + self.global_prefix + prefix
+
