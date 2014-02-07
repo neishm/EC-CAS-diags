@@ -79,6 +79,7 @@ class Cache (object):
   # Write out the data
   def write (self, var, prefix):
     from os.path import exists
+    from os import remove
     from pygeode.formats import netcdf
     from pygeode.formats.multifile import open_multi
     from common import fix_timeaxis
@@ -104,7 +105,11 @@ class Cache (object):
       filename = self._full_path(prefix + ".nc")
       if not exists(filename):
         dataset = self.save_hook(var)
-        netcdf.save(filename, dataset)
+        try:
+          netcdf.save(filename, dataset)
+        except KeyboardInterrupt:
+          remove(filename)
+          raise
       dataset = netcdf.open(filename)
       var = self.load_hook(dataset)
       return var
@@ -164,11 +169,16 @@ class Cache (object):
         from pygeode.progress import PBar
         pbar = PBar (message = "Caching %s"%prefix)
         for i,filename in zip(uncached_times, uncached_filenames):
-          pbar.update(i*100./len(uncached_times))
+          pbar.update(i*100./len(filenames))
 
           # Save the data
           data = var(i_time=i)
-          netcdf.save(filename, data)
+          try:
+            netcdf.save(filename, data)
+          except KeyboardInterrupt:
+            # Clean up the partial file, if the user aborts the process.
+            remove(filename)
+            raise
 
         pbar.update(100)
 
@@ -197,7 +207,11 @@ class Cache (object):
       # Apply any hooks for saving the var (extra metadata encoding?)
       dataset = self.save_hook(var)
       # Re-save back to a big file
-      netcdf.save (bigfile, dataset)
+      try:
+        netcdf.save (bigfile, dataset)
+      except KeyboardInterrupt:
+        remove(bigfile)
+        raise
 
     # (end of cache file creation)
 
