@@ -19,6 +19,7 @@ class DataInterface (object):
     from pygeode.progress import PBar
     from collections import namedtuple
     from itertools import imap
+    from operator import mul
 
     if post_processor is None:
       post_processor = lambda x: x
@@ -76,17 +77,13 @@ class DataInterface (object):
     pbar.update(100)
 
 
-    # Go back and look for more other domains we can satisfy with the available
-    # data.
-    # (E.g., we may be able to use 3D fields as surface data)
-    unique_spatial_axes = set(x.spatial_axes for x in table)
-    for x in set(table):
-      for s in unique_spatial_axes:
-        if s is x.spatial_axes: continue
-        if is_subset_of(s,x.spatial_axes):
-          table.add(entry(file=x.file, time=x.time, var=x.var, spatial_axes=s))
-
     self.table = table
+    self._vars = set(x.var for x in table)
+    self._domains = set(x.spatial_axes for x in table)
+    # Sort by domain size (try largest domain first)
+    domain_shape = lambda s: [len(a[1]) for a in s]
+    domain_size = lambda s: reduce(mul,domain_shape(s),1)
+    self._domains = sorted(self._domains, key=domain_size, reverse=True)
 
 
   # Get the requested variable(s).
@@ -97,37 +94,32 @@ class DataInterface (object):
   # - If more than one spatial domain matches, then the one with the largest
   #   size is chosen.
   def find (self, *vars, **kwargs):
-    from itertools import ifilter
-    from operator import mul
-    extra_filter = kwargs.pop('extra_filter',None)
+    extra_filter = kwargs.pop('extra_filter', lambda x: True)
     if len(kwargs) > 0:
       raise TypeError("got an unexpected keyword argument '%s'"%kwargs.keys()[0])
-    # Get the available times/domains for each var
-    tables = [filter(lambda x: x.var == var, self.table) for var in vars]
-    if extra_filter is not None:
-      tables = [filter(extra_filter,table) for table in tables]
-    for var,table in zip(vars,tables):
-      if len(table) == 0:
-        raise ValueError("Can't find any matching data for %s"%var)
+    for var in vars:
+      if var not in self._vars:
+        raise ValueError("'%s' not found in this data."%var)
 
-    # Get the available spatial domains
-    domains = [set(x.spatial_axes for x in table) for table in tables]
-    common_domains = set.intersection(*domains)
-    if len(common_domains) == 0:
-      raise ValueError("Can't find a common spatial domain for %s"%vars)
+    for domain in self._domains:
 
-    # Sort by domain size (try largest domain first)
-    domain_size = lambda s: reduce(mul,[len(v) for v in s.spatial_axes.values()])
-    common_domains = sorted(common_domains, key=domain_size, reverse=True)
-    for domain in common_domains:
-      # Check if we have data for this domain at common timesteps
+      # Split into 1 table per var, according to the filter rules
+      tables = []
+      for var in vars:
+        table = set(x for x in self.table if x.var == var and is_subset_of(domain,x.spatial_axes) and extra_filter(x))
+        tables.append(table)
+        del table
+
       timesteps = [set(x.time for x in table) for table in tables]
       common_timesteps = set.intersection(*timesteps)
+
       if len(common_timesteps) == 0: continue
-      # Filter for these timesteps
-      tables = [filter(lambda x: x.time in common_timesteps, table) for table in tables]
+
+      # Filter for these timesteps and this domain
+      tables = [set(x for x in table if x.time in common_timesteps) for table in tables]
       # Construct variables from these tables
       #TODO
+      return tables
       break
     else:
       raise ValueError("Can't find any common timesteps for %s"%vars)
@@ -224,4 +216,11 @@ from cache import Cache
 cache = Cache(".", global_prefix='mytest_')
 
 datasets = DataInterface("/wrk6/neish/mn075/model/20090101*", opener, cache)
+co2, p0 = datasets.find('CO2', 'P0')
 
+def print_table (table):
+  for x in sorted(table):
+    print x.file, x.time, x.var, [len(a[1]) for a in x.spatial_axes]
+
+print_table(co2)
+print_table(p0)
