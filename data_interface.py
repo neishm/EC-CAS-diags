@@ -28,6 +28,8 @@ def create_datasets_by_domain (files, opener, file2date, cache, post_processor=N
   from os.path import exists
   import cPickle as pickle
   from pygeode.progress import PBar
+  from collections import defaultdict, namedtuple
+  from itertools import imap
 
   if post_processor is None:
     post_processor = lambda x: x
@@ -40,15 +42,26 @@ def create_datasets_by_domain (files, opener, file2date, cache, post_processor=N
     for f in glob(g):
       files.append(f)
 
-  # Get the unique domains from the files
-  # Keys are spatial axes, values are var:times dictionaries
+  # Get the domain information from the files
+  # Each entry is a tuple of (filename, time, varname, spatial_axes)
+  entry = namedtuple('entry', 'file time var spatial_axes')
 
   cachefile = cache.local_filename("domains")
   if exists(cachefile):
-    handled_files, domain_times = pickle.load(open(cachefile,'r'))
+    table = pickle.load(open(cachefile,'r'))
   else:
-    handled_files = set()
-    domain_times = dict()
+    table = set()
+
+  table = set(imap(entry._make,table))
+
+  # Helper dictionary - keeps track of existing objects, so we can re-use them
+  object_lookup = dict()
+  for x in table:
+    object_lookup[x.spatial_axes] = x.spatial_axes
+    for a in x.spatial_axes:
+      object_lookup[a] = a
+
+  handled_files = set(x.file for x in table)
 
   pbar = PBar (message = "Generating %s"%cachefile)
 
@@ -58,16 +71,34 @@ def create_datasets_by_domain (files, opener, file2date, cache, post_processor=N
     d = opener(f)
     for var in d:
       # Extract spatial axis arrays
-      spatial_axes = frozenset((type(a),tuple(a.values)) for a in var.axes[1:])
-      # Extract time axis
-      time_axis = (f,tuple(time2val(var.axes[0])))
-      # Add this info
-      timedict = domain_times.setdefault(spatial_axes,dict())
-      timedict.setdefault(var.name,set()).add(time_axis)
-    handled_files.add(f)
+      spatial_axes = [(type(a),tuple(map(float,a.values))) for a in var.axes[1:]]
+      # Use existing objects where possible
+      spatial_axes = [object_lookup.setdefault(a,a) for a in spatial_axes]
+      # Convert to frozenset (to make it hashable)
+      spatial_axes = frozenset(spatial_axes)
+      spatial_axes = object_lookup.setdefault(spatial_axes,spatial_axes)
+      # Add each available timestep as a separate entry
+      for t in time2val(var.axes[0]):
+        table.add(entry(f,float(t),var.name,spatial_axes))
 
-  pickle.dump((handled_files,domain_times), open(cachefile,'w'))
+  pickle.dump(set(imap(tuple,table)), open(cachefile,'w'))
   pbar.update(100)
+
+  del object_lookup  # No longer needed
+  del handled_files
+
+  # Go back and look for more other domains we can satisfy with the available
+  # data.
+  # (E.g., we may be able to use 3D fields as surface data)
+  unique_spatial_axes = set(x.spatial_axes for x in table)
+  for x in set(table):
+    for s in unique_spatial_axes:
+      if s is x.spatial_axes: continue
+      if is_subset_of(s,x.spatial_axes):
+        table.add(entry(file=x.file, time=x.time, var=x.var, spatial_axes=s))
+
+  #TODO
+  quit()
 
 #  print "=== Domains after initial pass: ==="
 #  for spatial_axes, timedict in domain_times.iteritems():
@@ -112,9 +143,9 @@ def create_datasets_by_domain (files, opener, file2date, cache, post_processor=N
 #          print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
           del domain_vars[axes]
 
-#  print "Final domains:"
-#  for axes, varlist in domain_vars.iteritems():
-#    print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
+  print "Final domains:"
+  for axes, varlist in domain_vars.iteritems():
+    print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
 
   # Construct a dataset from each domain
   # Use multifile interface to handle the logistics
