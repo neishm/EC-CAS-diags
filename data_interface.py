@@ -4,149 +4,136 @@
 
 # General interface
 class DataInterface (object):
-  def __init__ (self, datasets, cache):
-    from pygeode.dataset import as_dataset
-    self.datasets = tuple(as_dataset(d) for d in datasets)
-    self.cache = cache
-  def domains_for_field (self, field):
-    for d in datasets:
-      if field in d: yield d[field]
-  def has_field (self, field):
-    return len(list(self.domains_for_field(field))) > 0
 
-# Helper function - given a list of files, and an opener method:
-# 1) Scan through all files, determine what variables are present (and on what
-#    domains).
-# 2) Store this information in a file somewhere (so re-running doesn't require
-#    a full rescan).
-# 3) Group the data by domain, construct the corresponding datasets.
-def create_datasets_by_domain (files, opener, file2date, cache, post_processor=None):
-  #TODO: allow for multiple files with the same time info (but mutually exclusive vars)
-  # e.g., km, pm, dm files
-  from glob import glob
-  from pygeode.formats.multifile import open_multi
-  from os.path import exists
-  import cPickle as pickle
-  from pygeode.progress import PBar
-  from collections import defaultdict, namedtuple
-  from itertools import imap
+  # Initialization - given a list of files, and an opener method:
+  # 1) Scan through all files, determine what variables are present (and on what
+  #    domains).
+  # 2) Store this information in a file somewhere (so re-running doesn't require
+  #    a full rescan).
+  # 3) Store the full table of information inside the object, for further
+  #    use at runtime.
+  def __init__ (self, files, opener, cache, post_processor=None):
+    from glob import glob
+    from os.path import exists
+    import cPickle as pickle
+    from pygeode.progress import PBar
+    from collections import namedtuple
+    from itertools import imap
 
-  if post_processor is None:
-    post_processor = lambda x: x
+    if post_processor is None:
+      post_processor = lambda x: x
 
-  # Expand any globbing patterns
-  if isinstance(files,str): files = [files]
-  globbed_files=files
-  files = []
-  for g in globbed_files:
-    for f in glob(g):
-      files.append(f)
+    # Expand any globbing patterns
+    if isinstance(files,str): files = [files]
+    globbed_files=files
+    files = []
+    for g in globbed_files:
+      for f in glob(g):
+        files.append(f)
 
-  # Get the domain information from the files
-  # Each entry is a tuple of (filename, time, varname, spatial_axes)
-  entry = namedtuple('entry', 'file time var spatial_axes')
+    # Get the domain information from the files
+    # Each entry is a tuple of (filename, time, varname, spatial_axes)
+    entry = namedtuple('entry', 'file time var spatial_axes')
 
-  cachefile = cache.local_filename("domains")
-  if exists(cachefile):
-    table = pickle.load(open(cachefile,'r'))
-  else:
-    table = set()
+    cachefile = cache.local_filename("domains")
+    if exists(cachefile):
+      table = pickle.load(open(cachefile,'r'))
+    else:
+      table = set()
 
-  table = set(imap(entry._make,table))
+    table = set(imap(entry._make,table))
 
-  # Helper dictionary - keeps track of existing objects, so we can re-use them
-  object_lookup = dict()
-  for x in table:
-    object_lookup[x.spatial_axes] = x.spatial_axes
-    for a in x.spatial_axes:
-      object_lookup[a] = a
+    # Helper dictionary - keeps track of existing objects, so we can re-use them
+    object_lookup = dict()
+    for x in table:
+      object_lookup[x.spatial_axes] = x.spatial_axes
+      for a in x.spatial_axes:
+        object_lookup[a] = a
 
-  handled_files = set(x.file for x in table)
+    handled_files = set(x.file for x in table)
 
-  pbar = PBar (message = "Generating %s"%cachefile)
+    pbar = PBar (message = "Generating %s"%cachefile)
 
-  for i,f in enumerate(files):
-    pbar.update(i*100./len(files))
-    if f in handled_files: continue
-    d = opener(f)
-    for var in d:
-      # Extract spatial axis arrays
-      spatial_axes = [(type(a),tuple(map(float,a.values))) for a in var.axes[1:]]
-      # Use existing objects where possible
-      spatial_axes = [object_lookup.setdefault(a,a) for a in spatial_axes]
-      # Convert to frozenset (to make it hashable)
-      spatial_axes = frozenset(spatial_axes)
-      spatial_axes = object_lookup.setdefault(spatial_axes,spatial_axes)
-      # Add each available timestep as a separate entry
-      for t in time2val(var.axes[0]):
-        table.add(entry(f,float(t),var.name,spatial_axes))
+    for i,f in enumerate(files):
+      pbar.update(i*100./len(files))
+      if f in handled_files: continue
+      d = opener(f)
+      for var in d:
+        # Extract spatial axis arrays
+        spatial_axes = [(type(a),tuple(map(float,a.values))) for a in var.axes[1:]]
+        # Use existing objects where possible
+        spatial_axes = [object_lookup.setdefault(a,a) for a in spatial_axes]
+        # Convert to frozenset (to make it hashable)
+        spatial_axes = frozenset(spatial_axes)
+        spatial_axes = object_lookup.setdefault(spatial_axes,spatial_axes)
+        # Add each available timestep as a separate entry
+        for t in time2val(var.axes[0]):
+          table.add(entry(f,float(t),var.name,spatial_axes))
 
-  pickle.dump(set(imap(tuple,table)), open(cachefile,'w'))
-  pbar.update(100)
+    del handled_files  # No longer needed
 
-  del object_lookup  # No longer needed
-  del handled_files
+    pickle.dump(set(imap(tuple,table)), open(cachefile,'w'))
+    pbar.update(100)
 
-  # Go back and look for more other domains we can satisfy with the available
-  # data.
-  # (E.g., we may be able to use 3D fields as surface data)
-  unique_spatial_axes = set(x.spatial_axes for x in table)
-  for x in set(table):
-    for s in unique_spatial_axes:
-      if s is x.spatial_axes: continue
-      if is_subset_of(s,x.spatial_axes):
-        table.add(entry(file=x.file, time=x.time, var=x.var, spatial_axes=s))
 
-  #TODO
-  quit()
+    # Go back and look for more other domains we can satisfy with the available
+    # data.
+    # (E.g., we may be able to use 3D fields as surface data)
+    unique_spatial_axes = set(x.spatial_axes for x in table)
+    for x in set(table):
+      for s in unique_spatial_axes:
+        if s is x.spatial_axes: continue
+        if is_subset_of(s,x.spatial_axes):
+          table.add(entry(file=x.file, time=x.time, var=x.var, spatial_axes=s))
 
-#  print "=== Domains after initial pass: ==="
-#  for spatial_axes, timedict in domain_times.iteritems():
-#    print "("+",".join("%s:%d"%(k.name,len(v)) for k,v in dict(spatial_axes).iteritems())+")", " ".join("%s[%s]"%(var,len(times)) for var,times in timedict.iteritems())
+    self.table = table
 
-  # Go back and look for more time steps for the domains.
-  # (E.g., we may be able to use 3D fields to extend surface timesteps)
-  for spatial_axes, timedict in domain_times.iteritems():
-    for other_spatial_axes, other_timedict in domain_times.iteritems():
-      if other_spatial_axes is spatial_axes: continue
-      if is_subset_of(spatial_axes,other_spatial_axes):
-        for var,times in other_timedict.iteritems():
-          timedict.setdefault(var,set()).update(times)
 
-#  print "=== Domains after second pass: ==="
-#  for spatial_axes, timedict in domain_times.iteritems():
-#    print "("+",".join("%s:%d"%(k.name,len(v)) for k,v in dict(spatial_axes).iteritems())+")", " ".join("%s[%s]"%(var,len(times)) for var,times in timedict.iteritems())
+  # Get the requested variable(s).
+  # The following filters are applied:
+  # - Only use the timesteps where all variables are defined concurrently
+  # - The variables must all be on the same spatial axes
+  # - Optionally, a user-specified filter is applied to meet particular criteria
+  # - If more than one spatial domain matches, then the one with the largest
+  #   size is chosen.
+  def find (self, *vars, **kwargs):
+    from itertools import ifilter
+    from operator import mul
+    extra_filter = kwargs.pop('extra_filter',None)
+    if len(kwargs) > 0:
+      raise TypeError("got an unexpected keyword argument '%s'"%kwargs.keys()[0])
+    # Get the available times/domains for each var
+    tables = [filter(lambda x: x.var == var, self.table) for var in vars]
+    if extra_filter is not None:
+      tables = [filter(extra_filter,table) for table in tables]
+    for var,table in zip(vars,tables):
+      if len(table) == 0:
+        raise ValueError("Can't find any matching data for %s"%var)
 
-  # Build the full domains from the key/value pairs
-  domain_vars = dict()
-  for spatial_axes, timedict in domain_times.iteritems():
-    # Split time axis by var
-    for var, times in timedict.iteritems():
-      axes = dict(spatial_axes,time=frozenset(times))
-      axes = frozenset(axes.iteritems())
-      domain_vars.setdefault(axes,set()).add(var)
+    # Get the available spatial domains
+    domains = [set(x.spatial_axes for x in table) for table in tables]
+    common_domains = set.intersection(*domains)
+    if len(common_domains) == 0:
+      raise ValueError("Can't find a common spatial domain for %s"%vars)
 
-  # Go back and look for other variables available for the specified times
-  for axes, varlist in domain_vars.iteritems():
-    for other_axes, other_varlist in domain_vars.iteritems():
-      if other_axes is axes: continue
-      if is_subset_of(axes,other_axes):
-        varlist.update(other_varlist)
+    # Sort by domain size (try largest domain first)
+    domain_size = lambda s: reduce(mul,[len(v) for v in s.spatial_axes.values()])
+    common_domains = sorted(common_domains, key=domain_size, reverse=True)
+    for domain in common_domains:
+      # Check if we have data for this domain at common timesteps
+      timesteps = [set(x.time for x in table) for table in tables]
+      common_timesteps = set.intersection(*timesteps)
+      if len(common_timesteps) == 0: continue
+      # Filter for these timesteps
+      tables = [filter(lambda x: x.time in common_timesteps, table) for table in tables]
+      # Construct variables from these tables
+      #TODO
+      break
+    else:
+      raise ValueError("Can't find any common timesteps for %s"%vars)
 
-  # Look for redundant domains (all vars / axes available in another domain)
-  for axes, varlist in domain_vars.items():
-    for other_axes, other_varlist in domain_vars.items():
-      if other_axes is axes: continue
-      if is_subset_of(axes,other_axes):
-        if set(varlist) <= set(other_varlist):
-#          print "!!!Found a redundant domain:"
-#          print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
-          del domain_vars[axes]
 
-  print "Final domains:"
-  for axes, varlist in domain_vars.iteritems():
-    print '('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(axes).iteritems())+'):', varlist
-
+def blah():
   # Construct a dataset from each domain
   # Use multifile interface to handle the logistics
   datasets = []
@@ -232,22 +219,9 @@ def opener (filename):
   # Could do unit conversions here, and add extra fields
   return data
 
-import re
-#date_expr = re.compile("(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_[^/]+$")
-date_expr = re.compile("(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)$")
-def file2date (filename):
-  import re
-  date = re.search(date_expr, filename).groupdict()
-  date = dict([k,int(v)] for k,v in date.iteritems())
-  date['hour'] += date.pop('offset')
-  return date
 
 from cache import Cache
 cache = Cache(".", global_prefix='mytest_')
 
-datasets = create_datasets_by_domain ("/wrk6/neish/mn075/model/20090101*", opener, file2date, cache)
+datasets = DataInterface("/wrk6/neish/mn075/model/20090101*", opener, cache)
 
-for d in datasets:
-  if len(d.vars) == 1:
-    print d
-    print d.time.values
