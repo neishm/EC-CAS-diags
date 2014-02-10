@@ -76,12 +76,17 @@ class DataInterface (object):
     pickle.dump(set(imap(tuple,table)), open(cachefile,'w'))
     pbar.update(100)
 
-
-    self.table = table
-    self._vars = set(x.var for x in table)
+    # Convert the (type,values) tuples for spatial_axes into a dictionary
     self._domains = set(x.spatial_axes for x in table)
+    # Use a lookup table for re-using the same objects for conversion
+    tuple2dict = dict((s,dict(s)) for s in self._domains)
+    # Convert the domains
+    self._domains = tuple(tuple2dict[s] for s in self._domains)
+    # Conver the table
+    self.table = tuple(entry(x.file,x.time,x.var,tuple2dict[x.spatial_axes]) for x in table)
+    self._vars = set(x.var for x in self.table)
     # Sort by domain size (try largest domain first)
-    domain_shape = lambda s: [len(a[1]) for a in s]
+    domain_shape = lambda s: [len(a) for a in s.values()]
     domain_size = lambda s: reduce(mul,domain_shape(s),1)
     self._domains = sorted(self._domains, key=domain_size, reverse=True)
 
@@ -97,16 +102,23 @@ class DataInterface (object):
     extra_filter = kwargs.pop('extra_filter', lambda x: True)
     if len(kwargs) > 0:
       raise TypeError("got an unexpected keyword argument '%s'"%kwargs.keys()[0])
+    # Split the table per variable
+    var_tables = []
     for var in vars:
       if var not in self._vars:
         raise ValueError("'%s' not found in this data."%var)
+      table = [x for x in self.table if x.var == var and extra_filter(x)]
+      if len(table) == 0:
+        raise ValueError("No values of '%s' match the specified criteria."%var)
+      var_tables.append(table)
+      del table
 
     for domain in self._domains:
 
       # Split into 1 table per var, according to the filter rules
       tables = []
-      for var in vars:
-        table = set(x for x in self.table if x.var == var and is_subset_of(domain,x.spatial_axes) and extra_filter(x))
+      for var,table in zip(vars,var_tables):
+        table = [x for x in table if is_subset_of(domain,x.spatial_axes)]
         tables.append(table)
         del table
 
@@ -116,13 +128,14 @@ class DataInterface (object):
       if len(common_timesteps) == 0: continue
 
       # Filter for these timesteps and this domain
-      tables = [set(x for x in table if x.time in common_timesteps) for table in tables]
+      tables = [[x for x in table if x.time in common_timesteps] for table in tables]
       # Construct variables from these tables
       #TODO
+      print '=>', [len(a) for a in domain.values()]
       return tables
       break
     else:
-      raise ValueError("Can't find any common timesteps for %s"%vars)
+      raise ValueError("Can't find any common timesteps for %s"%(vars,))
 
 
 def blah():
@@ -189,8 +202,6 @@ def blah():
 
 # Helper function - determine if one domain is a subset of another domain
 def is_subset_of (axes1, axes2):
-  axes1 = dict(axes1)
-  axes2 = dict(axes2)
   for axis in axes2.keys():
     if axis not in axes1: return False
     if not (set(axes1[axis]) <= set(axes2[axis])): return False
@@ -216,11 +227,12 @@ from cache import Cache
 cache = Cache(".", global_prefix='mytest_')
 
 datasets = DataInterface("/wrk6/neish/mn075/model/20090101*", opener, cache)
-co2, p0 = datasets.find('CO2', 'P0')
+co2, p0, gz = datasets.find('CO2', 'P0', 'GZ')
 
 def print_table (table):
   for x in sorted(table):
-    print x.file, x.time, x.var, [len(a[1]) for a in x.spatial_axes]
+    print x.file, x.time, x.var, [len(a) for a in x.spatial_axes.values()]
 
 print_table(co2)
 print_table(p0)
+print_table(gz)
