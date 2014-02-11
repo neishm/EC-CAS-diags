@@ -17,7 +17,7 @@ class DataInterface (object):
     from os.path import exists
     import cPickle as pickle
     from pygeode.progress import PBar
-    from collections import namedtuple
+    from collections import namedtuple, defaultdict
     from itertools import imap
     from operator import mul
 
@@ -77,12 +77,15 @@ class DataInterface (object):
     pbar.update(100)
 
     # Store the table of available data.
-    self.table = table
-    # Store the available variables.
-    self._vars = set(x.var for x in self.table)
+    # Use a dictionary indexed by variable, since we will be interested in
+    # getting data only for particular variables anyway.
+    # (Saves time in searching for relevant data for the query).
+    self.table = defaultdict(set)
+    for x in table:
+      self.table[x.var].add(x)
     # Store the available domains.
     # Sort by domain size (try largest domain first).
-    self._domains = set(x.spatial_axes for x in self.table)
+    self._domains = set(x.spatial_axes for x in table)
     domain_shape = lambda s: [len(a[1]) for a in s]
     domain_size = lambda s: reduce(mul,domain_shape(s),1)
     self._domains = sorted(self._domains, key=domain_size, reverse=True)
@@ -99,43 +102,34 @@ class DataInterface (object):
     extra_filter = kwargs.pop('extra_filter', lambda x: True)
     if len(kwargs) > 0:
       raise TypeError("got an unexpected keyword argument '%s'"%kwargs.keys()[0])
-    # Split the table per variable
-    var_tables = []
-    for var in vars:
-      if var not in self._vars:
-        raise ValueError("'%s' not found in this data."%var)
-      table = [x for x in self.table if x.var == var and extra_filter(x)]
-      if len(table) == 0:
-        raise ValueError("No values of '%s' match the specified criteria."%var)
-      var_tables.append(table)
-      del table
 
+    table = dict()
+    for var in vars:
+      if var not in self.table:
+        raise ValueError("'%s' not found in this data."%var)
+      table[var] = filter(extra_filter,self.table[var])
+      if len(table[var]) == 0:
+        raise ValueError("No values of '%s' match the specified criteria."%var)
+
+
+    # Try each possible domain, until we find one that works for these variables
     for domain in self._domains:
 
-      # Split into 1 table per var, according to the filter rules
-      tables = []
-      for var,table in zip(vars,var_tables):
-        table = [x for x in table if is_subset_of(domain,x.spatial_axes)]
-        tables.append(table)
-        del table
+      current_table = dict()
+      for var in vars:
+        current_table[var] = [x for x in table[var] if is_subset_of(domain,x.spatial_axes)]
+        if len(current_table[var]) == 0: continue
 
       # Find common timesteps between all variables
-      timesteps = [set(x.time for x in table) for table in tables]
+      timesteps = [set(x.time for x in current_table[var]) for var in vars]
       common_timesteps = set.intersection(*timesteps)
 
       if len(common_timesteps) == 0: continue
 
-      for var, table in zip(vars,tables):
-
-        # Filter for these timesteps
-        tables = [x for x in table if x.time in common_timesteps]
-
-        # Sort the file,time information for each variable (drop other info)
-        table = sorted((x.time,x.file) for x in table)
-        print table
-        # Construct variables from these tables
+      # Generate a tuple of timesteps and filenames for each variable
+      for var in vars:
         #TODO
-        yield table
+        yield sorted((x.time,x.file) for x in current_table[var] if x.time in common_timesteps)
       break
     else:
       raise ValueError("Can't find any common timesteps for %s"%(vars,))
@@ -244,6 +238,6 @@ def print_table (table):
   for x in sorted(table):
     print x.file, x.time, x.var, [len(a) for a in x.spatial_axes.values()]
 
-#print_table(co2)
-#print_table(p0)
-#print_table(gz)
+print co2
+print p0
+print gz
