@@ -76,17 +76,14 @@ class DataInterface (object):
     pickle.dump(set(imap(tuple,table)), open(cachefile,'w'))
     pbar.update(100)
 
-    # Convert the (type,values) tuples for spatial_axes into a dictionary
-    self._domains = set(x.spatial_axes for x in table)
-    # Use a lookup table for re-using the same objects for conversion
-    tuple2dict = dict((s,dict(s)) for s in self._domains)
-    # Convert the domains
-    self._domains = tuple(tuple2dict[s] for s in self._domains)
-    # Convert the table
-    self.table = tuple(entry(x.file,x.time,x.var,tuple2dict[x.spatial_axes]) for x in table)
+    # Store the table of available data.
+    self.table = table
+    # Store the available variables.
     self._vars = set(x.var for x in self.table)
-    # Sort by domain size (try largest domain first)
-    domain_shape = lambda s: [len(a) for a in s.values()]
+    # Store the available domains.
+    # Sort by domain size (try largest domain first).
+    self._domains = set(x.spatial_axes for x in self.table)
+    domain_shape = lambda s: [len(a[1]) for a in s]
     domain_size = lambda s: reduce(mul,domain_shape(s),1)
     self._domains = sorted(self._domains, key=domain_size, reverse=True)
 
@@ -214,6 +211,8 @@ def blah():
 
 # Helper function - determine if one domain is a subset of another domain
 def is_subset_of (axes1, axes2):
+  axes1 = dict(axes1)
+  axes2 = dict(axes2)
   for axis in axes2.keys():
     if axis not in axes1: return False
     if not (set(axes1[axis]) <= set(axes2[axis])): return False
