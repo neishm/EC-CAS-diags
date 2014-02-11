@@ -82,7 +82,7 @@ class DataInterface (object):
     tuple2dict = dict((s,dict(s)) for s in self._domains)
     # Convert the domains
     self._domains = tuple(tuple2dict[s] for s in self._domains)
-    # Conver the table
+    # Convert the table
     self.table = tuple(entry(x.file,x.time,x.var,tuple2dict[x.spatial_axes]) for x in table)
     self._vars = set(x.var for x in self.table)
     # Sort by domain size (try largest domain first)
@@ -122,20 +122,32 @@ class DataInterface (object):
         tables.append(table)
         del table
 
+      # Find common timesteps between all variables
       timesteps = [set(x.time for x in table) for table in tables]
       common_timesteps = set.intersection(*timesteps)
 
       if len(common_timesteps) == 0: continue
 
-      # Filter for these timesteps and this domain
-      tables = [[x for x in table if x.time in common_timesteps] for table in tables]
-      # Construct variables from these tables
-      #TODO
-      print '=>', [len(a) for a in domain.values()]
-      return tables
+      for var, table in zip(vars,tables):
+
+        # Filter for these timesteps
+        tables = [x for x in table if x.time in common_timesteps]
+
+        # Sort the file,time information for each variable (drop other info)
+        table = sorted((x.time,x.file) for x in table)
+        print table
+        # Construct variables from these tables
+        #TODO
+        yield table
       break
     else:
       raise ValueError("Can't find any common timesteps for %s"%(vars,))
+
+# Wrap a table of data into a variable
+from pygeode.var import Var
+class DataVar(Var):
+  pass
+
 
 
 def blah():
@@ -233,6 +245,6 @@ def print_table (table):
   for x in sorted(table):
     print x.file, x.time, x.var, [len(a) for a in x.spatial_axes.values()]
 
-print_table(co2)
-print_table(p0)
-print_table(gz)
+#print_table(co2)
+#print_table(p0)
+#print_table(gz)
