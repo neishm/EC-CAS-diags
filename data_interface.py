@@ -83,56 +83,46 @@ class DataInterface (object):
     self.table = defaultdict(set)
     for x in table:
       self.table[x.var].add(x)
-    # Store the available domains.
-    # Sort by domain size (try largest domain first).
-    self._domains = set(x.spatial_axes for x in table)
-    domain_shape = lambda s: [len(a[1]) for a in s]
-    domain_size = lambda s: reduce(mul,domain_shape(s),1)
-    self._domains = sorted(self._domains, key=domain_size, reverse=True)
+    # Store the available domains.  The order of domains is not important,
+    # but for debugging purposes should be deterministic.
+    self._domains = sorted(set(x.spatial_axes for x in table))
 
 
   # Get the requested variable(s).
   # The following filters are applied:
   # - Only use the timesteps where all variables are defined concurrently
   # - The variables must all be on the same spatial axes
-  # - Optionally, a user-specified filter is applied to meet particular criteria
-  # - If more than one spatial domain matches, then the one with the largest
-  #   size is chosen.
-  def find (self, *vars, **kwargs):
-    extra_filter = kwargs.pop('extra_filter', lambda x: True)
-    if len(kwargs) > 0:
-      raise TypeError("got an unexpected keyword argument '%s'"%kwargs.keys()[0])
+  # The possible matches are returned one at a time, and the calling method
+  # will have to figure out which one is the best.
+  def find (self, *vars):
 
-    table = dict()
     for var in vars:
       if var not in self.table:
         raise ValueError("'%s' not found in this data."%var)
-      table[var] = filter(extra_filter,self.table[var])
-      if len(table[var]) == 0:
-        raise ValueError("No values of '%s' match the specified criteria."%var)
-
 
     # Try each possible domain, until we find one that works for these variables
     for domain in self._domains:
 
-      current_table = dict()
+      table = dict()
       for var in vars:
-        current_table[var] = [x for x in table[var] if is_subset_of(domain,x.spatial_axes)]
-        if len(current_table[var]) == 0: continue
+        table[var] = [x for x in self.table[var] if is_subset_of(domain,x.spatial_axes)]
+        if len(table[var]) == 0: continue
 
       # Find common timesteps between all variables
-      timesteps = [set(x.time for x in current_table[var]) for var in vars]
+      timesteps = [set(x.time for x in table[var]) for var in vars]
       common_timesteps = set.intersection(*timesteps)
 
       if len(common_timesteps) == 0: continue
 
       # Generate a tuple of timesteps and filenames for each variable
+      varlist = []
       for var in vars:
         #TODO
-        yield sorted((x.time,x.file) for x in current_table[var] if x.time in common_timesteps)
-      break
-    else:
-      raise ValueError("Can't find any common timesteps for %s"%(vars,))
+        times = sorted((x.time,x.file) for x in table[var] if x.time in common_timesteps)
+        varlist.append(times)
+      print [len(a[1]) for a in domain]
+      yield varlist
+
 
 # Wrap a table of data into a variable
 from pygeode.var import Var
@@ -232,12 +222,7 @@ from cache import Cache
 cache = Cache(".", global_prefix='mytest_')
 
 datasets = DataInterface("/wrk6/neish/mn075/model/20090101*", opener, cache)
-co2, p0, gz = datasets.find('CO2', 'P0', 'GZ')
-
-def print_table (table):
-  for x in sorted(table):
-    print x.file, x.time, x.var, [len(a) for a in x.spatial_axes.values()]
-
-print co2
-print p0
-print gz
+for co2, p0, gz in datasets.find('CO2', 'P0', 'GZ'):
+  print co2
+  print p0
+  print gz
