@@ -196,72 +196,23 @@ class DataVar(Var):
     axes = [time_axis] + list(spatial_axes)
 
     obj = cls(axes, name=name, dtype=float)
-    obj.filemap = filemap
+
+    obj._filemap = filemap
+    obj._opener = opener
+    obj._name = name
 
     return obj
 
-    #TODO
+  def getview (self, view, pbar):
+    import numpy as np
+    out = np.zeros(view.shape, dtype=self.dtype)
+    for outtime, intime in enumerate(view.integer_indices[0]):
+      t,f = self._filemap[intime]
+      var = (v for v in self._opener(f) if v.name == self._name).next()
+      out[outtime,...] = view.modify_slice(0, [intime]).get(var)
+    return out
 del Var
 
-def blah():
-  # Construct a dataset from each domain
-  # Use multifile interface to handle the logistics
-  datasets = []
-  for domain, vars in domain_vars.iteritems():
-    domain = dict(domain)  # Re-construct dictionary from frozenset
-    full_domain = dict(domain)  # for debugging only
-    # Get list of files to iterate over, and the corresponding times
-    # Also, remove the time info from the domain.
-    files, times = zip(*domain.pop('time'))
-    # Concatenate all times together
-    times = sum(times,())
-
-    # Need a dummy function wrapper to properly bind the variables
-    def make_opener():
-      original_opener = opener
-      target_spatial_axes = domain
-      target_vars = vars
-      target_times = set(times)
-      target_full_domain = domain  # for debugging only
-      def domain_specific_opener(filename):
-#        print "called opener on", filename
-#        print 'domain: ('+','.join("%s:%d"%(getattr(k,'name',k),len(v)) for k,v in dict(target_full_domain).iteritems())+'):', target_vars
-        import numpy as np
-        from pygeode.dataset import asdataset
-        d = original_opener(filename)
-        varlist = []
-        for varname in target_vars:
-          var = (v for v in d if v.name == varname).next()
-          # Extract data on the domain we want
-          slices = []
-          for axis in var.axes:
-            if type(axis) not in target_spatial_axes:
-              slices.append(slice(None))
-              continue
-            target_values = target_spatial_axes[type(axis)]
-            if target_values == tuple(axis.values):
-              slices.append(slice(None))
-              continue
-            sl = []
-            for i,v in enumerate(axis.values):
-              if v in target_values: sl.append(i)
-            assert len(sl) > 0, "Internal error with data_interface - we were promised data, but there's nothing for the specified domain :("
-            # Special case: single integer
-            if len(sl) == 1: sl = sl[0]
-            # Special case: regularly spaced interval
-            elif len(set(np.diff(sl))) == 1:
-              delta = sl[1] - sl[0]
-              sl = slice(sl[0],sl[-1]+1,delta)
-            slices.append(sl)
-          # Apply the slicing
-          var = var.slice[slices]
-          varlist.append(var)
-        return asdataset(varlist)
-      return domain_specific_opener
-    # Work around a bug in multifile (looks for lists but not tuples)
-    files =  list(files)
-    datasets.append(open_multi(files, opener=make_opener(), file2date=file2date))
-  return datasets
 
 # Helper function - convert an Axis object to an encoded value
 # The result can be hashed and compared.
@@ -318,4 +269,5 @@ for co2, p0, gz in datasets.find('CO2', 'P0', 'GZ'):
 """
 for co2 in datasets.find('CO2'):
   print co2
-
+  x = co2.get()
+  print x.min()/414, x.max()/414
