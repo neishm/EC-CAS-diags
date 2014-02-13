@@ -18,8 +18,6 @@ class DataInterface (object):
     import cPickle as pickle
     from pygeode.progress import PBar
     from collections import namedtuple, defaultdict
-    from itertools import imap
-    from operator import mul
 
     if post_processor is None:
       post_processor = lambda x: x
@@ -33,23 +31,37 @@ class DataInterface (object):
         files.append(f)
 
     # Get the domain information from the files
-    # Each entry is a tuple of (filename, time, varname, spatial_axes)
-    entry = namedtuple('entry', 'file time var spatial_axes')
+    # Each entry is a tuple of (filename, varname, time_info, time, universal_time, spatial_axes)
+    entry = namedtuple('entry', 'file var time_info, time, universal_time, spatial_axes')
 
     cachefile = cache.local_filename("domains")
     if exists(cachefile):
       table = pickle.load(open(cachefile,'r'))
     else:
-      table = set()
+      table = []
 
-    table = set(imap(entry._make,table))
+    table = map(entry._make,table)
+
 
     # Helper dictionary - keeps track of existing objects, so we can re-use them
+    # Another dictionary keeps track of existing axes, so we can re-use the
+    # object references where possible.
     object_lookup = dict()
+    axis_lookup = dict()
+    # Store one copy of all hashable items in the table
     for x in table:
-      object_lookup[x.spatial_axes] = x.spatial_axes
+      for obj in x:
+        try:
+          object_lookup.setdefault(x,x)
+        except TypeError: continue
+
+    # Store one copy of each spatial axis
+    for x in table:
       for a in x.spatial_axes:
-        object_lookup[a] = a
+        axis_lookup.setdefault(encode_axis(a),a)
+      spatial_axes = tuple(encode_axis(a) for a in x.spatial_axes)
+      object_lookup.setdefault(spatial_axes,spatial_axes)
+
 
     handled_files = set(x.file for x in table)
 
@@ -57,35 +69,42 @@ class DataInterface (object):
 
     for i,f in enumerate(files):
       pbar.update(i*100./len(files))
-      if f in handled_files: continue
+      if f in handled_files: continue  #TODO: check modification time?
       d = opener(f)
       for var in d:
-        # Extract spatial axis arrays
-        spatial_axes = [(type(a),tuple(map(float,a.values))) for a in var.axes[1:]]
-        # Use existing objects where possible
-        spatial_axes = [object_lookup.setdefault(a,a) for a in spatial_axes]
-        # Convert to frozenset (to make it hashable)
-        spatial_axes = frozenset(spatial_axes)
+
+        # Use existing spatial_axes where possible
+        spatial_axes = tuple(axis_lookup.setdefault(encode_axis(a),a) for a in var.axes[1:])
         spatial_axes = object_lookup.setdefault(spatial_axes,spatial_axes)
-        # Add each available timestep as a separate entry
-        for t in time2val(var.axes[0]):
-          table.add(entry(f,float(t),var.name,spatial_axes))
+
+        # Use existing time axes where possible
+        time_info, time, universal_time = encode_time_axis(var.axes[0])
+        time_info = object_lookup.setdefault(time_info,time_info)
+
+        for t, u in zip(time, universal_time):
+          t = object_lookup.setdefault(t,t)
+          u = object_lookup.setdefault(u,u)
+          table.append(entry(file=f,var=var.name,time_info=time_info,time=t,universal_time=u,spatial_axes=spatial_axes))
 
     del handled_files  # No longer needed
 
-    pickle.dump(set(imap(tuple,table)), open(cachefile,'w'))
+    pickle.dump(map(tuple,table), open(cachefile,'w'))
     pbar.update(100)
 
     # Store the table of available data.
     # Use a dictionary indexed by variable, since we will be interested in
     # getting data only for particular variables anyway.
     # (Saves time in searching for relevant data for the query).
-    self.table = defaultdict(set)
+    self.table = defaultdict(list)
     for x in table:
-      self.table[x.var].add(x)
+      self.table[x.var].append(x)
     # Store the available domains.  The order of domains is not important,
     # but for debugging purposes should be deterministic.
-    self._domains = sorted(set(x.spatial_axes for x in table))
+    self._domains = set()
+    for x in table:
+      domain = frozenset(encode_axis(a) for a in x.spatial_axes)
+      self._domains.add(domain)
+    self._domains = sorted(self._domains)
 
 
   # Get the requested variable(s).
@@ -105,11 +124,11 @@ class DataInterface (object):
 
       table = dict()
       for var in vars:
-        table[var] = [x for x in self.table[var] if is_subset_of(domain,x.spatial_axes)]
+        table[var] = [x for x in self.table[var] if is_subset_of(domain,map(encode_axis,x.spatial_axes))]
         if len(table[var]) == 0: continue
 
       # Find common timesteps between all variables
-      timesteps = [set(x.time for x in table[var]) for var in vars]
+      timesteps = [set(x.universal_time for x in table[var]) for var in vars]
       common_timesteps = set.intersection(*timesteps)
 
       if len(common_timesteps) == 0: continue
@@ -118,7 +137,7 @@ class DataInterface (object):
       varlist = []
       for var in vars:
         #TODO
-        times = sorted((x.time,x.file) for x in table[var] if x.time in common_timesteps)
+        times = sorted((x.universal_time,x.file) for x in table[var] if x.universal_time in common_timesteps)
         varlist.append(times)
       print [len(a[1]) for a in domain]
       yield varlist
@@ -127,9 +146,29 @@ class DataInterface (object):
 # Wrap a table of data into a variable
 from pygeode.var import Var
 class DataVar(Var):
-  pass
-
-
+  # Create a variable from a table
+  @classmethod
+  def from_table (cls, table, opener):
+    # Get variable name
+    name = set(x.var for x in table)
+    if len(name) > 1:
+      raise ValueError ("Multiple variables encountered: %s"%name)
+    name = name.pop()
+    # Get spatial axes
+    spatial_axes = table[0].spatial_axes
+    for x in table:
+      if x.spatial_axes is spatial_axes: continue
+      if is_subset_of(x.spatial_axes,spatial_axes):
+        spatial_axes = x.spatial_axes
+    # Get time info
+    times = sorted((x.time,x.file) for x in table)
+    # Read the first file, to determine particulars about the axes
+    sample_file = times[0][1]
+    sample = [var for var in opener(sample_file) if var.name == name]
+    if len(sample) == 0:
+      raise KeyError("Variable '%s' not found in file '%s'"%(name,sample_file))
+    sample = sample[0]
+    #TODO
 
 def blah():
   # Construct a dataset from each domain
@@ -191,7 +230,18 @@ def blah():
     datasets.append(open_multi(files, opener=make_opener(), file2date=file2date))
   return datasets
 
+# Helper function - convert an Axis object to an encoded value
+# The result can be hashed and compared.
+def encode_axis (axis):
+  return (type(axis),tuple(axis.values))
 
+# Helper function - encode a time axis (requires some extra encoding)
+# Returns 2 parts - a time type (including reference date / units), and the
+# particular offset array for this time period.
+def encode_time_axis (axis):
+  startdate = tuple(sorted(axis.startdate.items()))
+  values = tuple(axis.values)
+  return (type(axis), ('startdate',startdate),('units',axis.units)), values, time2val(axis)
 
 # Helper function - determine if one domain is a subset of another domain
 def is_subset_of (axes1, axes2):
@@ -203,11 +253,15 @@ def is_subset_of (axes1, axes2):
   return True
 
 # Helper function - convert a time axis to an array of values
+# Used only for matching with other time axes
 def time2val (timeaxis):
-  from pygeode.timeutils import reltime
-  startdate = dict(year=2009, month=1, day=1)
-  units = 'hours'
-  return list(reltime(timeaxis, startdate=startdate, units=units))
+  year = timeaxis.auxarrays['year']
+  month = timeaxis.auxarrays['month']
+  day = timeaxis.auxarrays['day']
+  hour = timeaxis.auxarrays.get('hour',[0]*len(timeaxis))
+  minute = timeaxis.auxarrays.get('minute',[0]*len(timeaxis))
+  second = timeaxis.auxarrays.get('second',[0]*len(timeaxis))
+  return tuple("%04d%02d%02d%02d%02d%02d"%(y,m,d,H,M,S) for y,m,d,H,M,S in zip(year,month,day,hour,minute,second))
 
 
 # Test it out
@@ -222,6 +276,7 @@ from cache import Cache
 cache = Cache(".", global_prefix='mytest_')
 
 datasets = DataInterface("/wrk6/neish/mn075/model/20090101*", opener, cache)
+
 for co2, p0, gz in datasets.find('CO2', 'P0', 'GZ'):
   print co2
   print p0
