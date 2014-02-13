@@ -31,8 +31,8 @@ class DataInterface (object):
         files.append(f)
 
     # Get the domain information from the files
-    # Each entry is a tuple of (filename, varname, time_info, time, universal_time, spatial_axes)
-    entry = namedtuple('entry', 'file var time_info, time, universal_time, spatial_axes')
+    # Each entry is a tuple of (filename, varname, time_info, time, universal_time, spatial_axes, domain)
+    entry = namedtuple('entry', 'file var time_info, time, universal_time, spatial_axes, domain')
 
     cachefile = cache.local_filename("domains")
     if exists(cachefile):
@@ -77,6 +77,9 @@ class DataInterface (object):
         spatial_axes = tuple(axis_lookup.setdefault(encode_axis(a),a) for a in var.axes[1:])
         spatial_axes = object_lookup.setdefault(spatial_axes,spatial_axes)
 
+        domain = tuple(encode_axis(a) for a in spatial_axes)
+        domain = object_lookup.setdefault(domain,domain)
+
         # Use existing time axes where possible
         time_info, time, universal_time = encode_time_axis(var.axes[0])
         time_info = object_lookup.setdefault(time_info,time_info)
@@ -84,7 +87,7 @@ class DataInterface (object):
         for t, u in zip(time, universal_time):
           t = object_lookup.setdefault(t,t)
           u = object_lookup.setdefault(u,u)
-          table.append(entry(file=f,var=var.name,time_info=time_info,time=t,universal_time=u,spatial_axes=spatial_axes))
+          table.append(entry(file=f,var=var.name,time_info=time_info,time=t,universal_time=u,spatial_axes=spatial_axes,domain=domain))
 
     del handled_files  # No longer needed
 
@@ -100,12 +103,9 @@ class DataInterface (object):
       self.table[x.var].append(x)
     # Store the available domains.  The order of domains is not important,
     # but for debugging purposes should be deterministic.
-    self._domains = set()
-    for x in table:
-      domain = frozenset(encode_axis(a) for a in x.spatial_axes)
-      self._domains.add(domain)
-    self._domains = sorted(self._domains)
+    self._domains = sorted(set(x.domain for x in table))
 
+    self._opener = opener
 
   # Get the requested variable(s).
   # The following filters are applied:
@@ -124,7 +124,7 @@ class DataInterface (object):
 
       table = dict()
       for var in vars:
-        table[var] = [x for x in self.table[var] if is_subset_of(domain,map(encode_axis,x.spatial_axes))]
+        table[var] = [x for x in self.table[var] if is_subset_of(domain,x.domain)]
         if len(table[var]) == 0: continue
 
       # Find common timesteps between all variables
@@ -133,14 +133,15 @@ class DataInterface (object):
 
       if len(common_timesteps) == 0: continue
 
-      # Generate a tuple of timesteps and filenames for each variable
       varlist = []
       for var in vars:
-        #TODO
-        times = sorted((x.universal_time,x.file) for x in table[var] if x.universal_time in common_timesteps)
-        varlist.append(times)
+        records = [x for x in table[var] if x.universal_time in common_timesteps]
+        varlist.append(DataVar.construct(name=var, table=records, domain=domain, opener=self._opener))
       print [len(a[1]) for a in domain]
-      yield varlist
+      if len(varlist) == 1:
+        yield varlist[0]
+      else:
+        yield varlist
 
 
 # Wrap a table of data into a variable
@@ -148,27 +149,59 @@ from pygeode.var import Var
 class DataVar(Var):
   # Create a variable from a table
   @classmethod
-  def from_table (cls, table, opener):
-    # Get variable name
-    name = set(x.var for x in table)
-    if len(name) > 1:
-      raise ValueError ("Multiple variables encountered: %s"%name)
-    name = name.pop()
+  def construct (cls, name, table, domain, opener):
+    import numpy as np
+
     # Get spatial axes
-    spatial_axes = table[0].spatial_axes
+    # Start with something big enough to represent the domain
     for x in table:
-      if x.spatial_axes is spatial_axes: continue
-      if is_subset_of(x.spatial_axes,spatial_axes):
-        spatial_axes = x.spatial_axes
-    # Get time info
-    times = sorted((x.time,x.file) for x in table)
-    # Read the first file, to determine particulars about the axes
-    sample_file = times[0][1]
-    sample = [var for var in opener(sample_file) if var.name == name]
-    if len(sample) == 0:
-      raise KeyError("Variable '%s' not found in file '%s'"%(name,sample_file))
-    sample = sample[0]
+      if is_subset_of(domain,x.domain):
+        spatial_axes = list(x.spatial_axes)
+        break
+    else:
+      raise ValueError ("Invalid domain")
+
+    domain = dict(domain)
+
+    # Reduce the spatial axes to the same values as the domain
+    for ia, axis in enumerate(spatial_axes):
+      if type(axis) not in domain: continue  # Axis not part of domain restriction
+      sl = []
+      target_values = set(domain[type(axis)])
+      for i,v in enumerate(axis.values):
+        if v in target_values:
+          sl.append(i)
+      # Special case: single integer
+      if len(sl) == 1: sl = sl[0]
+      # Special case: regularly spaced interval
+      elif len(set(np.diff(sl))) == 1:
+        delta = sl[1] - sl[0]
+        sl = slice(sl[0],sl[-1]+1,delta)
+      spatial_axes[ia] = axis.slice[sl]
+
+    # Get time axis
+    time_pieces = []
+    for x in table:
+      timecls = x.time_info[0]
+      startdate = dict(x.time_info[1])
+      units = x.time_info[2]
+      time_pieces.append(timecls(values=[x.time], startdate=startdate, units=units))
+    time_axis = timecls.concat(time_pieces)
+
+    # Get a mapping from time values to filenames
+    filemap = [(v,x.file) for v,x in zip(time_axis.values,table)]
+    filemap = sorted(filemap)
+    time_axis = time_axis.sorted()
+
+    axes = [time_axis] + list(spatial_axes)
+
+    obj = cls(axes, name=name, dtype=float)
+    obj.filemap = filemap
+
+    return obj
+
     #TODO
+del Var
 
 def blah():
   # Construct a dataset from each domain
@@ -241,7 +274,7 @@ def encode_axis (axis):
 def encode_time_axis (axis):
   startdate = tuple(sorted(axis.startdate.items()))
   values = tuple(axis.values)
-  return (type(axis), ('startdate',startdate),('units',axis.units)), values, time2val(axis)
+  return (type(axis), startdate, axis.units), values, time2val(axis)
 
 # Helper function - determine if one domain is a subset of another domain
 def is_subset_of (axes1, axes2):
@@ -277,7 +310,12 @@ cache = Cache(".", global_prefix='mytest_')
 
 datasets = DataInterface("/wrk6/neish/mn075/model/20090101*", opener, cache)
 
+"""
 for co2, p0, gz in datasets.find('CO2', 'P0', 'GZ'):
   print co2
   print p0
   print gz
+"""
+for co2 in datasets.find('CO2'):
+  print co2
+
