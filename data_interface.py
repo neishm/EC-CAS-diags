@@ -52,7 +52,7 @@ class DataInterface (object):
     for x in table:
       for obj in x:
         try:
-          object_lookup.setdefault(x,x)
+          object_lookup.setdefault(obj,obj)
         except TypeError: continue
 
     # Store one copy of each spatial axis
