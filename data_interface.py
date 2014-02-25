@@ -12,15 +12,12 @@ class DataInterface (object):
   #    a full rescan).
   # 3) Store the full table of information inside the object, for further
   #    use at runtime.
-  def __init__ (self, files, opener, cache, post_processor=None):
+  def __init__ (self, files, opener, cache):
     from glob import glob
     from os.path import exists
     import cPickle as pickle
     from pygeode.progress import PBar
     from collections import namedtuple, defaultdict
-
-    if post_processor is None:
-      post_processor = lambda x: x
 
     # Expand any globbing patterns
     if isinstance(files,str): files = [files]
