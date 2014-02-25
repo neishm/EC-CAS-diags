@@ -14,7 +14,8 @@ class DataInterface (object):
   #    use at runtime.
   def __init__ (self, files, opener, cache):
     from glob import glob
-    from os.path import exists
+    from os.path import exists, getatime, getmtime
+    from os import utime
     import cPickle as pickle
     from pygeode.progress import PBar
     from collections import namedtuple, defaultdict
@@ -34,8 +35,10 @@ class DataInterface (object):
     cachefile = cache.local_filename("domains")
     if exists(cachefile):
       table = pickle.load(open(cachefile,'r'))
+      mtime = getmtime(cachefile)
     else:
       table = []
+      mtime = 0
 
     table = map(entry._make,table)
 
@@ -66,7 +69,17 @@ class DataInterface (object):
 
     for i,f in enumerate(files):
       pbar.update(i*100./len(files))
-      if f in handled_files: continue  #TODO: check modification time?
+      if f in handled_files:
+        # File has changed since last time?
+        if getmtime(f) > mtime:
+          # Remove existing info
+          table = [t for t in table if t.file != f]
+        else:
+          # Otherwise, we've already dealt with the file, so skip it.
+          continue
+      # Always use the latest modification time to represent the valid time of
+      # the whole table.
+      mtime = max(mtime,getmtime(f))
       d = opener(f)
       for var in d:
 
@@ -88,7 +101,10 @@ class DataInterface (object):
 
     del handled_files  # No longer needed
 
+    # Store the info in a file, so we don't have to re-scan all the data again.
     pickle.dump(map(tuple,table), open(cachefile,'w'))
+    # Set the modification time to the latest file that was used.
+    utime(cachefile,(getatime(cachefile),mtime))
     pbar.update(100)
 
     # Store the table of available data.
