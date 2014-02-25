@@ -495,7 +495,6 @@ class GEM_Data (object):
       data /= area
       data.name = field
       data.atts['units'] = 'mol m-2 s-1'
-      return data # No caching
 
     elif domain == 'Toronto':
       data = self._find_3d_field(field,stat)
