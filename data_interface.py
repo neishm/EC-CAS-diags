@@ -268,25 +268,9 @@ def time2val (timeaxis):
 
 
 # Test it out
-def opener (filename):
-  from pygeode.formats import fstd
-  data = fstd.open(filename, squash_forecasts=True, raw_list=True)
-  # Could do unit conversions here, and add extra fields
-  return data
+if __name__ == '__main__':
+  from gem import GEM_Data
+  gemdata = GEM_Data("/wrk6/neish/mn075/model", flux_dir="/wrk1/EC-CAS/GEM/inputs/emissions_v2", name="mn075", title="mn075")
+  for co2 in gemdata.data.find('CO2'):
+    print co2
 
-
-from cache import Cache
-cache = Cache(".", global_prefix='mytest_')
-
-datasets = DataInterface("/wrk6/neish/mn075/model/20090101*", opener, cache)
-
-"""
-for co2, p0, gz in datasets.find('CO2', 'P0', 'GZ'):
-  print co2
-  print p0
-  print gz
-"""
-for co2 in datasets.find('CO2'):
-  print co2
-  x = co2.get()
-  print x.min()/414, x.max()/414
