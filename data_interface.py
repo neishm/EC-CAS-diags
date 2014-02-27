@@ -104,7 +104,12 @@ class DataInterface (object):
     # Store the info in a file, so we don't have to re-scan all the data again.
     pickle.dump(map(tuple,table), open(cachefile,'w'))
     # Set the modification time to the latest file that was used.
-    utime(cachefile,(getatime(cachefile),mtime))
+    atime = getatime(cachefile)
+    utime(cachefile,(atime,mtime))
+    # Hack to force the saved mtime to not get truncated
+    dt = mtime - getmtime(cachefile)
+    utime(cachefile,(atime,mtime+dt))
+
     pbar.update(100)
 
     # Store the table of available data.
