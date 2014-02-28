@@ -151,6 +151,26 @@ def gem_load_cache_hook (dataset):
   return data[0]
 
 
+# Some useful criteria for searching for fields
+def have_surface (varlist):
+  from pygeode.axis import ZAxis
+  from pygeode.formats.fstd import Hybrid, LogHybrid
+  for var in varlist:
+    if var.hasaxis(Hybrid):
+      return 1.0 in var.getaxis(Hybrid).values
+    if var.hasaxis(LogHybrid):
+      return 1.0 in var.getaxis(LogHybrid).values
+  # No vertical info?
+  return False
+
+def number_of_timesteps (varlist):
+  from pygeode.axis import TAxis
+  for var in varlist:
+    if var.hasaxis(TAxis):
+      return len(var.getaxis(TAxis))
+
+
+
 # GEM data interface
 class GEM_Data (object):
   def __init__ (self, experiment_dir, flux_dir, name, title, tmpdir=None):
@@ -196,23 +216,47 @@ class GEM_Data (object):
 
     self.data = DataInterface(files, opener=eccas_opener, cache=cache)
 
+  # Helper function - find the best field matches that fit some criteria
+  def find_best (self, fields, requirement=None, metric=None):
+
+    # If we are given a single field name (not in a list), then return a
+    # single field (also not in a list structure).
+    collapse_result = False
+    if isinstance(fields,str):
+      fields = [fields]
+      collapse_result = True
+
+    if len(fields) == 1:
+      candidates = zip(self.data.find(*fields))
+    else:
+      candidates = self.data.find(fields)
+
+    if requirement is not None:
+      candidates = filter(requirement, candidates)
+
+    # Sort by the criteria (higher value is better)
+    if metric is not None:
+      candidates = sorted(candidates, key=metric, reverse=True)
+
+    # Use the best result
+    result = candidates[0]
+
+    if collapse_result: result = result[0]
+    return result
+
+
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
   def get_data (self, domain, standard_name, stat='mean'):
     #TODO: update for new interface (doesn't work right now!)
 
-    # Translate the standard name into the name used by GEM.
-    if standard_name in self.local_names:
-      field = self.local_names[standard_name]
-    else:
-      # No field name translation
-      field = standard_name
+    field = standard_name
 
     # Determine which data is needed
 
     # Surface data (lowest model level)
     if domain == 'sfc':
-      data = self._find_sfc_field(field,stat)
+      data = self.find_best(field, requirement=have_surface, metric=number_of_timesteps)
     # Zonal mean, with data interpolated to a fixed set of geopotential heights
     elif domain == 'zonalmean_gph':
       data = self._find_3d_field(field,stat)
@@ -330,6 +374,6 @@ class GEM_Data (object):
       prefix = '%s_%s'%(domain,field)
     else:
       prefix = '%s_%s_%s'%(stat,domain,field)
-    return self.cache.write(data,prefix)
+    return self.data.cache.write(data,prefix)
 
 

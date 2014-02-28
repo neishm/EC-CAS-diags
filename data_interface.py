@@ -271,6 +271,5 @@ def time2val (timeaxis):
 if __name__ == '__main__':
   from gem import GEM_Data
   gemdata = GEM_Data("/wrk6/neish/mn075/model", flux_dir="/wrk1/EC-CAS/GEM/inputs/emissions_v2", name="mn075", title="mn075")
-  for co2 in gemdata.data.find('CO2'):
-    print co2
+  print gemdata.get_data('sfc','CO2')
 
