@@ -215,6 +215,7 @@ class GEM_Data (object):
     files.append(indir+"/p[0-9]*_[0-9]*")
 
     self.data = DataInterface(files, opener=eccas_opener, cache=cache)
+    self.cache = cache
 
   # Helper function - find the best field matches that fit some criteria
   def find_best (self, fields, requirement=None, metric=None):
@@ -374,6 +375,6 @@ class GEM_Data (object):
       prefix = '%s_%s'%(domain,field)
     else:
       prefix = '%s_%s_%s'%(stat,domain,field)
-    return self.data.cache.write(data,prefix)
+    return self.cache.write(data,prefix)
 
 

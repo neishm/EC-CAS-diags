@@ -124,7 +124,7 @@ class DataInterface (object):
     self._domains = sorted(set(x.domain for x in table))
 
     self._opener = opener
-    self.cache = cache
+
 
   # Get the requested variable(s).
   # The following filters are applied:
