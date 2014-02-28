@@ -132,7 +132,7 @@ def to_gph (var, z):
 
   # Remove extra longitude from the data
   var = var.slice[:,:,:,:-1]
-  GZ = GZ.slice[:,:,:,:-1]
+  z = z.slice[:,:,:,:-1]
 
   height = Height(range(68), name='height')
 
@@ -169,6 +169,11 @@ def number_of_timesteps (varlist):
     if var.hasaxis(TAxis):
       return len(var.getaxis(TAxis))
 
+def number_of_levels (varlist):
+  from pygeode.axis import ZAxis
+  for var in varlist:
+    if var.hasaxis(ZAxis):
+      return len(var.getaxis(ZAxis))
 
 
 # GEM data interface
@@ -218,7 +223,7 @@ class GEM_Data (object):
     self.cache = cache
 
   # Helper function - find the best field matches that fit some criteria
-  def find_best (self, fields, requirement=None, metric=None):
+  def find_best (self, fields, requirement=None, maximize=None, minimize=None):
 
     # If we are given a single field name (not in a list), then return a
     # single field (also not in a list structure).
@@ -230,14 +235,16 @@ class GEM_Data (object):
     if len(fields) == 1:
       candidates = zip(self.data.find(*fields))
     else:
-      candidates = self.data.find(fields)
+      candidates = self.data.find(*fields)
 
     if requirement is not None:
       candidates = filter(requirement, candidates)
 
     # Sort by the criteria (higher value is better)
-    if metric is not None:
-      candidates = sorted(candidates, key=metric, reverse=True)
+    if maximize is not None:
+      candidates = sorted(candidates, key=maximize, reverse=True)
+    elif minimize is not None:
+      candidates = sorted(candidates, key=minimize, reverse=False)
 
     # Use the best result
     result = candidates[0]
@@ -257,11 +264,10 @@ class GEM_Data (object):
 
     # Surface data (lowest model level)
     if domain == 'sfc':
-      data = self.find_best(field, requirement=have_surface, metric=number_of_timesteps)
+      data = self.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
     # Zonal mean, with data interpolated to a fixed set of geopotential heights
     elif domain == 'zonalmean_gph':
-      data = self._find_3d_field(field,stat)
-      GZ = self._find_3d_field('GZ')
+      data, GZ = self.find_best([field,'geopotential_height'], maximize=number_of_levels)
       data = to_gph(data,GZ).nanmean('lon')
       data.atts['units'] = 'ppm'
     # "total column" (in kg/m2)
