@@ -311,97 +311,56 @@ class GEM_Data (object):
     # Surface data (lowest model level)
     if domain == 'sfc':
       data = self.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
+
     # Zonal mean, with data interpolated to a fixed set of geopotential heights
     elif domain == 'zonalmean_gph':
       data, GZ = self.find_best([field,'geopotential_height'], maximize=number_of_levels)
       data = to_gph(data,GZ).nanmean('lon')
       data.atts['units'] = 'ppm'
+
     # "total column" (in kg/m2)
     elif domain == 'totalcolumn':
-      from pygeode.axis import ZAxis
-      from pygeode.var import Var
       from common import molecular_weight as mw, grav as g
 
+      c, dp = self.find_best([field,'dp'], maximize=number_of_levels)
       # Convert from ppm to kg / kg
-      conversion = 1E-6 * mw[standard_name] / mw['air']
+      c *= 1E-6 * mw[standard_name] / mw['air']
 
-      Ps = self.combined_3d['P0'] * 100 # Get Ps on 3D field time frequency
-      sigma = self.combined_3d['SIGM']
-
-      # Case 1 - GEM3 (unstaggered) levels
-      if sigma.hasaxis("eta"):
-        # Compute mixing ratio at half levels
-        # Special case: air mass (not an actual output field)
-        if field is 'air':
-          c_half = 1
-        else:
-          c = self._find_3d_field(field,stat) * conversion
-          # Interpolate concentration to half levels
-          c1 = c.slice[:,:-1,:,:]
-          c2 = c.slice[:,1:,:,:]
-          c2 = c2.replace_axes(eta=c1.eta)
-          c_half = (c2 + c1) / 2
-        # Compute sigma layers
-        sigma1 = sigma.slice[:,:-1,:,:]
-        sigma2 = sigma.slice[:,1:,:,:]
-        sigma2 = sigma2.replace_axes(eta=sigma1.eta)
-        dsigma = (sigma2-sigma1)
-        # Integrate the tracer
-        col = (c_half * dsigma).sum('eta')
-        assert (col.naxes == 3)
-        # Scale by Ps/g
-        data = col * Ps / g
-        data.name = field
-
-      # Case 2 - GEM4 (staggered levels)
-      elif sigma.hasaxis("zeta"):
-        if field is 'air':
-          c_kp1 = 1
-        else:
-          c = self._find_3d_field(field,stat) * conversion
-          # Assuming we have an unused "surface" diagnositic level
-          assert 1.0 in c.getaxis("zeta").values
-          c_kp1 = c.slice[:,1:-1,:,:]
-        sigma_kp1 = sigma.slice[:,1:,:,:]
-        sigma_k = sigma.slice[:,:-1,:,:]
-        # Put everything on the same levels
-        if isinstance(c_kp1,Var):
-          c_kp1 = c_kp1.replace_axes(zeta=sigma_k.zeta)
-        sigma_kp1 = sigma_kp1.replace_axes(zeta=sigma_k.zeta)
-        # Do the summation
-        col = ( (sigma_kp1 - sigma_k) * c_kp1 ).sum('zeta')
-        # Scale by Ps/g
-        data = col * Ps / g
-        data.name = field
-
-      else: raise Exception   # Unrecognized vertical coordinate
+      # Integrate
+      data = (c*dp*100).sum('zaxis') / g
+      data.name = field
+      data.atts['units'] = 'kg m-2'
 
     # Average column (ppm)
     elif domain == 'avgcolumn':
-      from common import molecular_weight as mw
-      # Total column (kg/m2)
-      tc = self.get_data('totalcolumn', standard_name, stat)
-      # Total column air (kg/m2)
-      Mair = self.get_data('totalcolumn', 'air')
-      # Compute the mass mixing ratio
-      data = tc / Mair
-      # Convert kg/kg to ppm
-      data *= mw['air']/mw[standard_name] * 1E6
 
+      c, dp = self.find_best([field,'dp'], maximize=number_of_levels)
+      data = (c*dp).sum('zaxis') / dp.sum('zaxis')
       data.name = field
-      data.atts['units'] = 'ppm'
+      if 'units' in c.atts:
+        data.atts['units'] = c.atts['units']
 
+
+    # Total mass (Pg)
+    #TODO: re-use totalcolumn data from above
     elif domain == 'totalmass':
-      # Total column (kg /m2)
-      tc = self.get_data('totalcolumn', standard_name, stat)
-      area = self.combined_3d['DX']
-      # Mass per grid area (kg)
+      from common import molecular_weight as mw, grav as g
+      c, dp, area = self.find_best([field,'dp','cell_area'], maximize=number_of_levels)
+      # Convert from ppm to kg / kg
+      c *= 1E-6 * mw[standard_name] / mw['air']
+
+      # Integrate to get total column
+      tc = (c*dp*100).sum('zaxis') / g
+
+      # Integrate horizontally
       # Assume global grid - remove repeated longitude
       mass = (tc * area).slice[:,:,:-1].sum('lat','lon')
+
       # Convert from kg to Pg
       mass *= 1E-12
       data = mass
       data.name = field
+      data.atts['units'] = 'Pg'
 
     # Integrated flux (if available)
     elif domain == 'totalflux':

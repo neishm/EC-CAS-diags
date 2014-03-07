@@ -271,6 +271,12 @@ def time2val (timeaxis):
 if __name__ == '__main__':
   from gem import GEM_Data
   gemdata = GEM_Data("/wrk6/neish/mn075/model", flux_dir="/wrk1/EC-CAS/GEM/inputs/emissions_v2", name="mn075", title="mn075")
-  print gemdata.get_data('sfc','CO2')
-  print gemdata.get_data('zonalmean_gph','CO2')
-
+#  print gemdata.get_data('sfc','CO2')
+#  print gemdata.get_data('zonalmean_gph','CO2')
+#  for dp in gemdata.data.find('dp'):
+#    if len(dp.zaxis) > 1:
+#      from pygeode.formats import netcdf
+#      netcdf.save('dp.nc', dp(i_time=0))
+  print gemdata.get_data('totalcolumn', 'CO2')
+  print gemdata.get_data('avgcolumn', 'CO2')
+  print gemdata.get_data('totalmass', 'CO2')
