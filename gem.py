@@ -2,6 +2,8 @@
 def eccas_opener (filename):
   from pygeode.formats import fstd
   from pygeode.ufunc import exp, log
+  from pygeode.var import concat, Var
+  from pygeode.axis import ZAxis
   data = fstd.open(filename, squash_forecasts=True, raw_list=True)
 
   # Convert to a dictionary (for referencing by variable name)
@@ -50,8 +52,10 @@ def eccas_opener (filename):
       if units is not None: var.atts['units'] = units
       data[new_name] = var
 
-  # Compute a pressure field
+  # Compute a pressure field.
+  # Also, compute a dp field (vertical change in pressure within a gridbox).
   P = None
+  dP = None
 
   if 'surface_pressure' in data:
 
@@ -71,7 +75,14 @@ def eccas_opener (filename):
       A = eta.auxasvar('A')
       B = eta.auxasvar('B')
       P = A + B * Ps
+      P = P.transpose('time','eta','lat','lon')
       P /= 100 # hPa
+
+      # dP
+      #TODO: Use ptop as upper boundary, instead of ignoring (zeroing) that layer?
+      P_k = concat(P.slice[:,0,:,:], P.slice[:,:-1,:,:]).replace_axes(eta=eta)
+      P_kp1 = concat(P.slice[:,1:,:,:], P.slice[:,-1,:,:]).replace_axes(eta=eta)
+      dP = abs(P_kp1 - P_k)/2
 
     # zeta coordinates?
     if any(var.hasaxis(fstd.LogHybrid) for var in data.itervalues()):
@@ -80,20 +91,55 @@ def eccas_opener (filename):
         if var.hasaxis(fstd.LogHybrid):
           current = var.getaxis(fstd.LogHybrid)
           current = set(zip(current.values, current.A, current.B))
+          zeta_atts = var.getaxis(fstd.LogHybrid).atts
           zeta.update(current)
       zeta = sorted(zeta, reverse=True)
       zeta, A, B = zip(*zeta)
-      zeta = fstd.LogHybrid(values=zeta, A=A, B=B)
+      zeta = fstd.LogHybrid(values=zeta, A=A, B=B, atts=zeta_atts)
       A = zeta.auxasvar('A')
       B = zeta.auxasvar('B')
+      pref = zeta.atts['pref']
+      ptop = zeta.atts['ptop']
 
-      P = exp(A + B * log(Ps/100000))
+      P = exp(A + B * log(Ps*100/pref))
       P = P.transpose('time','zeta','lat','lon')
       P /= 100 # hPa
+
+      # dP
+      #TODO: produce dP for both thermodynamic and momentum levels
+      # (currently just thermo)
+      A_m = list(zeta.atts['a_m'])
+      B_m = list(zeta.atts['b_m'])
+      # Add model top (not a true level, but needed for dP calculation)
+      # Also, duplicate the bottom (surface) level to get dP=0 at bottom
+      import math
+      A_m = [math.log(ptop)] + A_m + [A_m[-1]]
+      B_m = [0] + B_m + [B_m[-1]]
+      # Convert to Var objects
+      zaxis = ZAxis(range(len(A_m)))
+      A_m = Var(axes=[zaxis], values=A_m)
+      B_m = Var(axes=[zaxis], values=B_m)
+      # Compute pressure on (extended) momentum levels
+      P_m = exp(A_m + B_m * log(Ps*100/pref))
+      P_m = P_m.transpose('time','zaxis','lat','lon')
+      # Compute dP
+      P_m_1 = P_m.slice[:,1:,:,:]
+      P_m_2 = P_m.slice[:,:-1,:,:].replace_axes(zaxis=P_m_1.zaxis)
+      dP = P_m_1 - P_m_2
+      # Put on proper thermodynamic levels
+      from pygeode.formats.fstd_core import decode_levels
+      values, kind = decode_levels(zeta.atts['ip1_t'])
+      zaxis = fstd.LogHybrid(values=values, A=zeta.atts['a_t'], B=zeta.atts['b_t'])
+      dP = dP.replace_axes(zaxis=zaxis)
+      dP /= 100 # hPa
+
 
   if P is not None:
     P.units = 'hPa'
     data['air_pressure'] = P
+  if dP is not None:
+    dP.units = 'hPa'
+    data['dp'] = dP  #TODO: better name?
 
   # Grid cell areas
   if 'DX' in data:
