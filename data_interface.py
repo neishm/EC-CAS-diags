@@ -57,9 +57,9 @@ class DataInterface (object):
 
     # Store one copy of each spatial axis
     for x in table:
-      for a in x.spatial_axes:
-        axis_lookup.setdefault(encode_axis(a),a)
       spatial_axes = tuple(encode_axis(a) for a in x.spatial_axes)
+      for enc_a, a in zip(spatial_axes, x.spatial_axes):
+        axis_lookup.setdefault(enc_a,a)
       object_lookup.setdefault(spatial_axes,spatial_axes)
 
 
@@ -84,11 +84,13 @@ class DataInterface (object):
       for var in d:
 
         # Use existing spatial_axes where possible
-        spatial_axes = tuple(axis_lookup.setdefault(encode_axis(a),a) for a in var.axes[1:])
-        spatial_axes = object_lookup.setdefault(spatial_axes,spatial_axes)
+        spatial_axes = var.axes[1:]
 
         domain = tuple(encode_axis(a) for a in spatial_axes)
         domain = object_lookup.setdefault(domain,domain)
+
+        spatial_axes = tuple(axis_lookup.setdefault(enc_a,a) for enc_a, a in zip(domain,spatial_axes))
+        spatial_axes = object_lookup.setdefault(spatial_axes,spatial_axes)
 
         # Use existing attributes where possible
         atts = tuple(sorted(var.atts.items()))
@@ -145,9 +147,11 @@ class DataInterface (object):
     # Try each possible domain, until we find one that works for these variables
     for domain in self._domains:
 
+      compatible_domains = [d for d in self._domains if is_subset_of(domain,d)]
+
       table = dict()
       for var in vars:
-        table[var] = [x for x in self.table[var] if is_subset_of(domain,x.domain)]
+        table[var] = [x for x in self.table[var] if x.domain in compatible_domains]
         if len(table[var]) == 0: continue
 
       # Find common timesteps between all variables
@@ -207,18 +211,31 @@ class DataVar(Var):
       spatial_axes[ia] = axis.slice[sl]
 
     # Get time axis
-    time_pieces = []
-    for x in table:
-      timecls = x.time_info[0]
-      startdate = dict(x.time_info[1])
-      units = x.time_info[2]
-      time_pieces.append(timecls(values=[x.time], startdate=startdate, units=units))
-    time_axis = timecls.concat(time_pieces)
+    timecls = set(x.time_info[0] for x in table)
+    startdate = set(x.time_info[1] for x in table)
+    units = set(x.time_info[2] for x in table)
+    values = [x.time for x in table]
+    # Fast case: the pieces of the time axis all have the same class, units,
+    # and startdate.
+    if len(timecls) == 1 and len(startdate) == 1 and len(units) == 1:
+      timecls = timecls.pop()
+      startdate = dict(startdate.pop())
+      units = units.pop()
+      time_axis = timecls(values=sorted(values), startdate=startdate, units=units)
+    # Otherwise, need to do a lot of extra work
+    else:
+      from warnings import warn
+      time_pieces = []
+      for x in table:
+        timecls = x.time_info[0]
+        startdate = dict(x.time_info[1])
+        units = x.time_info[2]
+        time_pieces.append(timecls(values=[x.time], startdate=startdate, units=units))
+      time_axis = timecls.concat(time_pieces).sorted()
 
     # Get a mapping from time values to filenames
-    filemap = [(v,x.file) for v,x in zip(time_axis.values,table)]
+    filemap = [(v,x.file) for v,x in zip(values,table)]
     filemap = sorted(filemap)
-    time_axis = time_axis.sorted()
 
     axes = [time_axis] + list(spatial_axes)
 
