@@ -284,3 +284,4 @@ if __name__ == '__main__':
   print gemdata.get_data('avgcolumn', 'CO2')
   print gemdata.get_data('totalmass', 'CO2')
   print gemdata.get_data('totalflux', 'CO2')
+  print gemdata.get_data('Toronto', 'CO2')

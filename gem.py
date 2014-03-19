@@ -379,8 +379,10 @@ class GEM_Data (object):
       data.atts['units'] = 'mol s-1'
 
     elif domain == 'Toronto':
-      data = self._find_3d_field(field,stat)
+      data = self.find_best(field, maximize=number_of_levels)
       data = data.squeeze(lat=43.7833,lon=280.5333)
+      data.name = field
+      data.atts['units'] = 'ppm'
 
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
