@@ -29,8 +29,8 @@ class DataInterface (object):
         files.append(f)
 
     # Get the domain information from the files
-    # Each entry is a tuple of (filename, varname, time_info, time, universal_time, spatial_axes, domain)
-    entry = namedtuple('entry', 'file var time_info, time, universal_time, spatial_axes, domain')
+    # Each entry is a tuple of (filename, varname, time_info, time, universal_time, spatial_axes, domain, atts)
+    entry = namedtuple('entry', 'file var time_info, time, universal_time, spatial_axes, domain, atts')
 
     cachefile = cache.local_filename("domains")
     if exists(cachefile):
@@ -90,6 +90,10 @@ class DataInterface (object):
         domain = tuple(encode_axis(a) for a in spatial_axes)
         domain = object_lookup.setdefault(domain,domain)
 
+        # Use existing attributes where possible
+        atts = tuple(sorted(var.atts.items()))
+        atts = object_lookup.setdefault(atts,atts)
+
         # Use existing time axes where possible
         time_info, time, universal_time = encode_time_axis(var.axes[0])
         time_info = object_lookup.setdefault(time_info,time_info)
@@ -97,7 +101,7 @@ class DataInterface (object):
         for t, u in zip(time, universal_time):
           t = object_lookup.setdefault(t,t)
           u = object_lookup.setdefault(u,u)
-          table.append(entry(file=f,var=var.name,time_info=time_info,time=t,universal_time=u,spatial_axes=spatial_axes,domain=domain))
+          table.append(entry(file=f,var=var.name,time_info=time_info,time=t,universal_time=u,spatial_axes=spatial_axes,domain=domain,atts=atts))
 
     del handled_files  # No longer needed
 
@@ -173,6 +177,7 @@ class DataVar(Var):
   @classmethod
   def construct (cls, name, table, domain, opener):
     import numpy as np
+    from pygeode.tools import common_dict
 
     # Get spatial axes
     # Start with something big enough to represent the domain
@@ -217,7 +222,10 @@ class DataVar(Var):
 
     axes = [time_axis] + list(spatial_axes)
 
-    obj = cls(axes, name=name, dtype=float)
+    # Get attributes
+    atts = common_dict([dict(x.atts) for x in table])
+
+    obj = cls(axes, name=name, dtype=float, atts=atts)
 
     obj._filemap = filemap
     obj._opener = opener
