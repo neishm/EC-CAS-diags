@@ -162,6 +162,9 @@ class DataInterface (object):
       else:
         yield varlist
 
+  # Determine if a given variable is in the data somewhere
+  def have (self, var):
+    return var in self.table
 
 # Wrap a table of data into a variable
 from pygeode.var import Var
@@ -280,3 +283,4 @@ if __name__ == '__main__':
   print gemdata.get_data('totalcolumn', 'CO2')
   print gemdata.get_data('avgcolumn', 'CO2')
   print gemdata.get_data('totalmass', 'CO2')
+  print gemdata.get_data('totalflux', 'CO2')

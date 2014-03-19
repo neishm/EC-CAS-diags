@@ -23,11 +23,11 @@ def eccas_opener (filename):
   convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
   convert_CO2_flux = mw['CO2'] / mw['C']
   conversions += (
-    ('ECO2', 'CO2_flux', convert_CO2_flux, None, 'g/s'),
-    ('ECBB', 'CO2_fire_flux', convert_CO2_flux, None, 'g/s'),
-    ('ECFF', 'CO2_fossil_flux', convert_CO2_flux, None, 'g/s'),
-    ('ECOC', 'CO2_ocean_flux', convert_CO2_flux, None, 'g/s'),
-    ('ECLA', 'CO2_bio_flux', convert_CO2_flux, None, 'g/s'),
+    ('ECO2', 'CO2_flux', convert_CO2_flux, None, 'g s-1'),
+    ('ECBB', 'CO2_fire_flux', convert_CO2_flux, None, 'g s-1'),
+    ('ECFF', 'CO2_fossil_flux', convert_CO2_flux, None, 'g s-1'),
+    ('ECOC', 'CO2_ocean_flux', convert_CO2_flux, None, 'g s-1'),
+    ('ECLA', 'CO2_bio_flux', convert_CO2_flux, None, 'g s-1'),
     ('CO2', 'CO2', convert_CO2, None, 'ppm'),
     ('CBB', 'CO2_fire', convert_CO2, None, 'ppm'),
     ('CFF', 'CO2_fossil', convert_CO2, None, 'ppm'),
@@ -292,6 +292,9 @@ class GEM_Data (object):
     elif minimize is not None:
       candidates = sorted(candidates, key=minimize, reverse=False)
 
+    if len(candidates) == 0:
+      raise ValueError("Unable to find any matches for fields=%s, requirement=%s, maximize=%s, minimize=%s"%(fields, requirement, maximize, minimize))
+
     # Use the best result
     result = candidates[0]
 
@@ -364,17 +367,16 @@ class GEM_Data (object):
 
     # Integrated flux (if available)
     elif domain == 'totalflux':
-      if stat != 'mean': raise KeyError("Don't have stddev on fluxes")
       from common import molecular_weight as mw
-      if not hasattr(self,'fluxes'):
-        raise KeyError ("Can't compute a total flux, because no fluxes are identified with this run.")
-      # We have a slightly different naming convention for fluxes
-      field = 'E'+field
+
+      data = self.find_best(field+'_flux', maximize=number_of_timesteps)
+
       # Sum, skipping the last (repeated) longitude
-      data = self.fluxes[field].slice[:,:,:-1].sum('lat','lon')
+      data = data.slice[:,:,:-1].sum('lat','lon')
       # Convert from g/s to moles/s
       data /= mw[standard_name]
       data.name = field
+      data.atts['units'] = 'mol s-1'
 
     elif domain == 'Toronto':
       data = self._find_3d_field(field,stat)
