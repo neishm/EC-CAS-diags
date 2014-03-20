@@ -46,21 +46,31 @@ class DataInterface (object):
     # Helper dictionary - keeps track of existing objects, so we can re-use them
     # Another dictionary keeps track of existing axes, so we can re-use the
     # object references where possible.
+    # Yet another dictionary holds axis object ids, to easily lookup encoded
+    # axis results (so it's not re-run over and over).
+    # Also, store a temporary list of axis objects (new from files) so we
+    # don't recycle the id's  (keep the id's unique for lookups)
     object_lookup = dict()
     axis_lookup = dict()
+    encode_axis_lookup = dict()
+    axis_obj_ref = []
     # Store one copy of all hashable items in the table
     for x in table:
-      for obj in x:
-        try:
-          object_lookup.setdefault(obj,obj)
-        except TypeError: continue
+      for obj in [x.time_info, x.domain, x.atts]:
+        object_lookup.setdefault(obj,obj)
 
     # Store one copy of each spatial axis
+    # First, encode all axis objects
     for x in table:
-      spatial_axes = tuple(encode_axis(a) for a in x.spatial_axes)
-      for enc_a, a in zip(spatial_axes, x.spatial_axes):
-        axis_lookup.setdefault(enc_a,a)
-      object_lookup.setdefault(spatial_axes,spatial_axes)
+      for a in x.spatial_axes:
+        if id(a) not in encode_axis_lookup:
+          encode_axis_lookup[id(a)] = encode_axis(a)
+
+    # Now, define a mapping going back from a unique encoded representation to
+    # an axis object
+    for x in table:
+      for a in x.spatial_axes:
+        axis_lookup.setdefault(encode_axis_lookup[id(a)],a)
 
 
     handled_files = set(x.file for x in table)
@@ -83,13 +93,22 @@ class DataInterface (object):
       d = opener(f)
       for var in d:
 
-        # Use existing spatial_axes where possible
+        # Store a reference to the axis objects, so we are guaranteed to not
+        # recycle existing id's in the middle of this run.
+        axis_obj_ref.extend(var.axes)
+
+        # Find the encoding for the spatial axes
         spatial_axes = var.axes[1:]
+        for a in spatial_axes:
+          if id(a) not in encode_axis_lookup:
+            encode_axis_lookup[id(a)] = encode_axis(a)
+          axis_lookup.setdefault(encode_axis_lookup[id(a)], a)
+        # Re-use existing axis object where possible
+        # (saves space in the pickle file)
+        domain = tuple(encode_axis_lookup[id(a)] for a in spatial_axes)
+        spatial_axes = tuple(axis_lookup[d] for d in domain)
 
-        domain = tuple(encode_axis(a) for a in spatial_axes)
         domain = object_lookup.setdefault(domain,domain)
-
-        spatial_axes = tuple(axis_lookup.setdefault(enc_a,a) for enc_a, a in zip(domain,spatial_axes))
         spatial_axes = object_lookup.setdefault(spatial_axes,spatial_axes)
 
         # Use existing attributes where possible
