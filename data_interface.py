@@ -45,41 +45,13 @@ class DataInterface (object):
     table = map(entry._make,table)
 
 
-    # Helper dictionary - keeps track of existing objects, so we can re-use them
-    # Another dictionary keeps track of existing axes, so we can re-use the
-    # object references where possible.
-    # Yet another dictionary holds axis object ids, to easily lookup encoded
-    # axis results (so it's not re-run over and over).
-    # Also, store a temporary list of axis objects (new from files) so we
-    # don't recycle the id's  (keep the id's unique for lookups)
-    object_lookup = dict()
-    axis_lookup = dict()
-    encode_axis_lookup = dict()
-    axis_obj_ref = []
-    # Store one copy of all hashable items in the table
-    for x in table:
-      for obj in [x.time_info, x.domain, x.atts]:
-        object_lookup.setdefault(obj,obj)
-
-    # Store one copy of each spatial axis
-    # First, encode all axis objects
-    for x in table:
-      for a in x.spatial_axes:
-        if id(a) not in encode_axis_lookup:
-          encode_axis_lookup[id(a)] = encode_axis(a)
-
-    # Now, define a mapping going back from a unique encoded representation to
-    # an axis object
-    for x in table:
-      for a in x.spatial_axes:
-        axis_lookup.setdefault(encode_axis_lookup[id(a)],a)
-
-
     handled_files = set(x.file for x in table)
 
     pbar = PBar (message = "Generating %s"%cachefile)
 
     modified_table = False
+
+    # Construct / add to the table
     for i,f in enumerate(files):
       pbar.update(i*100./len(files))
       if f in handled_files:
@@ -96,35 +68,14 @@ class DataInterface (object):
       d = opener(f)
       for var in d:
 
-        # Store a reference to the axis objects, so we are guaranteed to not
-        # recycle existing id's in the middle of this run.
-        axis_obj_ref.extend(var.axes)
-
-        # Find the encoding for the spatial axes
         spatial_axes = var.axes[1:]
-        for a in spatial_axes:
-          if id(a) not in encode_axis_lookup:
-            encode_axis_lookup[id(a)] = encode_axis(a)
-          axis_lookup.setdefault(encode_axis_lookup[id(a)], a)
-        # Re-use existing axis object where possible
-        # (saves space in the pickle file)
-        domain = tuple(encode_axis_lookup[id(a)] for a in spatial_axes)
-        spatial_axes = tuple(axis_lookup[d] for d in domain)
+        domain = tuple(encode_axis(a) for a in spatial_axes)
 
-        domain = object_lookup.setdefault(domain,domain)
-        spatial_axes = object_lookup.setdefault(spatial_axes,spatial_axes)
-
-        # Use existing attributes where possible
         atts = tuple(sorted(var.atts.items()))
-        atts = object_lookup.setdefault(atts,atts)
 
-        # Use existing time axes where possible
         time_info, time, universal_time = encode_time_axis(var.axes[0])
-        time_info = object_lookup.setdefault(time_info,time_info)
 
         for t, u in zip(time, universal_time):
-          t = object_lookup.setdefault(t,t)
-          u = object_lookup.setdefault(u,u)
           table.append(entry(file=f,var=var.name,time_info=time_info,time=t,universal_time=u,spatial_axes=spatial_axes,domain=domain,atts=atts))
 
       modified_table = True
@@ -133,6 +84,23 @@ class DataInterface (object):
 
     if modified_table:
       # Store the info in a file, so we don't have to re-scan all the data again.
+      # First, re-use the same object where possible, so we don't have any
+      # redundant information in the pickle file (and we get a smaller memory
+      # footprint)
+
+      object_lookup = dict()
+      axis_lookup = dict()
+      for i,x in enumerate(table):
+        time_info = object_lookup.setdefault(x.time_info,x.time_info)
+        time = object_lookup.setdefault(x.time,x.time)
+        universal_time = object_lookup.setdefault(x.universal_time,x.universal_time)
+        spatial_axes = tuple(axis_lookup.setdefault(encode_axis(a),a) for a in x.spatial_axes)
+        spatial_axes = object_lookup.setdefault(spatial_axes,spatial_axes)
+        domain = tuple(object_lookup.setdefault(d,d) for d in x.domain)
+        domain = object_lookup.setdefault(domain,domain)
+        atts = object_lookup.setdefault(x.atts,x.atts)
+        table[i] = entry(file=x.file, var=x.var, time_info=time_info, time=time, universal_time=universal_time, spatial_axes = spatial_axes, domain=domain, atts=atts)
+
       pickle.dump(map(tuple,table), open(cachefile,'w'))
       # Set the modification time to the latest file that was used.
       atime = getatime(cachefile)
