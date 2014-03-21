@@ -28,6 +28,8 @@ class DataInterface (object):
       for f in glob(g):
         files.append(f)
 
+    files = [f for f in files if not f.endswith("_000")]
+
     # Get the domain information from the files
     # Each entry is a tuple of (filename, varname, time_info, time, universal_time, spatial_axes, domain, atts)
     entry = namedtuple('entry', 'file var time_info, time, universal_time, spatial_axes, domain, atts')
@@ -319,7 +321,7 @@ def time2val (timeaxis):
 
 
 # Test it out
-if __name__ == '__main__':
+def stuff():
   from gem import GEM_Data
   gemdata = GEM_Data("/wrk6/neish/mn075/model", flux_dir="/wrk1/EC-CAS/GEM/inputs/emissions_v2", name="mn075", title="mn075")
 #  print gemdata.get_data('sfc','CO2')
@@ -328,8 +330,14 @@ if __name__ == '__main__':
 #    if len(dp.zaxis) > 1:
 #      from pygeode.formats import netcdf
 #      netcdf.save('dp.nc', dp(i_time=0))
+  #"""
   print gemdata.get_data('totalcolumn', 'CO2')
   print gemdata.get_data('avgcolumn', 'CO2')
   print gemdata.get_data('totalmass', 'CO2')
   print gemdata.get_data('totalflux', 'CO2')
   print gemdata.get_data('Toronto', 'CO2')
+  #"""
+
+if __name__ == '__main__':
+  from cProfile import run
+  run("stuff()")
