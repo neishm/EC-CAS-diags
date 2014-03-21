@@ -22,18 +22,21 @@ def eccas_opener (filename):
   convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
   convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
   convert_CO2_flux = mw['CO2'] / mw['C']
+  suffix = ""
+  if filename.endswith("_chmmean"): suffix = "_ensemblemean"
+  if filename.endswith("_chmstd"): suffix = "_ensemblespread"
   conversions += (
     ('ECO2', 'CO2_flux', convert_CO2_flux, None, 'g s-1'),
     ('ECBB', 'CO2_fire_flux', convert_CO2_flux, None, 'g s-1'),
     ('ECFF', 'CO2_fossil_flux', convert_CO2_flux, None, 'g s-1'),
     ('ECOC', 'CO2_ocean_flux', convert_CO2_flux, None, 'g s-1'),
     ('ECLA', 'CO2_bio_flux', convert_CO2_flux, None, 'g s-1'),
-    ('CO2', 'CO2', convert_CO2, None, 'ppm'),
-    ('CBB', 'CO2_fire', convert_CO2, None, 'ppm'),
-    ('CFF', 'CO2_fossil', convert_CO2, None, 'ppm'),
-    ('COC', 'CO2_ocean', convert_CO2, -100, 'ppm'),
-    ('CLA', 'CO2_bio', convert_CO2, -100, 'ppm'),
-    ('CO2B', 'CO2_background', convert_CO2, None, 'ppm'),
+    ('CO2', 'CO2'+suffix, convert_CO2, None, 'ppm'),
+    ('CBB', 'CO2_fire'+suffix, convert_CO2, None, 'ppm'),
+    ('CFF', 'CO2_fossil'+suffix, convert_CO2, None, 'ppm'),
+    ('COC', 'CO2_ocean'+suffix, convert_CO2, -100, 'ppm'),
+    ('CLA', 'CO2_bio'+suffix, convert_CO2, -100, 'ppm'),
+    ('CO2B', 'CO2_background'+suffix, convert_CO2, None, 'ppm'),
     ('CH4', 'CH4', convert_CH4, None, 'ppm'),
     ('CH4B', 'CH4_background', convert_CH4, None, 'ppm'),
     ('CHFF', 'CH4_fossil', convert_CH4, None, 'ppm'),
@@ -145,17 +148,6 @@ def eccas_opener (filename):
   if 'DX' in data:
     data['cell_area'] = data.pop('DX')
     data['cell_area'].atts['units'] = 'm2'
-  """
-  else:
-    from common import get_area
-    from warnings import warn
-    warn ("Computing grid cell areas diagnostically, since DX not found.")
-    var = data.itervalues().next()
-    data['cell_area'] = get_area(var.lat, var.lon)
-  """
-  #TODO: compute cell_area for lat/lon.
-
-  # TODO: post-process the fluxes into g m-2 s-1
 
   # General cleanup stuff
 
@@ -243,15 +235,6 @@ class GEM_Data (object):
 
     if flux_dir is not None:
       files.append(flux_dir+"/area_??????????")
-      # Note: Internal units are g/s
-
-    ##############################
-    # EnKF output
-    ##############################
-    #TODO: remove
-
-    files.append(indir+"/[0-9]*_???_chmmean")
-    files.append(indir+"/[0-9]*_???_chmstd")
 
     ##############################
     # Model output
