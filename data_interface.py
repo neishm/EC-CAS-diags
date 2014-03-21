@@ -77,6 +77,7 @@ class DataInterface (object):
 
     pbar = PBar (message = "Generating %s"%cachefile)
 
+    modified_table = False
     for i,f in enumerate(files):
       pbar.update(i*100./len(files))
       if f in handled_files:
@@ -124,16 +125,19 @@ class DataInterface (object):
           u = object_lookup.setdefault(u,u)
           table.append(entry(file=f,var=var.name,time_info=time_info,time=t,universal_time=u,spatial_axes=spatial_axes,domain=domain,atts=atts))
 
+      modified_table = True
+
     del handled_files  # No longer needed
 
-    # Store the info in a file, so we don't have to re-scan all the data again.
-    pickle.dump(map(tuple,table), open(cachefile,'w'))
-    # Set the modification time to the latest file that was used.
-    atime = getatime(cachefile)
-    utime(cachefile,(atime,mtime))
-    # Hack to force the saved mtime to not get truncated
-    dt = mtime - getmtime(cachefile)
-    utime(cachefile,(atime,mtime+dt))
+    if modified_table:
+      # Store the info in a file, so we don't have to re-scan all the data again.
+      pickle.dump(map(tuple,table), open(cachefile,'w'))
+      # Set the modification time to the latest file that was used.
+      atime = getatime(cachefile)
+      utime(cachefile,(atime,mtime))
+      # Hack to force the saved mtime to not get truncated
+      dt = mtime - getmtime(cachefile)
+      utime(cachefile,(atime,mtime+dt))
 
     pbar.update(100)
 
