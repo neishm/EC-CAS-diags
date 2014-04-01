@@ -167,6 +167,41 @@ class DataInterface (object):
   def have (self, var):
     return var in self.table
 
+  # Helper function - find the best field matches that fit some criteria
+  def find_best (self, fields, requirement=None, maximize=None, minimize=None):
+
+    # If we are given a single field name (not in a list), then return a
+    # single field (also not in a list structure).
+    collapse_result = False
+    if isinstance(fields,str):
+      fields = [fields]
+      collapse_result = True
+
+    if len(fields) == 1:
+      candidates = zip(self.find(*fields))
+    else:
+      candidates = self.find(*fields)
+
+    if requirement is not None:
+      candidates = filter(requirement, candidates)
+
+    # Sort by the criteria (higher value is better)
+    if maximize is not None:
+      candidates = sorted(candidates, key=maximize, reverse=True)
+    elif minimize is not None:
+      candidates = sorted(candidates, key=minimize, reverse=False)
+
+    if len(candidates) == 0:
+      raise ValueError("Unable to find any matches for fields=%s, requirement=%s, maximize=%s, minimize=%s"%(fields, requirement, maximize, minimize))
+
+    # Use the best result
+    result = candidates[0]
+
+    if collapse_result: result = result[0]
+    return result
+
+
+
 # Wrap a table of data into a variable
 from pygeode.var import Var
 class DataVar(Var):

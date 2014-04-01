@@ -251,39 +251,6 @@ class GEM_Data (object):
     self.data = DataInterface(files, opener=eccas_opener, cache=cache)
     self.cache = cache
 
-  # Helper function - find the best field matches that fit some criteria
-  def find_best (self, fields, requirement=None, maximize=None, minimize=None):
-
-    # If we are given a single field name (not in a list), then return a
-    # single field (also not in a list structure).
-    collapse_result = False
-    if isinstance(fields,str):
-      fields = [fields]
-      collapse_result = True
-
-    if len(fields) == 1:
-      candidates = zip(self.data.find(*fields))
-    else:
-      candidates = self.data.find(*fields)
-
-    if requirement is not None:
-      candidates = filter(requirement, candidates)
-
-    # Sort by the criteria (higher value is better)
-    if maximize is not None:
-      candidates = sorted(candidates, key=maximize, reverse=True)
-    elif minimize is not None:
-      candidates = sorted(candidates, key=minimize, reverse=False)
-
-    if len(candidates) == 0:
-      raise ValueError("Unable to find any matches for fields=%s, requirement=%s, maximize=%s, minimize=%s"%(fields, requirement, maximize, minimize))
-
-    # Use the best result
-    result = candidates[0]
-
-    if collapse_result: result = result[0]
-    return result
-
 
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
@@ -296,11 +263,11 @@ class GEM_Data (object):
 
     # Surface data (lowest model level)
     if domain == 'sfc':
-      data = self.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
+      data = self.data.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
 
     # Zonal mean, with data interpolated to a fixed set of geopotential heights
     elif domain == 'zonalmean_gph':
-      data, GZ = self.find_best([field,'geopotential_height'], maximize=number_of_levels)
+      data, GZ = self.data.find_best([field,'geopotential_height'], maximize=number_of_levels)
       data = to_gph(data,GZ).nanmean('lon')
       data.atts['units'] = 'ppm'
 
@@ -308,7 +275,7 @@ class GEM_Data (object):
     elif domain == 'totalcolumn':
       from common import molecular_weight as mw, grav as g
 
-      c, dp = self.find_best([field,'dp'], maximize=number_of_levels)
+      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
       # Convert from ppm to kg / kg
       c *= 1E-6 * mw[standard_name] / mw['air']
 
@@ -320,7 +287,7 @@ class GEM_Data (object):
     # Average column (ppm)
     elif domain == 'avgcolumn':
 
-      c, dp = self.find_best([field,'dp'], maximize=number_of_levels)
+      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
       data = (c*dp).sum('zaxis') / dp.sum('zaxis')
       data.name = field
       if 'units' in c.atts:
@@ -331,7 +298,7 @@ class GEM_Data (object):
     #TODO: re-use totalcolumn data from above
     elif domain == 'totalmass':
       from common import molecular_weight as mw, grav as g
-      c, dp, area = self.find_best([field,'dp','cell_area'], maximize=number_of_levels)
+      c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
       # Convert from ppm to kg / kg
       c *= 1E-6 * mw[standard_name] / mw['air']
 
@@ -352,7 +319,7 @@ class GEM_Data (object):
     elif domain == 'totalflux':
       from common import molecular_weight as mw
 
-      data = self.find_best(field+'_flux', maximize=number_of_timesteps)
+      data = self.data.find_best(field+'_flux', maximize=number_of_timesteps)
 
       # Sum, skipping the last (repeated) longitude
       data = data.slice[:,:,:-1].sum('lat','lon')
@@ -362,7 +329,7 @@ class GEM_Data (object):
       data.atts['units'] = 'mol s-1'
 
     elif domain == 'Toronto':
-      data = self.find_best(field, maximize=number_of_levels)
+      data = self.data.find_best(field, maximize=number_of_levels)
       data = data.squeeze(lat=43.7833,lon=280.5333)
       data.name = field
       data.atts['units'] = 'ppm'
