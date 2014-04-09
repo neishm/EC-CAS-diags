@@ -273,6 +273,20 @@ class Overlay(PlotWrapper):
       axes.hold(True)
     return p
 
+# TwinX object
+# Switches to another scale (on the right-hand side)
+class TwinX(PlotWrapper):
+  def __init__ (self, plot):
+    self.plot = plot
+    # Use the same axes configuration as the original plot.
+    self.axes_args = plot.axes_args
+
+  def _doplot (self, figure, pl, axes, transform):
+    # Swap the scale
+    axes = axes.twinx()
+    return self.plot._doplot(figure=figure, axes=axes, pl=pl, transform=transform)
+
+
 # Multiplot
 # Tiles a bunch of plots together in the same figure.
 # Plots are passed in a nested list, representing a 2D grid.
