@@ -90,12 +90,15 @@ def load (filename):
   infile.close()
   return theplot
 
-
-
 # 1D plot
 class Plot(PlotWrapper):
   def _doplot (self, figure, pl, axes, transform):
     pl.plot (*self.plot_args, **self.plot_kwargs)
+    
+#Histogram
+class Histogram(PlotWrapper):
+  def _doplot (self, figure, pl, axes, transform):
+    pl.hist (*self.plot_args, **self.plot_kwargs)
 
 # Errorbar plot
 class ErrorBar(PlotWrapper):
@@ -231,6 +234,17 @@ class Colorbar(PlotWrapper):
     theplot = self.plot._doplot(figure,pl,axes,transform)
     return figure.colorbar (theplot, ax=axes, **self.cbar_kwargs)
 
+
+class Text(PlotWrapper):
+  def __init__ (self, plot, *args, **kwargs):
+    self.plot = plot
+    self.axes_args = plot.axes_args
+    self.text_args = args
+    self.text_kwargs = kwargs
+  def _doplot (self, figure, pl, axes, transform):
+	  import matplotlib.pyplot as pl
+	  theplot = self.plot._doplot(figure,pl,axes,transform)
+	  return pl.text(transform = pl.gca().transAxes,*self.text_args, **self.text_kwargs)
 
 # A legend
 # (labels the lines of a line plot)
