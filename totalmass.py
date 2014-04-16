@@ -53,6 +53,7 @@ def totalmass (models, fieldname, pg_of, outdir):
       styles.append(':')
       labels.append('background')
     except KeyError: pass  # Background values not available
+    except ValueError: pass  # Background values not available
 
     # Total flux, integrated in time
     try:

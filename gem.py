@@ -1,63 +1,168 @@
-
-def rpnopen (filename):
+# Opener for EC-CAS data
+def eccas_opener (filename):
   from pygeode.formats import fstd
-  f = fstd.open(filename, squash_forecasts=True)
-  return f
+  from pygeode.ufunc import exp, log
+  from pygeode.var import concat, Var
+  from pygeode.axis import ZAxis
+  data = fstd.open(filename, squash_forecasts=True, raw_list=True)
 
-def rpnopen_sfconly (filename):
-  f = rpnopen(filename)
-  f = f(eta=1,zeta=1).squeeze()
-  return f
+  # Convert to a dictionary (for referencing by variable name)
+  data = dict((var.name,var) for var in data)
 
-# Extract a date from a GEM model filename
-def file2date (filename):
-  from re import search
-  from datetime import datetime, timedelta
-  out = search('([dkp][m]|)(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_(?P<offset>\d+)(?P<units>([mh]|))(?P<enkf_ext>_(chmmean|chmstd)|)$', filename).groupdict()
-  units = out.pop('units')
-  enkf_ext = out.pop('enkf_ext')
-  out = dict([k,int(v)] for k,v in out.items())
-  offset = out.pop('offset')
+  # Convert some standard quantities
+  # (old_name, new_name, scale, offset, units)
+  conversions = (
+    ('GZ', 'geopotential_height', 10, None, 'm'),
+    ('P0', 'surface_pressure', None, None, 'hPa'),
+    ('TT', 'air_temperature', None, None, 'K'),
+  )
 
-  # Convert to datetime object for manipulating the forecast time
-  out = datetime(**out)
-  if units == 'm':
-    out += timedelta (minutes=offset)
-  elif units == 'h' or units == '':
-    out += timedelta (hours=offset)
-  else: raise Exception
+  # EC-CAS specific conversions:
+  from common import molecular_weight as mw
+  convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
+  convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
+  convert_CO2_flux = mw['CO2'] / mw['C']
+  suffix = ""
+  if filename.endswith("_chmmean"): suffix = "_ensemblemean"
+  if filename.endswith("_chmstd"): suffix = "_ensemblespread"
+  conversions += (
+    ('ECO2', 'CO2_flux', convert_CO2_flux, None, 'g s-1'),
+    ('ECBB', 'CO2_fire_flux', convert_CO2_flux, None, 'g s-1'),
+    ('ECFF', 'CO2_fossil_flux', convert_CO2_flux, None, 'g s-1'),
+    ('ECOC', 'CO2_ocean_flux', convert_CO2_flux, None, 'g s-1'),
+    ('ECLA', 'CO2_bio_flux', convert_CO2_flux, None, 'g s-1'),
+    ('CO2', 'CO2'+suffix, convert_CO2, None, 'ppm'),
+    ('CBB', 'CO2_fire'+suffix, convert_CO2, None, 'ppm'),
+    ('CFF', 'CO2_fossil'+suffix, convert_CO2, None, 'ppm'),
+    ('COC', 'CO2_ocean'+suffix, convert_CO2, -100, 'ppm'),
+    ('CLA', 'CO2_bio'+suffix, convert_CO2, -100, 'ppm'),
+    ('CO2B', 'CO2_background'+suffix, convert_CO2, None, 'ppm'),
+    ('CH4', 'CH4', convert_CH4, None, 'ppm'),
+    ('CH4B', 'CH4_background', convert_CH4, None, 'ppm'),
+    ('CHFF', 'CH4_fossil', convert_CH4, None, 'ppm'),
+    ('CHBB', 'CH4_fire', convert_CH4, None, 'ppm'),
+    ('CHOC', 'CH4_ocean', convert_CH4, None, 'ppm'),
+    ('CHNA', 'CH4_natural', convert_CH4, None, 'ppm'),
+    ('CHAG', 'CH4_agriculture', convert_CH4, None, 'ppm'),
+  )
 
-  # We have to be careful with the forecast hour in the file.
-  # For EnKF, we have data before this forecast hour as well.
-  if enkf_ext != '':
-    out -= timedelta (hours=6)  #TODO: remove hard-coded EnKF cycle time
-    # Add back the first time we output
-    out += timedelta (hours=3)
+  # Do the conversions
+  for old_name, new_name, scale, offset, units in conversions:
+    if old_name in data:
+      var = data.pop(old_name)
+      if scale is not None: var *= scale
+      if offset is not None: var += offset
+      if units is not None: var.atts['units'] = units
+      data[new_name] = var
 
-  # Convert back to dictionary
-  out = dict(year=out.year, month=out.month, day=out.day, hour=out.hour, minute=out.minute)
-  return out
+  # Compute a pressure field.
+  # Also, compute a dp field (vertical change in pressure within a gridbox).
+  P = None
+  dP = None
+
+  if 'surface_pressure' in data:
+
+    Ps = data['surface_pressure']
+
+    # eta coordinates?
+    if any(var.hasaxis(fstd.Hybrid) for var in data.itervalues()):
+      eta = set()
+      for var in data.itervalues():
+        if var.hasaxis(fstd.Hybrid):
+          current = var.getaxis(fstd.Hybrid)
+          current = set(zip(current.values, current.A, current.B))
+          eta.update(current)
+      eta = sorted(eta, reverse=True)
+      eta, A, B = zip(*eta)
+      eta = fstd.Hybrid(values=eta, A=A, B=B)
+      A = eta.auxasvar('A')
+      B = eta.auxasvar('B')
+      P = A + B * Ps
+      P = P.transpose('time','eta','lat','lon')
+      P /= 100 # hPa
+
+      # dP
+      #TODO: Use ptop as upper boundary, instead of ignoring (zeroing) that layer?
+      P_k = concat(P.slice[:,0,:,:], P.slice[:,:-1,:,:]).replace_axes(eta=eta)
+      P_kp1 = concat(P.slice[:,1:,:,:], P.slice[:,-1,:,:]).replace_axes(eta=eta)
+      dP = abs(P_kp1 - P_k)/2
+
+    # zeta coordinates?
+    if any(var.hasaxis(fstd.LogHybrid) for var in data.itervalues()):
+      zeta = set()
+      for var in data.itervalues():
+        if var.hasaxis(fstd.LogHybrid):
+          current = var.getaxis(fstd.LogHybrid)
+          current = set(zip(current.values, current.A, current.B))
+          zeta_atts = var.getaxis(fstd.LogHybrid).atts
+          zeta.update(current)
+      zeta = sorted(zeta, reverse=True)
+      zeta, A, B = zip(*zeta)
+      zeta = fstd.LogHybrid(values=zeta, A=A, B=B, atts=zeta_atts)
+      A = zeta.auxasvar('A')
+      B = zeta.auxasvar('B')
+      pref = zeta.atts['pref']
+      ptop = zeta.atts['ptop']
+
+      P = exp(A + B * log(Ps*100/pref))
+      P = P.transpose('time','zeta','lat','lon')
+      P /= 100 # hPa
+
+      # dP
+      #TODO: produce dP for both thermodynamic and momentum levels
+      # (currently just thermo)
+      A_m = list(zeta.atts['a_m'])
+      B_m = list(zeta.atts['b_m'])
+      # Add model top (not a true level, but needed for dP calculation)
+      # Also, duplicate the bottom (surface) level to get dP=0 at bottom
+      import math
+      A_m = [math.log(ptop)] + A_m + [A_m[-1]]
+      B_m = [0] + B_m + [B_m[-1]]
+      # Convert to Var objects
+      zaxis = ZAxis(range(len(A_m)))
+      A_m = Var(axes=[zaxis], values=A_m)
+      B_m = Var(axes=[zaxis], values=B_m)
+      # Compute pressure on (extended) momentum levels
+      P_m = exp(A_m + B_m * log(Ps*100/pref))
+      P_m = P_m.transpose('time','zaxis','lat','lon')
+      # Compute dP
+      P_m_1 = P_m.slice[:,1:,:,:]
+      P_m_2 = P_m.slice[:,:-1,:,:].replace_axes(zaxis=P_m_1.zaxis)
+      dP = P_m_1 - P_m_2
+      # Put on proper thermodynamic levels
+      from pygeode.formats.fstd_core import decode_levels
+      values, kind = decode_levels(zeta.atts['ip1_t'])
+      zaxis = fstd.LogHybrid(values=values, A=zeta.atts['a_t'], B=zeta.atts['b_t'])
+      dP = dP.replace_axes(zaxis=zaxis)
+      dP /= 100 # hPa
 
 
-# Extract a date from an analysis file
-def file2date_anlm (filename):
-  from re import search
-  from datetime import datetime, timedelta
-  out = search('anlm(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})_000$', filename).groupdict()
-  out = dict([k,int(v)] for k,v in out.items())
-  return out
+  if P is not None:
+    P.units = 'hPa'
+    data['air_pressure'] = P
+  if dP is not None:
+    dP.units = 'hPa'
+    data['dp'] = dP  #TODO: better name?
 
-# Extract a date from a flux file
-def file2date_flux (filename):
-  from re import search
-  from datetime import datetime, timedelta
-  out = search('area_(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})(?P<hour>\d{2})$', filename).groupdict()
-  out = dict([k,int(v)] for k,v in out.items())
-  return out
+  # Grid cell areas
+  if 'DX' in data:
+    data['cell_area'] = data.pop('DX')
+    data['cell_area'].atts['units'] = 'm2'
+
+  # General cleanup stuff
+
+  # Make sure the variables have the appropriate names
+  for name, var in data.iteritems():  var.name = name
+
+  # Convert to a list
+  data = list(data.values())
+
+  return data
+
 
 
 # Convert zonal mean data (on height)
-def to_gph (var, GZ):
+def to_gph (var, z):
   from pygeode.interp import interpolate
   from pygeode.axis import Height
   from pygeode.dataset import Dataset
@@ -65,23 +170,14 @@ def to_gph (var, GZ):
 
   # Remove extra longitude from the data
   var = var.slice[:,:,:,:-1]
-  GZ = GZ.slice[:,:,:,:-1]
+  z = z.slice[:,:,:,:-1]
 
   height = Height(range(68), name='height')
 
-  if var.hasaxis('eta'):
-    var = interpolate(var, inaxis='eta', outaxis=height, inx=GZ/1000.)
-  elif var.hasaxis('zeta'):
-    # Subset GZ on tracer levels (applicable to GEM4 output)
-    GZ_zeta = GZ.zeta.values
-    var_zeta = var.zeta.values
-    indices = []
-    for zeta in var_zeta:
-      indices.append(np.where(GZ_zeta==zeta)[0][0])
-    GZ = GZ(i_zeta=indices)
-    var = interpolate(var, inaxis='zeta', outaxis=height, inx=GZ/1000.)
+  var = interpolate(var, inaxis='zaxis', outaxis=height, inx=z/1000.)
 
   var = var.transpose(0,3,1,2)
+
   return var
 
 # Wrapper for getting GEM data back out of a cached netcdf file
@@ -93,388 +189,144 @@ def gem_load_cache_hook (dataset):
   return data[0]
 
 
+# Some useful criteria for searching for fields
+def have_surface (varlist):
+  from pygeode.axis import ZAxis
+  from pygeode.formats.fstd import Hybrid, LogHybrid
+  for var in varlist:
+    if var.hasaxis(Hybrid):
+      return 1.0 in var.getaxis(Hybrid).values
+    if var.hasaxis(LogHybrid):
+      return 1.0 in var.getaxis(LogHybrid).values
+  # No vertical info?
+  return False
+
+def number_of_timesteps (varlist):
+  from pygeode.axis import TAxis
+  for var in varlist:
+    if var.hasaxis(TAxis):
+      return len(var.getaxis(TAxis))
+
+def number_of_levels (varlist):
+  from pygeode.axis import ZAxis
+  for var in varlist:
+    if var.hasaxis(ZAxis):
+      return len(var.getaxis(ZAxis))
+
+
 # GEM data interface
 class GEM_Data (object):
   def __init__ (self, experiment_dir, flux_dir, name, title, tmpdir=None):
-    from pygeode.formats.multifile import open_multi
-    from pygeode.formats import fstd as rpn
-    from pygeode.dataset import Dataset
-    from glob import glob
-    from pygeode.axis import ZAxis
-    from common import fix_timeaxis
     from cache import Cache
+    from data_interface import DataInterface
 
     indir = experiment_dir
 
     self.name = name
     self.title = title
     fallback_dirs = [tmpdir] if tmpdir is not None else []
-    self.cache = Cache(dir = indir + "/nc_cache", fallback_dirs=fallback_dirs, global_prefix=name+"_", load_hook=gem_load_cache_hook)
+    cache = Cache(dir = indir + "/nc_cache", fallback_dirs=fallback_dirs, global_prefix=name+"_", load_hook=gem_load_cache_hook)
+
+    files = []
 
     ##############################
     # Fluxes
     ##############################
 
     if flux_dir is not None:
-      fluxes = open_multi(flux_dir+"/area_??????????", format=rpn, file2date=file2date_flux, opener=rpnopen)
-      # Note: Internal units are g/s
-      fluxes = fix_timeaxis(fluxes)
-      self.fluxes = fluxes
-    else:
-      self.fluxes = Dataset([])
+      files.append(flux_dir+"/area_??????????")
 
     ##############################
-    # Data with vertical extent
+    # Model output
     ##############################
 
-    # First case - we have EnKF data (mean state)
-    if len(glob(indir+"/*_???_chmmean")) > 0:
-      # The output frequency is pretty much hard-coded on the EnKF side right
-      # now, so don't bother trying to generalize.
-      # (Can't properly test a generalization anyway)
+    files.append(indir+"/[0-9]*_[0-9]*")
+    files.append(indir+"/km[0-9]*_[0-9]*")
+    files.append(indir+"/dm[0-9]*_[0-9]*")
+    files.append(indir+"/pm[0-9]*_[0-9]*")
+    files.append(indir+"/k[0-9]*_[0-9]*")
+    files.append(indir+"/d[0-9]*_[0-9]*")
+    files.append(indir+"/p[0-9]*_[0-9]*")
 
-      combined_3d = open_multi(indir+"/[0-9]*_???_chmmean", opener=rpnopen, file2date=file2date)
-      combined_3d = fix_timeaxis(combined_3d)
+    self.data = DataInterface(files, opener=eccas_opener, cache=cache)
+    self.cache = cache
 
-      # The surface output is the same frequency as the 3D output
-      # (no special high-frequency surface output)
-      combined = combined_3d(eta=1,zeta=1).squeeze()
-
-      stddev_3d = open_multi(indir+"/[0-9]*_???_chmstd", opener=rpnopen, file2date=file2date)
-      stddev_3d = fix_timeaxis(stddev_3d)
-      stddev_sfc = stddev_3d(eta=1,zeta=1).squeeze()
-
-
-    # Second case - we have a single model integration
-    else:
-      # Open a single day of data, to determine at what times 3D data is saved.
-      files_24h = sorted(glob(indir+"/*_024*"))
-      testfile = files_24h[0]
-      del files_24h
-      testfile = rpn.open(testfile)
-      # Assume we have 3D output for at least the 24h forecasts
-      # Also, assume that 3D tracer output has corresponding 3D GZ output.
-      testfield = 'GZ'
-      levels = list(testfile[testfield].getaxis(ZAxis).values)
-      # Get the rest of the files for this day, check the levels
-      year = int(testfile.time.year[0])
-      month = int(testfile.time.month[0])
-      day = int(testfile.time.day[0])
-      del testfile
-      testfiles = sorted(glob(indir+"/*%04d%02d%02d00_???*"%(year,month,day)))
-      testfiles = [rpn.open(f) for f in testfiles]
-      testfiles = [f for f in testfiles if testfield in f]
-      times_with_3d = [int(f.forecast.values[0]) for f in testfiles if list(f[testfield].getaxis(ZAxis).values) == levels]
-      # Ignore 0h files, since we're already using the 24h forecasts
-      if 0 in times_with_3d:
-        times_with_3d.remove(0)
-
-      dm_3d = [indir+"/dm*_%03d*"%h for h in times_with_3d]
-      km_3d = [indir+"/km*_%03d*"%h for h in times_with_3d]
-      pm_3d = [indir+"/pm*_%03d*"%h for h in times_with_3d]
-      combined_3d = [indir+"/[0-9]*_%03d*"%h for h in times_with_3d]
-
-      # Open the 3D files
-      if any(len(glob(x))>0 for x in dm_3d):
-        dm_3d = open_multi(dm_3d, opener=rpnopen, file2date=file2date)
-        dm_3d = fix_timeaxis(dm_3d)
-      else: dm_3d = Dataset([])
-      if any(len(glob(x))>0 for x in km_3d):
-        km_3d = open_multi(km_3d, opener=rpnopen, file2date=file2date)
-        km_3d = fix_timeaxis(km_3d)
-      else: km_3d = Dataset([])
-      if any(len(glob(x))>0 for x in pm_3d):
-        pm_3d = open_multi(pm_3d, opener=rpnopen, file2date=file2date)
-        pm_3d = fix_timeaxis(pm_3d)
-      else: pm_3d = Dataset([])
-
-      if any(len(glob(x))>0 for x in combined_3d):
-        combined_3d = open_multi(combined_3d, opener=rpnopen, file2date=file2date)
-        combined_3d = fix_timeaxis(combined_3d)
-      else: combined_3d = dm_3d + km_3d + pm_3d
-
-
-      ##############################
-      # Surface data (non-EnKF data)
-      ##############################
-
-      # Assume surface data is available in every output time.
-      # Ignore 0h output - use 24h output instead.
-
-      dm = [x for x in glob(indir+"/dm*_*") if not x.endswith("_000") and not x.endswith("_000h")]
-      if len(dm) > 0:
-        dm = open_multi(dm, opener=rpnopen_sfconly, file2date=file2date)
-        dm = fix_timeaxis(dm)
-      else: dm = Dataset([])
-      km = [x for x in glob(indir+"/km*_*") if not x.endswith("_000") and not x.endswith("_000h")]
-      if len(km) > 0:
-        km = open_multi(km, opener=rpnopen_sfconly, file2date=file2date)
-        km = fix_timeaxis(km)
-      else: km = Dataset([])
-      pm = [x for x in glob(indir+"/pm*_*") if not x.endswith("_000") and not x.endswith("_000h")]
-      if len(pm) > 0:
-        pm = open_multi(pm, opener=rpnopen_sfconly, file2date=file2date)
-        pm = fix_timeaxis(pm)
-      else: pm = Dataset([])
-
-      combined = [x for x in glob(indir+"/[0-9]*_*") if not x.endswith("_000") and not x.endswith("_000h")]
-      if len(combined) > 0:
-        combined = open_multi(combined, opener=rpnopen_sfconly, file2date=file2date)
-        combined= fix_timeaxis(combined)
-      else: combined = dm + km + pm
-
-      # We have no ensemble standard deviation for this type of run
-      stddev_3d = Dataset([])
-      stddev_sfc = Dataset([])
-
-    # End of EnKF / non-EnKF input mapping
-
-    self.combined_3d = combined_3d
-    self.combined = combined
-    self.stddev_3d = stddev_3d
-    self.stddev_sfc = stddev_sfc
-
-    ##############################
-    # Derived fields
-    ##############################
-
-    # (Things that may not have been output from the model, but that we can
-    #  compute)
-
-    # Sigma levels (momentum)
-    if 'SIGM' not in self.combined_3d:
-      try:
-        testfield = self.combined_3d.GZ
-      except AttributeError:
-        testfield = self.combined_3d.TT
-      Ps = self.combined_3d['P0'] * 100
-      if testfield.hasaxis('eta'):
-        A = testfield.eta.auxasvar('A')
-        B = testfield.eta.auxasvar('B')
-        P = A + B * Ps
-        P = P.transpose('time','eta','lat','lon')
-      elif testfield.hasaxis('zeta'):
-        from pygeode.formats.fstd import LogHybrid
-        from pygeode.formats.fstd_core import decode_levels
-        from pygeode.ufunc import exp, log
-        # Construct a momentum level axis from the prescribed momentum levels
-        A = testfield.zeta.atts['a_m']
-        B = testfield.zeta.atts['b_m']
-        hy, kind = decode_levels(testfield.zeta.atts['ip1_m'])
-        z = LogHybrid(values=hy, A=A, B=B)
-        A = z.auxasvar('A')
-        B = z.auxasvar('B')
-        # Compute pressure
-        P = exp(A + B * log(Ps/100000))
-        P = P.transpose('time','zeta','lat','lon')
-      else: raise TypeError("unknown vertical axis")
-      sigma = P / Ps
-      sigma.name = 'SIGM'
-      self.combined_3d += sigma
-
-
-
-    # Grid cell areas
-    if 'DX' not in self.combined_3d:
-      from common import get_area
-      dxdy = get_area(self.combined.lat, self.combined.lon)
-      self.combined_3d += dxdy
-      self.combined += dxdy
-
-    ##############################
-    # Unit conversions
-    ##############################
-
-    # CO2 tracers are in ug/kg, but we'd like to have ppm for diagnostics.
-    # Conversion factor (from ug C / kg air to ppm)
-    from common import molecular_weight as mw
-    convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
-    convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
-    convert_CO2_flux = mw['CO2'] / mw['C']
-    for dataset_name in 'combined', 'combined_3d', 'stddev_sfc', 'stddev_3d':
-      dataset = getattr(self,dataset_name)
-      # Convert CO2 units
-      for co2_name in 'CO2', 'CO2B', 'CFF', 'CBB', 'COC', 'CLA':
-        if co2_name in dataset:
-          new_field = dataset[co2_name]*convert_CO2
-          new_field.name = co2_name
-          new_field.atts['units'] = 'ppm'
-          dataset = dataset.replace_vars({co2_name:new_field})
-      # Convert CH4 units
-      for ch4_name in 'CH4', 'CH4B', 'CHFF', 'CHBB', 'CHOC', 'CHNA', 'CHAG':
-        if ch4_name in dataset:
-          new_field = dataset[ch4_name]*convert_CH4
-          new_field.name = ch4_name
-          new_field.atts['units'] = 'ppm'
-          dataset = dataset.replace_vars({ch4_name:new_field})
-      # Some fields were offset to avoid negative values in the model
-      for co2_name in 'COC', 'CLA':
-        if co2_name in dataset:
-          new_field = dataset[co2_name] - 100
-          new_field.name = co2_name
-          dataset = dataset.replace_vars({co2_name:new_field})
-      # Convert GZ units (from decametres to metres)
-      if 'GZ' in dataset:
-        GZ = dataset['GZ']*10
-        GZ.name = 'GZ'
-        dataset = dataset.replace_vars(GZ=GZ)
-
-      setattr(self,dataset_name,dataset)
-
-    # Convert CO2 flux units (g/s C to g/s CO2)
-    for co2_name in 'ECO2', 'ECFF', 'ECBB', 'ECOC', 'ECLA':
-      if co2_name in self.fluxes:
-        new_field = self.fluxes[co2_name]*convert_CO2_flux
-        new_field.name = co2_name
-        new_field.atts['units'] = 'g/s'
-        self.fluxes = self.fluxes.replace_vars({co2_name:new_field})
-
-  # Helper functions - find the field (look in dm,km,pm,etc. files)
-
-  # Instead of renaming all the variables in the model, patch on a mapping
-  # to "standard" names.
-  local_names = {
-    'CO2':'CO2',
-    'CH4':'CH4',
-    'CO2_background':'CO2B',
-    'geopotential_height':'GZ',
-    'eddy_diffusivity':'KTN',
-    'PBL_height':'H',
-    'air':'air'
-  }
-
-  def _find_sfc_field (self, name, stat='mean'):
-    if stat == 'mean' and name in self.combined: return self.combined[name]
-    if stat == 'std' and name in self.stddev_sfc: return self.stddev_sfc[name]
-    raise KeyError ("%s not found in model surface data."%name)
-
-  def _find_3d_field (self, name, stat='mean'):
-    if stat == 'mean' and name in self.combined_3d: return self.combined_3d[name]
-    if stat == 'std' and name in self.stddev_3d: return self.stddev_3d[name]
-    raise KeyError ("%s (%s) not found in model 3d data."%(name,stat))
 
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
   def get_data (self, domain, standard_name, stat='mean'):
 
-    # Translate the standard name into the name used by GEM.
-    if standard_name in self.local_names:
-      field = self.local_names[standard_name]
-    else:
-      # No field name translation
-      field = standard_name
+    field = standard_name
 
     # Determine which data is needed
 
     # Surface data (lowest model level)
     if domain == 'sfc':
-      data = self._find_sfc_field(field,stat)
+      data = self.data.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
+      data = data(eta=1.0, zeta=1.0, ignore_mismatch=True)
+
     # Zonal mean, with data interpolated to a fixed set of geopotential heights
     elif domain == 'zonalmean_gph':
-      data = self._find_3d_field(field,stat)
-      GZ = self._find_3d_field('GZ')
+      data, GZ = self.data.find_best([field,'geopotential_height'], maximize=number_of_levels)
       data = to_gph(data,GZ).nanmean('lon')
       data.atts['units'] = 'ppm'
+
     # "total column" (in kg/m2)
     elif domain == 'totalcolumn':
-      from pygeode.axis import ZAxis
-      from pygeode.var import Var
       from common import molecular_weight as mw, grav as g
 
+      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
       # Convert from ppm to kg / kg
-      conversion = 1E-6 * mw[standard_name] / mw['air']
+      c *= 1E-6 * mw[standard_name] / mw['air']
 
-      Ps = self.combined_3d['P0'] * 100 # Get Ps on 3D field time frequency
-      sigma = self.combined_3d['SIGM']
-
-      # Case 1 - GEM3 (unstaggered) levels
-      if sigma.hasaxis("eta"):
-        # Compute mixing ratio at half levels
-        # Special case: air mass (not an actual output field)
-        if field is 'air':
-          c_half = 1
-        else:
-          c = self._find_3d_field(field,stat) * conversion
-          # Interpolate concentration to half levels
-          c1 = c.slice[:,:-1,:,:]
-          c2 = c.slice[:,1:,:,:]
-          c2 = c2.replace_axes(eta=c1.eta)
-          c_half = (c2 + c1) / 2
-        # Compute sigma layers
-        sigma1 = sigma.slice[:,:-1,:,:]
-        sigma2 = sigma.slice[:,1:,:,:]
-        sigma2 = sigma2.replace_axes(eta=sigma1.eta)
-        dsigma = (sigma2-sigma1)
-        # Integrate the tracer
-        col = (c_half * dsigma).sum('eta')
-        assert (col.naxes == 3)
-        # Scale by Ps/g
-        data = col * Ps / g
-        data.name = field
-
-      # Case 2 - GEM4 (staggered levels)
-      elif sigma.hasaxis("zeta"):
-        if field is 'air':
-          c_kp1 = 1
-        else:
-          c = self._find_3d_field(field,stat) * conversion
-          # Assuming we have an unused "surface" diagnositic level
-          assert 1.0 in c.getaxis("zeta").values
-          c_kp1 = c.slice[:,1:-1,:,:]
-        sigma_kp1 = sigma.slice[:,1:,:,:]
-        sigma_k = sigma.slice[:,:-1,:,:]
-        # Put everything on the same levels
-        if isinstance(c_kp1,Var):
-          c_kp1 = c_kp1.replace_axes(zeta=sigma_k.zeta)
-        sigma_kp1 = sigma_kp1.replace_axes(zeta=sigma_k.zeta)
-        # Do the summation
-        col = ( (sigma_kp1 - sigma_k) * c_kp1 ).sum('zeta')
-        # Scale by Ps/g
-        data = col * Ps / g
-        data.name = field
-
-      else: raise Exception   # Unrecognized vertical coordinate
+      # Integrate
+      data = (c*dp*100).sum('zaxis') / g
+      data.name = field
+      data.atts['units'] = 'kg m-2'
 
     # Average column (ppm)
     elif domain == 'avgcolumn':
-      from common import molecular_weight as mw
-      # Total column (kg/m2)
-      tc = self.get_data('totalcolumn', standard_name, stat)
-      # Total column air (kg/m2)
-      Mair = self.get_data('totalcolumn', 'air')
-      # Compute the mass mixing ratio
-      data = tc / Mair
-      # Convert kg/kg to ppm
-      data *= mw['air']/mw[standard_name] * 1E6
 
+      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
+      data = (c*dp).sum('zaxis') / dp.sum('zaxis')
       data.name = field
-      data.atts['units'] = 'ppm'
+      if 'units' in c.atts:
+        data.atts['units'] = c.atts['units']
 
+
+    # Total mass (Pg)
+    #TODO: re-use totalcolumn data from above
     elif domain == 'totalmass':
-      # Total column (kg /m2)
-      tc = self.get_data('totalcolumn', standard_name, stat)
-      area = self.combined_3d['DX']
-      # Mass per grid area (kg)
+      from common import molecular_weight as mw, grav as g
+      c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
+      # Convert from ppm to kg / kg
+      c *= 1E-6 * mw[standard_name] / mw['air']
+
+      # Integrate to get total column
+      tc = (c*dp*100).sum('zaxis') / g
+
+      # Integrate horizontally
       # Assume global grid - remove repeated longitude
       mass = (tc * area).slice[:,:,:-1].sum('lat','lon')
+
       # Convert from kg to Pg
       mass *= 1E-12
       data = mass
       data.name = field
+      data.atts['units'] = 'Pg'
 
     # Integrated flux (if available)
     elif domain == 'totalflux':
-      if stat != 'mean': raise KeyError("Don't have stddev on fluxes")
       from common import molecular_weight as mw
-      if not hasattr(self,'fluxes'):
-        raise KeyError ("Can't compute a total flux, because no fluxes are identified with this run.")
-      # We have a slightly different naming convention for fluxes
-      field = 'E'+field
+
+      data = self.data.find_best(field+'_flux', maximize=number_of_timesteps)
+
       # Sum, skipping the last (repeated) longitude
-      data = self.fluxes[field].slice[:,:,:-1].sum('lat','lon')
+      data = data.slice[:,:,:-1].sum('lat','lon')
       # Convert from g/s to moles/s
       data /= mw[standard_name]
       data.name = field
+      data.atts['units'] = 'mol s-1'
 
     elif domain == 'flux':
       if stat != 'mean': raise KeyError("Don't have stddev on fluxes")
@@ -497,8 +349,10 @@ class GEM_Data (object):
       data.atts['units'] = 'mol m-2 s-1'
 
     elif domain == 'Toronto':
-      data = self._find_3d_field(field,stat)
+      data = self.data.find_best(field, maximize=number_of_levels)
       data = data.squeeze(lat=43.7833,lon=280.5333)
+      data.name = field
+      data.atts['units'] = 'ppm'
 
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
