@@ -255,7 +255,6 @@ class GEM_Data (object):
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
   def get_data (self, domain, standard_name, stat='mean'):
-    #TODO: update for new interface (doesn't work right now!)
 
     field = standard_name
 
@@ -264,6 +263,7 @@ class GEM_Data (object):
     # Surface data (lowest model level)
     if domain == 'sfc':
       data = self.data.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
+      data = data(eta=1.0, zeta=1.0, ignore_mismatch=True)
 
     # Zonal mean, with data interpolated to a fixed set of geopotential heights
     elif domain == 'zonalmean_gph':
