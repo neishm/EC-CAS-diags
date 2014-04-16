@@ -1,5 +1,5 @@
 # Opener for EC-CAS data
-def eccas_opener (filename):
+def eccas_opener (filename, latlon = [None,None]):
   from pygeode.formats import fstd
   from pygeode.ufunc import exp, log
   from pygeode.var import concat, Var
@@ -54,6 +54,21 @@ def eccas_opener (filename):
       if offset is not None: var += offset
       if units is not None: var.atts['units'] = units
       data[new_name] = var
+
+  # Force the flux fields to be on the same lat/lon as the 3D model fields.
+  # Works around a bug in our flux files, which don't have the exact same
+  # '^^', '>>' fields.
+  # Abuse keyword argument default object to store lat/lon information from
+  # the model for future use
+  if 'CO2' in data:
+    latlon[0] = data['CO2'].lat
+    latlon[1] = data['CO2'].lon
+
+  if latlon != [None,None]:
+    lat, lon = latlon
+    for fluxname in data:
+      if not fluxname.endswith('_flux'): continue
+      data[fluxname] = data[fluxname].replace_axes(lat=lat, lon=lon)
 
   # Compute a pressure field.
   # Also, compute a dp field (vertical change in pressure within a gridbox).
@@ -230,13 +245,6 @@ class GEM_Data (object):
     files = []
 
     ##############################
-    # Fluxes
-    ##############################
-
-    if flux_dir is not None:
-      files.append(flux_dir+"/area_??????????")
-
-    ##############################
     # Model output
     ##############################
 
@@ -247,6 +255,13 @@ class GEM_Data (object):
     files.append(indir+"/k[0-9]*_[0-9]*")
     files.append(indir+"/d[0-9]*_[0-9]*")
     files.append(indir+"/p[0-9]*_[0-9]*")
+
+    ##############################
+    # Fluxes
+    ##############################
+
+    if flux_dir is not None:
+      files.append(flux_dir+"/area_??????????")
 
     self.data = DataInterface(files, opener=eccas_opener, cache=cache)
     self.cache = cache
@@ -331,19 +346,13 @@ class GEM_Data (object):
     elif domain == 'flux':
       if stat != 'mean': raise KeyError("Don't have stddev on fluxes")
       from common import molecular_weight as mw
-      if not hasattr(self,'fluxes'):
-        raise KeyError ("No fluxes are identified with this run.")
-      # We have a slightly different naming convention for fluxes
-      field = 'E'+field
-      data = self.fluxes[field].slice[:,:,:-1]
+      data, area = self.data.find_best([field+'_flux','cell_area'])
       # Convert from g/s to moles/s
       data /= mw[standard_name]
       # Convert to moles/m2/s
-      area = self.combined_3d['DX']
+      data = data.slice[:,:,:-1]  # remove repeated longitude
       if area.hasaxis('time'): area = area(i_time=0).squeeze()
       area = area.slice[:,:-1]  # remove repeated longitude
-      # Force the same lat/lon from the field (weird bug in PyGeode)
-      area = area.replace_axes(lat=data.lat, lon=data.lon)
       data /= area
       data.name = field
       data.atts['units'] = 'mol m-2 s-1'
