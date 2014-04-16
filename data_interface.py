@@ -180,7 +180,7 @@ class DataInterface (object):
     if len(fields) == 1:
       candidates = zip(self.find(*fields))
     else:
-      candidates = self.find(*fields)
+      candidates = list(self.find(*fields))
 
     if requirement is not None:
       candidates = filter(requirement, candidates)
