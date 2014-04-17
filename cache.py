@@ -16,6 +16,28 @@ def default_load_hook (dataset):
   return dataset.vars[0]
 
 
+# Create a "unique" string to identify the spatial domain of a variable
+def domain_hash (var):
+  from pygeode.axis import TAxis
+  import pickle, hashlib, base64
+
+  # Get all the points in the domain
+  data = [list(a.values) for a in var.axes if not isinstance(a,TAxis)]
+
+  # Convert to a bytestream
+  data = pickle.dumps(data)
+
+  # Calculate a hash value
+  data = hashlib.md5(data).digest()
+
+  # Convert the hash value to a printable string
+  data = base64.urlsafe_b64encode(data)
+
+  # Only keep the first few characters
+  data = data[:5]
+
+  return data
+
 
 # Error classes related to caching
 
@@ -91,7 +113,7 @@ class Cache (object):
 
     # Apply the global prefix - a generic string that identifies the source
     # of the cache data
-    prefix = self.global_prefix + prefix
+    prefix = self.global_prefix + prefix + '_' + domain_hash(var)
 
     # Make sure the data is in 32-bit precision
     # (sometimes diagnostics cause a 64-bit output - waste of space)
