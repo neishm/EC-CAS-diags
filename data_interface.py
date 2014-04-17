@@ -135,7 +135,7 @@ class DataInterface (object):
 
     for var in vars:
       if var not in self.table:
-        raise ValueError("'%s' not found in this data."%var)
+        raise KeyError("'%s' not found in this data."%var)
 
     # Try each possible domain, until we find one that works for these variables
     for domain in self._domains:
@@ -192,7 +192,7 @@ class DataInterface (object):
       candidates = sorted(candidates, key=minimize, reverse=False)
 
     if len(candidates) == 0:
-      raise ValueError("Unable to find any matches for fields=%s, requirement=%s, maximize=%s, minimize=%s"%(fields, requirement, maximize, minimize))
+      raise KeyError("Unable to find any matches for fields=%s, requirement=%s, maximize=%s, minimize=%s"%(fields, requirement, maximize, minimize))
 
     # Use the best result
     result = candidates[0]
