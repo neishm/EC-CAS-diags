@@ -261,7 +261,7 @@ class GEM_Data (object):
     ##############################
 
     if flux_dir is not None:
-      files.append(flux_dir+"/area_??????????")
+      files.append(flux_dir+"/area_2009??????")
 
     self.data = DataInterface(files, opener=eccas_opener, cache=cache)
     self.cache = cache
