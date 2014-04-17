@@ -272,6 +272,11 @@ class GEM_Data (object):
   def get_data (self, domain, standard_name, stat='mean'):
 
     field = standard_name
+    # Check for ensemble mean / standard deviation requests
+    if stat == 'mean' and self.data.have(standard_name+'_ensemblemean'):
+      field = standard_name+'_ensemblemean'
+    elif stat == 'std':
+      field = standard_name+'_ensemblespread'
 
     # Determine which data is needed
 
