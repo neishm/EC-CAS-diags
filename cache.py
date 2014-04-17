@@ -166,7 +166,13 @@ class Cache (object):
     else:
       hours = [''] * len(taxis)
 
-    datestrings = [y+m+d+h for y,m,d,h in zip(years,months,days,hours)]
+    if 'minute' in taxis.auxarrays:
+      minutes = ["%02d"%m for m in taxis.auxarrays['minute']]
+      pattern += "$M"
+    else:
+      minutes = [''] * len(taxis)
+
+    datestrings = [y+m+d+H+M for y,m,d,H,M in zip(years,months,days,hours,minutes)]
     first_date = datestrings[0]
     last_date = datestrings[-1]
 
