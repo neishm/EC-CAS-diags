@@ -126,6 +126,24 @@ def get_area (latvar, lonvar):
   return dxdy
 
 
+# Return a field of constant value over the given axes
+from pygeode.var import Var
+class Constant_Var (Var):
+  def __init__ (self, value, *args, **kwargs):
+    from pygeode.var import Var
+    import numpy as np
+    kwargs['dtype'] = np.array(value).dtype
+    Var.__init__ (self, *args, **kwargs)
+    self.value = value
+
+  def getview (self, view, pbar):
+    import numpy as np
+    out = np.empty(view.shape, dtype=self.dtype)
+    out[()] = self.value
+    pbar.update(100)
+    return out
+del Var
+
 # A Station axis.
 # Each station is a entry along this dimension.
 # Latitude and longitude are provided as auxilary arrays.
