@@ -281,10 +281,13 @@ class DataVar(Var):
   def getview (self, view, pbar):
     import numpy as np
     out = np.zeros(view.shape, dtype=self.dtype)
+    #TODO: retain var for next loop, in case there's multiple timesteps per file
     for outtime, intime in enumerate(view.integer_indices[0]):
       t,f = self._filemap[intime]
       var = (v for v in self._opener(f) if v.name == self._name).next()
       out[outtime,...] = view.modify_slice(0, [intime]).get(var)
+      pbar.update(outtime*100./len(view.integer_indices[0]))
+    pbar.update(100)
     return out
 del Var
 
