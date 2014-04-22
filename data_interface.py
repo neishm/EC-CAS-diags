@@ -157,7 +157,6 @@ class DataInterface (object):
       for var in vars:
         records = [x for x in table[var] if x.universal_time in common_timesteps]
         varlist.append(DataVar.construct(name=var, table=records, domain=domain, opener=self._opener))
-      print [len(a[1]) for a in domain]
       if len(varlist) == 1:
         yield varlist[0]
       else:
@@ -326,24 +325,3 @@ def time2val (timeaxis):
   return tuple("%04d%02d%02d%02d%02d%02d"%(y,m,d,H,M,S) for y,m,d,H,M,S in zip(year,month,day,hour,minute,second))
 
 
-# Test it out
-def stuff():
-  from gem import GEM_Data
-  gemdata = GEM_Data("/wrk6/neish/mn075/model", flux_dir="/wrk1/EC-CAS/GEM/inputs/emissions_v2", name="mn075", title="mn075")
-#  print gemdata.get_data('sfc','CO2')
-#  print gemdata.get_data('zonalmean_gph','CO2')
-#  for dp in gemdata.data.find('dp'):
-#    if len(dp.zaxis) > 1:
-#      from pygeode.formats import netcdf
-#      netcdf.save('dp.nc', dp(i_time=0))
-  #"""
-  print gemdata.get_data('totalcolumn', 'CO2')
-  print gemdata.get_data('avgcolumn', 'CO2')
-  print gemdata.get_data('totalmass', 'CO2')
-  print gemdata.get_data('totalflux', 'CO2')
-  print gemdata.get_data('Toronto', 'CO2')
-  #"""
-
-if __name__ == '__main__':
-  from cProfile import run
-  run("stuff()")
