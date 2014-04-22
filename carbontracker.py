@@ -12,31 +12,76 @@ B_interface = np.array(B_interface)
 
 # Helper methods
 
-def ct_file2date(filename):
-  from re import search
-  date = search("(?P<year>\d{4})-?(?P<month>\d{2})-?(?P<day>\d{2})\.nc$", filename).groupdict()
-  date['year']  = int(date['year'])
-  date['month'] = int(date['month'])
-  date['day']   = int(date['day'])
-  return date
-
 def ct_opener (filename):
   from pygeode.formats import netcdf
+  from pygeode.axis import ZAxis
+
   data = netcdf.open(filename)
-  # kludge for PyGeode 0.6
-  from pygeode.formats import cfmeta
-  data = data.rename_axes(date='time')
-  data = cfmeta.decode_cf(data)
+  data = data - 'date_components' - 'decimal_date'
+
+  # Force vertical axis to be a ZAxis
+  data = data.replace_axes(level = ZAxis)
+
+  # Convert to a dictionary (for referencing by variable name)
+  data = dict((var.name,var) for var in data)
+
+  # Convert some standard quantities
+  # (old_name, new_name, scale, offset, units)
+  conversions = (
+    ('bg', 'CO2_background', None, None, 'ppm'),
+    ('ff', 'CO2_fossil', None, None, 'ppm'),
+    ('bio', 'CO2_bio', None, None, 'ppm'),
+    ('ocean', 'CO2_ocean', None, None, 'ppm'),
+    ('fires', 'CO2_fire', None, None, 'ppm'),
+    ('fossil_imp', 'CO2_fossil_flux', None, None, 'mol m-2 s-1'),
+    ('bio_flux_opt', 'CO2_bio_flux', None, None, 'mol m-2 s-1'),
+    ('ocn_flux_opt', 'CO2_ocean_flux', None, None, 'mol m-2 s-1'),
+    ('fire_flux_imp', 'CO2_fire_flux', None, None, 'mol m-2 s-1'),
+    ('pres', 'air_pressure', 1E-2, None, 'hPa'),
+    ('gph', 'geopotential_height', None, None, 'm'),
+  )
+
+  # Do the conversions
+  for old_name, new_name, scale, offset, units in conversions:
+    if old_name in data:
+      var = data.pop(old_name)
+      if scale is not None: var *= scale
+      if offset is not None: var += offset
+      if units is not None: var.atts['units'] = units
+      data[new_name] = var
+
+  # Find the total CO2 (sum of components)
+  if 'CO2_background' in data:
+    data['CO2'] = data['CO2_background'] + data['CO2_fossil'] + data['CO2_bio'] + data['CO2_ocean'] + data['CO2_fire']
+
+  # Create a total flux product
+  if 'CO2_fire_flux' in data:
+    data['CO2_flux'] = data['CO2_fossil_flux'] + data['CO2_bio_flux'] + data['CO2_ocean_flux'] + data['CO2_fire_flux']
+
+  # Other (more heavily derived) products
+
+  if 'air_pressure' in data:
+    # Surface pressure
+    # Get pressure at the bottom mid-level
+    pmid = data['air_pressure'].slice[:,0,:,:].squeeze()
+
+    # Compute surface pressure from this
+    # p1 = A1 + B1*Ps
+    # pmid = (ps + A1 + B1*Ps) / 2 = Ps(1+B1)/2 + (0+A1)/2
+    # Ps = (2*pmid - A1)/(1+B1)
+    P0 = (2*pmid - A_interface[1])/(B_interface[1]+1)
+    data['surface_pressure'] = P0
+
+  # General cleanup stuff
+
+  # Make sure the variables have the appropriate names
+  for name, var in data.iteritems():  var.name = name
+
+  # Convert to a list
+  data = list(data.values())
+
   return data
 
-def ct_open (files):
-  from pygeode.formats.multifile import open_multi
-  from pygeode.formats import netcdf as nc
-  from common import fix_timeaxis
-  data = open_multi(files=files, opener=ct_opener, file2date=ct_file2date)
-  data = data.rename_axes(date='time')
-  data = fix_timeaxis(data)
-  return data
 
 # Method for calculating zonal mean on-the-fly
 def ct_zonal (field):
@@ -83,6 +128,30 @@ def ct_zonal_24h (field,gph):
   return ct_co2
 
 
+# Some useful criteria for searching for fields
+def have_surface (varlist):
+  from pygeode.axis import ZAxis
+  from pygeode.formats.fstd import Hybrid, LogHybrid
+  for var in varlist:
+    if var.hasaxis('level'):
+      return 1 in var.level.values
+  # No vertical info?
+  return False
+
+def number_of_timesteps (varlist):
+  from pygeode.axis import TAxis
+  for var in varlist:
+    if var.hasaxis(TAxis):
+      return len(var.getaxis(TAxis))
+
+def number_of_levels (varlist):
+  from pygeode.axis import ZAxis
+  for var in varlist:
+    if var.hasaxis(ZAxis):
+      return len(var.getaxis(ZAxis))
+
+
+
 # Define the data interface for CarbonTracker
 
 class CarbonTracker_Data (object):
@@ -90,6 +159,7 @@ class CarbonTracker_Data (object):
   def __init__ (self, tmpdir=None):
 
     from cache import Cache
+    from data_interface import DataInterface
 
     # Higher-level information about the data
     self.name = 'CT2010'
@@ -99,74 +169,28 @@ class CarbonTracker_Data (object):
     fallback_dirs = [tmpdir] if tmpdir is not None else []
     self.cache = Cache (dir=cachedir, fallback_dirs=fallback_dirs, global_prefix=self.name+'_')
 
-    molefractions = ct_open("/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc")
-    molefractions = molefractions - 'date_components' - 'decimal_date'
+    molefractions = "/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc"
+    fluxes = "/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc"
 
-    molefractions_interface = ct_open("/wrk1/EC-CAS/CarbonTracker/molefractions_interface/molefrac_glb3x2_????-??-??.nc")
+    self.data = DataInterface ([molefractions,fluxes], opener=ct_opener, cache=self.cache)
 
-    # Find the total CO2 (sum of components)
-    co2 = molefractions.bg + molefractions.ff + molefractions.bio + molefractions.ocean + molefractions.fires
-    co2 = co2.rename('CO2')
-    # Pretend it's another CarbonTracker product
-    molefractions = molefractions + co2
-
-    self.molefractions = molefractions
-    self.molefractions_interface = molefractions_interface
-
-    # Fluxes
-    fluxes = ct_open("/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc")
-    fluxes = fluxes - 'date_components' - 'decimal_date'
-
-    # Create a total flux product
-    co2_flux = fluxes.fossil_imp + fluxes.bio_flux_opt + fluxes.ocn_flux_opt + fluxes.fire_flux_imp
-    co2_flux = co2_flux.rename('CO2')
-    fluxes = fluxes + co2_flux
-
-    self.fluxes = fluxes
-
-
-    # Other (more heavily derived) products
-
-    # Surface pressure
-    # Get pressure at the bottom mid-level
-    pmid = self.molefractions['press'].slice[:,0,:,:].squeeze()
-
-    # Compute surface pressure from this
-    # p1 = A1 + B1*Ps
-    # pmid = (ps + A1 + B1*Ps) / 2 = Ps(1+B1)/2 + (0+A1)/2
-    # Ps = (2*pmid - A1)/(1+B1)
-    P0 = (2*pmid - A_interface[1])/(B_interface[1]+1)
-    P0 = P0.rename('P0')
-    self.P0 = P0
-
-  # Translate CarbonTracker variable names into some "standard" naming convention.
-  local_names = {
-    'CO2':'CO2',
-    'geopotential_height':'gph',
-    'air':'air'
-  }
 
   # Data interface
-  def get_data (self, domain, standard_name, stat='mean'):
+  def get_data (self, domain, field, stat='mean'):
 
     if stat != 'mean':
       raise KeyError("No '%s' stat available for CarbonTracker"%stat)
 
-    try:
-      field = self.local_names[standard_name]
-    except KeyError:
-      raise KeyError ("No representation of '%s' in the CarbonTracker data."%standard_name)
-
     # Zonal mean (over geopotential height)
     if domain == 'zonalmean_gph':
-      data = self.molefractions[field]
-      data = ct_zonal_24h(data,self.molefractions.gph)
+      data, gph = self.data.find_best([field,'geopotential_height'], maximize=number_of_levels)
+      data = ct_zonal_24h(data,gph)
       data.atts['units'] = 'ppm'
 
     # "surface" data (lowest level of molefractions dataset)
     elif domain == 'sfc':
-      data = self.molefractions[field](i_level=0)
-      data.atts['units'] = 'ppm'
+      data = self.data.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
+      data = data(level=1)
 
     # Total column
     elif domain == 'totalcolumn':

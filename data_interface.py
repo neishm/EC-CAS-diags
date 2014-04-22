@@ -330,8 +330,8 @@ def time2val (timeaxis):
 def stuff():
   from gem import GEM_Data
   gemdata = GEM_Data("/wrk6/neish/mn075/model", flux_dir="/wrk1/EC-CAS/GEM/inputs/emissions_v2", name="mn075", title="mn075")
-#  print gemdata.get_data('sfc','CO2')
-#  print gemdata.get_data('zonalmean_gph','CO2')
+  print gemdata.get_data('sfc','CO2')
+  print gemdata.get_data('zonalmean_gph','CO2')
 #  for dp in gemdata.data.find('dp'):
 #    if len(dp.zaxis) > 1:
 #      from pygeode.formats import netcdf
@@ -344,6 +344,14 @@ def stuff():
   print gemdata.get_data('Toronto', 'CO2')
   #"""
 
+def ct_test():
+  from carbontracker import CarbonTracker_Data
+  ctdata = CarbonTracker_Data(tmpdir="/wrk6/neish/tmp")
+  print ctdata.get_data('sfc', 'CO2')
+  print ctdata.get_data('zonalmean_gph','CO2')
+
 if __name__ == '__main__':
   from cProfile import run
-  run("stuff()")
+  #run("stuff()")
+  ct_test()
+
