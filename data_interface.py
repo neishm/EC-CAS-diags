@@ -349,6 +349,7 @@ def ct_test():
   ctdata = CarbonTracker_Data(tmpdir="/wrk6/neish/tmp")
   print ctdata.get_data('sfc', 'CO2')
   print ctdata.get_data('zonalmean_gph','CO2')
+  print ctdata.get_data('totalcolumn','CO2')
 
 if __name__ == '__main__':
   from cProfile import run

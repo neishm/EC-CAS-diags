@@ -37,7 +37,7 @@ def ct_opener (filename):
     ('bio_flux_opt', 'CO2_bio_flux', None, None, 'mol m-2 s-1'),
     ('ocn_flux_opt', 'CO2_ocean_flux', None, None, 'mol m-2 s-1'),
     ('fire_flux_imp', 'CO2_fire_flux', None, None, 'mol m-2 s-1'),
-    ('pres', 'air_pressure', 1E-2, None, 'hPa'),
+    ('press', 'air_pressure', 1E-2, None, 'hPa'),
     ('gph', 'geopotential_height', None, None, 'm'),
   )
 
@@ -63,7 +63,7 @@ def ct_opener (filename):
   if 'air_pressure' in data:
     # Surface pressure
     # Get pressure at the bottom mid-level
-    pmid = data['air_pressure'].slice[:,0,:,:].squeeze()
+    pmid = data['air_pressure'].squeeze(level=1)
 
     # Compute surface pressure from this
     # p1 = A1 + B1*Ps
@@ -71,6 +71,21 @@ def ct_opener (filename):
     # Ps = (2*pmid - A1)/(1+B1)
     P0 = (2*pmid - A_interface[1])/(B_interface[1]+1)
     data['surface_pressure'] = P0
+
+    # Vertical change in pressure
+    #NOTE: generated from A/B interface values, not the 3D pressure field.
+    #      3D pressure is used only to define the vertical levels.
+    import numpy as np
+    from pygeode.var import Var
+    dA = -np.diff(A_interface)
+    dA = Var([data['air_pressure'].level], values=dA)
+    dB = -np.diff(B_interface)
+    dB = Var([data['air_pressure'].level], values=dB)
+    dp = dA + dB * data['surface_pressure']
+    dp = dp.transpose('time','zaxis','lat','lon')
+    dp.units = 'hPa'
+    data['dp'] = dp
+
 
   # General cleanup stuff
 
@@ -194,31 +209,17 @@ class CarbonTracker_Data (object):
 
     # Total column
     elif domain == 'totalcolumn':
-      import numpy as np
-      from pygeode.var import Var
       from common import molecular_weight as mw, grav as g
 
-      Ps = self.P0
+      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
+      # Convert from ppm to kg / kg
+      c *= 1E-6 * mw[field] / mw['air']
 
-      # Compute sigma at interfaces
-      dA = -np.diff(A_interface)
-      dA = Var([self.molefractions.level], values=dA)
-      dB = -np.diff(B_interface)
-      dB = Var([self.molefractions.level], values=dB)
-      dsigma = dA / Ps + dB
-      dsigma = dsigma.transpose('time', 'level', 'lat', 'lon')
-
-      sigma_top = A_interface[-1]/Ps + B_interface[-1]
-      sigma_bottom = 1
-
-      if field == 'air': c = 1
-      else:
-        # Convert ppm to kg/kg
-        conversion = 1E-6 * mw['CO2'] / mw['air']
-        c = self.molefractions[field] * conversion
-
-      data = Ps / g * (c*dsigma).sum('level')
+      # Integrate
+      data = (c*dp*100).sum('zaxis') / g
       data.name = field
+      data.atts['units'] = 'kg m-2'
+
 
     # Column averages
     elif domain == 'avgcolumn':
