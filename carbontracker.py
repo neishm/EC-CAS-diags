@@ -86,6 +86,10 @@ def ct_opener (filename):
     dp.units = 'hPa'
     data['dp'] = dp
 
+    # Air mixing ratio (constant)
+    from common import Constant_Var
+    # (ppm)
+    data['air'] = Constant_Var(axes=data['air_pressure'].axes, value=1.0E6)
 
   # General cleanup stuff
 
@@ -224,7 +228,7 @@ class CarbonTracker_Data (object):
     # Column averages
     elif domain == 'avgcolumn':
       from common import molecular_weight as mw
-      tc = self.get_data('totalcolumn', standard_name)
+      tc = self.get_data('totalcolumn', field)
       tc_air = self.get_data('totalcolumn','air')
       data = tc / tc_air
       # Convert kg/kg to ppm
