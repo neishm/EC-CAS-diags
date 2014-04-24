@@ -91,6 +91,17 @@ def ct_opener (filename):
     # (ppm)
     data['air'] = Constant_Var(axes=data['air_pressure'].axes, value=1.0E6)
 
+  # Compute grid cell area
+  # NOTE: will be different for fluxes and 3D mole fractions
+  from common import get_area
+  if 'CO2' in data:
+    x = data['CO2'].squeeze(level=1)
+  else:
+    x = data['CO2_flux']
+  data['cell_area'] = get_area(x.lat, x.lon).extend(0,x.time)
+  data['cell_area'].atts['units'] = 'm2'
+
+
   # General cleanup stuff
 
   # Make sure the variables have the appropriate names
@@ -239,14 +250,23 @@ class CarbonTracker_Data (object):
 
     # Total mass
     elif domain == 'totalmass':
-      from common import get_area
-      dxdy = get_area(self.molefractions.lat, self.molefractions.lon).rename('dxdy')
-      totalcol = self.get_data('totalcolumn', standard_name)
-      totalmass = (totalcol*dxdy).sum('lat','lon')
+      from common import molecular_weight as mw, grav as g
+      c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
+      # Convert from ppm to kg / kg
+      c *= 1E-6 * mw['CO2'] / mw['air']
+
+      # Integrate to get total column
+      tc = (c*dp*100).sum('zaxis') / g
+
+      # Integrate horizontally
+      mass = (tc * area).sum('lat','lon')
+
       # Convert from kg to Pg
-      totalmass *= 1E-12
-      totalmass.name = field
-      data = totalmass
+      mass *= 1E-12
+      data = mass
+      data.name = field
+      data.atts['units'] = 'Pg'
+
 
     # Integrated fluxes (moles s-1)
     elif domain == 'totalflux':

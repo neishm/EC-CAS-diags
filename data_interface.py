@@ -351,6 +351,7 @@ def ct_test():
   print ctdata.get_data('zonalmean_gph','CO2')
   print ctdata.get_data('totalcolumn','CO2')
   print ctdata.get_data('avgcolumn','CO2')
+  print ctdata.get_data('totalmass','CO2')
 
 if __name__ == '__main__':
   from cProfile import run
