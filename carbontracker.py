@@ -270,11 +270,10 @@ class CarbonTracker_Data (object):
 
     # Integrated fluxes (moles s-1)
     elif domain == 'totalflux':
-      from common import get_area
-      fluxes_dxdy = get_area (self.fluxes.lat, self.fluxes.lon)
-      fluxvar = self.fluxes[field]
-      data = (fluxvar*fluxes_dxdy).sum('lat','lon')
+      data, area = self.data.find_best([field+'_flux','cell_area'], maximize=number_of_timesteps)
+      data = (data*area).sum('lat','lon')
       data.name = field
+      data.atts['units'] = 'mol s-1'
       # The time is the *midpoint* of the flux period.
       # Rewind to the *start* of the flux period (-1.5 hours)
       time = data.time
