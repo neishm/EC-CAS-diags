@@ -10,6 +10,9 @@ import argparse
 from os.path import exists
 import os
 
+'''
+
+
 # Extract command-line arguments
 
 parser = argparse.ArgumentParser (description='Do some standard diagnostics on a model run.', epilog="You must have write perimission in the experiment directory to create some intermediate files.")
@@ -70,10 +73,25 @@ if control_dir is not None:
 else:
   control = None
 
+
+'''
+
+#--------------Testing Paramaters-----------------
+from gem import GEM_Data
+experiment = GEM_Data('/wrk6/neish/mn075/model', flux_dir='/wrk1/EC-CAS/GEM/inputs/emissions_v2/', name='Experiment', title='Test Experiment', tmpdir='/home/jake/temp')
+control = GEM_Data('/wrk6/neish/mn075/model', flux_dir='/wrk1/EC-CAS/GEM/inputs/emissions_v2/', name='Control', title='Test Control', tmpdir='/home/jake/temp')
+outdir = '/home/jake/OutDir'
+#-------------------------------------------------
+
+
+
 # CarbonTracker data
 #TODO: limit CT data to time range of experiment.
 from carbontracker import CarbonTracker_Data
-carbontracker = CarbonTracker_Data(tmpdir=args.tmpdir)
+"""
+CHANGE WAS MADE HERE ------------------------------- carbontracker = CarbonTracker_Data(tmpdir=args.tmpdir)
+"""
+carbontracker = CarbonTracker_Data('/home/jake/temp')
 
 # Observation data
 from ec_station_data import EC_Station_Data
@@ -82,6 +100,7 @@ from gaw_station_data import GAW_Station_Data
 gaw_obs = GAW_Station_Data()
 
 
+'''
 # Dump the output files to a subdirectory of the experiment data
 from os import mkdir
 outdir = rootdir+"/diags"
@@ -95,8 +114,16 @@ if not exists(outdir) or not os.access (outdir, os.R_OK | os.W_OK | os.X_OK):
   assert args.tmpdir is not None, "Need --tmpdir to put diags in."
   outdir=args.tmpdir
 
+'''
+
+
 # Some standard diagnostics
 failures = []
+
+
+'''
+
+
 
 from timeseries import timeseries
 # CO2 Timeseries
@@ -125,22 +152,6 @@ try:
 except Exception as e:
   failures.append(['Flux Bar Graph',e])
   raise
-
-from Conc_v_Height import movie_CvH
-#Concentration v height movie
-try:
-  movie_CvH(models=[experiment,control],fieldname='CO2', units='ppm', outdir=outdir, stat='mean')
-except Exception as e:
-  failures.append(['Concentration v Height Plot',e])
-  raise
-
-from ZonalMeanBG import movie_bargraph
-#Zonal mean bar graph movie
-try:
-  movie_bargraph(models=[experiment,control], height=0,fieldname='CO2', units='ppm', outdir=outdir, stat='mean')
-except Exception as e:
-	failures.append(['Zonal Mean Bar Graph',e])
-	raise
 	
 # CO2 Zonal mean of spread
 try:
@@ -203,6 +214,71 @@ try:
   totalmass (models=[experiment,None,control], fieldname='air', pg_of='air', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass air', e])
+
+'''
+#-------------------My Diags------------------------
+
+from concentration_v_height import movie_CvH
+try:
+	movie_CvH(models=[experiment,control],fieldname='CO2', units='ppm', outdir=outdir, stat='mean')
+except Exception as e:
+	failures.append(['concentration vs. height', e])
+
+from FluxDiagnostic import movie_flux
+try:
+	movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='BG')
+except Exception as e:
+	failures.append(['Flux Diagnostic - Bar Graph', e])
+try:
+	movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='BG')
+except Exception as e:
+	failures.append(['Flux Diagnostic - Bar Graph', e])
+try:
+	movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='Map')
+except Exception as e:
+	failures.append(['Flux Diagnostic - Map', e])
+try:
+	movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='Map')
+except Exception as e:
+	failures.append(['Flux Diagnostic - Map', e])
+try:
+	movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='MeanMap')
+except Exception as e:
+	failures.append(['Flux Diagnostic - Mean Map', e])
+try:
+	movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='MeanMap')
+except Exception as e:
+	failures.append(['Flux Diagnostic - Mean Map', e])
+
+
+import TimeSeriesHist as TSH
+try:
+	TSH.timeseries(models=[experiment,ec_obs],fieldname='CO2', units='ppm', outdir=outdir)
+except Exception as e:
+	failures.append(['timeseries histogram', e])
+
+import TimeSeriesAlternate as TSA
+try:
+	TSA.timeseries(models=[experiment,ec_obs],fieldname='CO2', units='ppm', outdir=outdir)
+except Exception as e:
+	failures.append(['time series alternate', e])
+
+from TimeSeriesRBP import Barplot
+try:
+	Barplot(models=[experiment,control,gaw_obs],fieldname='CO2', units='ppm', outdir=outdir)
+except Exception as e:
+	failures.append(['time series rbp', e])
+
+from ZonalMeanBG import movie_bargraph
+try:
+	movie_bargraph(models=[experiment,control], height=0,fieldname='CO2', units='ppm', outdir=outdir, stat='mean')
+except Exception as e:
+	failures.append(['zonal mean bargraph', e])
+
+
+
+#----------------End of My Diags--------------------
+
 
 # Report any diagnostics that failed to run
 if len(failures) > 0:

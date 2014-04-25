@@ -70,7 +70,7 @@ def interpolategrid(datafile,store_directory):
 	
 	return RegionsList
 
-def FluxPlot(data1,data2,data3,plottype='BG'):
+def FluxPlot(data1,data2,data3,plottype='BG',names=['','','']):
 	
 	"""
 	Plots the data. plottype kwarg ('BG','Map','MeanMap') determines type of plot.
@@ -154,8 +154,12 @@ def FluxPlot(data1,data2,data3,plottype='BG'):
 		plt.xlim(0,23*(PlotNum+1))
 		ax.set_xlabel('Transcom Regions')
 		ax.set_ylabel('Flux (mol/m$^{2}$s)')
-		ax.set_ylim(ymin=-.0000015,ymax=.0000015)
-		ax2.set_ylim(ymin=-.0000002,ymax=.0000002)
+		
+		"""IMPORTANT NOTE
+		Currently having trouble automating scale range - can't use high/low since these are the averaged values
+		"""
+		ax.set_ylim(ymin=-.0000028,ymax=.0000014)
+		ax2.set_ylim(ymin=-.0000005,ymax=.00000025)
 	
 		yfm = ax.yaxis.get_major_formatter() #Ensures that the axis uses scientific notation
 		yfm.set_powerlimits([ 0, 0])
@@ -174,14 +178,14 @@ def FluxPlot(data1,data2,data3,plottype='BG'):
 			plt.xticks([],[])    #Remove lat/lon scales
 			plt.yticks([],[])
 	
-			title='Flux Map'
+			title='Flux Map-%s'%(names[i])
 			plt.title(title)
 		plt.tight_layout()    #Makes plot layout more efficient
 		
 	elif plottype == 'MeanMap':	
 
-		for i,t in enumerate(datas):
-			ax=plt.subplot(100+10*len(datas)+i)	
+		for q,t in enumerate(datas):
+			ax=plt.subplot(100+10*len(datas)+q)	
 			Y=np.zeros((200,400))
 
 			for i in range(23):
@@ -193,10 +197,11 @@ def FluxPlot(data1,data2,data3,plottype='BG'):
 			plt.contourf(Y,100)
 			plt.clim(FluxMin*.5,FluxMax*.5)
 			plt.tight_layout()
+			plt.title('Flux Mean Map-%s'%(names[q]))
 		
 		
 		
-def plotOrganize(flux1,flux2=None, flux3=None, title1='plot1', title2='plot2', title3='plot3', palette=None, norm=None, preview=False, outdir='images',timefilter=None,plottype='BG'):
+def plotOrganize(flux1,flux2=None, flux3=None, names=['','',''], palette=None, norm=None, preview=False, outdir='images',timefilter=None,plottype='BG'):
 	
 	from plot_wrapper import Colorbar, Plot, Overlay, Multiplot
 	from plot_shortcuts import pcolor, contour, contourf, Map
@@ -276,7 +281,7 @@ def plotOrganize(flux1,flux2=None, flux3=None, title1='plot1', title2='plot2', t
 		else: fig = plt.figure(figsize=(6+2*PlotNum,8))
 		
 		#Call the actual plot-creation function
-		FluxPlot(data1,data2,data3,plottype=plottype)
+		FluxPlot(data1,data2,data3,plottype=plottype,names=names)
 		
 		#Add a timestamp to the figure
 		plt.text(.9,.05,TimeStamp,horizontalalignment='center',transform=plt.gca().transAxes)
@@ -296,7 +301,7 @@ def movie_flux (models, fieldname, units, outdir, stat='mean',timefilter=None,pl
 	assert len(models) <= 3  # too many things to plot
 	models = [m for m in models if m is not None]
 
-	imagedir=outdir+"/%s-images_%s_flux%s"%(plottype,'_'.join(m.name for m in models), fieldname)
+	imagedir=outdir+"/FluxDiag-%s-%s-images_%s_flux%s"%(plottype,timefilter,'_'.join(m.name for m in models), fieldname)
 	if stat != 'mean':
 		imagedir += '_' + stat
 	
@@ -305,14 +310,14 @@ def movie_flux (models, fieldname, units, outdir, stat='mean',timefilter=None,pl
 	# Unit conversion
 	#fluxes = [rescale(f,units) for f in fields]
 
-	titles = [m.title for m in models]
+	Names = [m.name for m in models]
 
 	while len(fluxes) < 3: fluxes += [None]
-	while len(titles) < 3: titles += [None]
+	while len(Names) < 3: Names += [None]
 
-	plotOrganize(flux1=fluxes[0], flux2=fluxes[1], flux3=fluxes[2], title1=titles[0], title2=titles[1], title3=titles[2],preview=False, outdir=imagedir,timefilter=timefilter,plottype=plottype)
+	plotOrganize(flux1=fluxes[0], flux2=fluxes[1], flux3=fluxes[2], names=Names,preview=False, outdir=imagedir,timefilter=timefilter,plottype=plottype)
 
-	moviefile = "%s/%s_FluxDiag%s_%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname, stat)
+	moviefile = "%s/FluxDiag-%s-%s_%s_%s_%s.avi"%(outdir, plottype, timefilter, '_'.join(m.name for m in models), fieldname, stat)
 
 	#If the timefilter is Monthly, don't bother making the movie - not enough frames
 	if timefilter != 'Monthly':

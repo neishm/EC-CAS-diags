@@ -1,4 +1,9 @@
-# CO2 timeseries
+#Model vs Obs histogram
+
+"""
+It is important to note that the model histogram will consist of a full year's data
+Whereas the observations may only exist for one season, causing them to look much different.
+"""
 
 def timeseries (models, fieldname, units, outdir, plot_months=None,timefilter=None):
 
@@ -162,10 +167,10 @@ def timeseries (models, fieldname, units, outdir, plot_months=None,timefilter=No
 		Means.append(LocalMeans)
 		MaxMins.append(LocalMaxMin)
 		
-		theplot = Overlay (*parts, title=title.decode('latin-1'),xlabel='', ylabel='%s %s'%(fieldname,units))
+		theplot = Overlay (*parts, title=title.decode('latin-1'),xlabel='CO2 (ppm)', ylabel='Occurrences')
 		plots.append (theplot)
 	
-	outdir = outdir + '/TimeSeriesHist-images'
+	outdir = outdir + '/TimeSeriesHist-images_%s_%s'%('_'.join(d.name for d in datasets),fieldname)
 	if not exists(outdir): makedirs(outdir)
 	
 	# Plot 4 timeseries per figure

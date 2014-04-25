@@ -210,7 +210,7 @@ def timeseries (models, fieldname, units, outdir, plot_months=None,timefilter=No
 		plots.append (theplot)
 	
 	#Format image directory
-	outdir = outdir + '/TimeSeriesAlternate-images'
+	outdir = outdir + '/TimeSeriesAlternate-images_%s_%s'%('_'.join(d.name for d in datasets),fieldname)
 	if not exists(outdir): makedirs(outdir)
 	
 	# Plot 4 timeseries per figure

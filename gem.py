@@ -233,14 +233,14 @@ class GEM_Data (object):
     self.combined = combined
     self.stddev_3d = stddev_3d
     self.stddev_sfc = stddev_sfc
-
+	
     ##############################
     # Derived fields
     ##############################
-
+	
     # (Things that may not have been output from the model, but that we can
     #  compute)
-
+	
     # Sigma levels (momentum)
     if 'SIGM' not in self.combined_3d:
       try:

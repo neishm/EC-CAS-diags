@@ -15,17 +15,17 @@ def rescale (field, units):
   field.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
   return field
 
-def CvHgraph(X):
+def CvHgraph(X,names=['','','']):
 	
 	"""This function handles the actual graphing mechanisms"""
 	
 	#Figure prep
 	fig = plt.figure(figsize=(6*len(X),9))
 	
-	for i,data in enumerate(X):    #For each data set
+	for q,data in enumerate(X):    #For each data set
 		
 		#Determine subplot structure
-		ax = fig.add_subplot(100+10*len(X)+i+1)
+		ax = fig.add_subplot(100+10*len(X)+q+1)
 
 		data=data.squeeze()
 		RegionHeights=np.zeros((3,data.shape[0]))
@@ -54,7 +54,7 @@ def CvHgraph(X):
 		SL=ax.errorbar(RegionHeights[1],range(data.shape[0]),xerr=RegionStds[1],color='r')
 		
 		#Plot aesthetics
-		plt.title('Average CO$_{2}$ Concentration')
+		plt.title('Average CO$_{2}$ Concentration - %s'%(names[q]))
 		ax.set_xlabel('CO$_{2}$ Concentration (ppm)')
 		ax.set_ylabel('Height (km)')
 		ax.grid(b=None, which='major', axis='both')
@@ -64,7 +64,7 @@ def CvHgraph(X):
 		
 
 
-def plotCvH(field1,field2=None, field3=None, title1='plot1', title2='plot2', title3='plot3', palette=None, norm=None, preview=False, outdir='images'):
+def plotCvH(field1,field2=None, field3=None, title1='plot1', title2='plot2', title3='plot3', palette=None, norm=None, preview=False, outdir='images',names=['','','']):
 	
 	"""This function loops through the data time-wise and preps the data for the graphing function"""
 	
@@ -105,7 +105,7 @@ def plotCvH(field1,field2=None, field3=None, title1='plot1', title2='plot2', tit
 		#Pass data to graphing function
 		data = [d(year=year,month=month,day=day,hour=hour) for d in fields]
 		assert len(data[0].time) == 1
-		fig = CvHgraph(data)
+		fig = CvHgraph(data,names)
 		
 		#Add Timestamp
 		plt.text(.75,.83,'%s/%s/%s'%(str(day).zfill(2),str(month).zfill(2),year),horizontalalignment='center',transform=plt.gca().transAxes)
@@ -128,7 +128,10 @@ def movie_CvH (models, fieldname, units, outdir, stat='mean'):
 	imagedir=outdir+"/images_%s_CvH%s"%('_'.join(m.name for m in models), fieldname)
 	if stat != 'mean':
 		imagedir += '_' + stat
-
+		
+	#Names of each model - For plot titles later
+	Names = [m.name for m in models]
+	
 	fields = [m.get_data('zonalmean_gph',fieldname,stat=stat) for m in models]
 	
 	# Unit conversion
@@ -140,7 +143,7 @@ def movie_CvH (models, fieldname, units, outdir, stat='mean'):
 	while len(titles) < 3: titles += [None]
 	
 	#Now that data is formatted, pass it to plot function
-	plotCvH(field1=fields[0], field2=fields[1], field3=fields[2], title1=titles[0], title2=titles[1], title3=titles[2],preview=False, outdir=imagedir)
+	plotCvH(field1=fields[0], field2=fields[1], field3=fields[2], title1=titles[0], title2=titles[1], title3=titles[2],preview=False, outdir=imagedir, names=Names)
 	
 	#Turn output images into movie file
 	moviefile = "%s/%s_CvH%s_%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname, stat)
