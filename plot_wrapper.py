@@ -59,7 +59,7 @@ class PlotWrapper:
     if 'yscale' in args: axes.set_yscale(args.pop('yscale'))
     # Apply the rest of the axes attributes
     for k, v in args.items():
-		getattr(axes,'set_'+k)(v)
+      getattr(axes,'set_'+k)(v)
 
   # Routine for doing the actual plot
   # Arguments:

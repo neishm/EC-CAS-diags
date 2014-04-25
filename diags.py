@@ -10,7 +10,6 @@ import argparse
 from os.path import exists
 import os
 
-
 # Extract command-line arguments
 
 parser = argparse.ArgumentParser (description='Do some standard diagnostics on a model run.', epilog="You must have write perimission in the experiment directory to create some intermediate files.")
@@ -71,6 +70,9 @@ if control_dir is not None:
 else:
   control = None
 
+# CarbonTracker data
+#TODO: limit CT data to time range of experiment.
+from carbontracker import CarbonTracker_Data
 carbontracker = CarbonTracker_Data(tmpdir=args.tmpdir)
 
 # Observation data
@@ -93,16 +95,8 @@ if not exists(outdir) or not os.access (outdir, os.R_OK | os.W_OK | os.X_OK):
   assert args.tmpdir is not None, "Need --tmpdir to put diags in."
   outdir=args.tmpdir
 
-'''
-
-
 # Some standard diagnostics
 failures = []
-
-
-'''
-
-
 
 from timeseries import timeseries
 # CO2 Timeseries
@@ -137,7 +131,6 @@ try:
   movie_zonal(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='std')
 except Exception as e:
   failures.append(['CO2 movie_zonal spread', e])
-  
 # CH4 Zonal mean movies
 try:
   movie_zonal(models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)

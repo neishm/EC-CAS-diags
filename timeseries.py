@@ -20,7 +20,7 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
   for d in datasets:
     if hasattr(d,'obs_locations'):
       obs_locations.update(d.obs_locations)
-      
+
 #  ##TODO
 #  # Limit the time period to the current experiment
 #  # (sometimes we have a really short experiment)
@@ -76,11 +76,10 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
       assert len(val) == 1
       xticks.append(float(val[0]))
       xticklabels.append("%s %d"%(months[month], day))
-  i=0
+
   plots = []
   for location, (lat, lon, country) in sorted(obs_locations.items()):
-    i+=1
-    print i
+
     # Construct a title for the plot
     title = location + ' - (%4.2f'%abs(lat)
     if lat < 0: title += 'S'
@@ -152,6 +151,6 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
     outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in datasets),fieldname,i/4+1)
     if not exists(outfile):
       fig.savefig(outfile)
-    pl.show()
+
     pl.close(fig)
 

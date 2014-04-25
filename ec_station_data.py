@@ -133,3 +133,5 @@ class EC_Station_Data (object):
     s = np.where(stations == station)[0][0]
 
     return self.data[fieldname+'_'+stat](i_station=s).squeeze('station')
+
+

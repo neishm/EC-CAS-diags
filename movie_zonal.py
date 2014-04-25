@@ -137,3 +137,4 @@ def movie_zonal (models, fieldname, units, outdir, stat='mean'):
   from os.path import exists
   if not exists(moviefile):
     system("mencoder -o %s mf://%s/*.png -ovc lavc -lavcopts vcodec=msmpeg4v2"%(moviefile, imagedir))
+
