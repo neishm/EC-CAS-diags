@@ -94,7 +94,7 @@ def load (filename):
 class Plot(PlotWrapper):
   def _doplot (self, figure, pl, axes, transform):
     pl.plot (*self.plot_args, **self.plot_kwargs)
-    
+
 #Histogram
 class Histogram(PlotWrapper):
   def _doplot (self, figure, pl, axes, transform):
@@ -242,9 +242,9 @@ class Text(PlotWrapper):
     self.text_args = args
     self.text_kwargs = kwargs
   def _doplot (self, figure, pl, axes, transform):
-	  import matplotlib.pyplot as pl
-	  theplot = self.plot._doplot(figure,pl,axes,transform)
-	  return pl.text(transform = pl.gca().transAxes,*self.text_args, **self.text_kwargs)
+    import matplotlib.pyplot as pl
+    theplot = self.plot._doplot(figure,pl,axes,transform)
+    return pl.text(transform = pl.gca().transAxes,*self.text_args, **self.text_kwargs)
 
 # A legend
 # (labels the lines of a line plot)

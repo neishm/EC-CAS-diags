@@ -22,21 +22,21 @@ def read_station_data (filename):
         comments.append(line)
       else:
         date1, time1, date2, time2, co2, nd, sd, f, cs, rem = line.split()
-  
+
         # In what universe does 24-hour time go from 1:00 to 24:00????
         if time1 == '24:00':
           time1 = '23:00'
           fudge = timedelta(hours=1)
         else:
           fudge = timedelta(hours=0)
-  
+
         time = datetime.strptime(date1+' '+time1, "%Y-%m-%d %H:%M") + fudge
         year.append(time.year)
         month.append(time.month)
         day.append(time.day)
         hour.append(time.hour)
         minute.append(time.minute)
-  
+
         co2 = float(co2)
         if co2 < 0: co2 = float('nan')
         values.append(co2)
