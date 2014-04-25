@@ -188,27 +188,27 @@ except Exception as e:
 
 from FluxDiagnostic import movie_flux
 try:
-  movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='BG')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='BG')
 except Exception as e:
   failures.append(['Flux Diagnostic - Bar Graph', e])
 try:
-  movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='BG')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='BG')
 except Exception as e:
   failures.append(['Flux Diagnostic - Bar Graph', e])
 try:
-  movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='Map')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='Map')
 except Exception as e:
   failures.append(['Flux Diagnostic - Map', e])
 try:
-  movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='Map')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='Map')
 except Exception as e:
   failures.append(['Flux Diagnostic - Map', e])
 try:
-  movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='MeanMap')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='MeanMap')
 except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 try:
-  movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='MeanMap')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='MeanMap')
 except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 
