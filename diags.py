@@ -117,15 +117,6 @@ try:
   movie_zonal(models=[experiment,control,carbontracker], fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['CO2 movie_zonal', e])
-
-from FluxBG import movie_flux
-#Flux Bargraph movie
-try:
-  movie_flux(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='mean')
-except Exception as e:
-  failures.append(['Flux Bar Graph',e])
-  raise
-
 # CO2 Zonal mean of spread
 try:
   movie_zonal(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='std')
@@ -187,7 +178,7 @@ try:
 except Exception as e:
   failures.append(['totalmass air', e])
 
-#-------------------My Diags------------------------
+#-------------------Jake's Diags------------------------
 
 from concentration_v_height import movie_CvH
 try:
@@ -248,7 +239,7 @@ except Exception as e:
 
 
 
-#----------------End of My Diags--------------------
+#----------------End of Jake's Diags--------------------
 
 
 # Report any diagnostics that failed to run
