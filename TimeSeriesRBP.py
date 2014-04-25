@@ -53,7 +53,7 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
   timeaxis = (s.getaxis('time') for s in sfc_data if s is not None).next()
   # Limit the range to plot
   if plot_months is not None:
-    timeaxis = timeaxis(year=2014,month=plot_months)
+    timeaxis = timeaxis(year=2009,month=plot_months)
   times = timeaxis.get()
   time1 = min(times)
   time2 = max(times)
@@ -204,6 +204,12 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
     ,horizontalalignment = 'center')
   pl.legend(rectangles,[d.title for d in datasets],prop={'size':12})
   pl.text(.02,.96,'One standard deviation shown',transform = pl.gca().transAxes)
+
+  #Format image directory
+  outdir = outdir + '/TimeSeriesRBP-images_%s_%s'%('_'.join(d.name for d in datasets),fieldname)
+  if not exists(outdir):
+    from os import makedirs
+    makedirs(outdir)
 
   outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in datasets),fieldname,i/4+1)
   if not exists(outfile):
