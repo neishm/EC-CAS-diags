@@ -10,8 +10,6 @@ import argparse
 from os.path import exists
 import os
 
-'''
-
 
 # Extract command-line arguments
 
@@ -73,25 +71,7 @@ if control_dir is not None:
 else:
   control = None
 
-
-'''
-
-#--------------Testing Paramaters-----------------
-from gem import GEM_Data
-experiment = GEM_Data('/wrk6/neish/mn075/model', flux_dir='/wrk1/EC-CAS/GEM/inputs/emissions_v2/', name='Experiment', title='Test Experiment', tmpdir='/home/jake/temp')
-control = GEM_Data('/wrk6/neish/mn075/model', flux_dir='/wrk1/EC-CAS/GEM/inputs/emissions_v2/', name='Control', title='Test Control', tmpdir='/home/jake/temp')
-outdir = '/home/jake/OutDir'
-#-------------------------------------------------
-
-
-
-# CarbonTracker data
-#TODO: limit CT data to time range of experiment.
-from carbontracker import CarbonTracker_Data
-"""
-CHANGE WAS MADE HERE ------------------------------- carbontracker = CarbonTracker_Data(tmpdir=args.tmpdir)
-"""
-carbontracker = CarbonTracker_Data('/home/jake/temp')
+carbontracker = CarbonTracker_Data(tmpdir=args.tmpdir)
 
 # Observation data
 from ec_station_data import EC_Station_Data
@@ -100,7 +80,6 @@ from gaw_station_data import GAW_Station_Data
 gaw_obs = GAW_Station_Data()
 
 
-'''
 # Dump the output files to a subdirectory of the experiment data
 from os import mkdir
 outdir = rootdir+"/diags"
@@ -215,7 +194,6 @@ try:
 except Exception as e:
   failures.append(['totalmass air', e])
 
-'''
 #-------------------My Diags------------------------
 
 from concentration_v_height import movie_CvH
