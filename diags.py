@@ -180,6 +180,70 @@ try:
 except Exception as e:
   failures.append(['totalmass air', e])
 
+#-------------------Jake's Diags------------------------
+
+from concentration_v_height import movie_CvH
+try:
+  movie_CvH(models=[experiment,control],fieldname='CO2', units='ppm', outdir=outdir, stat='mean')
+except Exception as e:
+  failures.append(['concentration vs. height', e])
+
+from FluxDiagnostic import movie_flux
+try:
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='BG')
+except Exception as e:
+  failures.append(['Flux Diagnostic - Bar Graph', e])
+try:
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='BG')
+except Exception as e:
+  failures.append(['Flux Diagnostic - Bar Graph', e])
+try:
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='Map')
+except Exception as e:
+  failures.append(['Flux Diagnostic - Map', e])
+try:
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='Map')
+except Exception as e:
+  failures.append(['Flux Diagnostic - Map', e])
+try:
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='MeanMap')
+except Exception as e:
+  failures.append(['Flux Diagnostic - Mean Map', e])
+try:
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='MeanMap')
+except Exception as e:
+  failures.append(['Flux Diagnostic - Mean Map', e])
+
+
+import TimeSeriesHist as TSH
+try:
+  TSH.timeseries(models=[experiment,ec_obs],fieldname='CO2', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['timeseries histogram', e])
+
+import TimeSeriesAlternate as TSA
+try:
+  TSA.timeseries(models=[experiment,ec_obs],fieldname='CO2', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['time series alternate', e])
+
+from TimeSeriesRBP import Barplot
+try:
+  Barplot(models=[experiment,control,gaw_obs],fieldname='CO2', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['time series rbp', e])
+
+from ZonalMeanBG import movie_bargraph
+try:
+  movie_bargraph(models=[experiment,control], height=0,fieldname='CO2', units='ppm', outdir=outdir, stat='mean')
+except Exception as e:
+  failures.append(['zonal mean bargraph', e])
+
+
+
+#----------------End of Jake's Diags--------------------
+
+
 # Report any diagnostics that failed to run
 if len(failures) > 0:
   print "WARNING:"
