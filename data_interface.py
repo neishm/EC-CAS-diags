@@ -34,7 +34,7 @@ class DataInterface (object):
     # Each entry is a tuple of (filename, varname, time_info, time, universal_time, spatial_axes, domain, atts)
     entry = namedtuple('entry', 'file var time_info, time, universal_time, spatial_axes, domain, atts')
 
-    cachefile = cache.local_filename("domains")
+    cachefile = cache.full_path("domains")
     if exists(cachefile):
       table = pickle.load(open(cachefile,'r'))
       mtime = getmtime(cachefile)
@@ -101,6 +101,7 @@ class DataInterface (object):
         atts = object_lookup.setdefault(x.atts,x.atts)
         table[i] = entry(file=x.file, var=x.var, time_info=time_info, time=time, universal_time=universal_time, spatial_axes = spatial_axes, domain=domain, atts=atts)
 
+      cachefile = cache.full_path("domains", writeable=True)
       pickle.dump(map(tuple,table), open(cachefile,'w'))
       # Set the modification time to the latest file that was used.
       atime = getatime(cachefile)
