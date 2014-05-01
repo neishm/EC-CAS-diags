@@ -260,6 +260,7 @@ def plotOrganize(flux1,flux2=None, flux3=None, names=['','',''], palette=None, n
     fname = "%s/"%(outdir)
     fname += date
     fname += plottype
+    fname += ".png"
 
     if exists(fname) and preview is False:
       continue
@@ -292,6 +293,9 @@ def plotOrganize(flux1,flux2=None, flux3=None, names=['','',''], palette=None, n
       pbar.update(i*100/len(flux1.time))
     else:
       break
+
+  pbar.update(100)
+
 
 def movie_flux (models, fieldname, units, outdir, stat='mean',timefilter=None,plottype='BG'):
 

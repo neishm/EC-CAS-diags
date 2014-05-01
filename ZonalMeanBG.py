@@ -135,6 +135,8 @@ def plotBG(height, field1,field2=None, field3=None, names=['','',''], palette=No
     else:
       break
 
+  pbar.update(100)
+
 
 def movie_bargraph (models, height, fieldname, units, outdir, stat='mean'):
 

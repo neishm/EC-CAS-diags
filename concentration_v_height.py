@@ -117,6 +117,9 @@ def plotCvH(field1,field2=None, field3=None, title1='plot1', title2='plot2', tit
     else:
       break
 
+  pbar.update(100)
+
+
 def movie_CvH (models, fieldname, units, outdir, stat='mean'):
 
   from common import unit_scale
