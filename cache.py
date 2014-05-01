@@ -179,7 +179,7 @@ class Cache (object):
 
         # Loop over each time, save into a cache file
         from pygeode.progress import PBar
-        pbar = PBar (message = "Caching %s"%prefix)
+        pbar = PBar (message = "Caching %s"%self.global_prefix+prefix)
         for i, datestring in enumerate(datestrings):
           pbar.update(i*100./len(datestrings))
 
@@ -251,15 +251,14 @@ class Cache (object):
     filename = self.global_prefix + name
 
     from os.path import exists
-    # Do we need a writeable location?
-    if writeable:
-      if self.write_dir is None:
-        raise CacheWriteError ("Nowhere to write '%s'"%filename)
-      dirs = [self.write_dir]
-    else:
-      # Don't need a writeable location
-      dirs = list(self.read_dirs)
-      if self.write_dir is not None: dirs = [self.write_dir] + dirs
+
+    dirs=[]
+    # Look at the writeable directory first (if it exists)
+    if self.write_dir is not None:
+      dirs.append(self.write_dir)
+    # If we don't need to be writeable, can look at read-only directories
+    if not writeable:
+      dirs.extend(self.read_dirs)
 
     for dir in dirs:
       if exists(dir+filename): return dir+filename
@@ -268,6 +267,10 @@ class Cache (object):
     # Did we need a file that already exists?
     if existing:
       raise CacheReadError ("No existing copy of '%s' was found."%filename)
+
+    # Otherwise, we need somewhere to write a new file.
+    if self.write_dir is None:
+      raise CacheWriteError ("Nowhere to write '%s'"%filename)
 
     return self.write_dir+filename
 
