@@ -41,6 +41,7 @@ def domain_hash (var):
 
 # Error classes related to caching
 
+class CacheReadError (IOError): pass
 class CacheWriteError (IOError): pass
 
 
@@ -86,17 +87,6 @@ class Cache (object):
       except OSError: continue
 
 
-  # Internal method - get the appropriate filename.
-  # If it already exists, return the path to the existing file.
-  # Otherwise, return a (non-existent) file inside the write_dir.
-  def _full_path (self, filename):
-    from os.path import exists
-    for dir in self.read_dirs:
-      if exists(dir+filename): return dir+filename
-    if self.write_dir is None:
-      raise CacheWriteError ("Nowhere to write files")
-    return self.write_dir+filename
-
 
   # Write out the data
   def write (self, var, prefix):
@@ -111,9 +101,8 @@ class Cache (object):
     # (makes it easier to plot timeseries data from multiple sources)
     var = fix_timeaxis(var)
 
-    # Apply the global prefix - a generic string that identifies the source
-    # of the cache data
-    prefix = self.global_prefix + prefix + '_' + domain_hash(var)
+    # Apply a hash to the data's domain information
+    prefix = prefix + '_' + domain_hash(var)
 
     # Make sure the data is in 32-bit precision
     # (sometimes diagnostics cause a 64-bit output - waste of space)
@@ -124,8 +113,9 @@ class Cache (object):
     if not var.hasaxis('time'):
       from warnings import warn
       warn ("Untested case - no time axis in data")
-      filename = self._full_path(prefix + ".nc")
+      filename = self.full_path(prefix + ".nc")
       if not exists(filename):
+        filename = self.full_path(prefix + ".nc", writeable=True)
         dataset = self.save_hook(var)
         try:
           netcdf.save(filename, dataset)
@@ -178,26 +168,24 @@ class Cache (object):
 
     # Check if we already have the data in the cache
     # (look for the one big file that gets generated in the last stage)
-    bigfile = self._full_path(prefix+"_"+datestrings[0]+"-"+datestrings[-1]+".nc")
+    bigfile = self.full_path(prefix+"_"+datestrings[0]+"-"+datestrings[-1]+".nc")
     if not exists(bigfile):
+
+      bigfile = self.full_path(prefix+"_"+datestrings[0]+"-"+datestrings[-1]+".nc", writeable=True)
 
       # Split into 1 file per timestep?
       # Useful for model output, where you might extend the data with extra timesteps later.
       if self.split_time is True:
-        filenames = [self._full_path(prefix+"_"+datestring+".nc") for datestring in datestrings]
-
-        # Determine which files aren't created yet
-        uncached_stuff = [(i,f) for i,f in enumerate(filenames) if not exists(f)]
-        if len(uncached_stuff) > 0:
-          uncached_times, uncached_filenames = zip(*uncached_stuff)
-        else:
-          uncached_times, uncached_filenames = [], []
 
         # Loop over each time, save into a cache file
         from pygeode.progress import PBar
-        pbar = PBar (message = "Caching %s"%prefix)
-        for i,filename in zip(uncached_times, uncached_filenames):
-          pbar.update(i*100./len(filenames))
+        pbar = PBar (message = "Caching %s"%self.global_prefix+prefix)
+        for i, datestring in enumerate(datestrings):
+          pbar.update(i*100./len(datestrings))
+
+          filename = self.full_path(prefix+"_"+datestring+".nc")
+          if exists(filename): continue
+          filename = self.full_path(prefix+"_"+datestring+".nc", writeable=True)
 
           # Save the data
           data = var(i_time=i)
@@ -209,6 +197,9 @@ class Cache (object):
             raise
 
         pbar.update(100)
+
+        # Re-query for the files
+        filenames = [self.full_path(prefix+"_"+datestring+".nc", existing=True) for datestring in datestrings]
 
         # Open the many small files
         var = open_multi(filenames, format=netcdf, pattern="_"+pattern+"\.nc")[var.name]
@@ -252,9 +243,34 @@ class Cache (object):
     return var
 
 
-  # Generate a filename, in a writeable location.
-  # Assume the file will be read / written outside this class.
-  def local_filename (self, prefix):
+  # Given a filename, add the appropriate directory structure.
+  # Parameters:
+  #   existing (default: False) -  If True, the file must already exist.
+  #   writeable (default: False) - If True, the file must be in a writeable location.
+  def full_path (self, name, existing=False, writeable=False):
+    filename = self.global_prefix + name
 
-    return self.write_dir + self.global_prefix + prefix
+    from os.path import exists
+
+    dirs=[]
+    # Look at the writeable directory first (if it exists)
+    if self.write_dir is not None:
+      dirs.append(self.write_dir)
+    # If we don't need to be writeable, can look at read-only directories
+    if not writeable:
+      dirs.extend(self.read_dirs)
+
+    for dir in dirs:
+      if exists(dir+filename): return dir+filename
+
+    # No existing file found.
+    # Did we need a file that already exists?
+    if existing:
+      raise CacheReadError ("No existing copy of '%s' was found."%filename)
+
+    # Otherwise, we need somewhere to write a new file.
+    if self.write_dir is None:
+      raise CacheWriteError ("Nowhere to write '%s'"%filename)
+
+    return self.write_dir+filename
 
