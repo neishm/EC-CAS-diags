@@ -259,6 +259,10 @@ class GEM_Data (object):
     files.append(indir+"/k[0-9]*_[0-9]*")
     files.append(indir+"/d[0-9]*_[0-9]*")
     files.append(indir+"/p[0-9]*_[0-9]*")
+    # Hack to read at least one model file, just to get the lat/lon
+    # (fixes area emissions lat/lon mismatch with current emissions)
+    from glob import glob
+    eccas_opener(glob(indir+"/[0-9]*_[0-9]*")[0])
 
     ##############################
     # Fluxes
