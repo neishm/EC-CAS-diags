@@ -98,9 +98,15 @@ def eccas_opener (filename, latlon = [None,None]):
 
       # dP
       #TODO: Use ptop as upper boundary, instead of ignoring (zeroing) that layer?
-      P_k = concat(P.slice[:,0,:,:], P.slice[:,:-1,:,:]).replace_axes(eta=eta)
-      P_kp1 = concat(P.slice[:,1:,:,:], P.slice[:,-1,:,:]).replace_axes(eta=eta)
+      # Need to overwrite the eta axis with a generic one before concatenating,
+      # because eta axes require explict A/B arrays (which concat doesn't see)
+      from pygeode.axis import ZAxis
+      PP = P.replace_axes(eta=ZAxis(P.eta.values))
+      P_k = concat(PP.slice[:,0,:,:], PP.slice[:,:-1,:,:])
+      P_kp1 = concat(PP.slice[:,1:,:,:], PP.slice[:,-1,:,:])
       dP = abs(P_kp1 - P_k)/2
+      # Put the eta axis back
+      dP = dP.replace_axes(zaxis=P.eta)
 
     # zeta coordinates?
     if any(var.hasaxis(fstd.LogHybrid) for var in data.itervalues()):
