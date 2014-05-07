@@ -17,8 +17,8 @@ def totalmass (models, fieldname, pg_of, outdir):
   from common import molecular_weight as mw
   from pygeode import timeutils
 
-  totalmass_colours = 'blue', 'green', 'red'
-  totalflux_colours = '#C0C0FF', '#C0FFC0', '#FFC0C0'
+  totalmass_colours = 'blue', 'green', 'red', 'black'
+  totalflux_colours = '#C0C0FF', '#C0FFC0', '#FFC0C0', 'grey'
 
   # Find common time period
   #TODO:  a method to query the time axis from the model without needing to grab an actual diagnostic field.

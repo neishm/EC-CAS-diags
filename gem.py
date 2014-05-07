@@ -167,6 +167,13 @@ def eccas_opener (filename, latlon = [None,None]):
   if 'DX' in data:
     data['cell_area'] = data.pop('DX')
     data['cell_area'].atts['units'] = 'm2'
+  elif 'surface_pressure' in data:
+    lat = data['surface_pressure'].lat
+    lon = data['surface_pressure'].lon
+    time = data['surface_pressure'].time
+    from common import get_area
+    data['cell_area'] = get_area(lat,lon).extend(0,time)
+
 
   # General cleanup stuff
 
@@ -326,12 +333,17 @@ class GEM_Data (object):
     #TODO: re-use totalcolumn data from above
     elif domain == 'totalmass':
       from common import molecular_weight as mw, grav as g
-      c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
-      # Convert from ppm to kg / kg
-      c *= 1E-6 * mw[standard_name] / mw['air']
+      if field != 'air':
+         c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
+         # Convert from ppm to kg / kg
+         c *= 1E-6 * mw[standard_name] / mw['air']
 
-      # Integrate to get total column
-      tc = (c*dp*100).sum('zaxis') / g
+         # Integrate to get total column
+         tc = (c*dp*100).sum('zaxis') / g
+
+      else:
+         p0, area = self.data.find_best(['surface_pressure','cell_area'], maximize=number_of_timesteps)
+         tc = p0*100 / g
 
       # Integrate horizontally
       # Assume global grid - remove repeated longitude
