@@ -28,7 +28,7 @@ class DataInterface (object):
       for f in glob(g):
         files.append(f)
 
-    files = [f for f in files if not f.endswith("_000")]
+    files = [f for f in files if not f.endswith("_000") and not f.endswith("_000h")]
 
     # Get the domain information from the files
     # Each entry is a tuple of (filename, varname, time_info, time, universal_time, spatial_axes, domain, atts)
