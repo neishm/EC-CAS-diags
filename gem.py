@@ -92,7 +92,7 @@ def eccas_opener (filename, latlon = [None,None]):
       eta = fstd.Hybrid(values=eta, A=A, B=B)
       A = eta.auxasvar('A')
       B = eta.auxasvar('B')
-      P = A + B * Ps
+      P = A + B * Ps * 100
       P = P.transpose('time','eta','lat','lon')
       P /= 100 # hPa
 
