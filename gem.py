@@ -102,8 +102,8 @@ def eccas_opener (filename, latlon = [None,None]):
       # because eta axes require explict A/B arrays (which concat doesn't see)
       from pygeode.axis import ZAxis
       PP = P.replace_axes(eta=ZAxis(P.eta.values))
-      P_k = concat(PP.slice[:,0,:,:], PP.slice[:,:-1,:,:])
-      P_kp1 = concat(PP.slice[:,1:,:,:], PP.slice[:,-1,:,:])
+      P_k = concat(PP.slice[:,0,:,:].replace_axes(zaxis=ZAxis([-1.])), PP.slice[:,:-1,:,:]).replace_axes(zaxis=PP.zaxis)
+      P_kp1 = concat(PP.slice[:,1:,:,:], PP.slice[:,-1,:,:].replace_axes(zaxis=ZAxis([2.]))).replace_axes(zaxis=PP.zaxis)
       dP = abs(P_kp1 - P_k)/2
       # Put the eta axis back
       dP = dP.replace_axes(zaxis=P.eta)
