@@ -87,20 +87,26 @@ def eccas_opener (filename, latlon = [None,None]):
           current = var.getaxis(fstd.Hybrid)
           current = set(zip(current.values, current.A, current.B))
           eta.update(current)
-      eta = sorted(eta, reverse=True)
+      eta = sorted(eta)
       eta, A, B = zip(*eta)
       eta = fstd.Hybrid(values=eta, A=A, B=B)
       A = eta.auxasvar('A')
       B = eta.auxasvar('B')
-      P = A + B * Ps
+      P = A + B * Ps * 100
       P = P.transpose('time','eta','lat','lon')
       P /= 100 # hPa
 
       # dP
       #TODO: Use ptop as upper boundary, instead of ignoring (zeroing) that layer?
-      P_k = concat(P.slice[:,0,:,:], P.slice[:,:-1,:,:]).replace_axes(eta=eta)
-      P_kp1 = concat(P.slice[:,1:,:,:], P.slice[:,-1,:,:]).replace_axes(eta=eta)
+      # Need to overwrite the eta axis with a generic one before concatenating,
+      # because eta axes require explict A/B arrays (which concat doesn't see)
+      from pygeode.axis import ZAxis
+      PP = P.replace_axes(eta=ZAxis(P.eta.values))
+      P_k = concat(PP.slice[:,0,:,:].replace_axes(zaxis=ZAxis([-1.])), PP.slice[:,:-1,:,:]).replace_axes(zaxis=PP.zaxis)
+      P_kp1 = concat(PP.slice[:,1:,:,:], PP.slice[:,-1,:,:].replace_axes(zaxis=ZAxis([2.]))).replace_axes(zaxis=PP.zaxis)
       dP = abs(P_kp1 - P_k)/2
+      # Put the eta axis back
+      dP = dP.replace_axes(zaxis=P.eta)
 
     # zeta coordinates?
     if any(var.hasaxis(fstd.LogHybrid) for var in data.itervalues()):
@@ -269,7 +275,7 @@ class GEM_Data (object):
     # Hack to read at least one model file, just to get the lat/lon
     # (fixes area emissions lat/lon mismatch with current emissions)
     from glob import glob
-    eccas_opener(glob(indir+"/[0-9]*_[0-9]*")[0])
+    eccas_opener(glob(indir+"/*[0-9]*_[0-9]*")[0])
 
     ##############################
     # Fluxes
