@@ -87,7 +87,7 @@ def eccas_opener (filename, latlon = [None,None]):
           current = var.getaxis(fstd.Hybrid)
           current = set(zip(current.values, current.A, current.B))
           eta.update(current)
-      eta = sorted(eta, reverse=True)
+      eta = sorted(eta)
       eta, A, B = zip(*eta)
       eta = fstd.Hybrid(values=eta, A=A, B=B)
       A = eta.auxasvar('A')
