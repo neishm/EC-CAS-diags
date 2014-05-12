@@ -40,7 +40,9 @@ class DataInterface (object):
     entry = namedtuple('entry', 'file var time_info, time, universal_time, spatial_axes, domain, atts')
 
     if exists(manifest):
-      version, table = pickle.load(open(manifest,'r'))
+      with open(manifest,'r') as f:
+        version = pickle.load(f)
+        table = pickle.load(f)
       mtime = getmtime(manifest)
     if not exists(manifest) or version != MANIFEST_VERSION:
       table = []
@@ -105,7 +107,9 @@ class DataInterface (object):
         atts = object_lookup.setdefault(x.atts,x.atts)
         table[i] = entry(file=x.file, var=x.var, time_info=time_info, time=time, universal_time=universal_time, spatial_axes = spatial_axes, domain=domain, atts=atts)
 
-      pickle.dump((MANIFEST_VERSION,map(tuple,table)), open(manifest,'w'))
+      with open(manifest,'w') as f:
+        pickle.dump(MANIFEST_VERSION, f)
+        pickle.dump(map(tuple,table), f)
       # Set the modification time to the latest file that was used.
       atime = getatime(manifest)
       utime(manifest,(atime,mtime))
