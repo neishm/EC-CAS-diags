@@ -2,6 +2,11 @@
 # (one dataset per domain).
 # E.g., there may be surface and 3D output at different time frequencies.
 
+# Current version of the manifest file format.
+# If this version doesn't match the existing manifest file, then the manifest
+# is re-generated.
+MANIFEST_VERSION="0~alpha1"
+
 # General interface
 class DataInterface (object):
 
@@ -35,9 +40,9 @@ class DataInterface (object):
     entry = namedtuple('entry', 'file var time_info, time, universal_time, spatial_axes, domain, atts')
 
     if exists(manifest):
-      table = pickle.load(open(manifest,'r'))
+      version, table = pickle.load(open(manifest,'r'))
       mtime = getmtime(manifest)
-    else:
+    if not exists(manifest) or version != MANIFEST_VERSION:
       table = []
       mtime = 0
 
@@ -100,7 +105,7 @@ class DataInterface (object):
         atts = object_lookup.setdefault(x.atts,x.atts)
         table[i] = entry(file=x.file, var=x.var, time_info=time_info, time=time, universal_time=universal_time, spatial_axes = spatial_axes, domain=domain, atts=atts)
 
-      pickle.dump(map(tuple,table), open(manifest,'w'))
+      pickle.dump((MANIFEST_VERSION,map(tuple,table)), open(manifest,'w'))
       # Set the modification time to the latest file that was used.
       atime = getatime(manifest)
       utime(manifest,(atime,mtime))
