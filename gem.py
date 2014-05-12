@@ -339,7 +339,8 @@ class GEM_Data (object):
     #TODO: re-use totalcolumn data from above
     elif domain == 'totalmass':
       from common import molecular_weight as mw, grav as g
-      if field != 'air':
+      # Do we have the pressure change in the vertical?
+      if self.data.have('dp'):
          c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
          # Convert from ppm to kg / kg
          c *= 1E-6 * mw[standard_name] / mw['air']
@@ -347,9 +348,15 @@ class GEM_Data (object):
          # Integrate to get total column
          tc = (c*dp*100).sum('zaxis') / g
 
-      else:
+      # Otherwise, if we only need air mass, assume a lid of 0hPa and take a
+      # shortcut
+      elif field == 'air':
+         from warnings import warn
+         warn ("No 'dp' data found in '%s'.  Approximating total air mass from surface pressure"%self.name)
          p0, area = self.data.find_best(['surface_pressure','cell_area'], maximize=number_of_timesteps)
          tc = p0*100 / g
+      else:
+         raise KeyError("No 'dp' field found in '%s'.  Cannot compute total mass."%self.name)
 
       # Integrate horizontally
       # Assume global grid - remove repeated longitude
