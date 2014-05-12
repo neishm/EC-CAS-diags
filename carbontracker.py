@@ -202,7 +202,8 @@ class CarbonTracker_Data (object):
     molefractions = "/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc"
     fluxes = "/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc"
 
-    self.data = DataInterface ([molefractions,fluxes], opener=ct_opener, cache=self.cache)
+    manifest = self.cache.full_path("manifest", writeable=True)
+    self.data = DataInterface ([molefractions,fluxes], opener=ct_opener, manifest=manifest)
 
 
   # Data interface

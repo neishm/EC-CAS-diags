@@ -284,7 +284,8 @@ class GEM_Data (object):
     if flux_dir is not None:
       files.append(flux_dir+"/area_2009??????")
 
-    self.data = DataInterface(files, opener=eccas_opener, cache=cache)
+    manifest = cache.full_path("manifest", writeable=True)
+    self.data = DataInterface(files, opener=eccas_opener, manifest=manifest)
     self.cache = cache
 
 

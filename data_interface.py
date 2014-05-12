@@ -12,7 +12,7 @@ class DataInterface (object):
   #    a full rescan).
   # 3) Store the full table of information inside the object, for further
   #    use at runtime.
-  def __init__ (self, files, opener, cache):
+  def __init__ (self, files, opener, manifest):
     from glob import glob
     from os.path import exists, getatime, getmtime
     from os import utime
@@ -34,10 +34,9 @@ class DataInterface (object):
     # Each entry is a tuple of (filename, varname, time_info, time, universal_time, spatial_axes, domain, atts)
     entry = namedtuple('entry', 'file var time_info, time, universal_time, spatial_axes, domain, atts')
 
-    cachefile = cache.full_path("domains")
-    if exists(cachefile):
-      table = pickle.load(open(cachefile,'r'))
-      mtime = getmtime(cachefile)
+    if exists(manifest):
+      table = pickle.load(open(manifest,'r'))
+      mtime = getmtime(manifest)
     else:
       table = []
       mtime = 0
@@ -47,7 +46,7 @@ class DataInterface (object):
 
     handled_files = set(x.file for x in table)
 
-    pbar = PBar (message = "Generating %s"%cachefile)
+    pbar = PBar (message = "Generating %s"%manifest)
 
     modified_table = False
 
@@ -101,14 +100,13 @@ class DataInterface (object):
         atts = object_lookup.setdefault(x.atts,x.atts)
         table[i] = entry(file=x.file, var=x.var, time_info=time_info, time=time, universal_time=universal_time, spatial_axes = spatial_axes, domain=domain, atts=atts)
 
-      cachefile = cache.full_path("domains", writeable=True)
-      pickle.dump(map(tuple,table), open(cachefile,'w'))
+      pickle.dump(map(tuple,table), open(manifest,'w'))
       # Set the modification time to the latest file that was used.
-      atime = getatime(cachefile)
-      utime(cachefile,(atime,mtime))
+      atime = getatime(manifest)
+      utime(manifest,(atime,mtime))
       # Hack to force the saved mtime to not get truncated
-      dt = mtime - getmtime(cachefile)
-      utime(cachefile,(atime,mtime+dt))
+      dt = mtime - getmtime(manifest)
+      utime(manifest,(atime,mtime+dt))
 
     pbar.update(100)
 
