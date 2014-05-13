@@ -62,7 +62,7 @@ class DataInterface (object):
       pbar.update(i*100./len(files))
       if f in handled_files:
         # File has changed since last time?
-        if getmtime(f) > mtime:
+        if int(getmtime(f)) > mtime:
           # Remove existing info
           table = [t for t in table if t.file != f]
         else:
@@ -70,7 +70,7 @@ class DataInterface (object):
           continue
       # Always use the latest modification time to represent the valid time of
       # the whole table.
-      mtime = max(mtime,getmtime(f))
+      mtime = max(mtime,int(getmtime(f)))
       d = opener(f)
       for var in d:
 
@@ -113,9 +113,6 @@ class DataInterface (object):
       # Set the modification time to the latest file that was used.
       atime = getatime(manifest)
       utime(manifest,(atime,mtime))
-      # Hack to force the saved mtime to not get truncated
-      dt = mtime - getmtime(manifest)
-      utime(manifest,(atime,mtime+dt))
 
     pbar.update(100)
 
