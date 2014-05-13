@@ -5,7 +5,96 @@
 # Current version of the manifest file format.
 # If this version doesn't match the existing manifest file, then the manifest
 # is re-generated.
-MANIFEST_VERSION="0~alpha1"
+MANIFEST_VERSION="0~alpha2"
+
+# Scan through all the given files, produce a manifest of all data available.
+def scan_files (files, opener, manifest):
+  from glob import glob
+  from os.path import exists, getatime, getmtime
+  from os import utime
+  import cPickle as pickle
+  from pygeode.progress import PBar
+  from collections import namedtuple, defaultdict
+
+  # Expand any globbing patterns
+  if isinstance(files,str): files = [files]
+  globbed_files=files
+  files = []
+  for g in globbed_files:
+    for f in glob(g):
+      files.append(f)
+
+  # If an old manifest already exists, start with that.
+  if exists(manifest):
+    with open(manifest,'r') as f:
+      version = pickle.load(f)
+      table = pickle.load(f)
+    mtime = getmtime(manifest)
+  if not exists(manifest) or version != MANIFEST_VERSION:
+    table = {}
+    mtime = 0
+
+  # Get existing objects (referenced by id)
+  # Allows us to recycle object references when making the manifest file,
+  # saving a ton of space.
+  unique_objects = {}
+  for entries in table.itervalues():
+    for var, axes, atts in entries:
+      for axis in axes:
+        unique_objects[id(axis)] = axis
+      unique_objects[id(atts)] = atts
+  # Define a little helper function to use this table
+  def get_object (obj):
+    # Look for an existing equivalent object to use.
+    for o in unique_objects.itervalues():
+      if obj == o: return o
+    # Existing object not found, add this one to the list and use it.
+    unique_objects[id(obj)] = obj
+    return obj
+
+  pbar = PBar (message = "Generating %s"%manifest)
+
+  modified_table = False
+
+  # Construct / add to the table
+  for i,f in enumerate(files):
+    pbar.update(i*100./len(files))
+    if f in table:
+      # File has changed since last time?
+      if int(getmtime(f)) > mtime:
+        # Remove existing info
+        del table[f]
+      else:
+        # Otherwise, we've already dealt with the file, so skip it.
+        continue
+    # Always use the latest modification time to represent the valid time of
+    # the whole table.
+    mtime = max(mtime,int(getmtime(f)))
+
+    # Record all variables from the file.
+    d = opener(f)
+    table[f] = []
+    for var in d:
+
+      axes = tuple(get_object(a) for a in var.axes)
+      atts = get_object(var.atts)
+      table[f].append((var.name, axes, atts))
+
+    modified_table = True
+
+
+  if modified_table:
+    with open(manifest,'w') as f:
+      pickle.dump(MANIFEST_VERSION, f)
+      pickle.dump(table, f)
+    # Set the modification time to the latest file that was used.
+    atime = getatime(manifest)
+    utime(manifest,(atime,mtime))
+
+  pbar.update(100)
+
+  return table
+
 
 # General interface
 class DataInterface (object):
@@ -329,4 +418,10 @@ def time2val (timeaxis):
   second = timeaxis.auxarrays.get('second',[0]*len(timeaxis))
   return tuple("%04d%02d%02d%02d%02d%02d"%(y,m,d,H,M,S) for y,m,d,H,M,S in zip(year,month,day,hour,minute,second))
 
+def my_opener(filename):
+  from pygeode.formats import fstd
+  return fstd.open(filename, raw_list=True)
+
+if __name__ == '__main__':
+  scan_files("/wrk6/neish/mn083/model/2009*", opener=my_opener, manifest="/wrk6/neish/mn083/model/nc_cache/mn083_manifest")
 
