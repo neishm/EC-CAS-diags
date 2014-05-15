@@ -156,6 +156,56 @@ try:
   xcol_enkf (model=experiment, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCO2 enkf', e])
+# XCO2B
+try:
+  xcol (models=[experiment,control,carbontracker], fieldname='CO2_background', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XCO2B', e])
+# Average column of stats
+try:
+  xcol_enkf (model=experiment, fieldname='CO2_background', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XCO2B enkf', e])
+# XCLA
+try:
+  xcol (models=[experiment,control,carbontracker], fieldname='CO2_bio', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XCLA', e])
+# Average column of stats
+try:
+  xcol_enkf (model=experiment, fieldname='CO2_bio', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XCLA enkf', e])
+# XCOC
+try:
+  xcol (models=[experiment,control,carbontracker], fieldname='CO2_ocean', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XCOC', e])
+# Average column of stats
+try:
+  xcol_enkf (model=experiment, fieldname='CO2_ocean', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XCOC enkf', e])
+# XCFF
+try:
+  xcol (models=[experiment,control,carbontracker], fieldname='CO2_fossil', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XCFF', e])
+# Average column of stats
+try:
+  xcol_enkf (model=experiment, fieldname='CO2_fossil', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XCFF enkf', e])
+# XCBB
+try:
+  xcol (models=[experiment,control,carbontracker], fieldname='CO2_fire', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XCBB', e])
+# Average column of stats
+try:
+  xcol_enkf (model=experiment, fieldname='CO2_fire', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XCBB enkf', e])
 
 # XCH4
 try:
