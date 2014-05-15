@@ -9,6 +9,10 @@ def eccas_opener (filename, latlon = [None,None]):
   # Convert to a dictionary (for referencing by variable name)
   data = dict((var.name,var) for var in data)
 
+  if filename.endswith("_chmstd"):
+    del data["GZ"]
+    del data["P0"]
+
   # Convert some standard quantities
   # (old_name, new_name, scale, offset, units)
   conversions = (
