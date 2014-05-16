@@ -140,13 +140,24 @@ def axis_types (domains):
   return types
 
 # Helper method - aggregate along a particular axis
-def aggregate_axis (domains, axis_type):
+# Inputs:
+#   domains: the set of original domains.
+#   axis_type: the type of axis to aggregate the domains over.
+# Input/Output:
+#   used_domains: set of original domains that are covered by the output
+#                 (i.e., ones that could be safely removed later).
+#                 These are appended to an existing set passed in.
+# Output: the domains that could be aggregated along to given axis.
+#         Domains without that axis type are ignored.
+def aggregate_axis (domains, axis_type, used_domains=None):
   bins = {}
+  touched_domains = set()
   for domain in domains:
-    domain_group = domain.without_axis(axis_type)
-    axis_bin = bins.setdefault(domain_group,{})
     axis = domain.get_axis(axis_type)
     if axis is not None:
+      touched_domains.add(domain)
+      domain_group = domain.without_axis(axis_type)
+      axis_bin = bins.setdefault(domain_group,{})
       axis_bin[id(axis)] = axis
   # For each domain group, aggregate the axes together
   # NOTE: assumes that all the axis segments are consistent
@@ -155,9 +166,7 @@ def aggregate_axis (domains, axis_type):
   output = set()
   new_axes = []  # To allow recycling of newly generated axis objects
   for domain_group, axis_bin in bins.iteritems():
-    if len(axis_bin) == 0:  # This domain group doesn't use this axis.
-      output.add(domain_group)
-    elif len(axis_bin) == 1:  # Only one axis piece (nothing to aggregate)
+    if len(axis_bin) == 1:  # Only one axis piece (nothing to aggregate)
       axis = axis_bin.values()[0]
       output.add(domain_group.with_axis(axis))
     # Otherwise, need to aggregate pieces together.
@@ -173,7 +182,11 @@ def aggregate_axis (domains, axis_type):
       else: new_axes.append(new_axis)
       output.add(domain_group.with_axis(new_axis))
 
-  return output
+  if used_domains is not None:
+    # Only consider a domain to be "used" if it was aggregated into a bigger
+    # domain, *not* if it was directly copied to the output.
+    used_domains.update(touched_domains - output)
+  return domains | output
 
 
 # Scan a file manifest, return all possible domains available.
@@ -187,9 +200,11 @@ def get_domains (manifest):
 
   #TODO
   from pygeode.timeaxis import StandardTime
-  return aggregate_axis(domains, StandardTime)
-
-
+  from pygeode.formats.fstd import Forecast
+  used_domains = set()
+  domains = aggregate_axis(domains, StandardTime, used_domains)
+  domains = aggregate_axis(domains, Forecast, used_domains)
+  return domains - used_domains
 
 # General interface
 class DataInterface (object):
