@@ -95,6 +95,101 @@ def scan_files (files, opener, manifest):
 
   return table
 
+# A list of variables (acts like an "axis" for the purpose of domain
+# aggregating).
+class Varlist (list): pass
+
+# A domain (essentially a tuple of axes, with no deep comparisons)
+class Domain (object):
+  def __init__ (self, axes):
+    self.axes = tuple(axes)
+  # A unique representation of the domain.
+  # Assumes there is only one object id for each possible axis object,
+  # to save time in comparisons.
+  def _id (self):
+    return tuple(frozenset(a) if isinstance(a,Varlist) else id(a) for a in self.axes)
+  def __cmp__ (self, other):
+    return cmp(self._id(), other._id())
+  def __hash__ (self):
+    return hash(self._id())
+  def __iter__ (self):
+    return iter(self.axes)
+  def __repr__ (self):
+#    return "("+",".join("%s:%s"%(a.__class__.__name__,len(a)) for a in self.axes)+")"
+    return "("+",".join(map(str,map(len,filter(None,self.axes))))+")"
+  # Mask out an axis type (convert it to a 'None' placeholder)
+  def without_axis (self, axis_type):
+    return Domain([None if isinstance(a,axis_type) else a for a in self.axes])
+  # Unmask an axis type (re-insert an axis object where the 'None' placeholder was
+  def with_axis (self, axis):
+    return Domain([axis if a is None else a for a in self.axes])
+  # Return the axis of the given type.
+  # Returns None if no such axis type is found.
+  def get_axis (self, axis_type):
+    for axis in self.axes:
+      if isinstance(axis,axis_type): return axis
+    return None
+
+
+# Helper method - return all types of axes in a set of domains
+def axis_types (domains):
+  types = set()
+  for domain in domains:
+    for axis in domain:
+      types.add(type(axis))
+  return types
+
+# Helper method - aggregate along a particular axis
+def aggregate_axis (domains, axis_type):
+  bins = {}
+  for domain in domains:
+    domain_group = domain.without_axis(axis_type)
+    axis_bin = bins.setdefault(domain_group,{})
+    axis = domain.get_axis(axis_type)
+    if axis is not None:
+      axis_bin[id(axis)] = axis
+  # For each domain group, aggregate the axes together
+  # NOTE: assumes that all the axis segments are consistent
+  # (same origin, units, etc.)
+  # Also, assumes the axis values should be monotonically increasing.
+  output = set()
+  new_axes = []  # To allow recycling of newly generated axis objects
+  for domain_group, axis_bin in bins.iteritems():
+    if len(axis_bin) == 0:  # This domain group doesn't use this axis.
+      output.add(domain_group)
+    elif len(axis_bin) == 1:  # Only one axis piece (nothing to aggregate)
+      axis = axis_bin.values()[0]
+      output.add(domain_group.with_axis(axis))
+    # Otherwise, need to aggregate pieces together.
+    else:
+      pieces = axis_bin.values()
+      values = [p.values for p in pieces]
+      values = reduce(set.union, values, set())
+      values = sorted(values)
+      new_axis = pieces[0].withnewvalues(values)
+      # Re-use an existing axis object instead, wherever possible
+      existing_ref = [a for a in new_axes if a == new_axis]
+      if len(existing_ref) > 0: new_axis = existing_ref[0]
+      else: new_axes.append(new_axis)
+      output.add(domain_group.with_axis(new_axis))
+
+  return output
+
+
+# Scan a file manifest, return all possible domains available.
+def get_domains (manifest):
+
+  # Start by adding all domain pieces to the list
+  domains = set()
+  for entries in manifest.itervalues():
+    for var, axes, atts in entries:
+      domains.add(Domain([Varlist([var])]+list(axes)))
+
+  #TODO
+  from pygeode.timeaxis import StandardTime
+  return aggregate_axis(domains, StandardTime)
+
+
 
 # General interface
 class DataInterface (object):
@@ -423,5 +518,7 @@ def my_opener(filename):
   return fstd.open(filename, raw_list=True)
 
 if __name__ == '__main__':
-  scan_files("/wrk6/neish/mn083/model/2009*", opener=my_opener, manifest="/wrk6/neish/mn083/model/nc_cache/mn083_manifest")
-
+  manifest = scan_files("/wrk6/neish/mn083/model/2009*", opener=my_opener, manifest="/wrk6/neish/mn083/model/nc_cache/mn083_manifest")
+  domains = get_domains(manifest)
+  print list(domains)
+  print len(domains)
