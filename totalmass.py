@@ -45,6 +45,7 @@ def totalmass (models, fieldname, pg_of, outdir):
 
     # Total mass of background field
     try:
+      raise KeyError  # Disable this block
       # Possibly change plot units (e.g. Pg CO2 -> Pg C)
       mass = model.get_data('totalmass',fieldname+'_background') / mw[fieldname] * mw[pg_of]
       mass = mass(time=(t0,t1))
