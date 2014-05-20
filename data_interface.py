@@ -14,7 +14,7 @@ class DataInterface (object):
   #    use at runtime.
   def __init__ (self, files, opener, cache):
     from glob import glob
-    from os.path import exists, getatime, getmtime
+    from os.path import exists, getatime, getmtime, normpath
     from os import utime
     import cPickle as pickle
     from pygeode.progress import PBar
@@ -29,6 +29,11 @@ class DataInterface (object):
         files.append(f)
 
     files = [f for f in files if not f.endswith("_000") and not f.endswith("_000h")]
+
+    # Strip out extra separators, etc. from the filenames.
+    # Otherwise, if the files are scanned a second time with different
+    # separators, it may cause the same file to be included more than once.
+    files = [normpath(f) for f in files]
 
     # Get the domain information from the files
     # Each entry is a tuple of (filename, varname, time_info, time, universal_time, spatial_axes, domain, atts)
