@@ -122,6 +122,8 @@ def plotBG(height, field1,field2=None, field3=None, names=['','',''], palette=No
 
     #Pass data to plotting function
     data = [d(year=year,month=month,day=day,hour=hour) for d in fields]
+    # Skip if any data is unavailable at this time
+    if any(len(d.time) == 0 for d in data): continue
     assert len(data[0].time) == 1
     fig=bargraph(data,height,names)
 
