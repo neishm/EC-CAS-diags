@@ -132,7 +132,7 @@ class Domain (object):
 
 
 # Helper method - return all types of axes in a set of domains
-def axis_types (domains):
+def get_axis_types (domains):
   types = set()
   for domain in domains:
     for axis in domain:
@@ -201,14 +201,15 @@ def get_domains (manifest):
     for var, axes, atts in entries:
       domains.add(Domain([Varlist([var])]+list(axes)))
 
-  #TODO
-  from pygeode.timeaxis import StandardTime
-  from pygeode.formats.fstd import Forecast
-  used_domains = set()
-  domains = aggregate_axis(domains, StandardTime, used_domains)
-  domains = aggregate_axis(domains, Forecast, used_domains)
-  domains = aggregate_axis(domains, Varlist, used_domains)
-  return domains - used_domains
+  axis_types = get_axis_types(domains)
+  while True:
+    used_domains = set()
+    for axis_type in axis_types:
+      domains = aggregate_axis(domains, axis_type, used_domains)
+    if len(used_domains) == 0: break  # Nothing aggregated
+    domains -= used_domains  # Remove smaller pieces that are aggregated.
+
+  return domains
 
 # General interface
 class DataInterface (object):
