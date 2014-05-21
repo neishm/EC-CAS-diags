@@ -172,10 +172,13 @@ def aggregate_axis (domains, axis_type, used_domains=None):
     # Otherwise, need to aggregate pieces together.
     else:
       pieces = axis_bin.values()
-      values = [p.values for p in pieces]
+      values = [p if isinstance(p,Varlist) else p.values for p in pieces]
       values = reduce(set.union, values, set())
       values = sorted(values)
-      new_axis = pieces[0].withnewvalues(values)
+      if isinstance(p,Varlist):
+        new_axis = Varlist(values)
+      else:
+        new_axis = p.withnewvalues(values)
       # Re-use an existing axis object instead, wherever possible
       existing_ref = [a for a in new_axes if a == new_axis]
       if len(existing_ref) > 0: new_axis = existing_ref[0]
@@ -204,6 +207,7 @@ def get_domains (manifest):
   used_domains = set()
   domains = aggregate_axis(domains, StandardTime, used_domains)
   domains = aggregate_axis(domains, Forecast, used_domains)
+  domains = aggregate_axis(domains, Varlist, used_domains)
   return domains - used_domains
 
 # General interface
