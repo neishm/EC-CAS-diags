@@ -5,7 +5,7 @@
 # Current version of the manifest file format.
 # If this version doesn't match the existing manifest file, then the manifest
 # is re-generated.
-MANIFEST_VERSION="0~alpha2"
+MANIFEST_VERSION="0~alpha3"
 
 # Scan through all the given files, produce a manifest of all data available.
 def scan_files (files, opener, manifest):
@@ -34,24 +34,6 @@ def scan_files (files, opener, manifest):
     table = {}
     mtime = 0
 
-  # Get existing objects (referenced by id)
-  # Allows us to recycle object references when making the manifest file,
-  # saving a ton of space.
-  unique_objects = {}
-  for entries in table.itervalues():
-    for var, axes, atts in entries:
-      for axis in axes:
-        unique_objects[id(axis)] = axis
-      unique_objects[id(atts)] = atts
-  # Define a little helper function to use this table
-  def get_object (obj):
-    # Look for an existing equivalent object to use.
-    for o in unique_objects.itervalues():
-      if obj == o: return o
-    # Existing object not found, add this one to the list and use it.
-    unique_objects[id(obj)] = obj
-    return obj
-
   pbar = PBar (message = "Generating %s"%manifest)
 
   modified_table = False
@@ -76,9 +58,8 @@ def scan_files (files, opener, manifest):
     table[f] = []
     for var in d:
 
-      axes = tuple(get_object(a) for a in var.axes)
-      atts = get_object(var.atts)
-      table[f].append((var.name, axes, atts))
+      axes = tuple(get_axis(a) for a in var.axes)
+      table[f].append((var.name, axes, var.atts))
 
     modified_table = True
 
@@ -98,6 +79,48 @@ def scan_files (files, opener, manifest):
 # A list of variables (acts like an "axis" for the purpose of domain
 # aggregating).
 class Varlist (list): pass
+
+# Helper function: recycle an existing axis object if possible.
+# This allows axes to be compared by their ids, and makes pickling them
+# more space-efficient.
+def get_axis (axis, _cache={}):
+  if isinstance(axis,Varlist):
+    values = tuple(axis)
+  else:
+    values = tuple(axis.values)
+  # Get a hash value that will be equal among axes that are equivalent
+  axis_hash = hash((type(axis),values))
+  # Get all axes that have this hash (most likely, only 1 match (or none))
+  bin = _cache.setdefault(axis_hash,[])
+  # Find one that is truly equivalent, otherwise add this new one to the cache.
+  try:
+    axis = bin[bin.index(axis)]
+  except ValueError:
+    bin.append(axis)
+  return axis
+
+# Helper function: apply a reduce operator on a set of axes
+def _axis_reduce (f, axes, start):
+  if isinstance(axes[0],Varlist):
+    values = axes
+    values = reduce(f, values, start)
+    new_axis = Varlist(sorted(values))
+  else:
+    values = [axis.values for axis in axes]
+    values = reduce(f, values, start)
+    new_axis = axes[0].withnewvalues(sorted(values))
+
+  return get_axis(new_axis)
+
+
+# Merge axes together
+def get_axis_union (axes):
+  return _axis_reduce (set.union, axes, set())
+
+# Find common values between axes
+def get_axis_intersection (axes):
+  return _axis_reduce (set.intersection, axes, set())
+
 
 # A domain (essentially a tuple of axes, with no deep comparisons)
 class Domain (object):
@@ -149,7 +172,7 @@ def get_axis_types (domains):
 #                 These are appended to an existing set passed in.
 # Output: the domains that could be aggregated along to given axis.
 #         Domains without that axis type are ignored.
-def aggregate_axis (domains, axis_type, used_domains=None):
+def aggregate_along_axis (domains, axis_type, used_domains=None):
   bins = {}
   touched_domains = set()
   for domain in domains:
@@ -164,25 +187,13 @@ def aggregate_axis (domains, axis_type, used_domains=None):
   # (same origin, units, etc.)
   # Also, assumes the axis values should be monotonically increasing.
   output = set()
-  new_axes = []  # To allow recycling of newly generated axis objects
   for domain_group, axis_bin in bins.iteritems():
     if len(axis_bin) == 1:  # Only one axis piece (nothing to aggregate)
       axis = axis_bin.values()[0]
       output.add(domain_group.with_axis(axis))
     # Otherwise, need to aggregate pieces together.
     else:
-      pieces = axis_bin.values()
-      values = [p if isinstance(p,Varlist) else p.values for p in pieces]
-      values = reduce(set.union, values, set())
-      values = sorted(values)
-      if isinstance(p,Varlist):
-        new_axis = Varlist(values)
-      else:
-        new_axis = p.withnewvalues(values)
-      # Re-use an existing axis object instead, wherever possible
-      existing_ref = [a for a in new_axes if a == new_axis]
-      if len(existing_ref) > 0: new_axis = existing_ref[0]
-      else: new_axes.append(new_axis)
+      new_axis = get_axis_union (axis_bin.values())
       output.add(domain_group.with_axis(new_axis))
 
   if used_domains is not None:
@@ -191,6 +202,32 @@ def aggregate_axis (domains, axis_type, used_domains=None):
     used_domains.update(touched_domains - output)
   return domains | output
 
+
+# Find a minimal set of domains that cover all available data
+def get_prime_domains (domains):
+  axis_types = get_axis_types(domains)
+  # This may be an iterative process, that may need to be repeated.
+  while True:
+    used_domains = set()
+    # Aggregate along one axis at a time.
+    for axis_type in axis_types:
+      domains = aggregate_along_axis(domains, axis_type, used_domains)
+    if len(used_domains) == 0: break  # Nothing aggregated
+    domains -= used_domains  # Remove smaller pieces that are aggregated.
+
+  return domains
+
+# Try merging multiple domains together.
+# For each pair of domains, look for an axis over which they could be
+# concatenated.  All other axes will be intersected between domains.
+def merge_domains (domains):
+  new_domains = set()
+  for d1 in domains:
+    for d2 in domains:
+      if d1 >= d2: continue  # Unique pairs only
+      axis_types = get_axis_types([d1,d2])
+      for merge_axis in axis_types:
+        pass #TODO
 
 # Scan a file manifest, return all possible domains available.
 def get_domains (manifest):
@@ -201,14 +238,9 @@ def get_domains (manifest):
     for var, axes, atts in entries:
       domains.add(Domain([Varlist([var])]+list(axes)))
 
-  axis_types = get_axis_types(domains)
-  while True:
-    used_domains = set()
-    for axis_type in axis_types:
-      domains = aggregate_axis(domains, axis_type, used_domains)
-    if len(used_domains) == 0: break  # Nothing aggregated
-    domains -= used_domains  # Remove smaller pieces that are aggregated.
-
+  # Reduce this to a minimal number of domains for data coverage
+  domains = get_prime_domains(domains)
+  #TODO
   return domains
 
 # General interface
