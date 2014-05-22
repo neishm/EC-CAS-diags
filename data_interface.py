@@ -83,7 +83,8 @@ class Varlist (list): pass
 # Helper function: recycle an existing axis object if possible.
 # This allows axes to be compared by their ids, and makes pickling them
 # more space-efficient.
-def get_axis (axis, _cache={}):
+def get_axis (axis, _hash_bins={}, _ids=[]):
+  if id(axis) in _ids: return axis  # Already have this exact object.
   if isinstance(axis,Varlist):
     values = tuple(axis)
   else:
@@ -91,35 +92,41 @@ def get_axis (axis, _cache={}):
   # Get a hash value that will be equal among axes that are equivalent
   axis_hash = hash((type(axis),values))
   # Get all axes that have this hash (most likely, only 1 match (or none))
-  bin = _cache.setdefault(axis_hash,[])
+  hash_bin = _hash_bins.setdefault(axis_hash,[])
   # Find one that is truly equivalent, otherwise add this new one to the cache.
   try:
-    axis = bin[bin.index(axis)]
+    axis = hash_bin[hash_bin.index(axis)]
   except ValueError:
-    bin.append(axis)
+    hash_bin.append(axis)
+  _ids.append(id(axis))  # Record this object id, in case we're passed it
+                         # in again.
   return axis
 
-# Helper function: apply a reduce operator on a set of axes
-def _axis_reduce (f, axes, start):
-  if isinstance(axes[0],Varlist):
-    values = axes
-    values = reduce(f, values, start)
-    new_axis = Varlist(sorted(values))
-  else:
-    values = [axis.values for axis in axes]
-    values = reduce(f, values, start)
-    new_axis = axes[0].withnewvalues(sorted(values))
+# Helper function: get the values of an axis
+def get_axis_values (axis):
+  if isinstance(axis,Varlist): return axis
+  else: return axis.values
 
-  return get_axis(new_axis)
+# Helper function: produce a new axis of the given type
+def create_axis (sample, values):
+  if isinstance(sample,Varlist):
+    axis = Varlist(values)
+  else:
+    axis = sample.withnewvalues(sorted(values))
+  return get_axis(axis)
 
 
 # Merge axes together
 def get_axis_union (axes):
-  return _axis_reduce (set.union, axes, set())
+  values = map(get_axis_values,axes)
+  values = reduce(set.union, values, set())
+  return create_axis (axes[0], values)
 
 # Find common values between axes
 def get_axis_intersection (axes):
-  return _axis_reduce (set.intersection, axes, set())
+  values = map(get_axis_values,axes)
+  values = reduce(set.intersection, values, set(values[0]))
+  return create_axis (axes[0], values)
 
 
 # A domain (essentially a tuple of axes, with no deep comparisons)
@@ -220,14 +227,46 @@ def get_prime_domains (domains):
 # Try merging multiple domains together.
 # For each pair of domains, look for an axis over which they could be
 # concatenated.  All other axes will be intersected between domains.
-def merge_domains (domains):
-  new_domains = set()
-  for d1 in domains:
-    for d2 in domains:
-      if d1 >= d2: continue  # Unique pairs only
-      axis_types = get_axis_types([d1,d2])
-      for merge_axis in axis_types:
-        pass #TODO
+def merge_domains (d1, d2):
+  domains = set()
+  axis_types = get_axis_types([d1,d2])
+  # We need at least one of the two domains to contain all the types
+  # (so we have a deterministic ordering of axes).
+  # Make the first domain the one with all axes.
+  #TODO: Check the relative order of the axes as well?
+  if get_axis_types([d1]) == axis_types:
+    pass  # Already done
+  elif get_axis_types([d2]) == axis_types:
+    d1, d2 = d2, d1  # Swap
+  else:
+    return set()  # Nothing can be done
+  # Give the domains the same axes (broadcasting to extra axes)
+  d2 = Domain([d2.get_axis(type(a)) or a for a in d1.axes])
+  for merge_axis_type in axis_types:
+    m1 = d1.get_axis(merge_axis_type)
+    m2 = d2.get_axis(merge_axis_type)
+    merge_axis = get_axis_union([m1,m2])
+    # Skip if we aren't actually getting a bigger axis.
+    if merge_axis is m1 or merge_axis is m2: continue
+    axes = [merge_axis if isinstance(a1,merge_axis_type) else get_axis_intersection([a1,a2]) for a1, a2 in zip(d1,d2)]
+    # Skip if we don't have any overlap
+    if any(len(a) == 0 for a in axes): continue
+    domains.add(Domain(axes))
+
+  return domains
+
+def merge_all_domains (domains):
+  merged_domains = set(domains)
+  while True:
+    new_merged_domains = set()
+    for d1 in domains:
+      for d2 in merged_domains:
+        new_merged_domains.update(merge_domains(d1,d2))
+    new_merged_domains -= merged_domains
+    if len(new_merged_domains) == 0: break  # Nothing new added
+    merged_domains.update(new_merged_domains)
+
+  return domains | merged_domains
 
 # Scan a file manifest, return all possible domains available.
 def get_domains (manifest):
@@ -240,7 +279,7 @@ def get_domains (manifest):
 
   # Reduce this to a minimal number of domains for data coverage
   domains = get_prime_domains(domains)
-  #TODO
+  domains = merge_all_domains(domains)
   return domains
 
 # General interface
@@ -572,5 +611,6 @@ def my_opener(filename):
 if __name__ == '__main__':
   manifest = scan_files("/wrk6/neish/mn083/model/2009*", opener=my_opener, manifest="/wrk6/neish/mn083/model/nc_cache/mn083_manifest")
   domains = get_domains(manifest)
-  print list(domains)
+  for d in domains:
+    print d, d.axes
   print len(domains)
