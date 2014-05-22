@@ -268,6 +268,22 @@ def merge_all_domains (domains):
 
   return domains | merged_domains
 
+# Remove any domains that are proper subsets of other domains
+# (Clean up anything that is not needed).
+def cleanup_subdomains (domains):
+  junk_domains = set()
+  for d1 in domains:
+    for d2 in domains:
+      if d1 is d2: continue
+      assert d1 != d2
+      if get_axis_types([d1]) != get_axis_types([d2]): continue
+      axis_types = get_axis_types([d2])
+      values1 = [get_axis_values(d1.get_axis(a)) for a in axis_types]
+      values2 = [get_axis_values(d2.get_axis(a)) for a in axis_types]
+      if all(set(v1) <= set(v2) for v1, v2 in zip(values1,values2)):
+        junk_domains.add(d1)
+  return domains - junk_domains
+
 # Scan a file manifest, return all possible domains available.
 def get_domains (manifest):
 
@@ -280,6 +296,7 @@ def get_domains (manifest):
   # Reduce this to a minimal number of domains for data coverage
   domains = get_prime_domains(domains)
   domains = merge_all_domains(domains)
+  domains = cleanup_subdomains(domains)
   return domains
 
 # General interface
