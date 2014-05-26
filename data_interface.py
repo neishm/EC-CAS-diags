@@ -35,6 +35,12 @@ def scan_files (files, opener, manifest):
     table = {}
     mtime = 0
 
+  # Add these existing objects to the get_axis() function
+  # (so it can re-use them)
+  for filename, entries in table.iteritems():
+    for varname, axes, atts in entries:
+      map(get_axis,axes)
+
   pbar = PBar (message = "Generating %s"%manifest)
 
   modified_table = False
@@ -111,7 +117,7 @@ def get_axis_values (axis):
 # Helper function: produce a new axis of the given type
 def create_axis (sample, values):
   if isinstance(sample,Varlist):
-    axis = Varlist(values)
+    axis = Varlist(sorted(values))
   else:
     axis = sample.withnewvalues(sorted(values))
   return get_axis(axis)
