@@ -5,13 +5,14 @@
 # Current version of the manifest file format.
 # If this version doesn't match the existing manifest file, then the manifest
 # is re-generated.
-MANIFEST_VERSION="0~alpha3"
+MANIFEST_VERSION="0~alpha4"
 
 # Scan through all the given files, produce a manifest of all data available.
 def scan_files (files, opener, manifest):
   from glob import glob
   from os.path import exists, getatime, getmtime
   from os import utime
+  import gzip
   import cPickle as pickle
   from pygeode.progress import PBar
   from collections import namedtuple, defaultdict
@@ -26,7 +27,7 @@ def scan_files (files, opener, manifest):
 
   # If an old manifest already exists, start with that.
   if exists(manifest):
-    with open(manifest,'r') as f:
+    with gzip.open(manifest,'r') as f:
       version = pickle.load(f)
       table = pickle.load(f)
     mtime = getmtime(manifest)
@@ -65,7 +66,7 @@ def scan_files (files, opener, manifest):
 
 
   if modified_table:
-    with open(manifest,'w') as f:
+    with gzip.open(manifest,'w') as f:
       pickle.dump(MANIFEST_VERSION, f)
       pickle.dump(table, f)
     # Set the modification time to the latest file that was used.
