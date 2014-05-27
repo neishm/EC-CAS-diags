@@ -9,21 +9,12 @@ MANIFEST_VERSION="0~alpha4"
 
 # Scan through all the given files, produce a manifest of all data available.
 def scan_files (files, opener, manifest):
-  from glob import glob
   from os.path import exists, getatime, getmtime
   from os import utime
   import gzip
   import cPickle as pickle
   from pygeode.progress import PBar
   from collections import namedtuple, defaultdict
-
-  # Expand any globbing patterns
-  if isinstance(files,str): files = [files]
-  globbed_files=files
-  files = []
-  for g in globbed_files:
-    for f in glob(g):
-      files.append(f)
 
   # If an old manifest already exists, start with that.
   if exists(manifest):
@@ -633,7 +624,8 @@ def my_opener(filename):
   return fstd.open(filename, raw_list=True)
 
 if __name__ == '__main__':
-  manifest = scan_files("/wrk6/neish/mn083/model/2009*", opener=my_opener, manifest="/wrk6/neish/mn083/model/nc_cache/mn083_manifest")
+  from glob import glob
+  manifest = scan_files(glob("/wrk6/neish/mn083/model/2009*"), opener=my_opener, manifest="/wrk6/neish/mn083/model/nc_cache/mn083_manifest")
   domains = get_domains(manifest)
   for d in domains:
     print d, d.axes
