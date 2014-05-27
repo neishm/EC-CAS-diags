@@ -5,7 +5,7 @@
 # Current version of the manifest file format.
 # If this version doesn't match the existing manifest file, then the manifest
 # is re-generated.
-MANIFEST_VERSION="0~alpha4"
+MANIFEST_VERSION="0~alpha5"
 
 # Scan through all the given files, produce a manifest of all data available.
 def scan_files (files, opener, manifest):
@@ -14,7 +14,6 @@ def scan_files (files, opener, manifest):
   import gzip
   import cPickle as pickle
   from pygeode.progress import PBar
-  from collections import namedtuple, defaultdict
 
   # If an old manifest already exists, start with that.
   if exists(manifest):
@@ -28,7 +27,7 @@ def scan_files (files, opener, manifest):
 
   # Add these existing objects to the get_axis() function
   # (so it can re-use them)
-  for filename, entries in table.iteritems():
+  for filename, (_opener,entries) in table.iteritems():
     for varname, axes, atts in entries:
       map(get_axis,axes)
 
@@ -52,12 +51,12 @@ def scan_files (files, opener, manifest):
     mtime = max(mtime,int(getmtime(f)))
 
     # Record all variables from the file.
-    d = opener(f)
-    table[f] = []
-    for var in d:
+    entries = []
+    table[f] = opener, entries
+    for var in opener(f):
 
       axes = tuple(get_axis(a) for a in var.axes)
-      table[f].append((var.name, axes, var.atts))
+      entries.append((var.name, axes, var.atts))
 
     modified_table = True
 
@@ -287,7 +286,7 @@ def get_domains (manifest):
 
   # Start by adding all domain pieces to the list
   domains = set()
-  for entries in manifest.itervalues():
+  for opener, entries in manifest.itervalues():
     for var, axes, atts in entries:
       domains.add(Domain([Varlist([var])]+list(axes)))
 
