@@ -296,6 +296,56 @@ def get_domains (manifest):
   domains = cleanup_subdomains(domains)
   return domains
 
+# Wrap a variable from a domain into a Var object
+from pygeode.var import Var
+class DataVar(Var):
+  @classmethod
+  def construct (cls, varname, axes, manifest):
+    import numpy as np
+    from pygeode.tools import common_dict
+
+    atts = []
+    table = []
+    # Scan through the manifest, collect a table of available axes.
+    for filename, (opener, entries) in manifest.iteritems():
+      for _varname, _axes, _atts in entries:
+        if _varname == varname:
+          atts.append(_atts)
+          table.append((filename, opener, _axes))
+    # Get subset of attributes that are consistent among all sources of data
+    atts = common_dict(atts)
+    # Reduce the axes to only those that the variable actually has
+    axis_types = set(type(a) for f,o,_axes in table for a in _axes)
+    axes = [a for a in axes if type(a) in axis_types]
+
+    obj = cls(axes, name=varname, dtype=float, atts=atts)
+    obj._table = table
+    return obj
+
+  #TODO
+  def getview (self, view, pbar):
+    import numpy as np
+    out = np.zeros(view.shape, dtype=self.dtype)
+    #TODO: retain var for next loop, in case there's multiple timesteps per file
+    for outtime, intime in enumerate(view.integer_indices[0]):
+      t,f = self._filemap[intime]
+      var = (v for v in self._opener(f) if v.name == self._name).next()
+      out[outtime,...] = view.modify_slice(0, [intime]).get(var)
+      pbar.update(outtime*100./len(view.integer_indices[0]))
+    pbar.update(100)
+    return out
+del Var
+
+
+# Wrap a domain as a dataset.
+# Requires the original file manifest, to determine where to get the data.
+def domain_as_dataset (domain, manifest):
+  from pygeode.dataset import Dataset
+  varlist = domain.get_axis(Varlist)
+  assert varlist is not None, "Unable to determine variable names"
+  axes = filter(None,domain.without_axis(Varlist).axes)
+  return Dataset([DataVar.construct(name, axes, manifest) for name in varlist])
+
 # General interface
 class DataInterface (object):
 
@@ -497,7 +547,7 @@ class DataInterface (object):
 
 # Wrap a table of data into a variable
 from pygeode.var import Var
-class DataVar(Var):
+class DataVar_old(Var):
   # Create a variable from a table
   @classmethod
   def construct (cls, name, table, domain, opener):
@@ -628,4 +678,5 @@ if __name__ == '__main__':
   domains = get_domains(manifest)
   for d in domains:
     print d, d.axes
+    print domain_as_dataset(d, manifest)
   print len(domains)
