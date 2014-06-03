@@ -11,7 +11,7 @@ def doplot (outfile, title, fields, colours, styles, labels):
 
   fig.savefig(outfile)
 
-def totalmass (models, fieldname, pg_of, outdir):
+def totalmass (models, fieldname, pg_of, outdir, normalize_air_mass=False):
   from os.path import exists
   from pygeode.var import Var
   from common import molecular_weight as mw
@@ -34,10 +34,17 @@ def totalmass (models, fieldname, pg_of, outdir):
   for i,model in enumerate(models):
     if model is None: continue
 
+    # Get model air mass, if we are normalizing the tracer mass.
+    if normalize_air_mass:
+      airmass = model.get_data('totalmass','air')(time=(t0,t1)).load()
+      airmass0 = float(airmass.values[0])
+
     # Total mass
     # Possibly change plot units (e.g. Pg CO2 -> Pg C)
     mass = model.get_data('totalmass',fieldname) / mw[fieldname] * mw[pg_of]
     mass = mass(time=(t0,t1))   # Limit time period to plot
+    if normalize_air_mass:
+      mass = mass / airmass * airmass0
     fields.append(mass)
     colours.append(totalmass_colours[i])
     styles.append('-')
@@ -49,6 +56,8 @@ def totalmass (models, fieldname, pg_of, outdir):
       # Possibly change plot units (e.g. Pg CO2 -> Pg C)
       mass = model.get_data('totalmass',fieldname+'_background') / mw[fieldname] * mw[pg_of]
       mass = mass(time=(t0,t1))
+      if normalize_air_mass:
+        mass = mass / airmass * airmass0
       fields.append(mass)
       colours.append(totalmass_colours[i])
       styles.append(':')
@@ -93,7 +102,7 @@ def totalmass (models, fieldname, pg_of, outdir):
       labels.append('integrated flux')
     except KeyError: pass  # No flux available
 
-  outfile = outdir + "/%s_totalmass_%s.png"%('_'.join(m.name for m in models if m is not None),fieldname)
+  outfile = outdir + "/%s_totalmass_%s%s.png"%('_'.join(m.name for m in models if m is not None),fieldname,'_normalized' if normalize_air_mass else '')
   if not exists(outfile):
     if pg_of == fieldname:
       title = "Total mass %s (Pg)"%fieldname
