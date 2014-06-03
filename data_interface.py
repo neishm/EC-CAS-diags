@@ -98,8 +98,9 @@ def get_axis (axis, _hash_bins={}, _ids=[]):
     axis = hash_bin[hash_bin.index(axis)]
   except ValueError:
     hash_bin.append(axis)
-  _ids.append(id(axis))  # Record this object id, in case we're passed it
-                         # in again.
+    _ids.append(id(axis))  # Record this object id, in case we're passed it
+                           # in again.
+
   return axis
 
 # Helper function: produce a new axis of the given type
