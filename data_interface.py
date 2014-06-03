@@ -75,17 +75,20 @@ def scan_files (files, opener, manifest):
 
 # A list of variables (acts like an "axis" for the purpose of domain
 # aggregating).
-class Varlist (list): pass
+class Varlist (object):
+  def __init__ (self, varnames):
+    self.values = tuple(varnames)
+  def __iter__ (self):  return iter(self.values)
+  def __len__ (self): return len(self.values)
+  def __repr__ (self): return "<%s>"%self.__class__.__name__
+
 
 # Helper function: recycle an existing axis object if possible.
 # This allows axes to be compared by their ids, and makes pickling them
 # more space-efficient.
 def get_axis (axis, _hash_bins={}, _ids=[]):
   if id(axis) in _ids: return axis  # Already have this exact object.
-  if isinstance(axis,Varlist):
-    values = tuple(axis)
-  else:
-    values = tuple(axis.values)
+  values = tuple(axis.values)
   # Get a hash value that will be equal among axes that are equivalent
   axis_hash = hash((type(axis),values))
   # Get all axes that have this hash (most likely, only 1 match (or none))
@@ -99,11 +102,6 @@ def get_axis (axis, _hash_bins={}, _ids=[]):
                          # in again.
   return axis
 
-# Helper function: get the values of an axis
-def get_axis_values (axis):
-  if isinstance(axis,Varlist): return axis
-  else: return axis.values
-
 # Helper function: produce a new axis of the given type
 def create_axis (sample, values):
   if isinstance(sample,Varlist):
@@ -115,13 +113,13 @@ def create_axis (sample, values):
 
 # Merge axes together
 def get_axis_union (axes):
-  values = map(get_axis_values,axes)
+  values = [axis.values for axis in axes]
   values = reduce(set.union, values, set())
   return create_axis (axes[0], values)
 
 # Find common values between axes
 def get_axis_intersection (axes):
-  values = map(get_axis_values,axes)
+  values = [axis.values for axis in axes]
   values = reduce(set.intersection, values, set(values[0]))
   return create_axis (axes[0], values)
 
@@ -134,7 +132,7 @@ class Domain (object):
   # Assumes there is only one object id for each possible axis object,
   # to save time in comparisons.
   def _id (self):
-    return tuple(frozenset(a) if isinstance(a,Varlist) else id(a) for a in self.axes)
+    return tuple(frozenset(a.values) if isinstance(a,Varlist) else id(a) for a in self.axes)
   def __cmp__ (self, other):
     return cmp(self._id(), other._id())
   def __hash__ (self):
@@ -275,8 +273,8 @@ def cleanup_subdomains (domains):
       assert d1 != d2
       if get_axis_types([d1]) != get_axis_types([d2]): continue
       axis_types = get_axis_types([d2])
-      values1 = [get_axis_values(d1.get_axis(a)) for a in axis_types]
-      values2 = [get_axis_values(d2.get_axis(a)) for a in axis_types]
+      values1 = [d1.get_axis(a).values for a in axis_types]
+      values2 = [d2.get_axis(a).values for a in axis_types]
       if all(set(v1) <= set(v2) for v1, v2 in zip(values1,values2)):
         junk_domains.add(d1)
   return domains - junk_domains
