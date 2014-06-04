@@ -303,6 +303,10 @@ class DataVar(Var):
     import numpy as np
     from pygeode.tools import common_dict
 
+    # For all axes in the manifest, get their values as sets
+    # (for faster checking of regions in getview)
+    axis_values = {}
+
     atts = []
     table = []
     # Scan through the manifest, collect a table of available axes.
@@ -311,6 +315,9 @@ class DataVar(Var):
         if _varname == varname:
           atts.append(_atts)
           table.append((filename, opener, _axes))
+          for _axis in _axes:
+            if id(_axis) not in axis_values:
+              axis_values[id(_axis)] = frozenset(_axis.values)
     # Get subset of attributes that are consistent among all sources of data
     atts = common_dict(atts)
     # Reduce the axes to only those that the variable actually has
@@ -319,20 +326,38 @@ class DataVar(Var):
 
     obj = cls(axes, name=varname, dtype=float, atts=atts)
     obj._table = table
+    obj._axis_values = axis_values
+    obj._varname = varname  # In case the object gets renamed.
     return obj
 
-  #TODO
   def getview (self, view, pbar):
     import numpy as np
+    from pygeode.view import View
     out = np.zeros(view.shape, dtype=self.dtype)
-    #TODO: retain var for next loop, in case there's multiple timesteps per file
-    for outtime, intime in enumerate(view.integer_indices[0]):
-      t,f = self._filemap[intime]
-      var = (v for v in self._opener(f) if v.name == self._name).next()
-      out[outtime,...] = view.modify_slice(0, [intime]).get(var)
-      pbar.update(outtime*100./len(view.integer_indices[0]))
-    pbar.update(100)
+    clipped_view = view.clip()
+    axis_values = [frozenset(a.values) for a in clipped_view.axes]
+    lookup = {}  # Memoize the set intersections
+    # Loop over all available files.
+    for filename, opener, axes in self._table:
+      # Check if there's any overlap between what we want and what's in the file
+      overlap = True
+      for a1, a2, v2 in zip(axes, clipped_view.axes, axis_values):
+        assert type(a1) == type(a2), "Internal error"
+        v1 = self._axis_values[id(a1)]
+        if v1 not in lookup:
+          lookup[v1] = len(v1 & v2)
+        if lookup[v1] == 0: overlap = False
+      if not overlap: continue
+      var = (v for v in opener(filename) if v.name == self._varname).next()
+      v = view.map_to(axes)
+      chunk = v.get(var)
+      outsl = view.map_to(view.clip()).slices
+      # Note: this may break if there is more than one axis with integer indices.
+      assert len([sl for sl in outsl if isinstance(sl,tuple)]) <= 1, "Unhandled advanced indexing case."
+      out[outsl] = chunk
+
     return out
+
 del Var
 
 
@@ -677,5 +702,8 @@ if __name__ == '__main__':
   domains = get_domains(manifest)
   for d in domains:
     print d, d.axes
-    print domain_as_dataset(d, manifest)
+    dataset = domain_as_dataset(d, manifest)
+    print dataset
+    if 'CO2' in dataset and len(dataset.forecast) > 1:
+      print dataset.CO2(i_time=0).mean()
   print len(domains)
