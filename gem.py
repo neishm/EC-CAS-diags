@@ -121,7 +121,7 @@ def eccas_opener (filename, latlon = [None,None]):
           current = set(zip(current.values, current.A, current.B))
           zeta_atts = var.getaxis(fstd.LogHybrid).atts
           zeta.update(current)
-      zeta = sorted(zeta, reverse=True)
+      zeta = sorted(zeta)
       zeta, A, B = zip(*zeta)
       zeta = fstd.LogHybrid(values=zeta, A=A, B=B, atts=zeta_atts)
       A = zeta.auxasvar('A')
