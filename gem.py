@@ -163,14 +163,14 @@ def eccas_opener (filename, latlon = [None,None]):
 
 
   if P is not None:
-    P.units = 'hPa'
+    P.atts['units'] = 'hPa'
     data['air_pressure'] = P
     # Define air mass on the same domain as 3D pressure
     from common import Constant_Var
     data['air'] = Constant_Var(axes=P.axes, value=1.0E6)  # ppm
 
   if dP is not None:
-    dP.units = 'hPa'
+    dP.atts['units'] = 'hPa'
     data['dp'] = dP  #TODO: better name?
 
   # Grid cell areas

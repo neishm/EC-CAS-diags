@@ -83,7 +83,7 @@ def ct_opener (filename):
     dB = Var([data['air_pressure'].level], values=dB)
     dp = dA/100. + dB * data['surface_pressure']
     dp = dp.transpose('time','zaxis','lat','lon')
-    dp.units = 'hPa'
+    dp.atts['units'] = 'hPa'
     data['dp'] = dp
 
     # Air mixing ratio (constant)
