@@ -19,6 +19,7 @@ def eccas_opener (filename, latlon = [None,None]):
     ('GZ', 'geopotential_height', 10, None, 'm'),
     ('P0', 'surface_pressure', None, None, 'hPa'),
     ('TT', 'air_temperature', None, None, 'K'),
+    ('HU', 'specific_humidity', None, None, 'kg kg-1'),
   )
 
   # EC-CAS specific conversions:
@@ -58,6 +59,12 @@ def eccas_opener (filename, latlon = [None,None]):
       if offset is not None: var += offset
       if units is not None: var.atts['units'] = units
       data[new_name] = var
+
+  # Add a water tracer, if we have humidity
+  if 'specific_humidity' in data:
+    q = data['specific_humidity']
+    assert q.atts['units'] == 'kg kg-1'
+    data['H2O'] = q / mw['H2O'] * mw['air'] * 1E6
 
   # Force the flux fields to be on the same lat/lon as the 3D model fields.
   # Works around a bug in our flux files, which don't have the exact same
