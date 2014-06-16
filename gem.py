@@ -65,6 +65,7 @@ def eccas_opener (filename, latlon = [None,None]):
     q = data['specific_humidity']
     assert q.atts['units'] == 'kg kg-1'
     data['H2O'] = q / mw['H2O'] * mw['air'] * 1E6
+    data['H2O'].atts['units'] = 'ppm'
 
   # Force the flux fields to be on the same lat/lon as the 3D model fields.
   # Works around a bug in our flux files, which don't have the exact same
