@@ -29,7 +29,7 @@ def scan_files (files, opener, manifest):
   # (so it can re-use them)
   for filename, (_opener,entries) in table.iteritems():
     for varname, axes, atts in entries:
-      map(DataInterface._lookup_axis,axes)
+      map(_lookup_axis,axes)
 
   pbar = PBar (message = "Generating %s"%manifest)
 
@@ -55,7 +55,7 @@ def scan_files (files, opener, manifest):
     table[f] = opener, entries
     for var in opener(f):
 
-      axes = tuple(DataInterface._lookup_axis(a) for a in var.axes)
+      axes = tuple(_lookup_axis(a) for a in var.axes)
       entries.append((var.name, axes, var.atts))
 
     modified_table = True
@@ -83,39 +83,38 @@ class Varlist (object):
   def __repr__ (self): return "<%s>"%self.__class__.__name__
 
 
+# Helper function: recycle an existing axis object if possible.
+# This allows axes to be compared by their ids, and makes pickling them
+# more space-efficient.
+def _lookup_axis (axis, _hash_bins={}, _ids=[]):
+  if id(axis) in _ids: return axis  # Already have this exact object.
+  values = tuple(axis.values)
+  # Get a hash value that will be equal among axes that are equivalent
+  axis_hash = hash((type(axis),values))
+  # Get all axes that have this hash (most likely, only 1 match (or none))
+  hash_bin = _hash_bins.setdefault(axis_hash,[])
+  # Find one that is truly equivalent, otherwise add this new one to the cache.
+  try:
+    axis = hash_bin[hash_bin.index(axis)]
+  except ValueError:
+    hash_bin.append(axis)
+    _ids.append(id(axis))  # Record this object id, in case we're passed it
+                           # in again.
+
+  return axis
+
 # A generic data interface.
 # Essentially, a collection of datasets, with some convenience methods.
 class DataInterface (object):
 
-  # Helper function: recycle an existing axis object if possible.
-  # This allows axes to be compared by their ids, and makes pickling them
-  # more space-efficient.
-  @staticmethod
-  def _lookup_axis (axis, _hash_bins={}, _ids=[]):
-    if id(axis) in _ids: return axis  # Already have this exact object.
-    values = tuple(axis.values)
-    # Get a hash value that will be equal among axes that are equivalent
-    axis_hash = hash((type(axis),values))
-    # Get all axes that have this hash (most likely, only 1 match (or none))
-    hash_bin = _hash_bins.setdefault(axis_hash,[])
-    # Find one that is truly equivalent, otherwise add this new one to the cache.
-    try:
-      axis = hash_bin[hash_bin.index(axis)]
-    except ValueError:
-      hash_bin.append(axis)
-      _ids.append(id(axis))  # Record this object id, in case we're passed it
-                             # in again.
-
-    return axis
-
   # Helper function: produce a new axis of the given type
-  @classmethod
-  def _create_axis (cls, sample, values):
+  @staticmethod
+  def _create_axis (sample, values):
     if isinstance(sample,Varlist):
       axis = Varlist(sorted(values))
     else:
       axis = sample.withnewvalues(sorted(values))
-    return cls._lookup_axis(axis)
+    return _lookup_axis(axis)
 
 
   # Merge axes together
