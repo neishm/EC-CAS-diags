@@ -71,7 +71,10 @@ def scan_files (files, opener, manifest):
 
   pbar.update(100)
 
-  return table
+  # Limit the results to the files that were requested.
+  # Ignore the rest of the manifest.
+
+  return dict((f,table[f]) for f in files)
 
 # A list of variables (acts like an "axis" for the purpose of domain
 # aggregating).
@@ -444,7 +447,7 @@ class DataVar(Var):
           lookup[v1] = len(v1 & v2)
         if lookup[v1] == 0: overlap = False
       if not overlap: continue
-      var = (v for v in opener(filename) if v.name == self._varname).next()
+      var = [v for v in opener(filename) if v.name == self._varname][0]
       v = view.map_to(axes)
       chunk = v.get(var)
       outsl = view.map_to(view.clip()).slices
