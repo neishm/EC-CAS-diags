@@ -433,6 +433,7 @@ class DataVar(Var):
     import numpy as np
     from pygeode.view import View
     out = np.zeros(view.shape, dtype=self.dtype)
+    out[()] = float('nan')
     clipped_view = view.clip()
     axis_values = [frozenset(a.values) for a in clipped_view.axes]
     lookup = {}  # Memoize the set intersections
@@ -450,7 +451,7 @@ class DataVar(Var):
       var = [v for v in opener(filename) if v.name == self._varname][0]
       v = view.map_to(axes)
       chunk = v.get(var)
-      outsl = view.map_to(view.clip()).slices
+      outsl = v.map_to(clipped_view).slices
       # Note: this may break if there is more than one axis with integer indices.
       assert len([sl for sl in outsl if isinstance(sl,tuple)]) <= 1, "Unhandled advanced indexing case."
       out[outsl] = chunk
@@ -471,5 +472,5 @@ if __name__ == '__main__':
   for dataset in data.datasets:
     print dataset
     if 'CO2' in dataset and len(dataset.forecast) > 1:
-      print dataset.CO2(i_time=0).mean()
+      print dataset.CO2(i_time=0,lat=10).mean()
   print len(data.datasets)
