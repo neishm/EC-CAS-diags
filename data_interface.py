@@ -5,7 +5,7 @@
 # Current version of the manifest file format.
 # If this version doesn't match the existing manifest file, then the manifest
 # is re-generated.
-MANIFEST_VERSION="0~alpha5"
+MANIFEST_VERSION="0~alpha6"
 
 # Scan through all the given files, produce a manifest of all data available.
 def scan_files (files, opener, manifest):
@@ -119,20 +119,54 @@ class DataInterface (object):
       axis = sample.withnewvalues(sorted(values))
     return _lookup_axis(axis)
 
+  # Convert an axis to tuples of values and auxiliary arrays
+  @staticmethod
+  def _flatten_axis (axis):
+    if isinstance(axis,Varlist):
+      auxarrays = []
+    else:
+      auxarrays = [[(name,v) for v in axis.auxarrays[name]] for name in sorted(axis.auxarrays.keys())]
+    assert all(len(aux) == len(axis.values) for aux in auxarrays)
+    return zip(axis.values, *auxarrays)
+
+  # Convert some flattened coordinates back into an axis
+  @staticmethod
+  def _unflatten_axis (sample, values):
+    import numpy as np
+    values = sorted(values)
+    x = zip(*values)
+    # Special case: empty axis
+    if len(x) == 0:
+      values = []
+    else:
+      values = x[0]
+    auxarrays = {}
+    for aux in x[1:]:
+      name, arr = zip(*aux)
+      auxarrays[name[0]] = np.array(arr)
+    if isinstance(sample,Varlist):
+      axis = Varlist(values)
+    else:
+      axis = sample.withnewvalues(values)
+      # Only update the auxarrays if we have something to put
+      # For empty axes, we don't want to erase the (empty) auxarrays already
+      # created e.g. for the time axis.
+      if len(auxarrays) > 0: axis.auxarrays = auxarrays
+    return _lookup_axis(axis)
 
   # Merge axes together
   @classmethod
   def _get_axis_union (cls, axes):
-    values = [axis.values for axis in axes]
+    values = map(cls._flatten_axis, axes)
     values = reduce(set.union, values, set())
-    return cls._create_axis (axes[0], values)
+    return cls._unflatten_axis (axes[0], values)
 
   # Find common values between axes
   @classmethod
   def _get_axis_intersection (cls, axes):
-    values = [axis.values for axis in axes]
+    values = map(cls._flatten_axis, axes)
     values = reduce(set.intersection, values, set(values[0]))
-    return cls._create_axis (axes[0], values)
+    return cls._unflatten_axis (axes[0], values)
 
 
   # A domain (essentially a tuple of axes, with no deep comparisons)
