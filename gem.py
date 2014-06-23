@@ -263,6 +263,7 @@ class GEM_Data (object):
   def __init__ (self, experiment_dir, flux_dir, name, title, tmpdir=None):
     from cache import Cache
     from data_interface import DataInterface
+    from glob import glob
 
     indir = experiment_dir
 
@@ -277,16 +278,17 @@ class GEM_Data (object):
     # Model output
     ##############################
 
-    files.append(indir+"/[0-9]*_[0-9]*")
-    files.append(indir+"/km[0-9]*_[0-9]*")
-    files.append(indir+"/dm[0-9]*_[0-9]*")
-    files.append(indir+"/pm[0-9]*_[0-9]*")
-    files.append(indir+"/k[0-9]*_[0-9]*")
-    files.append(indir+"/d[0-9]*_[0-9]*")
-    files.append(indir+"/p[0-9]*_[0-9]*")
+    files.extend(glob(indir+"/[0-9]*_[0-9]*"))
+    files.extend(glob(indir+"/km[0-9]*_[0-9]*"))
+    files.extend(glob(indir+"/dm[0-9]*_[0-9]*"))
+    files.extend(glob(indir+"/pm[0-9]*_[0-9]*"))
+    files.extend(glob(indir+"/k[0-9]*_[0-9]*"))
+    files.extend(glob(indir+"/d[0-9]*_[0-9]*"))
+    files.extend(glob(indir+"/p[0-9]*_[0-9]*"))
+    # Omit 0h forecasts
+    files = [f for f in files if not f.endswith('_000') and not f.endswith('_000h')]
     # Hack to read at least one model file, just to get the lat/lon
     # (fixes area emissions lat/lon mismatch with current emissions)
-    from glob import glob
     eccas_opener(glob(indir+"/*[0-9]*_[0-9]*")[0])
 
     ##############################
@@ -294,9 +296,10 @@ class GEM_Data (object):
     ##############################
 
     if flux_dir is not None:
-      files.append(flux_dir+"/area_2009??????")
+      files.extend((flux_dir+"/area_2009??????"))
 
-    self.data = DataInterface(files, opener=eccas_opener, cache=cache)
+    manifest = cache.full_path("manifest", writeable=True)
+    self.data = DataInterface.from_files(files, opener=eccas_opener, manifest=manifest)
     self.cache = cache
 
 

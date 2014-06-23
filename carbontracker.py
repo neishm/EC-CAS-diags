@@ -190,6 +190,7 @@ class CarbonTracker_Data (object):
 
     from cache import Cache
     from data_interface import DataInterface
+    from glob import glob
 
     # Higher-level information about the data
     self.name = 'CT2010'
@@ -199,10 +200,11 @@ class CarbonTracker_Data (object):
     fallback_dirs = [tmpdir] if tmpdir is not None else []
     self.cache = Cache (dir=cachedir, fallback_dirs=fallback_dirs, global_prefix=self.name+'_')
 
-    molefractions = "/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc"
-    fluxes = "/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc"
+    molefractions = glob("/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc")
+    fluxes = glob("/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc")
 
-    self.data = DataInterface ([molefractions,fluxes], opener=ct_opener, cache=self.cache)
+    manifest = self.cache.full_path("manifest", writeable=True)
+    self.data = DataInterface.from_files (molefractions+fluxes, opener=ct_opener, manifest=manifest)
 
 
   # Data interface
