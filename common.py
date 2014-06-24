@@ -270,3 +270,40 @@ def station_axis_load_hook (dataset):
 
   return var
 
+
+# Flatten out a variable that has both a date-of-origin axis and a forecast
+# axis.  Combine into a date-of-validity axis.
+from pygeode.var import Var
+class SquashForecasts(Var):
+  def __init__ (self, var):
+    from pygeode.var import Var, copy_meta
+    origin_hours = var.time.reltime(units='hours').reshape([-1,1])
+    forecast_hours = var.forecast.values.reshape([1,-1])
+    validity_hours = origin_hours + forecast_hours
+    # Construct new time axis
+    time = type(var.time)(validity_hours.flatten(), units='hours', startdate = var.time.startdate)
+    # Re-construct in the original units
+    time = type(var.time)(startdate=var.time.startdate, units=var.time.units, **time.auxarrays)
+    axes = [time]+[a for a in var.axes if a is not var.time and a is not var.forecast]
+    Var.__init__(self, axes, dtype=var.dtype)
+    copy_meta(var, self)
+    self._var = var
+
+  def getview (self, view, pbar):
+    import numpy as np
+    out = np.empty(view.shape, dtype=self.dtype)
+    nt = len(self._var.time)
+    nf = len(self._var.forecast)
+    t = self.whichaxis('time')
+    v = view.map_to(self._var, strict=False)
+    for out_itime, in_itime in enumerate(view.integer_indices[t]):
+      out[out_itime,...] = v.modify_slice(0,[in_itime//nf]).modify_slice(1,[in_itime%nf]).get(self._var)
+      pbar.update(out_itime*100./len(view.integer_indices[t]))
+    pbar.update(100)
+    return out
+
+del Var
+def squash_forecasts(var):
+  if not var.hasaxis('forecast'): return var
+  return SquashForecasts(var)
+
