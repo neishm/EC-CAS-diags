@@ -1,15 +1,20 @@
 # Opener for EC-CAS data
-def eccas_opener (filename, latlon = [None,None]):
+def eccas_opener (filename):
+  from pygeode.formats import fstd
+  return fstd.open(filename, raw_list=True)
+
+
+def eccas_products (dataset, chmmean=False, chmstd=False):
   from pygeode.formats import fstd
   from pygeode.ufunc import exp, log
   from pygeode.var import concat, Var
   from pygeode.axis import ZAxis
-  data = fstd.open(filename, squash_forecasts=True, raw_list=True)
 
   # Convert to a dictionary (for referencing by variable name)
-  data = dict((var.name,var) for var in data)
+  data = dict((var.name,var) for var in dataset)
 
-  if filename.endswith("_chmstd"):
+  # Temporarily blacklist GZ and P0 from ensemble spread files.
+  if chmstd:
     del data["GZ"]
     del data["P0"]
 
@@ -28,8 +33,8 @@ def eccas_opener (filename, latlon = [None,None]):
   convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
   convert_CO2_flux = mw['CO2'] / mw['C']
   suffix = ""
-  if filename.endswith("_chmmean"): suffix = "_ensemblemean"
-  if filename.endswith("_chmstd"): suffix = "_ensemblespread"
+  if chmmean: suffix = "_ensemblemean"
+  if chmstd: suffix = "_ensemblespread"
   conversions += (
     ('ECO2', 'CO2_flux', convert_CO2_flux, None, 'g s-1'),
     ('ECBB', 'CO2_fire_flux', convert_CO2_flux, None, 'g s-1'),
@@ -66,21 +71,6 @@ def eccas_opener (filename, latlon = [None,None]):
     assert q.atts['units'] == 'kg kg-1'
     data['H2O'] = q / mw['H2O'] * mw['air'] * 1E6
     data['H2O'].atts['units'] = 'ppm'
-
-  # Force the flux fields to be on the same lat/lon as the 3D model fields.
-  # Works around a bug in our flux files, which don't have the exact same
-  # '^^', '>>' fields.
-  # Abuse keyword argument default object to store lat/lon information from
-  # the model for future use
-  if 'CO2' in data:
-    latlon[0] = data['CO2'].lat
-    latlon[1] = data['CO2'].lon
-
-  if latlon != [None,None]:
-    lat, lon = latlon
-    for fluxname in data:
-      if not fluxname.endswith('_flux'): continue
-      data[fluxname] = data[fluxname].replace_axes(lat=lat, lon=lon)
 
   # Compute a pressure field.
   # Also, compute a dp field (vertical change in pressure within a gridbox).
@@ -201,9 +191,18 @@ def eccas_opener (filename, latlon = [None,None]):
   # Convert to a list
   data = list(data.values())
 
+  # Remove the forecast axis before returning the data
+  # (not needed for any current diagnostics).
+  from common import squash_forecasts
+  data = map(squash_forecasts,data)
+
   return data
 
-
+# Shortcuts functions with chmmean/chmstd flags set
+def eccas_chmmean_products (dataset):
+  return eccas_products(dataset, chmmean=True)
+def eccas_chmstd_products (dataset):
+  return eccas_products(dataset, chmstd=True)
 
 # Convert zonal mean data (on height)
 def to_gph (var, z):
@@ -299,7 +298,39 @@ class GEM_Data (object):
       files.extend((flux_dir+"/area_2009??????"))
 
     manifest = cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files(files, opener=eccas_opener, manifest=manifest)
+
+    # Ensemble mean data
+    chmmean_files = [f for f in files if f.endswith('_chmmean')]
+    chmmean_data = DataInterface.from_files(chmmean_files, opener=eccas_opener, manifest=manifest)
+    # Apply the conversions & transformations
+    chmmean_data = DataInterface(map(eccas_chmmean_products,chmmean_data))
+
+    # Ensemble spread data
+    chmstd_files = [f for f in files if f.endswith('_chmstd')]
+    chmstd_data = DataInterface.from_files(chmstd_files, opener=eccas_opener, manifest=manifest)
+    # Apply the conversions & transformations
+    chmstd_data = DataInterface(map(eccas_chmstd_products,chmstd_data))
+
+    # Area emissions
+    flux_files = [f for f in files if '/area_' in f]
+    flux_data = DataInterface.from_files(flux_files, opener=eccas_opener, manifest=manifest)
+    # Apply the conversions & transformations
+    flux_data = DataInterface(map(eccas_products,flux_data))
+
+    # Forward model data
+    forward_files = sorted(set(files)-set(chmmean_files)-set(chmstd_files)-set(flux_files))
+    forward_data = DataInterface.from_files(forward_files, opener=eccas_opener, manifest=manifest)
+    # Apply the conversions & transformations
+    forward_data = DataInterface(map(eccas_products,forward_data))
+
+    # Fix the area emissions data, to have the proper lat/lon
+    lat = forward_data.datasets[0].lat
+    lon = forward_data.datasets[0].lon
+    flux_data = DataInterface(d.replace_axes(lat=lat,lon=lon) for d in flux_data)
+
+    # Combine all datasets into a single unit
+    self.data = DataInterface(chmmean_data.datasets+chmstd_data.datasets+flux_data.datasets+forward_data.datasets)
+
     self.cache = cache
 
 
