@@ -359,7 +359,8 @@ class DataInterface (object):
 
   # Generic initializer - takes a list of Datasets, stores it.
   def __init__ (self, datasets):
-    self.datasets = tuple(datasets)
+    from pygeode.dataset import asdataset
+    self.datasets = tuple(map(asdataset,datasets))
 
   # Create a dataset from a set of files and an opener
   @classmethod
@@ -368,6 +369,10 @@ class DataInterface (object):
     domains = cls._get_domains(manifest)
     datasets = [cls._domain_as_dataset(d,manifest) for d in domains]
     return cls(datasets)
+
+  # Allow the underlying datasets to be iterated over
+  def __iter__ (self):
+    return iter(self.datasets)
 
 #TODO -----
 
