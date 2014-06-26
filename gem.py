@@ -95,7 +95,7 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
       A = eta.auxasvar('A')
       B = eta.auxasvar('B')
       P = A + B * Ps * 100
-      P = P.transpose('time','eta','lat','lon')
+      P = P.transpose('time','forecast','eta','lat','lon')
       P /= 100 # hPa
 
       # dP
@@ -104,8 +104,8 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
       # because eta axes require explict A/B arrays (which concat doesn't see)
       from pygeode.axis import ZAxis
       PP = P.replace_axes(eta=ZAxis(P.eta.values))
-      P_k = concat(PP.slice[:,0,:,:].replace_axes(zaxis=ZAxis([-1.])), PP.slice[:,:-1,:,:]).replace_axes(zaxis=PP.zaxis)
-      P_kp1 = concat(PP.slice[:,1:,:,:], PP.slice[:,-1,:,:].replace_axes(zaxis=ZAxis([2.]))).replace_axes(zaxis=PP.zaxis)
+      P_k = concat(PP.slice[:,:,0,:,:].replace_axes(zaxis=ZAxis([-1.])), PP.slice[:,:,:-1,:,:]).replace_axes(zaxis=PP.zaxis)
+      P_kp1 = concat(PP.slice[:,:,1:,:,:], PP.slice[:,:,-1,:,:].replace_axes(zaxis=ZAxis([2.]))).replace_axes(zaxis=PP.zaxis)
       dP = abs(P_kp1 - P_k)/2
       # Put the eta axis back
       dP = dP.replace_axes(zaxis=P.eta)
@@ -128,7 +128,7 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
       ptop = zeta.atts['ptop']
 
       P = exp(A + B * log(Ps*100/pref))
-      P = P.transpose('time','zeta','lat','lon')
+      P = P.transpose('time','forecast','zeta','lat','lon')
       P /= 100 # hPa
 
       # dP
@@ -147,10 +147,10 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
       B_m = Var(axes=[zaxis], values=B_m)
       # Compute pressure on (extended) momentum levels
       P_m = exp(A_m + B_m * log(Ps*100/pref))
-      P_m = P_m.transpose('time','zaxis','lat','lon')
+      P_m = P_m.transpose('time','forecast','zaxis','lat','lon')
       # Compute dP
-      P_m_1 = P_m.slice[:,1:,:,:]
-      P_m_2 = P_m.slice[:,:-1,:,:].replace_axes(zaxis=P_m_1.zaxis)
+      P_m_1 = P_m.slice[:,:,1:,:,:]
+      P_m_2 = P_m.slice[:,:,:-1,:,:].replace_axes(zaxis=P_m_1.zaxis)
       dP = P_m_1 - P_m_2
       # Put on proper thermodynamic levels
       from pygeode.formats.fstd_core import decode_levels
