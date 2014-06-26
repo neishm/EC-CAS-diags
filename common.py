@@ -304,6 +304,11 @@ class SquashForecasts(Var):
 
 del Var
 def squash_forecasts(var):
+  from pygeode.dataset import Dataset
+  from pygeode.var import Var
   if not var.hasaxis('forecast'): return var
+  if isinstance(var,Dataset):
+    return Dataset(map(squash_forecasts,var), atts=var.atts)
+  assert isinstance(var,Var), "Unhandled case '%s'"%type(var)
   return SquashForecasts(var)
 
