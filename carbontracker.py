@@ -12,12 +12,13 @@ B_interface = np.array(B_interface)
 
 # Helper methods
 
-def ct_opener (filename):
-  from pygeode.formats import netcdf
+def ct_products (data):
   from pygeode.axis import ZAxis
 
-  data = netcdf.open(filename)
-  data = data - 'date_components' - 'decimal_date'
+  # Don't worry about the date_components and decimal_date domain?
+  # (Doesn't have any CO2-related variables).
+  varnames = [v.name for v in data]
+  if 'bio' not in varnames and 'bio_flux_opt' not in varnames: return data
 
   # Force vertical axis to be a ZAxis
   data = data.replace_axes(level = ZAxis)
@@ -191,6 +192,7 @@ class CarbonTracker_Data (object):
     from cache import Cache
     from data_interface import DataInterface
     from glob import glob
+    from pygeode.formats import netcdf
 
     # Higher-level information about the data
     self.name = 'CT2010'
@@ -204,7 +206,9 @@ class CarbonTracker_Data (object):
     fluxes = glob("/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc")
 
     manifest = self.cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files (molefractions+fluxes, opener=ct_opener, manifest=manifest)
+    self.data = DataInterface.from_files (molefractions+fluxes, opener=netcdf.open, manifest=manifest)
+
+    self.data = DataInterface(map(ct_products,self.data))
 
 
   # Data interface
