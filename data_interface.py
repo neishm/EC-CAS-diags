@@ -5,7 +5,7 @@
 # Current version of the manifest file format.
 # If this version doesn't match the existing manifest file, then the manifest
 # is re-generated.
-MANIFEST_VERSION="0~alpha7"
+MANIFEST_VERSION="0~alpha8"
 
 # Scan through all the given files, produce a manifest of all data available.
 def scan_files (files, opener, manifest):
@@ -85,6 +85,7 @@ def scan_files (files, opener, manifest):
 # A list of variables (acts like an "axis" for the purpose of domain
 # aggregating).
 class Varlist (object):
+  name = 'varlist'
   def __init__ (self, varnames):
     self.values = tuple(varnames)
   def __iter__ (self):  return iter(self.values)
@@ -99,7 +100,7 @@ def _lookup_axis (axis, _hash_bins={}, _ids=[]):
   if id(axis) in _ids: return axis  # Already have this exact object.
   values = tuple(axis.values)
   # Get a hash value that will be equal among axes that are equivalent
-  axis_hash = hash((type(axis),values))
+  axis_hash = hash((axis.name,type(axis),values))
   # Get all axes that have this hash (most likely, only 1 match (or none))
   hash_bin = _hash_bins.setdefault(axis_hash,[])
   # Find one that is truly equivalent, otherwise add this new one to the cache.
