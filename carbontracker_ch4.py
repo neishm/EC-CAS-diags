@@ -36,13 +36,99 @@ def ct_opener (filename):
   data = data.replace_axes(time=taxis)
   return data
 
-def ct_open (files):
-  from pygeode.formats.multifile import open_multi
-  from pygeode.formats import netcdf as nc
-  from common import fix_timeaxis
-  data = open_multi(files=files, opener=ct_opener, file2date=ct_file2date)
-  data = fix_timeaxis(data)
+def ct_products (data):
+  from pygeode.axis import ZAxis
+
+  # Don't worry about non-CH4 variables.
+  varnames = [v.name for v in data]
+  if 'fossil' not in varnames: return data
+
+  # Force vertical axis to be a ZAxis
+  data = data.replace_axes(lev = ZAxis)
+
+  # Convert to a dictionary (for referencing by variable name)
+  data = dict((var.name,var) for var in data)
+
+  # Convert some standard quantities
+  # (old_name, new_name, scale, offset, units)
+  conversions = (
+    ('bgrnd', 'CH4_background', None, None, 'ppb'),
+    ('fossil', 'CH4_fossil', None, None, 'ppb'),
+    ('agwaste', 'CH4_agwaste', None, None, 'ppm'),
+    ('ocean', 'CH4_ocean', None, None, 'ppm'),
+    ('bioburn', 'CH4_bioburn', None, None, 'ppm'),
+    ('natural', 'CH4_natural', None, None, 'ppm'),
+    ('pressure', 'air_pressure', None, None, 'hPa'),
+    ('gph', 'geopotential_height', None, None, 'm'),
+  )
+
+  # Do the conversions
+  for old_name, new_name, scale, offset, units in conversions:
+    if old_name in data:
+      var = data.pop(old_name)
+      if scale is not None: var *= scale
+      if offset is not None: var += offset
+      if units is not None: var.atts['units'] = units
+      data[new_name] = var
+
+  # Find the total CH4 (sum of components)
+  if 'CH4_background' in data:
+    data['CH4'] = data['CH4_background'] + data['CH4_fossil'] + data['CH4_agwaste'] + data['CH4_ocean'] + data['CH4_bioburn'] + data['CH4_natural']
+
+
+  # Other (more heavily derived) products
+
+  if 'air_pressure' in data:
+    # Surface pressure
+    # Get pressure at the bottom mid-level
+    pmid = data['air_pressure'].squeeze(lev=1) * 100.
+
+    # Compute surface pressure from this
+    # p1 = A1 + B1*Ps
+    # pmid = (ps + A1 + B1*Ps) / 2 = Ps(1+B1)/2 + (0+A1)/2
+    # Ps = (2*pmid - A1)/(1+B1)
+    P0 = (2*pmid - A_interface[1])/(B_interface[1]+1)
+    data['surface_pressure'] = P0 / 100.
+
+    # Vertical change in pressure
+    #NOTE: generated from A/B interface values, not the 3D pressure field.
+    #      3D pressure is used only to define the vertical levels.
+    import numpy as np
+    from pygeode.var import Var
+    dA = -np.diff(A_interface)
+    dA = Var([data['air_pressure'].lev], values=dA)
+    dB = -np.diff(B_interface)
+    dB = Var([data['air_pressure'].lev], values=dB)
+    dp = dA/100. + dB * data['surface_pressure']
+    dp = dp.transpose('time','zaxis','lat','lon')
+    dp.atts['units'] = 'hPa'
+    data['dp'] = dp
+
+    # Air mixing ratio (constant)
+    from common import Constant_Var
+    # (ppb)
+    data['air'] = Constant_Var(axes=data['air_pressure'].axes, value=1.0E9)
+
+  # Compute grid cell area
+  from common import get_area
+  if 'CH4' in data:
+    x = data['CH4'].squeeze(lev=1)
+  else:
+    raise Exception ("This should not happen")
+  data['cell_area'] = get_area(x.lat, x.lon).extend(0,x.time)
+  data['cell_area'].atts['units'] = 'm2'
+
+
+  # General cleanup stuff
+
+  # Make sure the variables have the appropriate names
+  for name, var in data.iteritems():  var.name = name
+
+  # Convert to a list
+  data = list(data.values())
+
   return data
+
 
 # Method for calculating zonal mean on-the-fly
 def ct_zonal (field):
@@ -53,7 +139,7 @@ def ct_zonal (field):
   from pygeode.interp import interpolate
   from pygeode.axis import Height
   height = Height(range(68))
-  ct_ch4 = interpolate(field, inaxis='level', outaxis=height, inx = molefractions.gph/1000)
+  ct_ch4 = interpolate(field, inaxis='lev', outaxis=height, inx = molefractions.gph/1000)
   ct_ch4 = ct_ch4.nanmean('lon')
   ct_ch4 = ct_ch4.transpose(0,2,1)
   ct_ch4 = dailymean(ct_ch4)
@@ -69,7 +155,7 @@ def ct_zonal_24h (field,gph):
   from pygeode.interp import interpolate
   from pygeode.axis import Height
   height = Height(range(68))
-  ct_ch4 = interpolate(field, inaxis='level', outaxis=height, inx = gph/1000)
+  ct_ch4 = interpolate(field, inaxis='lev', outaxis=height, inx = gph/1000)
   ct_ch4 = ct_ch4.nanmean('lon')
   ct_ch4 = ct_ch4.transpose(0,2,1)
 
@@ -89,6 +175,30 @@ def ct_zonal_24h (field,gph):
   return ct_ch4
 
 
+# Some useful criteria for searching for fields
+def have_surface (varlist):
+  from pygeode.axis import ZAxis
+  from pygeode.formats.fstd import Hybrid, LogHybrid
+  for var in varlist:
+    if var.hasaxis('lev'):
+      return 1 in var.lev.values
+  # No vertical info?
+  return False
+
+def number_of_timesteps (varlist):
+  from pygeode.axis import TAxis
+  for var in varlist:
+    if var.hasaxis(TAxis):
+      return len(var.getaxis(TAxis))
+
+def number_of_levels (varlist):
+  from pygeode.axis import ZAxis
+  for var in varlist:
+    if var.hasaxis(ZAxis):
+      return len(var.getaxis(ZAxis))
+
+
+
 # Define the data interface for CarbonTracker
 
 class CarbonTracker_CH4 (object):
@@ -96,6 +206,9 @@ class CarbonTracker_CH4 (object):
   def __init__ (self, tmpdir=None):
 
     from cache import Cache
+    from data_interface import DataInterface
+    from glob import glob
+    from pygeode.formats import netcdf
 
     # Higher-level information about the data
     self.name = 'CTCH42010'
@@ -105,130 +218,84 @@ class CarbonTracker_CH4 (object):
     fallback_dirs = [tmpdir] if tmpdir is not None else []
     self.cache = Cache (dir=cachedir, fallback_dirs=fallback_dirs, global_prefix=self.name+'_')
 
-    molefractions = ct_open("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc")
-    molefractions = molefractions - 'decimal_date' - 'idate_start' - 'idate_end'
+    molefractions = glob("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc")
 
-    # Find the total CH4 (sum of components)
-    ch4 = molefractions.bgrnd + molefractions.fossil + molefractions.agwaste + molefractions.ocean + molefractions.bioburn + molefractions.natural
-    ch4 = ch4.rename('CH4')
-    # Pretend it's another CarbonTracker product
-    molefractions = molefractions + ch4
+    manifest = self.cache.full_path("manifest", writeable=True)
+    self.data = DataInterface.from_files (molefractions, opener=ct_opener, manifest=manifest)
 
-    self.molefractions = molefractions
+    self.data = DataInterface(map(ct_products,self.data))
 
-    """
-    # Fluxes
-    fluxes = ct_open("/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc")
-    fluxes = fluxes - 'date_components' - 'decimal_date'
-
-    # Create a total flux product
-    co2_flux = fluxes.fossil_imp + fluxes.bio_flux_opt + fluxes.ocn_flux_opt + fluxes.fire_flux_imp
-    co2_flux = co2_flux.rename('CO2')
-    fluxes = fluxes + co2_flux
-
-    self.fluxes = fluxes
-    """
-
-    # Other (more heavily derived) products
-
-    # Surface pressure
-    # Get pressure at the bottom mid-level
-    pmid = self.molefractions['pressure'].slice[:,0,:,:].squeeze()
-
-    # Compute surface pressure from this
-    # p1 = A1 + B1*Ps
-    # pmid = (ps + A1 + B1*Ps) / 2 = Ps(1+B1)/2 + (0+A1)/2
-    # Ps = (2*pmid - A1)/(1+B1)
-    P0 = (2*pmid - A_interface[1])/(B_interface[1]+1)
-    P0 = P0.rename('P0')
-    self.P0 = P0
-
-  # Translate CarbonTracker variable names into some "standard" naming convention.
-  local_names = {
-    'CH4':'CH4',
-    'air':'air'
-  }
 
   # Data interface
-  def get_data (self, domain, standard_name, stat='mean'):
+  def get_data (self, domain, field, stat='mean'):
 
     if stat != 'mean':
       raise KeyError("No '%s' stat available for CarbonTracker"%stat)
 
-    try:
-      field = self.local_names[standard_name]
-    except KeyError:
-      raise KeyError ("No representation of '%s' in the CarbonTracker data."%standard_name)
-
     # Zonal mean (over geopotential height)
     if domain == 'zonalmean_gph':
-      data = self.molefractions[field]
-      data = ct_zonal_24h(data,self.molefractions.gph)
+      data, gph = self.data.find_best([field,'geopotential_height'], maximize=number_of_levels)
+      data = ct_zonal_24h(data,gph)
       data.atts['units'] = 'ppb'
 
     # "surface" data (lowest level of molefractions dataset)
     elif domain == 'sfc':
-      data = self.molefractions[field](i_lev=0)
+      data = self.data.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
+      data = data(lev=1)
       data.atts['units'] = 'ppb'
 
     # Total column
     elif domain == 'totalcolumn':
-      import numpy as np
-      from pygeode.var import Var
       from common import molecular_weight as mw, grav as g
 
-      Ps = self.P0
+      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
+      # Convert from ppb to kg / kg
+      c *= 1E-9 * mw[field] / mw['air']
 
-      # Compute sigma at interfaces
-      dA = -np.diff(A_interface)
-      dA = Var([self.molefractions.level], values=dA)
-      dB = -np.diff(B_interface)
-      dB = Var([self.molefractions.level], values=dB)
-      dsigma = dA / Ps + dB
-      dsigma = dsigma.transpose('time', 'level', 'lat', 'lon')
-
-      sigma_top = A_interface[-1]/Ps + B_interface[-1]
-      sigma_bottom = 1
-
-      if field == 'air': c = 1
-      else:
-        # Convert ppb to kg/kg
-        conversion = 1E-9 * mw['CH4'] / mw['air']
-        c = self.molefractions[field] * conversion
-
-      data = Ps / g * (c*dsigma).sum('level')
+      # Integrate
+      data = (c*dp*100).sum('zaxis') / g
       data.name = field
+      data.atts['units'] = 'kg m-2'
+
 
     # Column averages
     elif domain == 'avgcolumn':
       from common import molecular_weight as mw
-      tc = self.get_data('totalcolumn', standard_name)
+      tc = self.get_data('totalcolumn', field)
       tc_air = self.get_data('totalcolumn','air')
       data = tc / tc_air
       # Convert kg/kg to ppb
-      data *= mw['air']/mw['CH4'] * 1E9
+      data *= mw['air']/mw[field] * 1E9
 
       data.name = field
       data.atts['units'] = 'ppb'
 
     # Total mass
     elif domain == 'totalmass':
-      from common import get_area
-      dxdy = get_area(self.molefractions.lat, self.molefractions.lon).rename('dxdy')
-      totalcol = self.get_data('totalcolumn', standard_name)
-      totalmass = (totalcol*dxdy).sum('lat','lon')
+      from common import molecular_weight as mw, grav as g
+      c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
+      # Convert from ppb to kg / kg
+      c *= 1E-9 * mw[field] / mw['air']
+
+      # Integrate to get total column
+      tc = (c*dp*100).sum('zaxis') / g
+
+      # Integrate horizontally
+      mass = (tc * area).sum('lat','lon')
+
       # Convert from kg to Pg
-      totalmass *= 1E-12
-      totalmass.name = field
-      data = totalmass
+      mass *= 1E-12
+      data = mass
+      data.name = field
+      data.atts['units'] = 'Pg'
+
 
     # Integrated fluxes (moles s-1)
     elif domain == 'totalflux':
-      from common import get_area
-      fluxes_dxdy = get_area (self.fluxes.lat, self.fluxes.lon)
-      fluxvar = self.fluxes[field]
-      data = (fluxvar*fluxes_dxdy).sum('lat','lon')
+      data, area = self.data.find_best([field+'_flux','cell_area'], maximize=number_of_timesteps)
+      data = (data*area).sum('lat','lon')
       data.name = field
+      data.atts['units'] = 'mol s-1'
       # The time is the *midpoint* of the flux period.
       # Rewind to the *start* of the flux period (-1.5 hours)
       time = data.time
