@@ -1,5 +1,4 @@
-# A container for holding multiple datasets of the same data
-# (one dataset per domain).
+# A container for holding multiple datasets of the same data.
 # E.g., there may be surface and 3D output at different time frequencies.
 
 # Current version of the manifest file format.
@@ -8,7 +7,7 @@
 MANIFEST_VERSION="0~alpha8"
 
 # Scan through all the given files, produce a manifest of all data available.
-def scan_files (files, opener, manifest):
+def scan_files (files, opener, manifest=None):
   from os.path import exists, getatime, getmtime, normpath
   from os import utime
   import gzip
@@ -22,12 +21,12 @@ def scan_files (files, opener, manifest):
 
 
   # If an old manifest already exists, start with that.
-  if exists(manifest):
+  if manifest is not None and exists(manifest):
     with gzip.open(manifest,'r') as f:
       version = pickle.load(f)
       table = pickle.load(f)
     mtime = getmtime(manifest)
-  if not exists(manifest) or version != MANIFEST_VERSION:
+  if manifest is None or not exists(manifest) or version != MANIFEST_VERSION:
     table = {}
     mtime = 0
 
@@ -37,7 +36,10 @@ def scan_files (files, opener, manifest):
     for varname, axes, atts in entries:
       map(_lookup_axis,axes)
 
-  pbar = PBar (message = "Generating %s"%manifest)
+  if manifest is not None:
+    pbar = PBar (message = "Generating %s"%manifest)
+  else:
+    pbar = PBar (message = "Scanning files")
 
   modified_table = False
 
@@ -67,7 +69,7 @@ def scan_files (files, opener, manifest):
     modified_table = True
 
 
-  if modified_table:
+  if modified_table and manifest is not None:
     with gzip.open(manifest,'w') as f:
       pickle.dump(MANIFEST_VERSION, f)
       pickle.dump(table, f)
@@ -208,7 +210,6 @@ class DataInterface (object):
       return None
 
 
-#TODO -----
 
 
   # Helper method - return all names of axes in a set of domains
@@ -356,7 +357,6 @@ class DataInterface (object):
     domains = cls._cleanup_subdomains(domains)
     return domains
 
-#TODO -----
 
   # Generic initializer - takes a list of Datasets, stores it.
   def __init__ (self, datasets):
@@ -365,7 +365,7 @@ class DataInterface (object):
 
   # Create a dataset from a set of files and an opener
   @classmethod
-  def from_files (cls, filelist, opener, manifest):
+  def from_files (cls, filelist, opener, manifest=None):
     manifest = scan_files (filelist, opener, manifest)
     domains = cls._get_domains(manifest)
     datasets = [cls._domain_as_dataset(d,manifest) for d in domains]
@@ -375,7 +375,6 @@ class DataInterface (object):
   def __iter__ (self):
     return iter(self.datasets)
 
-#TODO -----
 
   # Wrap a domain as a dataset.
   # Requires the original file manifest, to determine where to get the data.
@@ -387,7 +386,6 @@ class DataInterface (object):
     axes = filter(None,domain.without_axis('varlist').axes)
     return Dataset([DataVar.construct(name, axes, manifest) for name in varlist])
 
-  #TODO
 
   # Get the requested variable(s).
   # The possible matches are returned one at a time, and the calling method
@@ -514,7 +512,8 @@ def my_opener(filename):
 
 if __name__ == '__main__':
   from glob import glob
-  data = DataInterface.from_files(glob("/wrk6/neish/mn083/model/2009*"), opener=my_opener, manifest="/wrk6/neish/mn083/model/nc_cache/mn083_manifest")
+  from gem import eccas_opener
+  data = DataInterface.from_files(glob("/wrk6/neish/mn083/model/2009*"), opener=eccas_opener, manifest="/wrk6/neish/mn083/model/nc_cache/mn083_manifest")
   for dataset in data.datasets:
     print dataset
     if 'CO2' in dataset and len(dataset.forecast) > 1:
