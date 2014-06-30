@@ -82,16 +82,9 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
     Ps = data['surface_pressure']
 
     # eta coordinates?
-    if any(var.hasaxis(fstd.Hybrid) for var in data.itervalues()):
-      eta = set()
-      for var in data.itervalues():
-        if var.hasaxis(fstd.Hybrid):
-          current = var.getaxis(fstd.Hybrid)
-          current = set(zip(current.values, current.A, current.B))
-          eta.update(current)
-      eta = sorted(eta)
-      eta, A, B = zip(*eta)
-      eta = fstd.Hybrid(values=eta, A=A, B=B)
+    eta_vars = [var for var in data.itervalues() if var.hasaxis(fstd.Hybrid)]
+    if len(eta_vars) > 0:
+      eta = eta_vars[0].getaxis(fstd.Hybrid)
       A = eta.auxasvar('A')
       B = eta.auxasvar('B')
       P = A + B * Ps * 100
@@ -111,17 +104,9 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
       dP = dP.replace_axes(zaxis=P.eta)
 
     # zeta coordinates?
-    if any(var.hasaxis(fstd.LogHybrid) for var in data.itervalues()):
-      zeta = set()
-      for var in data.itervalues():
-        if var.hasaxis(fstd.LogHybrid):
-          current = var.getaxis(fstd.LogHybrid)
-          current = set(zip(current.values, current.A, current.B))
-          zeta_atts = var.getaxis(fstd.LogHybrid).atts
-          zeta.update(current)
-      zeta = sorted(zeta)
-      zeta, A, B = zip(*zeta)
-      zeta = fstd.LogHybrid(values=zeta, A=A, B=B, atts=zeta_atts)
+    zeta_vars = [var for var in data.itervalues() if var.hasaxis(fstd.LogHybrid)]
+    if len(zeta_vars) > 0:
+      zeta = zeta_vars[0].getaxis(fstd.LogHybrid)
       A = zeta.auxasvar('A')
       B = zeta.auxasvar('B')
       pref = zeta.atts['pref']
