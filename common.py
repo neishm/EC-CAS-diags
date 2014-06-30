@@ -150,7 +150,12 @@ del Var
 from pygeode.axis import Axis
 class Station (Axis):
   name = 'station'
-  def _val2str(self, val):  return val  # Value is already a string
+  formatstr = "%s"
+  # Override the __eq__ method for this axis, since there are currently
+  # some assumptions in PyGeode about axes having numerical values.
+  def __eq__ (self, other):
+    if not isinstance(other,Station): return False
+    return map(str,self.values) == map(str,other.values)
   # Create our own map_to interface, since PyGeode will choke on string arrays
   def map_to(self, other):
     if not self.isparentof(other) and not other.isparentof(self): return None
