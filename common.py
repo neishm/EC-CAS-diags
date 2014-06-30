@@ -282,7 +282,8 @@ from pygeode.var import Var
 class SquashForecasts(Var):
   def __init__ (self, var):
     from pygeode.var import Var, copy_meta
-    origin_hours = var.time.reltime(units='hours').reshape([-1,1])
+    from pygeode.timeutils import reltime
+    origin_hours = reltime(var.time, units='hours').reshape([-1,1])
     forecast_hours = var.forecast.values.reshape([1,-1])
     validity_hours = origin_hours + forecast_hours
     # Construct new time axis
