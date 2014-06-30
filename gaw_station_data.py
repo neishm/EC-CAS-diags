@@ -79,6 +79,13 @@ def read_station_data (filename):
   return [mean,std]
 
 
+def gaw_station_opener (filename):
+  from pygeode.formats import netcdf
+  from station_data import decode_station_data
+  data = netcdf.open(filename)
+  data = decode_station_data(data)
+  return data
+
 class GAW_Station_Data (object):
   name = 'GAW'
   title = 'GAW-2014 Station Obs'
@@ -95,7 +102,8 @@ class GAW_Station_Data (object):
     import numpy as np
 
     from common import common_taxis, fix_timeaxis
-    from station_data import make_station_axis, encode_station_data, decode_station_data
+    from station_data import make_station_axis, encode_station_data
+    from data_interface import DataInterface
 
     cachefile = './gaw_obs.nc'
 
@@ -162,18 +170,18 @@ class GAW_Station_Data (object):
 
       # End of cache file creation
 
-    data = netcdf.open(cachefile)
-    data = decode_station_data(data)
+    data = DataInterface.from_files([cachefile], opener=gaw_station_opener)
 
     self.data = data
 
     # Find obs locations from the file
     #TODO: remove this once the diagnostics use the station axis directly.
     obs_locations = {}
-    stations = self.data.station.values
-    lats = self.data.station.lat
-    lons = self.data.station.lon
-    countries = self.data.station.country
+    data = self.data.find_best('CO2_mean')
+    stations = data.station.values
+    lats = data.station.lat
+    lons = data.station.lon
+    countries = data.station.country
     for station,lat,lon,country in zip(stations,lats,lons,countries):
       obs_locations[station] = (lat,lon,country)
     self.obs_locations = obs_locations
@@ -182,11 +190,13 @@ class GAW_Station_Data (object):
   def get_data (self, station, field, stat='mean'):
     import numpy as np
 
-    stations = self.data.station.values
+    data = self.data.find_best(field)
+
+    stations = data.station.values
     if station not in stations: raise KeyError
 
     s = np.where(stations == station)[0][0]
 
-    return self.data[field+'_'+stat](i_station=s).squeeze('station')
+    return data(i_station=s).squeeze('station')
 
 
