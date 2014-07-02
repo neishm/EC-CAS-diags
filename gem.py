@@ -119,30 +119,31 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
       # dP
       #TODO: produce dP for both thermodynamic and momentum levels
       # (currently just thermo)
-      A_m = list(zeta.atts['a_m'])
-      B_m = list(zeta.atts['b_m'])
-      # Add model top (not a true level, but needed for dP calculation)
-      # Also, duplicate the bottom (surface) level to get dP=0 at bottom
-      import math
-      A_m = [math.log(ptop)] + A_m + [A_m[-1]]
-      B_m = [0] + B_m + [B_m[-1]]
-      # Convert to Var objects
-      zaxis = ZAxis(range(len(A_m)))
-      A_m = Var(axes=[zaxis], values=A_m)
-      B_m = Var(axes=[zaxis], values=B_m)
-      # Compute pressure on (extended) momentum levels
-      P_m = exp(A_m + B_m * log(Ps*100/pref))
-      P_m = P_m.transpose('time','forecast','zaxis','lat','lon')
-      # Compute dP
-      P_m_1 = P_m.slice[:,:,1:,:,:]
-      P_m_2 = P_m.slice[:,:,:-1,:,:].replace_axes(zaxis=P_m_1.zaxis)
-      dP = P_m_1 - P_m_2
-      # Put on proper thermodynamic levels
-      from pygeode.formats.fstd_core import decode_levels
-      values, kind = decode_levels(zeta.atts['ip1_t'])
-      zaxis = fstd.LogHybrid(values=values, A=zeta.atts['a_t'], B=zeta.atts['b_t'])
-      dP = dP.replace_axes(zaxis=zaxis)
-      dP /= 100 # hPa
+      if set(zeta.auxarrays['A']) <= set(zeta.atts['a_t']):
+        A_m = list(zeta.atts['a_m'])
+        B_m = list(zeta.atts['b_m'])
+        # Add model top (not a true level, but needed for dP calculation)
+        # Also, duplicate the bottom (surface) level to get dP=0 at bottom
+        import math
+        A_m = [math.log(ptop)] + A_m + [A_m[-1]]
+        B_m = [0] + B_m + [B_m[-1]]
+        # Convert to Var objects
+        zaxis = ZAxis(range(len(A_m)))
+        A_m = Var(axes=[zaxis], values=A_m)
+        B_m = Var(axes=[zaxis], values=B_m)
+        # Compute pressure on (extended) momentum levels
+        P_m = exp(A_m + B_m * log(Ps*100/pref))
+        P_m = P_m.transpose('time','forecast','zaxis','lat','lon')
+        # Compute dP
+        P_m_1 = P_m.slice[:,:,1:,:,:]
+        P_m_2 = P_m.slice[:,:,:-1,:,:].replace_axes(zaxis=P_m_1.zaxis)
+        dP = P_m_1 - P_m_2
+        # Put on proper thermodynamic levels
+        from pygeode.formats.fstd_core import decode_levels
+        values, kind = decode_levels(zeta.atts['ip1_t'])
+        zaxis = fstd.LogHybrid(values=values, A=zeta.atts['a_t'], B=zeta.atts['b_t'])
+        dP = dP.replace_axes(zaxis=zaxis)
+        dP /= 100 # hPa
 
 
   if P is not None:
