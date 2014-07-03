@@ -1,15 +1,20 @@
 # Opener for EC-CAS data
-def eccas_opener (filename, latlon = [None,None]):
+def eccas_opener (filename):
+  from pygeode.formats import fstd
+  return fstd.open(filename, raw_list=True)
+
+
+def eccas_products (dataset, chmmean=False, chmstd=False):
   from pygeode.formats import fstd
   from pygeode.ufunc import exp, log
   from pygeode.var import concat, Var
   from pygeode.axis import ZAxis
-  data = fstd.open(filename, squash_forecasts=True, raw_list=True)
 
   # Convert to a dictionary (for referencing by variable name)
-  data = dict((var.name,var) for var in data)
+  data = dict((var.name,var) for var in dataset)
 
-  if filename.endswith("_chmstd"):
+  # Temporarily blacklist GZ and P0 from ensemble spread files.
+  if chmstd:
     del data["GZ"]
     del data["P0"]
 
@@ -28,8 +33,8 @@ def eccas_opener (filename, latlon = [None,None]):
   convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
   convert_CO2_flux = mw['CO2'] / mw['C']
   suffix = ""
-  if filename.endswith("_chmmean"): suffix = "_ensemblemean"
-  if filename.endswith("_chmstd"): suffix = "_ensemblespread"
+  if chmmean: suffix = "_ensemblemean"
+  if chmstd: suffix = "_ensemblespread"
   conversions += (
     ('ECO2', 'CO2_flux', convert_CO2_flux, None, 'g s-1'),
     ('ECBB', 'CO2_fire_flux', convert_CO2_flux, None, 'g s-1'),
@@ -67,21 +72,6 @@ def eccas_opener (filename, latlon = [None,None]):
     data['H2O'] = q / mw['H2O'] * mw['air'] * 1E6
     data['H2O'].atts['units'] = 'ppm'
 
-  # Force the flux fields to be on the same lat/lon as the 3D model fields.
-  # Works around a bug in our flux files, which don't have the exact same
-  # '^^', '>>' fields.
-  # Abuse keyword argument default object to store lat/lon information from
-  # the model for future use
-  if 'CO2' in data:
-    latlon[0] = data['CO2'].lat
-    latlon[1] = data['CO2'].lon
-
-  if latlon != [None,None]:
-    lat, lon = latlon
-    for fluxname in data:
-      if not fluxname.endswith('_flux'): continue
-      data[fluxname] = data[fluxname].replace_axes(lat=lat, lon=lon)
-
   # Compute a pressure field.
   # Also, compute a dp field (vertical change in pressure within a gridbox).
   P = None
@@ -92,20 +82,13 @@ def eccas_opener (filename, latlon = [None,None]):
     Ps = data['surface_pressure']
 
     # eta coordinates?
-    if any(var.hasaxis(fstd.Hybrid) for var in data.itervalues()):
-      eta = set()
-      for var in data.itervalues():
-        if var.hasaxis(fstd.Hybrid):
-          current = var.getaxis(fstd.Hybrid)
-          current = set(zip(current.values, current.A, current.B))
-          eta.update(current)
-      eta = sorted(eta)
-      eta, A, B = zip(*eta)
-      eta = fstd.Hybrid(values=eta, A=A, B=B)
+    eta_vars = [var for var in data.itervalues() if var.hasaxis(fstd.Hybrid)]
+    if len(eta_vars) > 0:
+      eta = eta_vars[0].getaxis(fstd.Hybrid)
       A = eta.auxasvar('A')
       B = eta.auxasvar('B')
       P = A + B * Ps * 100
-      P = P.transpose('time','eta','lat','lon')
+      P = P.transpose('time','forecast','eta','lat','lon')
       P /= 100 # hPa
 
       # dP
@@ -114,60 +97,53 @@ def eccas_opener (filename, latlon = [None,None]):
       # because eta axes require explict A/B arrays (which concat doesn't see)
       from pygeode.axis import ZAxis
       PP = P.replace_axes(eta=ZAxis(P.eta.values))
-      P_k = concat(PP.slice[:,0,:,:].replace_axes(zaxis=ZAxis([-1.])), PP.slice[:,:-1,:,:]).replace_axes(zaxis=PP.zaxis)
-      P_kp1 = concat(PP.slice[:,1:,:,:], PP.slice[:,-1,:,:].replace_axes(zaxis=ZAxis([2.]))).replace_axes(zaxis=PP.zaxis)
+      P_k = concat(PP.slice[:,:,0,:,:].replace_axes(zaxis=ZAxis([-1.])), PP.slice[:,:,:-1,:,:]).replace_axes(zaxis=PP.zaxis)
+      P_kp1 = concat(PP.slice[:,:,1:,:,:], PP.slice[:,:,-1,:,:].replace_axes(zaxis=ZAxis([2.]))).replace_axes(zaxis=PP.zaxis)
       dP = abs(P_kp1 - P_k)/2
       # Put the eta axis back
       dP = dP.replace_axes(zaxis=P.eta)
 
     # zeta coordinates?
-    if any(var.hasaxis(fstd.LogHybrid) for var in data.itervalues()):
-      zeta = set()
-      for var in data.itervalues():
-        if var.hasaxis(fstd.LogHybrid):
-          current = var.getaxis(fstd.LogHybrid)
-          current = set(zip(current.values, current.A, current.B))
-          zeta_atts = var.getaxis(fstd.LogHybrid).atts
-          zeta.update(current)
-      zeta = sorted(zeta)
-      zeta, A, B = zip(*zeta)
-      zeta = fstd.LogHybrid(values=zeta, A=A, B=B, atts=zeta_atts)
+    zeta_vars = [var for var in data.itervalues() if var.hasaxis(fstd.LogHybrid)]
+    if len(zeta_vars) > 0:
+      zeta = zeta_vars[0].getaxis(fstd.LogHybrid)
       A = zeta.auxasvar('A')
       B = zeta.auxasvar('B')
       pref = zeta.atts['pref']
       ptop = zeta.atts['ptop']
 
       P = exp(A + B * log(Ps*100/pref))
-      P = P.transpose('time','zeta','lat','lon')
+      P = P.transpose('time','forecast','zeta','lat','lon')
       P /= 100 # hPa
 
       # dP
       #TODO: produce dP for both thermodynamic and momentum levels
       # (currently just thermo)
-      A_m = list(zeta.atts['a_m'])
-      B_m = list(zeta.atts['b_m'])
-      # Add model top (not a true level, but needed for dP calculation)
-      # Also, duplicate the bottom (surface) level to get dP=0 at bottom
-      import math
-      A_m = [math.log(ptop)] + A_m + [A_m[-1]]
-      B_m = [0] + B_m + [B_m[-1]]
-      # Convert to Var objects
-      zaxis = ZAxis(range(len(A_m)))
-      A_m = Var(axes=[zaxis], values=A_m)
-      B_m = Var(axes=[zaxis], values=B_m)
-      # Compute pressure on (extended) momentum levels
-      P_m = exp(A_m + B_m * log(Ps*100/pref))
-      P_m = P_m.transpose('time','zaxis','lat','lon')
-      # Compute dP
-      P_m_1 = P_m.slice[:,1:,:,:]
-      P_m_2 = P_m.slice[:,:-1,:,:].replace_axes(zaxis=P_m_1.zaxis)
-      dP = P_m_1 - P_m_2
-      # Put on proper thermodynamic levels
-      from pygeode.formats.fstd_core import decode_levels
-      values, kind = decode_levels(zeta.atts['ip1_t'])
-      zaxis = fstd.LogHybrid(values=values, A=zeta.atts['a_t'], B=zeta.atts['b_t'])
-      dP = dP.replace_axes(zaxis=zaxis)
-      dP /= 100 # hPa
+      if set(zeta.auxarrays['A']) <= set(zeta.atts['a_t']):
+        A_m = list(zeta.atts['a_m'])
+        B_m = list(zeta.atts['b_m'])
+        # Add model top (not a true level, but needed for dP calculation)
+        # Also, duplicate the bottom (surface) level to get dP=0 at bottom
+        import math
+        A_m = [math.log(ptop)] + A_m + [A_m[-1]]
+        B_m = [0] + B_m + [B_m[-1]]
+        # Convert to Var objects
+        zaxis = ZAxis(range(len(A_m)))
+        A_m = Var(axes=[zaxis], values=A_m)
+        B_m = Var(axes=[zaxis], values=B_m)
+        # Compute pressure on (extended) momentum levels
+        P_m = exp(A_m + B_m * log(Ps*100/pref))
+        P_m = P_m.transpose('time','forecast','zaxis','lat','lon')
+        # Compute dP
+        P_m_1 = P_m.slice[:,:,1:,:,:]
+        P_m_2 = P_m.slice[:,:,:-1,:,:].replace_axes(zaxis=P_m_1.zaxis)
+        dP = P_m_1 - P_m_2
+        # Put on proper thermodynamic levels
+        from pygeode.formats.fstd_core import decode_levels
+        values, kind = decode_levels(zeta.atts['ip1_t'])
+        zaxis = fstd.LogHybrid(values=values, A=zeta.atts['a_t'], B=zeta.atts['b_t'])
+        dP = dP.replace_axes(zaxis=zaxis)
+        dP /= 100 # hPa
 
 
   if P is not None:
@@ -201,9 +177,18 @@ def eccas_opener (filename, latlon = [None,None]):
   # Convert to a list
   data = list(data.values())
 
+  # Remove the forecast axis before returning the data
+  # (not needed for any current diagnostics).
+  from common import squash_forecasts
+  data = map(squash_forecasts,data)
+
   return data
 
-
+# Shortcuts functions with chmmean/chmstd flags set
+def eccas_chmmean_products (dataset):
+  return eccas_products(dataset, chmmean=True)
+def eccas_chmstd_products (dataset):
+  return eccas_products(dataset, chmstd=True)
 
 # Convert zonal mean data (on height)
 def to_gph (var, z):
@@ -299,7 +284,39 @@ class GEM_Data (object):
       files.extend((flux_dir+"/area_2009??????"))
 
     manifest = cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files(files, opener=eccas_opener, manifest=manifest)
+
+    # Ensemble mean data
+    chmmean_files = [f for f in files if f.endswith('_chmmean')]
+    chmmean_data = DataInterface.from_files(chmmean_files, opener=eccas_opener, manifest=manifest)
+    # Apply the conversions & transformations
+    chmmean_data = DataInterface(map(eccas_chmmean_products,chmmean_data))
+
+    # Ensemble spread data
+    chmstd_files = [f for f in files if f.endswith('_chmstd')]
+    chmstd_data = DataInterface.from_files(chmstd_files, opener=eccas_opener, manifest=manifest)
+    # Apply the conversions & transformations
+    chmstd_data = DataInterface(map(eccas_chmstd_products,chmstd_data))
+
+    # Area emissions
+    flux_files = [f for f in files if '/area_' in f]
+    flux_data = DataInterface.from_files(flux_files, opener=eccas_opener, manifest=manifest)
+    # Apply the conversions & transformations
+    flux_data = DataInterface(map(eccas_products,flux_data))
+
+    # Forward model data
+    forward_files = sorted(set(files)-set(chmmean_files)-set(chmstd_files)-set(flux_files))
+    forward_data = DataInterface.from_files(forward_files, opener=eccas_opener, manifest=manifest)
+    # Apply the conversions & transformations
+    forward_data = DataInterface(map(eccas_products,forward_data))
+
+    # Fix the area emissions data, to have the proper lat/lon
+    lat = forward_data.datasets[0].lat
+    lon = forward_data.datasets[0].lon
+    flux_data = DataInterface(d.replace_axes(lat=lat,lon=lon) for d in flux_data)
+
+    # Combine all datasets into a single unit
+    self.data = DataInterface(chmmean_data.datasets+chmstd_data.datasets+flux_data.datasets+forward_data.datasets)
+
     self.cache = cache
 
 

@@ -32,6 +32,14 @@ def read_station_data (filename):
 
   return mean, maxval, minval, std, nval
 
+# A routine to open the netcdf data (and decode the station axis)
+def ec_station_opener (filename):
+  from pygeode.formats import netcdf
+  from station_data import decode_station_data
+  data = netcdf.open(filename)
+  data = decode_station_data(data)
+  return data
+
 # Data interface for EC station observations
 class EC_Station_Data (object):
   name = 'EC'
@@ -64,9 +72,10 @@ class EC_Station_Data (object):
     from pygeode.dataset import Dataset
     from common import common_taxis, fix_timeaxis
     from glob import glob
-    from station_data import make_station_axis, encode_station_data, decode_station_data
+    from station_data import make_station_axis, encode_station_data
     from pygeode.var import Var
     import numpy as np
+    from data_interface import DataInterface
 
     cachefile = './ec_obs.nc'
     if not exists(cachefile):
@@ -120,18 +129,19 @@ class EC_Station_Data (object):
 
       # End of cache file creation
 
-    data = netcdf.open(cachefile)
-    self.data = decode_station_data(data)
+    self.data = DataInterface.from_files([cachefile], opener=ec_station_opener)
 
   # Get some data at a station (e.g. CO2_mean)
-  def get_data (self, station, fieldname, stat='mean'):
+  def get_data (self, station, field, stat='mean'):
     import numpy as np
 
-    stations = self.data.station.values
+    data = self.data.find_best(field+'_'+stat)
+
+    stations = data.station.values
     if station not in stations: raise KeyError
 
     s = np.where(stations == station)[0][0]
 
-    return self.data[fieldname+'_'+stat](i_station=s).squeeze('station')
+    return data(i_station=s).squeeze('station')
 
 
