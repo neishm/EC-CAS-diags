@@ -30,8 +30,7 @@ def scan_files (files, opener, manifest=None):
     table = {}
     mtime = 0
 
-  # Add these existing objects to the get_axis() function
-  # (so it can re-use them)
+  # Re-use axis objects wherever possible.
   for filename, (_opener,entries) in table.iteritems():
     for varname, axes, atts in entries:
       map(_lookup_axis,axes)
@@ -98,8 +97,12 @@ class Varlist (object):
 # Helper function: recycle an existing axis object if possible.
 # This allows axes to be compared by their ids, and makes pickling them
 # more space-efficient.
-def _lookup_axis (axis, _hash_bins={}, _ids=[]):
-  if id(axis) in _ids: return axis  # Already have this exact object.
+def _lookup_axis (axis, _hash_bins={}, _id_lookup={}, _all_axes=[]):
+  # Check if we've already looked at this exact object.
+  axis_id = id(axis)
+  if axis_id in _id_lookup: return _id_lookup[axis_id]
+  # Store a reference to this axis, so the object id doesn't get recycled.
+  _all_axes.append(axis)
   values = tuple(axis.values)
   # Get a hash value that will be equal among axes that are equivalent
   axis_hash = hash((axis.name,type(axis),values))
@@ -110,8 +113,8 @@ def _lookup_axis (axis, _hash_bins={}, _ids=[]):
     axis = hash_bin[hash_bin.index(axis)]
   except ValueError:
     hash_bin.append(axis)
-    _ids.append(id(axis))  # Record this object id, in case we're passed it
-                           # in again.
+  # Record this object id, in case we're passed it in again.
+  _id_lookup[axis_id] = axis
 
   return axis
 
