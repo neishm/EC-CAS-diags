@@ -96,6 +96,7 @@ class Varlist (object):
   def __iter__ (self):  return iter(self.values)
   def __len__ (self): return len(self.values)
   def __repr__ (self): return "<%s>"%self.__class__.__name__
+  def __cmp__ (self, other): return cmp(self.values, other.values)
 
 
 # An interface for axis-manipulation methods.
@@ -223,7 +224,7 @@ class DataInterface (object):
       # A unique representation of the domain.
       # Assumes there is only one object id for each possible axis object,
       # to save time in comparisons.
-      self._id = tuple(frozenset(a.values) if isinstance(a,Varlist) else id(a) for a in self.axes)
+      self._id = tuple(map(id,self.axes))
     def __cmp__ (self, other):
       return cmp(self._id, other._id)
     def __hash__ (self):
@@ -388,8 +389,8 @@ class DataInterface (object):
     domains = set()
     for opener, entries in manifest.itervalues():
       for var, axes, atts in entries:
-        domains.add(cls.Domain([Varlist([var])]+list(axes)))
-        axis_manager.register_axes(axes)
+        axes = axis_manager.lookup_axes([Varlist([var])]+list(axes))
+        domains.add(cls.Domain(axes))
 
     # Reduce this to a minimal number of domains for data coverage
     domains = cls._get_prime_domains(domains, axis_manager)
