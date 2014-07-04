@@ -188,15 +188,14 @@ class DataInterface (object):
   class Domain (object):
     def __init__ (self, axes):
       self.axes = tuple(axes)
-    # A unique representation of the domain.
-    # Assumes there is only one object id for each possible axis object,
-    # to save time in comparisons.
-    def _id (self):
-      return tuple(frozenset(a.values) if isinstance(a,Varlist) else id(a) for a in self.axes)
+      # A unique representation of the domain.
+      # Assumes there is only one object id for each possible axis object,
+      # to save time in comparisons.
+      self._id = tuple(frozenset(a.values) if isinstance(a,Varlist) else id(a) for a in self.axes)
     def __cmp__ (self, other):
-      return cmp(self._id(), other._id())
+      return cmp(self._id, other._id)
     def __hash__ (self):
-      return hash(self._id())
+      return hash(self._id)
     def __iter__ (self):
       return iter(self.axes)
     def __repr__ (self):
