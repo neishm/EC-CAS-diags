@@ -125,15 +125,6 @@ def _lookup_axis (axis, _hash_bins={}, _id_lookup={}, _all_axes=[]):
 # Essentially, a collection of datasets, with some convenience methods.
 class DataInterface (object):
 
-  # Helper function: produce a new axis of the given type
-  @staticmethod
-  def _create_axis (sample, values):
-    if isinstance(sample,Varlist):
-      axis = Varlist(sorted(values))
-    else:
-      axis = sample.withnewvalues(sorted(values))
-    return _lookup_axis(axis)
-
   # Convert an axis to tuples of values and auxiliary arrays
   @staticmethod
   def _flatten_axis (axis):
@@ -229,7 +220,7 @@ class DataInterface (object):
   # Helper method - aggregate along a particular axis
   # Inputs:
   #   domains: the set of original domains.
-  #   axis_type: the type of axis to aggregate the domains over.
+  #   axis_name: the name of axis to aggregate the domains over.
   # Input/Output:
   #   used_domains: set of original domains that are covered by the output
   #                 (i.e., ones that could be safely removed later).
@@ -509,18 +500,3 @@ class DataVar(Var):
 
 del Var
 
-
-
-def my_opener(filename):
-  from pygeode.formats import fstd
-  return fstd.open(filename, raw_list=True)
-
-if __name__ == '__main__':
-  from glob import glob
-  from gem import eccas_opener
-  data = DataInterface.from_files(glob("/wrk6/neish/mn083/model/2009*"), opener=eccas_opener, manifest="/wrk6/neish/mn083/model/nc_cache/mn083_manifest")
-  for dataset in data.datasets:
-    print dataset
-    if 'CO2' in dataset and len(dataset.forecast) > 1:
-      print dataset.CO2(i_time=0,lat=10).mean()
-  print len(data.datasets)
