@@ -14,6 +14,9 @@ def scan_files (files, opener, manifest=None):
   import cPickle as pickle
   from pygeode.progress import PBar
 
+  # Special case: no files given
+  if len(files) == 0: return dict()
+
   # Strip out extra separators, etc. from the filenames.
   # Otherwise, if the files are scanned a second time with different
   # separators, it may cause the same file to be included more than once.
