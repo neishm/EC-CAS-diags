@@ -107,6 +107,10 @@ class AxisManager (object):
     self._id_lookup = {}  # Reverse-lookup of an axis by id
     self._all_axes = []   # List of encountered axes (so the ids don't get
                           # recycled)
+    # For flattening / unflattening axes
+    self._flattened_axes = {}
+    self._unflattened_axes = {}
+
     self.register_axes (axes)
 
   # Helper function: recycle an existing axis object if possible.
@@ -147,17 +151,29 @@ class AxisManager (object):
 
   # Convert an axis to tuples of values and auxiliary arrays
   def flatten_axis (self, axis):
+    axis = self.lookup_axis(axis)
+    axis_id = id(axis)
+    if axis_id in self._flattened_axes:
+      return self._flattened_axes[axis_id]
+
     if isinstance(axis,Varlist):
       auxarrays = []
     else:
       auxarrays = [[(name,v) for v in axis.auxarrays[name]] for name in sorted(axis.auxarrays.keys())]
     assert all(len(aux) == len(axis.values) for aux in auxarrays)
-    return zip(axis.values, *auxarrays)
+    flat = tuple(zip(axis.values, *auxarrays))
+    self._flattened_axes[axis_id] = flat
+    self._unflattened_axes.setdefault(type(axis),dict())[flat] = axis
+    return flat
 
   # Convert some flattened coordinates back into an axis
   def unflatten_axis (self, sample, values):
     import numpy as np
-    values = sorted(values)
+    values = tuple(sorted(values))
+    # Check if we can already get one
+    key = values
+    axis = self._unflattened_axes.setdefault(type(sample),dict()).get(key,None)
+    if axis is not None: return axis
     x = zip(*values)
     # Special case: empty axis
     if len(x) == 0:
@@ -176,7 +192,10 @@ class AxisManager (object):
       # For empty axes, we don't want to erase the (empty) auxarrays already
       # created e.g. for the time axis.
       if len(auxarrays) > 0: axis.auxarrays = auxarrays
-    return self.lookup_axis(axis)
+
+    axis = self.lookup_axis(axis)
+    self._unflattened_axes[type(sample)][key] = axis
+    return axis
 
   # Merge axes together
   def get_axis_union (self, axes):
