@@ -492,13 +492,21 @@ class DataInterface (object):
     return result
 
 
+# Override Pygeode's common_dict implementation with our own
+# (more optimized)
+def common_dict (dicts):
+  from collections import Counter
+  items= set.union(*[set(d.iteritems()) for d in dicts])
+  count = Counter(k for k,v in items)
+  return dict([k,v] for k,v in items if count[k] == 1)
+
+
 # Wrap a variable from a domain into a Var object
 from pygeode.var import Var
 class DataVar(Var):
   @classmethod
   def construct (cls, varname, axes, manifest):
     import numpy as np
-    from pygeode.tools import common_dict
 
     # For all axes in the manifest, get their values as sets
     # (for faster checking of regions in getview)
