@@ -27,7 +27,8 @@ def scan_files (files, opener, manifest=None):
   if manifest is not None and exists(manifest):
     with gzip.open(manifest,'r') as f:
       version = pickle.load(f)
-      table = pickle.load(f)
+      table = f.read()
+      table = pickle.loads(table)
     mtime = getmtime(manifest)
   if manifest is None or not exists(manifest) or version != MANIFEST_VERSION:
     table = {}
@@ -75,7 +76,8 @@ def scan_files (files, opener, manifest=None):
   if modified_table and manifest is not None:
     with gzip.open(manifest,'w') as f:
       pickle.dump(MANIFEST_VERSION, f)
-      pickle.dump(table, f)
+      blob = pickle.dumps(table)
+      f.write(blob)
     # Set the modification time to the latest file that was used.
     atime = getatime(manifest)
     utime(manifest,(atime,mtime))
