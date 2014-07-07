@@ -114,6 +114,10 @@ class AxisManager (object):
     self._flattened_axes = {}
     self._unflattened_axes = {}
 
+    # For union / intersection of axes
+    self._unions = {}
+    self._intersections = {}
+
     self.register_axes (axes)
 
   # Helper function: recycle an existing axis object if possible.
@@ -202,16 +206,23 @@ class AxisManager (object):
 
   # Merge axes together
   def get_axis_union (self, axes):
+    key = tuple(sorted(map(id,axes)))
+    if key in self._unions: return self._unions[key]
     values = map(self.flatten_axis, axes)
     values = reduce(set.union, values, set())
-    return self.unflatten_axis (axes[0], values)
+    union = self.unflatten_axis (axes[0], values)
+    self._unions[key] = union
+    return union
 
   # Find common values between axes
   def get_axis_intersection (self, axes):
+    key = tuple(sorted(map(id,axes)))
+    if key in self._intersections: return self._intersections[key]
     values = map(self.flatten_axis, axes)
     values = reduce(set.intersection, values, set(values[0]))
-    return self.unflatten_axis (axes[0], values)
-
+    intersection = self.unflatten_axis (axes[0], values)
+    self._intersections[key] = intersection
+    return intersection
 
 
 # A generic data interface.
