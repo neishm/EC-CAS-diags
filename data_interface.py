@@ -14,6 +14,9 @@ def scan_files (files, opener, manifest=None):
   import cPickle as pickle
   from pygeode.progress import PBar
 
+  # Special case: no files given
+  if len(files) == 0: return dict()
+
   # Strip out extra separators, etc. from the filenames.
   # Otherwise, if the files are scanned a second time with different
   # separators, it may cause the same file to be included more than once.
@@ -24,16 +27,18 @@ def scan_files (files, opener, manifest=None):
   if manifest is not None and exists(manifest):
     with gzip.open(manifest,'r') as f:
       version = pickle.load(f)
-      table = pickle.load(f)
+      table = f.read()
+      table = pickle.loads(table)
     mtime = getmtime(manifest)
   if manifest is None or not exists(manifest) or version != MANIFEST_VERSION:
     table = {}
     mtime = 0
 
   # Re-use axis objects wherever possible.
+  axis_manager = AxisManager()
   for filename, (_opener,entries) in table.iteritems():
     for varname, axes, atts in entries:
-      map(_lookup_axis,axes)
+      axis_manager.register_axes(axes)
 
   if manifest is not None:
     pbar = PBar (message = "Generating %s"%manifest)
@@ -62,7 +67,7 @@ def scan_files (files, opener, manifest=None):
     table[f] = opener, entries
     for var in opener(f):
 
-      axes = tuple(_lookup_axis(a) for a in var.axes)
+      axes = axis_manager.lookup_axes(var.axes)
       entries.append((var.name, axes, var.atts))
 
     modified_table = True
@@ -71,7 +76,8 @@ def scan_files (files, opener, manifest=None):
   if modified_table and manifest is not None:
     with gzip.open(manifest,'w') as f:
       pickle.dump(MANIFEST_VERSION, f)
-      pickle.dump(table, f)
+      blob = pickle.dumps(table)
+      f.write(blob)
     # Set the modification time to the latest file that was used.
     atime = getatime(manifest)
     utime(manifest,(atime,mtime))
@@ -92,60 +98,89 @@ class Varlist (object):
   def __iter__ (self):  return iter(self.values)
   def __len__ (self): return len(self.values)
   def __repr__ (self): return "<%s>"%self.__class__.__name__
+  def __cmp__ (self, other): return cmp(self.values, other.values)
 
 
-# Helper function: recycle an existing axis object if possible.
-# This allows axes to be compared by their ids, and makes pickling them
-# more space-efficient.
-def _lookup_axis (axis, _hash_bins={}, _id_lookup={}, _all_axes=[]):
-  # Check if we've already looked at this exact object.
-  axis_id = id(axis)
-  if axis_id in _id_lookup: return _id_lookup[axis_id]
-  # Store a reference to this axis, so the object id doesn't get recycled.
-  _all_axes.append(axis)
-  values = tuple(axis.values)
-  # Get a hash value that will be equal among axes that are equivalent
-  axis_hash = hash((axis.name,type(axis),values))
-  # Get all axes that have this hash (most likely, only 1 match (or none))
-  hash_bin = _hash_bins.setdefault(axis_hash,[])
-  # Find one that is truly equivalent, otherwise add this new one to the cache.
-  try:
-    axis = hash_bin[hash_bin.index(axis)]
-  except ValueError:
-    hash_bin.append(axis)
-  # Record this object id, in case we're passed it in again.
-  _id_lookup[axis_id] = axis
+# An interface for axis-manipulation methods.
+# These methods are tied to a common object, which allows the re-use of
+# previous values.
+class AxisManager (object):
+  def __init__ (self, axes=[]):
+    self._hash_bins = {}  # Bin axis objects by hash value
+    self._id_lookup = {}  # Reverse-lookup of an axis by id
+    self._all_axes = []   # List of encountered axes (so the ids don't get
+                          # recycled)
+    # For flattening / unflattening axes
+    self._flattened_axes = {}
+    self._unflattened_axes = {}
 
-  return axis
+    # For union / intersection of axes
+    self._unions = {}
+    self._intersections = {}
 
-# A generic data interface.
-# Essentially, a collection of datasets, with some convenience methods.
-class DataInterface (object):
+    self.register_axes (axes)
 
-  # Helper function: produce a new axis of the given type
-  @staticmethod
-  def _create_axis (sample, values):
-    if isinstance(sample,Varlist):
-      axis = Varlist(sorted(values))
-    else:
-      axis = sample.withnewvalues(sorted(values))
-    return _lookup_axis(axis)
+  # Helper function: recycle an existing axis object if possible.
+  # This allows axes to be compared by their ids, and makes pickling them
+  # more space-efficient.
+  def lookup_axis (self, axis):
+    # Check if we've already looked at this exact object.
+    axis_id = id(axis)
+    if axis_id in self._id_lookup: return self._id_lookup[axis_id]
+    # Store a reference to this axis, so the object id doesn't get recycled.
+    self._all_axes.append(axis)
+    values = tuple(axis.values)
+    # Get a hash value that will be equal among axes that are equivalent
+    axis_hash = hash((axis.name,type(axis),values))
+    # Get all axes that have this hash (most likely, only 1 match (or none))
+    hash_bin = self._hash_bins.setdefault(axis_hash,[])
+    # Find one that is truly equivalent, otherwise add this new one to the cache.
+    try:
+      axis = hash_bin[hash_bin.index(axis)]
+    except ValueError:
+      hash_bin.append(axis)
+    # Record this object id, in case we're passed it in again.
+    self._id_lookup[axis_id] = axis
+
+    return axis
+
+  # Register an axis in this object (so we're aware of it for future reference)
+  def register_axis (self, axis):
+    self.lookup_axis (axis)
+
+  # Look up multiple axes at a time, return as a tuple
+  def lookup_axes (self, axes):
+    return tuple(map(self.lookup_axis, axes))
+
+  # Register multiple axes at a time
+  def register_axes (self, axes):
+    self.lookup_axes (axes)
 
   # Convert an axis to tuples of values and auxiliary arrays
-  @staticmethod
-  def _flatten_axis (axis):
+  def flatten_axis (self, axis):
+    axis = self.lookup_axis(axis)
+    axis_id = id(axis)
+    if axis_id in self._flattened_axes:
+      return self._flattened_axes[axis_id]
+
     if isinstance(axis,Varlist):
       auxarrays = []
     else:
       auxarrays = [[(name,v) for v in axis.auxarrays[name]] for name in sorted(axis.auxarrays.keys())]
     assert all(len(aux) == len(axis.values) for aux in auxarrays)
-    return zip(axis.values, *auxarrays)
+    flat = tuple(zip(axis.values, *auxarrays))
+    self._flattened_axes[axis_id] = flat
+    self._unflattened_axes.setdefault(type(axis),dict())[flat] = axis
+    return flat
 
   # Convert some flattened coordinates back into an axis
-  @staticmethod
-  def _unflatten_axis (sample, values):
+  def unflatten_axis (self, sample, values):
     import numpy as np
-    values = sorted(values)
+    values = tuple(sorted(values))
+    # Check if we can already get one
+    key = values
+    axis = self._unflattened_axes.setdefault(type(sample),dict()).get(key,None)
+    if axis is not None: return axis
     x = zip(*values)
     # Special case: empty axis
     if len(x) == 0:
@@ -164,36 +199,49 @@ class DataInterface (object):
       # For empty axes, we don't want to erase the (empty) auxarrays already
       # created e.g. for the time axis.
       if len(auxarrays) > 0: axis.auxarrays = auxarrays
-    return _lookup_axis(axis)
+
+    axis = self.lookup_axis(axis)
+    self._unflattened_axes[type(sample)][key] = axis
+    return axis
 
   # Merge axes together
-  @classmethod
-  def _get_axis_union (cls, axes):
-    values = map(cls._flatten_axis, axes)
+  def get_axis_union (self, axes):
+    key = tuple(sorted(map(id,axes)))
+    if key in self._unions: return self._unions[key]
+    values = map(self.flatten_axis, axes)
     values = reduce(set.union, values, set())
-    return cls._unflatten_axis (axes[0], values)
+    union = self.unflatten_axis (axes[0], values)
+    self._unions[key] = union
+    return union
 
   # Find common values between axes
-  @classmethod
-  def _get_axis_intersection (cls, axes):
-    values = map(cls._flatten_axis, axes)
+  def get_axis_intersection (self, axes):
+    key = tuple(sorted(map(id,axes)))
+    if key in self._intersections: return self._intersections[key]
+    values = map(self.flatten_axis, axes)
     values = reduce(set.intersection, values, set(values[0]))
-    return cls._unflatten_axis (axes[0], values)
+    intersection = self.unflatten_axis (axes[0], values)
+    self._intersections[key] = intersection
+    return intersection
+
+
+# A generic data interface.
+# Essentially, a collection of datasets, with some convenience methods.
+class DataInterface (object):
 
 
   # A domain (essentially a tuple of axes, with no deep comparisons)
   class Domain (object):
     def __init__ (self, axes):
       self.axes = tuple(axes)
-    # A unique representation of the domain.
-    # Assumes there is only one object id for each possible axis object,
-    # to save time in comparisons.
-    def _id (self):
-      return tuple(frozenset(a.values) if isinstance(a,Varlist) else id(a) for a in self.axes)
+      # A unique representation of the domain.
+      # Assumes there is only one object id for each possible axis object,
+      # to save time in comparisons.
+      self._id = tuple(map(id,self.axes))
     def __cmp__ (self, other):
-      return cmp(self._id(), other._id())
+      return cmp(self._id, other._id)
     def __hash__ (self):
-      return hash(self._id())
+      return hash(self._id)
     def __iter__ (self):
       return iter(self.axes)
     def __repr__ (self):
@@ -227,7 +275,7 @@ class DataInterface (object):
   # Helper method - aggregate along a particular axis
   # Inputs:
   #   domains: the set of original domains.
-  #   axis_type: the type of axis to aggregate the domains over.
+  #   axis_name: the name of axis to aggregate the domains over.
   # Input/Output:
   #   used_domains: set of original domains that are covered by the output
   #                 (i.e., ones that could be safely removed later).
@@ -235,7 +283,7 @@ class DataInterface (object):
   # Output: the domains that could be aggregated along to given axis.
   #         Domains without that axis type are ignored.
   @classmethod
-  def _aggregate_along_axis (cls, domains, axis_name, used_domains=None):
+  def _aggregate_along_axis (cls, domains, axis_name, used_domains, axis_manager):
     bins = {}
     touched_domains = set()
     for domain in domains:
@@ -256,7 +304,7 @@ class DataInterface (object):
         output.add(domain_group.with_axis(axis))
       # Otherwise, need to aggregate pieces together.
       else:
-        new_axis = cls._get_axis_union (axis_bin.values())
+        new_axis = axis_manager.get_axis_union (axis_bin.values())
         output.add(domain_group.with_axis(new_axis))
 
     if used_domains is not None:
@@ -268,14 +316,14 @@ class DataInterface (object):
 
   # Find a minimal set of domains that cover all available data
   @classmethod
-  def _get_prime_domains (cls, domains):
+  def _get_prime_domains (cls, domains, axis_manager):
     axis_names = cls._get_axis_names(domains)
     # This may be an iterative process, that may need to be repeated.
     while True:
       used_domains = set()
       # Aggregate along one axis at a time.
       for axis_name in axis_names:
-        domains = cls._aggregate_along_axis(domains, axis_name, used_domains)
+        domains = cls._aggregate_along_axis(domains, axis_name, used_domains, axis_manager)
       if len(used_domains) == 0: break  # Nothing aggregated
       domains -= used_domains  # Remove smaller pieces that are aggregated.
 
@@ -285,7 +333,7 @@ class DataInterface (object):
   # For each pair of domains, look for an axis over which they could be
   # concatenated.  All other axes will be intersected between domains.
   @classmethod
-  def _merge_domains (cls, d1, d2):
+  def _merge_domains (cls, d1, d2, axis_manager):
     domains = set()
     axis_names = cls._get_axis_names([d1,d2])
     # We need at least one of the two domains to contain all the types
@@ -303,10 +351,10 @@ class DataInterface (object):
     for merge_axis_name in axis_names:
       m1 = d1.get_axis(merge_axis_name)
       m2 = d2.get_axis(merge_axis_name)
-      merge_axis = cls._get_axis_union([m1,m2])
+      merge_axis = axis_manager.get_axis_union([m1,m2])
       # Skip if we aren't actually getting a bigger axis.
       if merge_axis is m1 or merge_axis is m2: continue
-      axes = [merge_axis if a1.name == merge_axis_name else cls._get_axis_intersection([a1,a2]) for a1, a2 in zip(d1,d2)]
+      axes = [merge_axis if a1.name == merge_axis_name else axis_manager.get_axis_intersection([a1,a2]) for a1, a2 in zip(d1,d2)]
       # Skip if we don't have any overlap
       if any(len(a) == 0 for a in axes): continue
       domains.add(cls.Domain(axes))
@@ -314,13 +362,13 @@ class DataInterface (object):
     return domains
 
   @classmethod
-  def _merge_all_domains (cls, domains):
+  def _merge_all_domains (cls, domains, axis_manager):
     merged_domains = set(domains)
     while True:
       new_merged_domains = set()
       for d1 in domains:
         for d2 in merged_domains:
-          new_merged_domains.update(cls._merge_domains(d1,d2))
+          new_merged_domains.update(cls._merge_domains(d1,d2,axis_manager))
       new_merged_domains -= merged_domains
       if len(new_merged_domains) == 0: break  # Nothing new added
       merged_domains.update(new_merged_domains)
@@ -348,15 +396,18 @@ class DataInterface (object):
   @classmethod
   def _get_domains (cls, manifest):
 
+    axis_manager = AxisManager()  # For memoized axis operations
+
     # Start by adding all domain pieces to the list
     domains = set()
     for opener, entries in manifest.itervalues():
       for var, axes, atts in entries:
-        domains.add(cls.Domain([Varlist([var])]+list(axes)))
+        axes = axis_manager.lookup_axes([Varlist([var])]+list(axes))
+        domains.add(cls.Domain(axes))
 
     # Reduce this to a minimal number of domains for data coverage
-    domains = cls._get_prime_domains(domains)
-    domains = cls._merge_all_domains(domains)
+    domains = cls._get_prime_domains(domains, axis_manager)
+    domains = cls._merge_all_domains(domains, axis_manager)
     domains = cls._cleanup_subdomains(domains)
     return domains
 
@@ -441,13 +492,21 @@ class DataInterface (object):
     return result
 
 
+# Override Pygeode's common_dict implementation with our own
+# (more optimized)
+def common_dict (dicts):
+  from collections import Counter
+  items= set.union(*[set(d.iteritems()) for d in dicts])
+  count = Counter(k for k,v in items)
+  return dict([k,v] for k,v in items if count[k] == 1)
+
+
 # Wrap a variable from a domain into a Var object
 from pygeode.var import Var
 class DataVar(Var):
   @classmethod
   def construct (cls, varname, axes, manifest):
     import numpy as np
-    from pygeode.tools import common_dict
 
     # For all axes in the manifest, get their values as sets
     # (for faster checking of regions in getview)
@@ -507,18 +566,3 @@ class DataVar(Var):
 
 del Var
 
-
-
-def my_opener(filename):
-  from pygeode.formats import fstd
-  return fstd.open(filename, raw_list=True)
-
-if __name__ == '__main__':
-  from glob import glob
-  from gem import eccas_opener
-  data = DataInterface.from_files(glob("/wrk6/neish/mn083/model/2009*"), opener=eccas_opener, manifest="/wrk6/neish/mn083/model/nc_cache/mn083_manifest")
-  for dataset in data.datasets:
-    print dataset
-    if 'CO2' in dataset and len(dataset.forecast) > 1:
-      print dataset.CO2(i_time=0,lat=10).mean()
-  print len(data.datasets)
