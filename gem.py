@@ -281,7 +281,7 @@ class GEM_Data (object):
     ##############################
 
     if flux_dir is not None:
-      files.extend((flux_dir+"/area_2009??????"))
+      files.extend(glob(flux_dir+"/area_2009??????"))
 
     manifest = cache.full_path("manifest", writeable=True)
 
