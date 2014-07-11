@@ -1,4 +1,34 @@
-# CO2 timeseries
+# Timeseries diagnostic
+
+# Criteria for getting the data closest to the surface
+# (and the maximum number of timesteps)
+def surface_output_frequency (varlist):
+  from common import closeness_to_surface, number_of_timesteps
+  # Rank by closeness to surface first, then # of timesteps for tiebreaker
+  return closeness_to_surface(varlist), number_of_timesteps(varlist)
+
+#TODO: Interpolate directly to station locations
+# This method computes the surface values of a model dataset
+def get_sfc_data (model, fieldname):
+  from common import select_surface, have_gridded_data
+  field = model.data.find_best(fieldname, requirement=have_gridded_data, maximize = surface_output_frequency)
+  field = select_surface(field)
+  # Cache the data for faster subsequent access
+  field = model.cache.write(field, prefix='sfc_'+fieldname)
+  return field
+
+# Get the ensemble mean surface values
+# (or, the regular surface data for non-ensemble runs)
+def get_sfc_mean (model, standard_name):
+  for fieldname in standard_name, standard_name+"_ensemblemean":
+    if model.data.have(fieldname):
+      return get_sfc_data (model, fieldname)
+  raise KeyError ("Can't find '%s' in '%s'"%(standard_name, model.name))
+
+# Get the ensemble spread surface values (where applicable)
+def get_sfc_std (model, standard_name):
+  return get_sfc_data (model, standard_name+"_ensemblespread")
+
 
 def timeseries (datasets, fieldname, units, outdir, plot_months=None):
 
@@ -35,7 +65,7 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
   sfc_data = []
   for d in datasets:
     try:
-      sfc_data.append(d.get_data('sfc',fieldname))
+      sfc_data.append(get_sfc_mean(d,fieldname))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_data.append(None)
@@ -43,7 +73,7 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
   sfc_std = []
   for d in datasets:
     try:
-      sfc_std.append(d.get_data('sfc',fieldname,'std'))
+      sfc_std.append(get_sfc_std(d,fieldname))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_std.append(None)
