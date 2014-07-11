@@ -188,3 +188,58 @@ def squash_forecasts(var):
   assert isinstance(var,Var), "Unhandled case '%s'"%type(var)
   return SquashForecasts(var)
 
+
+# Get a keyword / value that can be used to select a surface level for the
+# givem vertical axis.
+from pygeode.axis import Pres, Hybrid
+from pygeode.formats.fstd import LogHybrid
+surface_values = {Pres:1000., Hybrid:1.0, LogHybrid:1.0}
+surface_direction = {Pres:+1, Hybrid:+1, LogHybrid:+1}
+del Pres, Hybrid, LogHybrid
+
+# Find a surface value (or the closest level to the surface)
+def select_surface (var):
+  from pygeode.axis import ZAxis
+  if not var.hasaxis(ZAxis): return var
+  zaxis = var.getaxis(ZAxis)
+  zaxis_type = type(zaxis)
+  sfc_val = surface_values[zaxis_type]
+  selection = dict([(zaxis.name,sfc_val)])
+  return var(**selection)
+
+
+# Criteria for ranking how close a dataset is to the surface
+# (higher value is closer)
+# To be used in the find_best() method.
+def closeness_to_surface (varlist):
+  from pygeode.axis import ZAxis
+  for var in varlist:
+    if var.hasaxis(ZAxis):
+      zaxis = var.getaxis(ZAxis)
+      return max(var.getaxis(ZAxis).values * surface_direction[type(zaxis)])
+
+# Rank a dataset based on the number of timesteps available.
+# To be used in the find_best() method.
+def number_of_timesteps (varlist):
+  from pygeode.axis import TAxis
+  for var in varlist:
+    if var.hasaxis(TAxis):
+      return len(var.getaxis(TAxis))
+
+# Rank a dataset based on the number of levels available.
+# To be used in the find_best() method.
+def number_of_levels (varlist):
+  from pygeode.axis import ZAxis
+  for var in varlist:
+    if var.hasaxis(ZAxis):
+      return len(var.getaxis(ZAxis))
+
+# Check if we have data on a lat/lon grid.
+# To be used in the find_best() method.
+def have_gridded_data (varlist):
+  from pygeode.axis import Lat, Lon
+  for var in varlist:
+    if var.hasaxis(Lat) and var.hasaxis(Lon): return True
+  return False
+
+
