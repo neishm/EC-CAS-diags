@@ -14,6 +14,8 @@ def timeseries (models, fieldname, units, outdir, plot_months=None,timefilter=No
 
   from common import unit_scale
 
+  from timeseries import get_sfc_mean, get_sfc_std
+
   line_colours = ['blue', 'green', 'red']
 
   datasets = [d for d in models if d is not None]
@@ -38,7 +40,7 @@ def timeseries (models, fieldname, units, outdir, plot_months=None,timefilter=No
   sfc_data = []
   for d in datasets:
     try:
-      sfc_data.append(d.get_data('sfc',fieldname))
+      sfc_data.append(get_sfc_mean(d,fieldname))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_data.append(None)
@@ -46,7 +48,7 @@ def timeseries (models, fieldname, units, outdir, plot_months=None,timefilter=No
   sfc_std = []
   for d in datasets:
     try:
-      sfc_std.append(d.get_data('sfc',fieldname,'std'))
+      sfc_std.append(get_sfc_std(d,fieldname))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_std.append(None)

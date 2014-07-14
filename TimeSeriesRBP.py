@@ -14,6 +14,8 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
 
   from common import unit_scale
 
+  from timeseries import get_sfc_mean, get_sfc_std
+
   datasets = [d for d in models if d is not None]
 
   # Extract all observation locations from the datasets
@@ -36,7 +38,7 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
   sfc_data = []
   for d in datasets:
     try:
-      sfc_data.append(d.get_data('sfc',fieldname))
+      sfc_data.append(get_sfc_mean(d,fieldname))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_data.append(None)
@@ -44,7 +46,7 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
   sfc_std = []
   for d in datasets:
     try:
-      sfc_std.append(d.get_data('sfc',fieldname,'std'))
+      sfc_std.append(get_sfc_std(d,fieldname))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_std.append(None)
