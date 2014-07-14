@@ -272,9 +272,6 @@ class GEM_Data (object):
     files.extend(glob(indir+"/p[0-9]*_[0-9]*"))
     # Omit 0h forecasts
     files = [f for f in files if not f.endswith('_000') and not f.endswith('_000h')]
-    # Hack to read at least one model file, just to get the lat/lon
-    # (fixes area emissions lat/lon mismatch with current emissions)
-    eccas_opener(glob(indir+"/*[0-9]*_[0-9]*")[0])
 
     ##############################
     # Fluxes
