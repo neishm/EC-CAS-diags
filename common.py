@@ -216,7 +216,12 @@ def closeness_to_surface (varlist):
   for var in varlist:
     if var.hasaxis(ZAxis):
       zaxis = var.getaxis(ZAxis)
-      return max(var.getaxis(ZAxis).values * surface_direction[type(zaxis)])
+      if type(zaxis) in surface_direction:
+        direction = surface_direction[type(zaxis)]
+      elif 'positive' in zaxis.atts:
+        direction = {'up':-1, 'down':+1}[zaxis.atts['positive']]
+      else: raise Exception ("Don't know how to find orientation of '%s'"%zaxis)
+      return max(var.getaxis(ZAxis).values * direction)
 
 # Rank a dataset based on the number of timesteps available.
 # To be used in the find_best() method.

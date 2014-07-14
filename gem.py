@@ -219,16 +219,6 @@ def gem_load_cache_hook (dataset):
 
 
 # Some useful criteria for searching for fields
-def have_surface (varlist):
-  from pygeode.axis import ZAxis
-  from pygeode.formats.fstd import Hybrid, LogHybrid
-  for var in varlist:
-    if var.hasaxis(Hybrid):
-      return 1.0 in var.getaxis(Hybrid).values
-    if var.hasaxis(LogHybrid):
-      return 1.0 in var.getaxis(LogHybrid).values
-  # No vertical info?
-  return False
 
 def number_of_timesteps (varlist):
   from pygeode.axis import TAxis
@@ -333,13 +323,8 @@ class GEM_Data (object):
 
     # Determine which data is needed
 
-    # Surface data (lowest model level)
-    if domain == 'sfc':
-      data = self.data.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
-      data = data(eta=1.0, zeta=1.0, ignore_mismatch=True)
-
     # Zonal mean, with data interpolated to a fixed set of geopotential heights
-    elif domain == 'zonalmean_gph':
+    if domain == 'zonalmean_gph':
       data, GZ = self.data.find_best([field,'geopotential_height'], maximize=number_of_levels)
       data = to_gph(data,GZ).nanmean('lon')
       data.atts['units'] = 'ppm'

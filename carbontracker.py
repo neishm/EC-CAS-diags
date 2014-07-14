@@ -160,14 +160,6 @@ def ct_zonal_24h (field,gph):
 
 
 # Some useful criteria for searching for fields
-def have_surface (varlist):
-  from pygeode.axis import ZAxis
-  from pygeode.formats.fstd import Hybrid, LogHybrid
-  for var in varlist:
-    if var.hasaxis('level'):
-      return 1 in var.level.values
-  # No vertical info?
-  return False
 
 def number_of_timesteps (varlist):
   from pygeode.axis import TAxis
@@ -222,11 +214,6 @@ class CarbonTracker_Data (object):
       data, gph = self.data.find_best([field,'geopotential_height'], maximize=number_of_levels)
       data = ct_zonal_24h(data,gph)
       data.atts['units'] = 'ppm'
-
-    # "surface" data (lowest level of molefractions dataset)
-    elif domain == 'sfc':
-      data = self.data.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
-      data = data(level=1)
 
     # Total column
     elif domain == 'totalcolumn':
