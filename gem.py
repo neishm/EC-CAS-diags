@@ -4,7 +4,7 @@ def eccas_opener (filename):
   return fstd.open(filename, raw_list=True)
 
 
-def eccas_products (dataset, chmmean=False, chmstd=False):
+def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
   from pygeode.formats import fstd
   from pygeode.ufunc import exp, log
   from pygeode.var import concat, Var
@@ -17,6 +17,11 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
   if chmstd:
     del data["GZ"]
     del data["P0"]
+
+  # Special case: tracer is in mass mixing ratio w.r.t. dry air
+  # Put it in moist air to be consistent with other experiments.
+  if dry_air and 'HU' in data:
+    data['CO2'] *= (1 - data['HU'])
 
   # Convert some standard quantities
   # (old_name, new_name, scale, offset, units)
@@ -245,7 +250,7 @@ def number_of_levels (varlist):
 
 # GEM data interface
 class GEM_Data (object):
-  def __init__ (self, experiment_dir, flux_dir, name, title, tmpdir=None):
+  def __init__ (self, experiment_dir, flux_dir, name, title, tmpdir=None, dry_air=False):
     from cache import Cache
     from data_interface import DataInterface
     from glob import glob
@@ -304,7 +309,7 @@ class GEM_Data (object):
     forward_files = sorted(set(files)-set(chmmean_files)-set(chmstd_files)-set(flux_files))
     forward_data = DataInterface.from_files(forward_files, opener=eccas_opener, manifest=manifest)
     # Apply the conversions & transformations
-    forward_data = DataInterface(map(eccas_products,forward_data))
+    forward_data = DataInterface([eccas_products(fd, dry_air=dry_air) for fd in forward_data])
 
     # Fix the area emissions data, to have the proper lat/lon
     lat = forward_data.datasets[0].lat
