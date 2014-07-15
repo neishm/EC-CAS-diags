@@ -14,7 +14,7 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
 
   from common import unit_scale
 
-  from timeseries import get_sfc_mean, get_sfc_std
+  from timeseries import get_sfc_mean, get_sfc_std, get_station_mean, get_station_std
 
   datasets = [d for d in models if d is not None]
 
@@ -114,9 +114,9 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
       else:
         # For now, assume that we have an obs dataset,
         # so this command shouldn't fail.
-        data = d.get_data(location,fieldname,'mean')
+        data = get_station_mean(d,location,fieldname)
         series.append(data)
-        std.append(d.get_data(location,fieldname,'std'))
+        std.append(get_station_mean(d,location,fieldname))
 
     # Scale to the plot units
     for i,x in enumerate(series):

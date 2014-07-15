@@ -12,6 +12,20 @@ class Station (Axis):
   def __eq__ (self, other):
     if not isinstance(other,Station): return False
     return map(str,self.values) == map(str,other.values)
+  # Override str_as_val to allow indexing by station name
+  def str_as_val(self, key, s):
+    return s
+  # Override get_slice to allow indexing by station name
+  def get_slice (self, kwargs, ignore_mismatch=False):
+    from pygeode.axis import Axis
+    import numpy as np
+    for key in kwargs.iterkeys():
+      if not self.has_alias(key): continue
+      station = kwargs.pop(key)
+      if station not in self.values:
+        raise IndexError("station '%s' not found in Station axis."%station)
+      s = np.where(self.values == station)[0][0]
+      return s
   # Create our own map_to interface, since PyGeode will choke on string arrays
   def map_to(self, other):
     if not self.isparentof(other) and not other.isparentof(self): return None

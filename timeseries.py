@@ -29,6 +29,27 @@ def get_sfc_mean (model, standard_name):
 def get_sfc_std (model, standard_name):
   return get_sfc_data (model, standard_name+"_ensemblespread")
 
+# Get station data.
+# Assume there is only one dataset, with station data in it.
+def get_station_data (obs, location, fieldname):
+  import numpy as np
+  field = obs.data.find_best(fieldname)
+  stations = field.station.values
+  if location not in stations:
+    raise KeyError ("Station '%s' not found in obs"%location)
+  return field(station=location).squeeze('station')  # No caching
+
+# Get station mean measurements
+def get_station_mean (obs, location, standard_name):
+  for fieldname in standard_name, standard_name+"_mean":
+    if obs.data.have(fieldname):
+      return get_station_data (obs, location, fieldname)
+  raise KeyError ("Can't find '%s' in '%s'"%(standard_name, obs.name))
+
+# Get station measurement error (standard deviation)
+def get_station_std (obs, location, standard_name):
+  return get_station_data (obs, location, standard_name+"_std")
+
 
 def timeseries (datasets, fieldname, units, outdir, plot_months=None):
 
@@ -134,9 +155,9 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
       else:
         # For now, assume that we have an obs dataset,
         # so this command shouldn't fail.
-        data = d.get_data(location,fieldname,'mean')
+        data = get_station_mean(d, location,fieldname)
         series.append(data)
-        std.append(d.get_data(location,fieldname,'std'))
+        std.append(get_station_std(d, location,fieldname))
 
     # Scale to the plot units
     for i,x in enumerate(series):

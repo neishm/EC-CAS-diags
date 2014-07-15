@@ -131,17 +131,3 @@ class EC_Station_Data (object):
 
     self.data = DataInterface.from_files([cachefile], opener=ec_station_opener)
 
-  # Get some data at a station (e.g. CO2_mean)
-  def get_data (self, station, field, stat='mean'):
-    import numpy as np
-
-    data = self.data.find_best(field+'_'+stat)
-
-    stations = data.station.values
-    if station not in stations: raise KeyError
-
-    s = np.where(stations == station)[0][0]
-
-    return data(i_station=s).squeeze('station')
-
-
