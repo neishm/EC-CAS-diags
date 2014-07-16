@@ -297,7 +297,7 @@ def plotOrganize(flux1,flux2=None, flux3=None, names=['','',''], palette=None, n
   pbar.update(100)
 
 
-def movie_flux (models, fieldname, units, outdir, stat='mean',timefilter=None,plottype='BG'):
+def movie_flux (models, fieldname, units, outdir, timefilter=None,plottype='BG'):
 
   from common import unit_scale
 
@@ -306,10 +306,8 @@ def movie_flux (models, fieldname, units, outdir, stat='mean',timefilter=None,pl
   models = [m for m in models if m is not None]
 
   imagedir=outdir+"/FluxDiag-%s-%s-images_%s_flux%s"%(plottype,timefilter,'_'.join(m.name for m in models), fieldname)
-  if stat != 'mean':
-    imagedir += '_' + stat
 
-  fluxes = [m.get_data('flux',fieldname,stat=stat) for m in models]
+  fluxes = [m.get_data('flux',fieldname) for m in models]
 
   # Unit conversion
   #fluxes = [rescale(f,units) for f in fields]
@@ -321,7 +319,7 @@ def movie_flux (models, fieldname, units, outdir, stat='mean',timefilter=None,pl
 
   plotOrganize(flux1=fluxes[0], flux2=fluxes[1], flux3=fluxes[2], names=Names,preview=False, outdir=imagedir,timefilter=timefilter,plottype=plottype)
 
-  moviefile = "%s/FluxDiag-%s-%s_%s_%s_%s.avi"%(outdir, plottype, timefilter, '_'.join(m.name for m in models), fieldname, stat)
+  moviefile = "%s/FluxDiag-%s-%s_%s_%s.avi"%(outdir, plottype, timefilter, '_'.join(m.name for m in models), fieldname)
 
   #If the timefilter is Monthly, don't bother making the movie - not enough frames
   if timefilter != 'Monthly':

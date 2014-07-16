@@ -312,14 +312,9 @@ class GEM_Data (object):
 
   # The data interface
   # Handles the computing of general diagnostic domains (zonal means, etc.)
-  def get_data (self, domain, standard_name, stat='mean'):
+  def get_data (self, domain, standard_name):
 
     field = standard_name
-    # Check for ensemble mean / standard deviation requests
-    if stat == 'mean' and self.data.have(standard_name+'_ensemblemean'):
-      field = standard_name+'_ensemblemean'
-    elif stat == 'std':
-      field = standard_name+'_ensemblespread'
 
     # Determine which data is needed
 
@@ -399,7 +394,6 @@ class GEM_Data (object):
       data.atts['units'] = 'mol s-1'
 
     elif domain == 'flux':
-      if stat != 'mean': raise KeyError("Don't have stddev on fluxes")
       from common import molecular_weight as mw
       data, area = self.data.find_best([field+'_flux','cell_area'])
       # Convert from g/s to moles/s
@@ -420,10 +414,7 @@ class GEM_Data (object):
 
     else: raise ValueError ("Unknown domain '%s'"%domain)
 
-    if stat == 'mean':
-      prefix = '%s_%s'%(domain,field)
-    else:
-      prefix = '%s_%s_%s'%(stat,domain,field)
+    prefix = '%s_%s'%(domain,field)
     return self.cache.write(data,prefix)
 
 

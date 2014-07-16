@@ -218,10 +218,7 @@ class CarbonTracker_CH4 (object):
 
 
   # Data interface
-  def get_data (self, domain, field, stat='mean'):
-
-    if stat != 'mean':
-      raise KeyError("No '%s' stat available for CarbonTracker"%stat)
+  def get_data (self, domain, field):
 
     # Zonal mean (over geopotential height)
     if domain == 'zonalmean_gph':

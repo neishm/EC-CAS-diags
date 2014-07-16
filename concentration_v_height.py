@@ -122,7 +122,7 @@ def plotCvH(field1,field2=None, field3=None, title1='plot1', title2='plot2', tit
   pbar.update(100)
 
 
-def movie_CvH (models, fieldname, units, outdir, stat='mean'):
+def movie_CvH (models, fieldname, units, outdir):
 
   from common import unit_scale
 
@@ -131,13 +131,11 @@ def movie_CvH (models, fieldname, units, outdir, stat='mean'):
   models = [m for m in models if m is not None]
 
   imagedir=outdir+"/images_%s_CvH%s"%('_'.join(m.name for m in models), fieldname)
-  if stat != 'mean':
-    imagedir += '_' + stat
 
   #Names of each model - For plot titles later
   Names = [m.name for m in models]
 
-  fields = [m.get_data('zonalmean_gph',fieldname,stat=stat) for m in models]
+  fields = [m.get_data('zonalmean_gph',fieldname) for m in models]
 
   # Unit conversion
   fields = [rescale(f,units) for f in fields]
@@ -151,7 +149,7 @@ def movie_CvH (models, fieldname, units, outdir, stat='mean'):
   plotCvH(field1=fields[0], field2=fields[1], field3=fields[2], title1=titles[0], title2=titles[1], title3=titles[2],preview=False, outdir=imagedir, names=Names)
 
   #Turn output images into movie file
-  moviefile = "%s/%s_CvH%s_%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname, stat)
+  moviefile = "%s/%s_CvH%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname)
 
   from os import system
   from os.path import exists

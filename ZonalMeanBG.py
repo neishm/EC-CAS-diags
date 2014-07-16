@@ -140,7 +140,7 @@ def plotBG(height, field1,field2=None, field3=None, names=['','',''], palette=No
   pbar.update(100)
 
 
-def movie_bargraph (models, height, fieldname, units, outdir, stat='mean'):
+def movie_bargraph (models, height, fieldname, units, outdir):
 
   from common import unit_scale
 
@@ -149,10 +149,8 @@ def movie_bargraph (models, height, fieldname, units, outdir, stat='mean'):
   assert len(models) <= 3  # too many things to plot
 
   imagedir=outdir+"/ZonalMeanBG-images_%s_flux%s"%('_'.join(m.name for m in models), fieldname)
-  if stat != 'mean':
-    imagedir += '_' + stat
 
-  fields = [m.get_data('zonalmean_gph',fieldname,stat=stat) for m in models]
+  fields = [m.get_data('zonalmean_gph',fieldname) for m in models]
 
   # Unit conversion
   fields = [rescale(f,units) for f in fields]
@@ -164,7 +162,7 @@ def movie_bargraph (models, height, fieldname, units, outdir, stat='mean'):
 
   plotBG(height, field1=fields[0], field2=fields[1], field3=fields[2], names=Names,preview=False, outdir=imagedir)
 
-  moviefile = "%s/%s_zonalmeanBG%s_%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname, stat)
+  moviefile = "%s/%s_zonalmeanBG%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname)
 
 
   from os import system

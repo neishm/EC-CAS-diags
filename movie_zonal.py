@@ -107,7 +107,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
 
   plt.close(fig)
 
-def movie_zonal (models, fieldname, units, outdir, stat='mean'):
+def movie_zonal (models, fieldname, units, outdir):
 
   from common import unit_scale
 
@@ -116,10 +116,8 @@ def movie_zonal (models, fieldname, units, outdir, stat='mean'):
   models = [m for m in models if m is not None]
 
   imagedir=outdir+"/images_%s_zonal%s"%('_'.join(m.name for m in models), fieldname)
-  if stat != 'mean':
-    imagedir += '_' + stat
 
-  fields = [m.get_data('zonalmean_gph',fieldname,stat=stat) for m in models]
+  fields = [m.get_data('zonalmean_gph',fieldname) for m in models]
 
   # Unit conversion
   fields = [rescale(f,units) for f in fields]
@@ -131,7 +129,7 @@ def movie_zonal (models, fieldname, units, outdir, stat='mean'):
 
   create_images (field1=fields[0], field2=fields[1], field3=fields[2], title1=titles[0], title2=titles[1], title3=titles[2],preview=False, outdir=imagedir)
 
-  moviefile = "%s/%s_zonal%s_%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname, stat)
+  moviefile = "%s/%s_zonal%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname)
 
   from os import system
   from os.path import exists

@@ -121,7 +121,7 @@ except Exception as e:
   failures.append(['CO2 movie_zonal', e])
 # CO2 Zonal mean of spread
 try:
-  movie_zonal(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, stat='std')
+  movie_zonal(models=[experiment,control], fieldname='CO2_ensemblespread', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['CO2 movie_zonal spread', e])
 # CH4 Zonal mean movies
@@ -234,33 +234,33 @@ except Exception as e:
 
 from concentration_v_height import movie_CvH
 try:
-  movie_CvH(models=[experiment,control],fieldname='CO2', units='ppm', outdir=outdir, stat='mean')
+  movie_CvH(models=[experiment,control],fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['concentration vs. height', e])
 
 from FluxDiagnostic import movie_flux
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='BG')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='BG')
 except Exception as e:
   failures.append(['Flux Diagnostic - Bar Graph', e])
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='BG')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='BG')
 except Exception as e:
   failures.append(['Flux Diagnostic - Bar Graph', e])
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='Map')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='Map')
 except Exception as e:
   failures.append(['Flux Diagnostic - Map', e])
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='Map')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='Map')
 except Exception as e:
   failures.append(['Flux Diagnostic - Map', e])
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Monthly', plottype='MeanMap')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='MeanMap')
 except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, stat='mean', timefilter='Daily', plottype='MeanMap')
+  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='MeanMap')
 except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 
@@ -285,7 +285,7 @@ except Exception as e:
 
 from ZonalMeanBG import movie_bargraph
 try:
-  movie_bargraph(models=[experiment,control], height=0,fieldname='CO2', units='ppm', outdir=outdir, stat='mean')
+  movie_bargraph(models=[experiment,control], height=0,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['zonal mean bargraph', e])
 
