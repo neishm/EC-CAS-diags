@@ -131,3 +131,15 @@ class EC_Station_Data (object):
 
     self.data = DataInterface.from_files([cachefile], opener=ec_station_opener)
 
+    # Rename CO2_mean to CO2
+    self.data = self.data.filter(strip_mean)
+
+# Helper function - filter out '_mean' suffix from data
+def strip_mean (varlist):
+  out = []
+  for var in varlist:
+    if var.name.endswith('_mean'):
+      var = var.rename(var.name.rsplit('_mean')[0])
+    out.append(var)
+  return out
+

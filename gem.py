@@ -33,7 +33,7 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
   convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
   convert_CO2_flux = mw['CO2'] / mw['C']
   suffix = ""
-  if chmmean: suffix = "_ensemblemean"
+  #if chmmean: suffix = "_ensemblemean"
   if chmstd: suffix = "_ensemblespread"
   conversions += (
     ('ECO2', 'CO2_flux', convert_CO2_flux, None, 'g s-1'),

@@ -17,18 +17,6 @@ def get_sfc_data (model, fieldname):
   field = model.cache.write(field, prefix='sfc_'+fieldname)
   return field
 
-# Get the ensemble mean surface values
-# (or, the regular surface data for non-ensemble runs)
-def get_sfc_mean (model, standard_name):
-  for fieldname in standard_name, standard_name+"_ensemblemean":
-    if model.data.have(fieldname):
-      return get_sfc_data (model, fieldname)
-  raise KeyError ("Can't find '%s' in '%s'"%(standard_name, model.name))
-
-# Get the ensemble spread surface values (where applicable)
-def get_sfc_std (model, standard_name):
-  return get_sfc_data (model, standard_name+"_ensemblespread")
-
 # Get station data.
 # Assume there is only one dataset, with station data in it.
 def get_station_data (obs, location, fieldname):
@@ -39,16 +27,6 @@ def get_station_data (obs, location, fieldname):
     raise KeyError ("Station '%s' not found in obs"%location)
   return field(station=location).squeeze('station')  # No caching
 
-# Get station mean measurements
-def get_station_mean (obs, location, standard_name):
-  for fieldname in standard_name, standard_name+"_mean":
-    if obs.data.have(fieldname):
-      return get_station_data (obs, location, fieldname)
-  raise KeyError ("Can't find '%s' in '%s'"%(standard_name, obs.name))
-
-# Get station measurement error (standard deviation)
-def get_station_std (obs, location, standard_name):
-  return get_station_data (obs, location, standard_name+"_std")
 
 
 def timeseries (datasets, fieldname, units, outdir, plot_months=None):
@@ -86,7 +64,7 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
   sfc_data = []
   for d in datasets:
     try:
-      sfc_data.append(get_sfc_mean(d,fieldname))
+      sfc_data.append(get_sfc_data(d,fieldname))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_data.append(None)
@@ -94,7 +72,8 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
   sfc_std = []
   for d in datasets:
     try:
-      sfc_std.append(get_sfc_std(d,fieldname))
+      # Try finding an ensemble spread
+      sfc_std.append(get_sfc_data(d,fieldname+'_ensemblespread'))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_std.append(None)
@@ -155,9 +134,9 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
       else:
         # For now, assume that we have an obs dataset,
         # so this command shouldn't fail.
-        data = get_station_mean(d, location,fieldname)
+        data = get_station_data(d, location,fieldname)
         series.append(data)
-        std.append(get_station_std(d, location,fieldname))
+        std.append(get_station_data(d, location,fieldname+'_std'))
 
     # Scale to the plot units
     for i,x in enumerate(series):
