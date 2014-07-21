@@ -190,24 +190,6 @@ def eccas_chmmean_products (dataset):
 def eccas_chmstd_products (dataset):
   return eccas_products(dataset, chmstd=True)
 
-# Convert zonal mean data (on height)
-def to_gph (var, z):
-  from pygeode.interp import interpolate
-  from pygeode.axis import Height
-  from pygeode.dataset import Dataset
-  import numpy as np
-
-  # Remove extra longitude from the data
-  var = var.slice[:,:,:,:-1]
-  z = z.slice[:,:,:,:-1]
-
-  height = Height(range(68), name='height')
-
-  var = interpolate(var, inaxis='zaxis', outaxis=height, inx=z/1000.)
-
-  var = var.transpose(0,3,1,2)
-
-  return var
 
 # Wrapper for getting GEM data back out of a cached netcdf file
 # (This will hook into the cache, to preserve FSTD axes after save/reloading)
@@ -318,14 +300,8 @@ class GEM_Data (object):
 
     # Determine which data is needed
 
-    # Zonal mean, with data interpolated to a fixed set of geopotential heights
-    if domain == 'zonalmean_gph':
-      data, GZ = self.data.find_best([field,'geopotential_height'], maximize=number_of_levels)
-      data = to_gph(data,GZ).nanmean('lon')
-      data.atts['units'] = 'ppm'
-
     # "total column" (in kg/m2)
-    elif domain == 'totalcolumn':
+    if domain == 'totalcolumn':
       from common import molecular_weight as mw, grav as g
 
       c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)

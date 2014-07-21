@@ -130,49 +130,6 @@ def ct_products (data):
   return data
 
 
-# Method for calculating zonal mean on-the-fly
-def ct_zonal (field):
-  from pygeode.climat import dailymean
-  import numpy as np
-
-  # Interpolate to geopotential height
-  from pygeode.interp import interpolate
-  from pygeode.axis import Height
-  height = Height(range(68))
-  ct_ch4 = interpolate(field, inaxis='lev', outaxis=height, inx = molefractions.gph/1000)
-  ct_ch4 = ct_ch4.nanmean('lon')
-  ct_ch4 = ct_ch4.transpose(0,2,1)
-  ct_ch4 = dailymean(ct_ch4)
-
-  return ct_ch4
-
-# Similar to above, but use an average of the 22:30 and 1:30 to get
-# a 00:00 field
-def ct_zonal_24h (field,gph):
-  import numpy as np
-
-  # Interpolate to geopotential height
-  from pygeode.interp import interpolate
-  from pygeode.axis import Height
-  height = Height(range(68))
-  ct_ch4 = interpolate(field, inaxis='lev', outaxis=height, inx = gph/1000)
-  ct_ch4 = ct_ch4.nanmean('lon')
-  ct_ch4 = ct_ch4.transpose(0,2,1)
-
-  ch4_2230 = ct_ch4(hour=22,minute=30)(i_time = (0,364))
-
-  ch4_0130 = ct_ch4(hour=1, minute=30)(i_time = (1,365))
-
-  # New time axis
-  from pygeode.timeaxis import StandardTime
-  taxis = ct_ch4.time
-  taxis = StandardTime((ch4_2230.time.values+ch4_0130.time.values)/2, startdate=taxis.startdate, units=taxis.units)
-  ch4_2230 = ch4_2230.replace_axes(time=taxis)
-  ch4_0130 = ch4_0130.replace_axes(time=taxis)
-
-  ct_ch4 = ((ch4_2230 + ch4_0130)/2).rename(ct_ch4.name)
-
-  return ct_ch4
 
 
 # Some useful criteria for searching for fields
@@ -220,14 +177,8 @@ class CarbonTracker_CH4 (object):
   # Data interface
   def get_data (self, domain, field):
 
-    # Zonal mean (over geopotential height)
-    if domain == 'zonalmean_gph':
-      data, gph = self.data.find_best([field,'geopotential_height'], maximize=number_of_levels)
-      data = ct_zonal_24h(data,gph)
-      data.atts['units'] = 'ppb'
-
     # Total column
-    elif domain == 'totalcolumn':
+    if domain == 'totalcolumn':
       from common import molecular_weight as mw, grav as g
 
       c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
