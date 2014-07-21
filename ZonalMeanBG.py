@@ -1,22 +1,8 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from pygeode import Var
-import math
-
-def rescale (field, units):
-  from common import unit_scale
-  input_units = field.atts['units']
-  if input_units == units: return field
-  low = field.atts['low']
-  high = field.atts['high']
-  name = field.name
-  field = field / unit_scale[input_units] * unit_scale[units]
-  field.name = name
-  field.atts['low'] = low / unit_scale[input_units] * unit_scale[units]
-  field.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
-  return field
 
 def bargraph(DataList,Height,names=['','','']):
+
+  import numpy as np
+  import matplotlib.pyplot as plt
 
   #Grab the latitude values and create the appropriate weights
   LatWeights = []
@@ -101,16 +87,13 @@ def plotBG(height, field1,field2=None, field3=None, names=['','',''], palette=No
   fields = [d for d in [field1,field2,field3] if d is not None]
 
   # Loop over all available times
-  for i,t in enumerate(range(len(field1.time))):
+  for i,t in enumerate(field1.time):
 
-    data = field1(i_time=t)
+    data = field1(time=t)
     year = data.time.year[0]
     month = data.time.month[0]
     day = data.time.day[0]
     hour = data.time.hour[0]
-
-    # Quick kludge to workaround non-monotonic gph in CarbonTracker
-    if year==2009 and month==8 and day==7: continue
 
     #Define filename for the figure
     date = "%04d-%02d-%02d %02dz"%(year,month,day,hour)
@@ -121,7 +104,7 @@ def plotBG(height, field1,field2=None, field3=None, names=['','',''], palette=No
       continue
 
     #Pass data to plotting function
-    data = [d(year=year,month=month,day=day,hour=hour) for d in fields]
+    data = [d(time=t) for d in fields]
     # Skip if any data is unavailable at this time
     if any(len(d.time) == 0 for d in data): continue
     assert len(data[0].time) == 1
@@ -143,6 +126,7 @@ def plotBG(height, field1,field2=None, field3=None, names=['','',''], palette=No
 def movie_bargraph (models, height, fieldname, units, outdir):
 
   from common import unit_scale
+  from movie_zonal import zonalmean_gph, rescale
 
   models = [m for m in models if m is not None]
   assert len(models) > 0
@@ -150,7 +134,7 @@ def movie_bargraph (models, height, fieldname, units, outdir):
 
   imagedir=outdir+"/ZonalMeanBG-images_%s_flux%s"%('_'.join(m.name for m in models), fieldname)
 
-  fields = [m.get_data('zonalmean_gph',fieldname) for m in models]
+  fields = [zonalmean_gph(m,fieldname) for m in models]
 
   # Unit conversion
   fields = [rescale(f,units) for f in fields]
