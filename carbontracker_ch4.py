@@ -108,6 +108,7 @@ def ct_products (data):
     from common import Constant_Var
     # (ppb)
     data['air'] = Constant_Var(axes=data['air_pressure'].axes, value=1.0E9)
+    data['air'].atts['units'] = 'ppb'
 
   # Compute grid cell area
   from common import get_area
@@ -177,40 +178,7 @@ class CarbonTracker_CH4 (object):
   # Data interface
   def get_data (self, domain, field):
 
-    # Total mass
-    if domain == 'totalmass':
-      from common import molecular_weight as mw, grav as g
-      c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
-      # Convert from ppb to kg / kg
-      c *= 1E-9 * mw[field] / mw['air']
-
-      # Integrate to get total column
-      tc = (c*dp*100).sum('zaxis') / g
-
-      # Integrate horizontally
-      mass = (tc * area).sum('lat','lon')
-
-      # Convert from kg to Pg
-      mass *= 1E-12
-      data = mass
-      data.name = field
-      data.atts['units'] = 'Pg'
-
-
-    # Integrated fluxes (moles s-1)
-    elif domain == 'totalflux':
-      data, area = self.data.find_best([field+'_flux','cell_area'], maximize=number_of_timesteps)
-      data = (data*area).sum('lat','lon')
-      data.name = field
-      data.atts['units'] = 'mol s-1'
-      # The time is the *midpoint* of the flux period.
-      # Rewind to the *start* of the flux period (-1.5 hours)
-      time = data.time
-      assert time.units == 'days'
-      time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
-      data = data.replace_axes(time=time)
-
-    elif domain == 'flux':
+    if domain == 'flux':
       data = self.fluxes[field]
       # The time is the *midpoint* of the flux period.
       # Rewind to the *start* of the flux period (-1.5 hours)

@@ -152,6 +152,7 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
     # Define air mass on the same domain as 3D pressure
     from common import Constant_Var
     data['air'] = Constant_Var(axes=P.axes, value=1.0E6)  # ppm
+    data['air'].atts['units'] = 'ppm'
 
   if dP is not None:
     dP.atts['units'] = 'hPa'
@@ -300,53 +301,7 @@ class GEM_Data (object):
 
     # Determine which data is needed
 
-    # Total mass (Pg)
-    #TODO: re-use totalcolumn data from above
-    if domain == 'totalmass':
-      from common import molecular_weight as mw, grav as g
-      # Do we have the pressure change in the vertical?
-      if self.data.have('dp'):
-         c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
-         # Convert from ppm to kg / kg
-         c *= 1E-6 * mw[standard_name] / mw['air']
-
-         # Integrate to get total column
-         tc = (c*dp*100).sum('zaxis') / g
-
-      # Otherwise, if we only need air mass, assume a lid of 0hPa and take a
-      # shortcut
-      elif field == 'air':
-         from warnings import warn
-         warn ("No 'dp' data found in '%s'.  Approximating total air mass from surface pressure"%self.name)
-         p0, area = self.data.find_best(['surface_pressure','cell_area'], maximize=number_of_timesteps)
-         tc = p0*100 / g
-      else:
-         raise KeyError("No 'dp' field found in '%s'.  Cannot compute total mass."%self.name)
-
-      # Integrate horizontally
-      # Assume global grid - remove repeated longitude
-      mass = (tc * area).slice[:,:,:-1].sum('lat','lon')
-
-      # Convert from kg to Pg
-      mass *= 1E-12
-      data = mass
-      data.name = field
-      data.atts['units'] = 'Pg'
-
-    # Integrated flux (if available)
-    elif domain == 'totalflux':
-      from common import molecular_weight as mw
-
-      data = self.data.find_best(field+'_flux', maximize=number_of_timesteps)
-
-      # Sum, skipping the last (repeated) longitude
-      data = data.slice[:,:,:-1].sum('lat','lon')
-      # Convert from g/s to moles/s
-      data /= mw[standard_name]
-      data.name = field
-      data.atts['units'] = 'mol s-1'
-
-    elif domain == 'flux':
+    if domain == 'flux':
       from common import molecular_weight as mw
       data, area = self.data.find_best([field+'_flux','cell_area'])
       # Convert from g/s to moles/s

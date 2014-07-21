@@ -59,6 +59,19 @@ def ct_products (data):
   if 'CO2_fire_flux' in data:
     data['CO2_flux'] = data['CO2_fossil_flux'] + data['CO2_bio_flux'] + data['CO2_ocean_flux'] + data['CO2_fire_flux']
 
+  # Fudge the tmie axis for all flux products.
+  for varname in data:
+    if varname.endswith('_flux'):
+      # The time is the *midpoint* of the flux period.
+      # Rewind to the *start* of the flux period (-1.5 hours)
+      var = data[varname]
+      time = var.time
+      assert time.units == 'days'
+      time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
+      var = var.replace_axes(time=time)
+      data[varname] = var
+
+
   # Other (more heavily derived) products
 
   if 'air_pressure' in data:
@@ -91,6 +104,7 @@ def ct_products (data):
     from common import Constant_Var
     # (ppm)
     data['air'] = Constant_Var(axes=data['air_pressure'].axes, value=1.0E6)
+    data['air'].atts['units'] = 'ppm'
 
   # Compute grid cell area
   # NOTE: will be different for fluxes and 3D mole fractions
@@ -163,40 +177,7 @@ class CarbonTracker_Data (object):
   # Data interface
   def get_data (self, domain, field):
 
-    # Total mass
-    if domain == 'totalmass':
-      from common import molecular_weight as mw, grav as g
-      c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
-      # Convert from ppm to kg / kg
-      c *= 1E-6 * mw[field] / mw['air']
-
-      # Integrate to get total column
-      tc = (c*dp*100).sum('zaxis') / g
-
-      # Integrate horizontally
-      mass = (tc * area).sum('lat','lon')
-
-      # Convert from kg to Pg
-      mass *= 1E-12
-      data = mass
-      data.name = field
-      data.atts['units'] = 'Pg'
-
-
-    # Integrated fluxes (moles s-1)
-    elif domain == 'totalflux':
-      data, area = self.data.find_best([field+'_flux','cell_area'], maximize=number_of_timesteps)
-      data = (data*area).sum('lat','lon')
-      data.name = field
-      data.atts['units'] = 'mol s-1'
-      # The time is the *midpoint* of the flux period.
-      # Rewind to the *start* of the flux period (-1.5 hours)
-      time = data.time
-      assert time.units == 'days'
-      time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
-      data = data.replace_axes(time=time)
-
-    elif domain == 'flux':
+    if domain == 'flux':
       data = self.fluxes[field]
       # The time is the *midpoint* of the flux period.
       # Rewind to the *start* of the flux period (-1.5 hours)
