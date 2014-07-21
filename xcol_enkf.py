@@ -6,8 +6,9 @@
 # Get column average
 def get_xcol (experiment, fieldname, units):
   from common import rotate_grid, unit_scale
+  from xcol import avgcolumn
 
-  xcol = experiment.get_data('avgcolumn', fieldname)
+  xcol = avgcolumn(experiment, fieldname)
 
   # Rotate the longitudes to 0,360
   if xcol.lon[1] < 0:

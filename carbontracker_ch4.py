@@ -177,34 +177,8 @@ class CarbonTracker_CH4 (object):
   # Data interface
   def get_data (self, domain, field):
 
-    # Total column
-    if domain == 'totalcolumn':
-      from common import molecular_weight as mw, grav as g
-
-      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
-      # Convert from ppb to kg / kg
-      c *= 1E-9 * mw[field] / mw['air']
-
-      # Integrate
-      data = (c*dp*100).sum('zaxis') / g
-      data.name = field
-      data.atts['units'] = 'kg m-2'
-
-
-    # Column averages
-    elif domain == 'avgcolumn':
-      from common import molecular_weight as mw
-      tc = self.get_data('totalcolumn', field)
-      tc_air = self.get_data('totalcolumn','air')
-      data = tc / tc_air
-      # Convert kg/kg to ppb
-      data *= mw['air']/mw[field] * 1E9
-
-      data.name = field
-      data.atts['units'] = 'ppb'
-
     # Total mass
-    elif domain == 'totalmass':
+    if domain == 'totalmass':
       from common import molecular_weight as mw, grav as g
       c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
       # Convert from ppb to kg / kg

@@ -300,32 +300,9 @@ class GEM_Data (object):
 
     # Determine which data is needed
 
-    # "total column" (in kg/m2)
-    if domain == 'totalcolumn':
-      from common import molecular_weight as mw, grav as g
-
-      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
-      # Convert from ppm to kg / kg
-      c *= 1E-6 * mw[standard_name] / mw['air']
-
-      # Integrate
-      data = (c*dp*100).sum('zaxis') / g
-      data.name = field
-      data.atts['units'] = 'kg m-2'
-
-    # Average column (ppm)
-    elif domain == 'avgcolumn':
-
-      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
-      data = (c*dp).sum('zaxis') / dp.sum('zaxis')
-      data.name = field
-      if 'units' in c.atts:
-        data.atts['units'] = c.atts['units']
-
-
     # Total mass (Pg)
     #TODO: re-use totalcolumn data from above
-    elif domain == 'totalmass':
+    if domain == 'totalmass':
       from common import molecular_weight as mw, grav as g
       # Do we have the pressure change in the vertical?
       if self.data.have('dp'):
