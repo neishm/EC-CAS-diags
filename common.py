@@ -96,6 +96,15 @@ def rotate_grid (data):
 
   return concat(west, east)
 
+# Remove extra longitude from global data (if it wraps around)
+def remove_extra_longitude (data):
+  import numpy as np
+  if np.allclose(data.lon.values[0], data.lon.values[-1]):
+    slices = [slice(None)]*data.ndims
+    slices[data.whichaxis('lon')] = slice(0,len(data.lon)-1)
+    data = data.slice[slices]
+  return data
+
 # Compute grid cell areas (how GEM does it)
 def get_area (latvar, lonvar):
 

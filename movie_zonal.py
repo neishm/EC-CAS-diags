@@ -2,18 +2,11 @@
 def zonalmean_gph (model, fieldname):
   from pygeode.interp import interpolate
   from pygeode.axis import Height
-  from common import number_of_levels
+  from common import number_of_levels, remove_extra_longitude
   import numpy as np
 
   var, z = model.data.find_best([fieldname,'geopotential_height'], maximize=number_of_levels)
   assert z.atts['units'] == 'm'
-
-  # Remove extra longitude from global data (if it wraps around)
-  if np.allclose(var.lon.values[0], var.lon.values[-1]):
-    slices = [slice(None)]*var.ndims
-    slices[var.whichaxis('lon')] = slice(0,len(var.lon)-1)
-    var = var.slice[slices]
-    z = z.slice[slices]
 
   height = Height(range(68), name='height')
 
@@ -27,6 +20,9 @@ def zonalmean_gph (model, fieldname):
 
   # Recover the expected order of axes
   var = var.transpose(*axes)
+
+  # Remove any repeated longtiude (for global data)
+  var = remove_extra_longitude(var)
 
   # Do the zonal mean
   var = var.nanmean('lon')
