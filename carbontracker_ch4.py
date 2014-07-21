@@ -104,11 +104,6 @@ def ct_products (data):
     dp.atts['units'] = 'hPa'
     data['dp'] = dp
 
-    # Air mixing ratio (constant)
-    from common import Constant_Var
-    # (ppb)
-    data['air'] = Constant_Var(axes=data['air_pressure'].axes, value=1.0E9)
-    data['air'].atts['units'] = 'ppb'
 
   # Compute grid cell area
   from common import get_area

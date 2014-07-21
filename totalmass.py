@@ -3,6 +3,15 @@ def compute_totalmass (model, fieldname):
   from common import molecular_weight as mw, grav as g, number_of_levels, number_of_timesteps, remove_extra_longitude
   # Do we have the pressure change in the vertical?
   if model.data.have('dp'):
+
+    # Total air mass?
+    if fieldname == 'air':
+     dp, area = model.data.find_best(['dp','cell_area'], maximize=number_of_levels)
+     # Integrate to get total column
+     tc = (dp*100).sum('zaxis') / g
+
+    # Total tracer mass?
+    else:
      c, dp, area = model.data.find_best([fieldname,'dp','cell_area'], maximize=number_of_levels)
      # Convert from ppm to kg / kg
      if c.atts['units'] != 'ppm':

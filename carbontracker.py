@@ -100,11 +100,6 @@ def ct_products (data):
     dp.atts['units'] = 'hPa'
     data['dp'] = dp
 
-    # Air mixing ratio (constant)
-    from common import Constant_Var
-    # (ppm)
-    data['air'] = Constant_Var(axes=data['air_pressure'].axes, value=1.0E6)
-    data['air'].atts['units'] = 'ppm'
 
   # Compute grid cell area
   # NOTE: will be different for fluxes and 3D mole fractions

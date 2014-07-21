@@ -149,10 +149,6 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
   if P is not None:
     P.atts['units'] = 'hPa'
     data['air_pressure'] = P
-    # Define air mass on the same domain as 3D pressure
-    from common import Constant_Var
-    data['air'] = Constant_Var(axes=P.axes, value=1.0E6)  # ppm
-    data['air'].atts['units'] = 'ppm'
 
   if dP is not None:
     dP.atts['units'] = 'hPa'
