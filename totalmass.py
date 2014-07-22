@@ -55,7 +55,7 @@ def compute_totalflux (model, fieldname):
 
   if data.atts['units'] == 'mol m-2 s-1':
     data, area = model.data.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
-    data *= area
+    data = data * area * mw[fieldname]
 
   # Sum, skipping the last (repeated) longitude
   data = remove_extra_longitude(data)
