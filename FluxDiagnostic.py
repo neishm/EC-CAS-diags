@@ -1,29 +1,38 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import pygeode.composite as pgcomp
-from pygeode.formats import netcdf
-import scipy.interpolate as intp
-from os.path import exists
+# Get a flux product for the given experiment and tracer name.
+def get_flux (model, fieldname):
+  from common import molecular_weight as mw, number_of_timesteps, remove_extra_longitude
 
-def rescale (field, units):
-  from common import unit_scale
-  input_units = field.atts['units']
-  if input_units == units: return field
-  low = field.atts['low']
-  high = field.atts['high']
-  name = field.name
-  field = field / unit_scale[input_units] * unit_scale[units]
-  field.name = name
-  field.atts['low'] = low / unit_scale[input_units] * unit_scale[units]
-  field.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
-  return field
+  data = model.data.find_best(fieldname+'_flux', maximize=number_of_timesteps)
+
+  if data.atts['units'] not in ('g s-1', 'mol m-2 s-1'):
+    raise ValueError ("Unhandled units '%s'"%data.atts['units'])
+
+  if data.atts['units'] == 'g s-1':
+    data, area = model.data.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
+    data = data / area / mw[fieldname]
+    data.name = fieldname+'_flux'
+
+  # Strip out the extra longitude from the fluxes
+  # (just for compatibility with Jake's code further below, which is hard-coded
+  #  for a 400x200 grid).
+  data = remove_extra_longitude(data)
+
+  # Cache the data (mainly to get the high/low stats)
+  data = model.cache.write(data, prefix='flux_'+fieldname)
+
+  return data
+
 
 def interpolategrid(datafile,store_directory):
   #Interpolates the transcom region grid to the model grid
   #Currently simply does this each time the program is run
   #However if it becomes a time issue it could be saved into
   #A file and then read back 
+
+  import numpy as np
+  from pygeode.formats import netcdf
+  import scipy.interpolate as intp
+  from os.path import exists
 
   if exists(store_directory):
     for line in store_directory:
@@ -75,6 +84,9 @@ def FluxPlot(data1,data2,data3,plottype='BG',names=['','','']):
   """
   Plots the data. plottype kwarg ('BG','Map','MeanMap') determines type of plot.
   """
+
+  import numpy as np
+  import matplotlib.pyplot as plt
 
   datas = [x for x in [data1,data2,data3] if x is not None]    #Create list of viable data
 
@@ -203,12 +215,14 @@ def FluxPlot(data1,data2,data3,plottype='BG',names=['','','']):
 
 def plotOrganize(flux1,flux2=None, flux3=None, names=['','',''], palette=None, norm=None, preview=False, outdir='images',timefilter=None,plottype='BG'):
 
+  import matplotlib.pyplot as plt
   from plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from plot_shortcuts import pcolor, contour, contourf, Map
   from os import makedirs
 
   from pygeode.progress import PBar
   from pygeode.climat import monthlymean,dailymean
+  from os.path import exists
 
   # Create output directory
   if not exists(outdir): makedirs(outdir)
@@ -297,7 +311,7 @@ def plotOrganize(flux1,flux2=None, flux3=None, names=['','',''], palette=None, n
   pbar.update(100)
 
 
-def movie_flux (models, fieldname, units, outdir, stat='mean',timefilter=None,plottype='BG'):
+def movie_flux (models, fieldname, units, outdir, timefilter=None,plottype='BG'):
 
   from common import unit_scale
 
@@ -306,10 +320,8 @@ def movie_flux (models, fieldname, units, outdir, stat='mean',timefilter=None,pl
   models = [m for m in models if m is not None]
 
   imagedir=outdir+"/FluxDiag-%s-%s-images_%s_flux%s"%(plottype,timefilter,'_'.join(m.name for m in models), fieldname)
-  if stat != 'mean':
-    imagedir += '_' + stat
 
-  fluxes = [m.get_data('flux',fieldname,stat=stat) for m in models]
+  fluxes = [get_flux(m,fieldname) for m in models]
 
   # Unit conversion
   #fluxes = [rescale(f,units) for f in fields]
@@ -321,7 +333,7 @@ def movie_flux (models, fieldname, units, outdir, stat='mean',timefilter=None,pl
 
   plotOrganize(flux1=fluxes[0], flux2=fluxes[1], flux3=fluxes[2], names=Names,preview=False, outdir=imagedir,timefilter=timefilter,plottype=plottype)
 
-  moviefile = "%s/FluxDiag-%s-%s_%s_%s_%s.avi"%(outdir, plottype, timefilter, '_'.join(m.name for m in models), fieldname, stat)
+  moviefile = "%s/FluxDiag-%s-%s_%s_%s.avi"%(outdir, plottype, timefilter, '_'.join(m.name for m in models), fieldname)
 
   #If the timefilter is Monthly, don't bother making the movie - not enough frames
   if timefilter != 'Monthly':

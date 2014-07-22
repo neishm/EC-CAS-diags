@@ -59,6 +59,19 @@ def ct_products (data):
   if 'CO2_fire_flux' in data:
     data['CO2_flux'] = data['CO2_fossil_flux'] + data['CO2_bio_flux'] + data['CO2_ocean_flux'] + data['CO2_fire_flux']
 
+  # Fudge the tmie axis for all flux products.
+  for varname in data:
+    if varname.endswith('_flux'):
+      # The time is the *midpoint* of the flux period.
+      # Rewind to the *start* of the flux period (-1.5 hours)
+      var = data[varname]
+      time = var.time
+      assert time.units == 'days'
+      time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
+      var = var.replace_axes(time=time)
+      data[varname] = var
+
+
   # Other (more heavily derived) products
 
   if 'air_pressure' in data:
@@ -87,10 +100,6 @@ def ct_products (data):
     dp.atts['units'] = 'hPa'
     data['dp'] = dp
 
-    # Air mixing ratio (constant)
-    from common import Constant_Var
-    # (ppm)
-    data['air'] = Constant_Var(axes=data['air_pressure'].axes, value=1.0E6)
 
   # Compute grid cell area
   # NOTE: will be different for fluxes and 3D mole fractions
@@ -114,60 +123,9 @@ def ct_products (data):
   return data
 
 
-# Method for calculating zonal mean on-the-fly
-def ct_zonal (field):
-  from pygeode.climat import dailymean
-  import numpy as np
-
-  # Interpolate to geopotential height
-  from pygeode.interp import interpolate
-  from pygeode.axis import Height
-  height = Height(range(68))
-  ct_co2 = interpolate(field, inaxis='level', outaxis=height, inx = molefractions.gph/1000)
-  ct_co2 = ct_co2.nanmean('lon')
-  ct_co2 = ct_co2.transpose(0,2,1)
-  ct_co2 = dailymean(ct_co2)
-
-  return ct_co2
-
-# Similar to above, but use an average of the 22:30 and 1:30 to get
-# a 00:00 field
-def ct_zonal_24h (field,gph):
-  import numpy as np
-
-  # Interpolate to geopotential height
-  from pygeode.interp import interpolate
-  from pygeode.axis import Height
-  height = Height(range(68))
-  ct_co2 = interpolate(field, inaxis='level', outaxis=height, inx = gph/1000)
-  ct_co2 = ct_co2.nanmean('lon')
-  ct_co2 = ct_co2.transpose(0,2,1)
-
-  co2_2230 = ct_co2(hour=22,minute=30)(i_time = (0,364))
-
-  co2_0130 = ct_co2(hour=1, minute=30)(i_time = (1,365))
-
-  # New time axis
-  from pygeode.timeaxis import StandardTime
-  taxis = ct_co2.time
-  taxis = StandardTime((co2_2230.time.values+co2_0130.time.values)/2, startdate=taxis.startdate, units=taxis.units)
-  co2_2230 = co2_2230.replace_axes(time=taxis)
-  co2_0130 = co2_0130.replace_axes(time=taxis)
-
-  ct_co2 = ((co2_2230 + co2_0130)/2).rename(ct_co2.name)
-
-  return ct_co2
 
 
 # Some useful criteria for searching for fields
-def have_surface (varlist):
-  from pygeode.axis import ZAxis
-  from pygeode.formats.fstd import Hybrid, LogHybrid
-  for var in varlist:
-    if var.hasaxis('level'):
-      return 1 in var.level.values
-  # No vertical info?
-  return False
 
 def number_of_timesteps (varlist):
   from pygeode.axis import TAxis
@@ -209,97 +167,4 @@ class CarbonTracker_Data (object):
     self.data = DataInterface.from_files (molefractions+fluxes, opener=netcdf.open, manifest=manifest)
 
     self.data = DataInterface(map(ct_products,self.data))
-
-
-  # Data interface
-  def get_data (self, domain, field, stat='mean'):
-
-    if stat != 'mean':
-      raise KeyError("No '%s' stat available for CarbonTracker"%stat)
-
-    # Zonal mean (over geopotential height)
-    if domain == 'zonalmean_gph':
-      data, gph = self.data.find_best([field,'geopotential_height'], maximize=number_of_levels)
-      data = ct_zonal_24h(data,gph)
-      data.atts['units'] = 'ppm'
-
-    # "surface" data (lowest level of molefractions dataset)
-    elif domain == 'sfc':
-      data = self.data.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
-      data = data(level=1)
-
-    # Total column
-    elif domain == 'totalcolumn':
-      from common import molecular_weight as mw, grav as g
-
-      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
-      # Convert from ppm to kg / kg
-      c *= 1E-6 * mw[field] / mw['air']
-
-      # Integrate
-      data = (c*dp*100).sum('zaxis') / g
-      data.name = field
-      data.atts['units'] = 'kg m-2'
-
-
-    # Column averages
-    elif domain == 'avgcolumn':
-      from common import molecular_weight as mw
-      tc = self.get_data('totalcolumn', field)
-      tc_air = self.get_data('totalcolumn','air')
-      data = tc / tc_air
-      # Convert kg/kg to ppm
-      data *= mw['air']/mw[field] * 1E6
-
-      data.name = field
-      data.atts['units'] = 'ppm'
-
-    # Total mass
-    elif domain == 'totalmass':
-      from common import molecular_weight as mw, grav as g
-      c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
-      # Convert from ppm to kg / kg
-      c *= 1E-6 * mw[field] / mw['air']
-
-      # Integrate to get total column
-      tc = (c*dp*100).sum('zaxis') / g
-
-      # Integrate horizontally
-      mass = (tc * area).sum('lat','lon')
-
-      # Convert from kg to Pg
-      mass *= 1E-12
-      data = mass
-      data.name = field
-      data.atts['units'] = 'Pg'
-
-
-    # Integrated fluxes (moles s-1)
-    elif domain == 'totalflux':
-      data, area = self.data.find_best([field+'_flux','cell_area'], maximize=number_of_timesteps)
-      data = (data*area).sum('lat','lon')
-      data.name = field
-      data.atts['units'] = 'mol s-1'
-      # The time is the *midpoint* of the flux period.
-      # Rewind to the *start* of the flux period (-1.5 hours)
-      time = data.time
-      assert time.units == 'days'
-      time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
-      data = data.replace_axes(time=time)
-
-    elif domain == 'flux':
-      data = self.fluxes[field]
-      # The time is the *midpoint* of the flux period.
-      # Rewind to the *start* of the flux period (-1.5 hours)
-      time = data.time
-      assert time.units == 'days'
-      time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
-      data = data.replace_axes(time=time)
-      return data   # No caching
-
-    else: raise ValueError ("Unknown domain '%s'"%domain)
-
-    units = data.atts.get('units',None)
-    data = self.cache.write(data,prefix='%s_%s'%(domain,field))
-    return data
 
