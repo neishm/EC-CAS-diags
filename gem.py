@@ -290,36 +290,3 @@ class GEM_Data (object):
     self.cache = cache
 
 
-  # The data interface
-  # Handles the computing of general diagnostic domains (zonal means, etc.)
-  def get_data (self, domain, standard_name):
-
-    field = standard_name
-
-    # Determine which data is needed
-
-    if domain == 'flux':
-      from common import molecular_weight as mw
-      data, area = self.data.find_best([field+'_flux','cell_area'])
-      # Convert from g/s to moles/s
-      data /= mw[standard_name]
-      # Convert to moles/m2/s
-      data = data.slice[:,:,:-1]  # remove repeated longitude
-      if area.hasaxis('time'): area = area(i_time=0).squeeze()
-      area = area.slice[:,:-1]  # remove repeated longitude
-      data /= area
-      data.name = field
-      data.atts['units'] = 'mol m-2 s-1'
-
-    elif domain == 'Toronto':
-      data = self.data.find_best(field, maximize=number_of_levels)
-      data = data.squeeze(lat=43.7833,lon=280.5333)
-      data.name = field
-      data.atts['units'] = 'ppm'
-
-    else: raise ValueError ("Unknown domain '%s'"%domain)
-
-    prefix = '%s_%s'%(domain,field)
-    return self.cache.write(data,prefix)
-
-

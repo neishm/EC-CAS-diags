@@ -168,23 +168,3 @@ class CarbonTracker_Data (object):
 
     self.data = DataInterface(map(ct_products,self.data))
 
-
-  # Data interface
-  def get_data (self, domain, field):
-
-    if domain == 'flux':
-      data = self.fluxes[field]
-      # The time is the *midpoint* of the flux period.
-      # Rewind to the *start* of the flux period (-1.5 hours)
-      time = data.time
-      assert time.units == 'days'
-      time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
-      data = data.replace_axes(time=time)
-      return data   # No caching
-
-    else: raise ValueError ("Unknown domain '%s'"%domain)
-
-    units = data.atts.get('units',None)
-    data = self.cache.write(data,prefix='%s_%s'%(domain,field))
-    return data
-
