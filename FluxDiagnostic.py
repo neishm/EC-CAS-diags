@@ -1,29 +1,14 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import pygeode.composite as pgcomp
-from pygeode.formats import netcdf
-import scipy.interpolate as intp
-from os.path import exists
-
-def rescale (field, units):
-  from common import unit_scale
-  input_units = field.atts['units']
-  if input_units == units: return field
-  low = field.atts['low']
-  high = field.atts['high']
-  name = field.name
-  field = field / unit_scale[input_units] * unit_scale[units]
-  field.name = name
-  field.atts['low'] = low / unit_scale[input_units] * unit_scale[units]
-  field.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
-  return field
 
 def interpolategrid(datafile,store_directory):
   #Interpolates the transcom region grid to the model grid
   #Currently simply does this each time the program is run
   #However if it becomes a time issue it could be saved into
   #A file and then read back 
+
+  import numpy as np
+  from pygeode.formats import netcdf
+  import scipy.interpolate as intp
+  from os.path import exists
 
   if exists(store_directory):
     for line in store_directory:
@@ -75,6 +60,9 @@ def FluxPlot(data1,data2,data3,plottype='BG',names=['','','']):
   """
   Plots the data. plottype kwarg ('BG','Map','MeanMap') determines type of plot.
   """
+
+  import numpy as np
+  import matplotlib.pyplot as plt
 
   datas = [x for x in [data1,data2,data3] if x is not None]    #Create list of viable data
 
@@ -203,12 +191,14 @@ def FluxPlot(data1,data2,data3,plottype='BG',names=['','','']):
 
 def plotOrganize(flux1,flux2=None, flux3=None, names=['','',''], palette=None, norm=None, preview=False, outdir='images',timefilter=None,plottype='BG'):
 
+  import matplotlib.pyplot as plt
   from plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from plot_shortcuts import pcolor, contour, contourf, Map
   from os import makedirs
 
   from pygeode.progress import PBar
   from pygeode.climat import monthlymean,dailymean
+  from os.path import exists
 
   # Create output directory
   if not exists(outdir): makedirs(outdir)
