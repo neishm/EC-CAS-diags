@@ -99,8 +99,10 @@ def rotate_grid (data):
 # Remove extra longitude from global data (if it wraps around)
 def remove_extra_longitude (data):
   import numpy as np
-  if np.allclose(data.lon.values[0], data.lon.values[-1]):
-    slices = [slice(None)]*data.ndims
+  v1 = data.lon.values[0]
+  v2 = data.lon.values[-1]
+  if np.allclose((v2-v1)%360, 0.):
+    slices = [slice(None)]*data.naxes
     slices[data.whichaxis('lon')] = slice(0,len(data.lon)-1)
     data = data.slice[slices]
   return data
