@@ -216,7 +216,7 @@ except Exception as e:
 from totalmass import totalmass
 # Total mass CO2
 try:
-  totalmass (models=[experiment,carbontracker,control], fieldname='CO2', pg_of='C', outdir=outdir)
+  totalmass (models=[experiment,carbontracker,control], fieldname='CO2', pg_of='C', outdir=outdir, normalize_air_mass=True)
 except Exception as e:
   failures.append(['totalmass CO2', e])
 # Total mass CH4
