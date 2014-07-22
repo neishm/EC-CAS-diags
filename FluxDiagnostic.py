@@ -1,3 +1,27 @@
+# Get a flux product for the given experiment and tracer name.
+def get_flux (model, fieldname):
+  from common import molecular_weight as mw, number_of_timesteps, remove_extra_longitude
+
+  data = model.data.find_best(fieldname+'_flux', maximize=number_of_timesteps)
+
+  if data.atts['units'] not in ('g s-1', 'mol m-2 s-1'):
+    raise ValueError ("Unhandled units '%s'"%data.atts['units'])
+
+  if data.atts['units'] == 'g s-1':
+    data, area = model.data.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
+    data = data / area / mw[fieldname]
+    data.name = fieldname+'_flux'
+
+  # Strip out the extra longitude from the fluxes
+  # (just for compatibility with Jake's code further below, which is hard-coded
+  #  for a 400x200 grid).
+  data = remove_extra_longitude(data)
+
+  # Cache the data (mainly to get the high/low stats)
+  data = model.cache.write(data, prefix='flux_'+fieldname)
+
+  return data
+
 
 def interpolategrid(datafile,store_directory):
   #Interpolates the transcom region grid to the model grid
@@ -297,7 +321,7 @@ def movie_flux (models, fieldname, units, outdir, timefilter=None,plottype='BG')
 
   imagedir=outdir+"/FluxDiag-%s-%s-images_%s_flux%s"%(plottype,timefilter,'_'.join(m.name for m in models), fieldname)
 
-  fluxes = [m.get_data('flux',fieldname) for m in models]
+  fluxes = [get_flux(m,fieldname) for m in models]
 
   # Unit conversion
   #fluxes = [rescale(f,units) for f in fields]
