@@ -131,6 +131,7 @@ def get_area (latvar, lonvar):
   dxdy = r*r * clat * dlat * dlon
   dxdy = np.asarray(dxdy, dtype='float32')
   dxdy = Var([latvar, lonvar], values=dxdy, name='DX')
+  dxdy.atts['units'] = 'm2'
 
   return dxdy
 

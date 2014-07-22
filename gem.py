@@ -157,14 +157,15 @@ def eccas_products (dataset, chmmean=False, chmstd=False):
   # Grid cell areas
   if 'DX' in data:
     data['cell_area'] = data.pop('DX')
-    data['cell_area'].atts['units'] = 'm2'
-  elif 'surface_pressure' in data:
-    lat = data['surface_pressure'].lat
-    lon = data['surface_pressure'].lon
-    time = data['surface_pressure'].time
-    from common import get_area
-    data['cell_area'] = get_area(lat,lon).extend(0,time)
-
+  else:
+    for varname in 'CO2_flux', 'surface_pressure':
+      if varname in data:
+        lat = data[varname].lat
+        lon = data[varname].lon
+        time = data[varname].time
+        from common import get_area
+        data['cell_area'] = get_area(lat,lon).extend(0,time)
+        break
 
   # General cleanup stuff
 
