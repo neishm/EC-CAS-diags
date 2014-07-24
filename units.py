@@ -98,6 +98,8 @@ def parse_units (s, keep=[]):
 
     name, exponent = match("^(.*[^-0-9])(|-?[0-9]+)$", term).groups()
 
+    if name not in _lookup:
+      raise KeyError ("Unrecognized unit: %s"%name)
     name, longname, conversion = _lookup[name]
     # Base unit or derived unit?
     if isinstance(conversion,str) and len(conversion) > 0:
