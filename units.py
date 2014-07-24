@@ -45,18 +45,15 @@ _unprefixable_units = [
   ('day', 'days', '24 h'),
 ]
 
-# List of units (just for information purposes, not used internally)
-units = []
 # Fast lookup table for unit names
-_lookup = {}
+units = {}
+
 
 def register_unit (name, longname, conversion):
   '''
     Register a unit with this module.
   '''
-  u = (name, longname, conversion)
-  units.append(u)
-  _lookup[name] = u
+  units[name] = (longname,conversion)
 
 def register_prefixable_unit (name, longname, conversion):
   '''
@@ -98,9 +95,9 @@ def parse_units (s, keep=[]):
 
     name, exponent = match("^(.*[^-0-9])(|-?[0-9]+)$", term).groups()
 
-    if name not in _lookup:
+    if name not in units:
       raise KeyError ("Unrecognized unit: %s"%name)
-    name, longname, conversion = _lookup[name]
+    longname, conversion = units[name]
     # Base unit or derived unit?
     if isinstance(conversion,str) and len(conversion) > 0:
       # Recursively parse the derived units
@@ -123,7 +120,7 @@ def parse_units (s, keep=[]):
 
   # Eliminate common base units between numerator and denominator
   # (ignore units that require further information for evaluation)
-  is_reducible_unit = lambda x: isinstance(_lookup[x][2],str) and x not in keep
+  is_reducible_unit = lambda x: x not in keep
   reducible_numerator = Counter(filter(is_reducible_unit,numerator))
   reducible_denominator = Counter(filter(is_reducible_unit,denominator))
   numerator = [n for n in numerator if n not in reducible_numerator]
