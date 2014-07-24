@@ -48,6 +48,9 @@ _unprefixable_units = [
 # Fast lookup table for unit names
 units = {}
 
+# Additional contexts for units
+# (if unit conversion depends on the matrial/substance in question, etc.)
+contexts = {}
 
 def register_unit (name, longname, conversion):
   '''
@@ -65,13 +68,21 @@ def register_prefixable_unit (name, longname, conversion):
     register_unit(prefix+name, longprefix+longname, str(scale)+' '+name)
 
 
+def register_context (name, **conversions):
+  '''
+    Register a new context for a unit.  Some units need a specific context
+    (e.g. a material/substance) in order to do some kinds of conversions.
+  '''
+  contexts[name] = conversions
+
+
 # Initialize the units
 map (register_prefixable_unit, *zip(*_prefixable_units))
 map (register_unit, *zip(*_unprefixable_units))
 del _prefixable_units, _unprefixable_units
 
 
-def parse_units (s, keep=[]):
+def parse_units (s, keep=[], context=None):
   '''
     Parse a unit string into its basic building blocks.
     Returns scale, [numerator], [denominator]
@@ -93,20 +104,35 @@ def parse_units (s, keep=[]):
       continue
     except ValueError: pass
 
-    name, exponent = match("^(.*[^-0-9])(|-?[0-9]+)$", term).groups()
+    m = match(r"^(?P<name>[a-zA-Z]+)(\((?P<context>.*)\))?(?P<exponent>-?[0-9]+)?$", term)
+    if m is None:
+      raise ValueError ("Unparseable unit string '%s'"%term)
+    m = m.groupdict()
+    name = m['name']
+    exponent = int(m['exponent'] or '1')
+    context = m['context'] or context
+    if context is None:
+      context_conversions = {}
+    elif context not in contexts:
+      raise KeyError("Unrecognized unit context '%s'"%context)
+    else:
+      context_conversions = contexts[context]
 
     if name not in units:
       raise KeyError ("Unrecognized unit: %s"%name)
     longname, conversion = units[name]
     # Base unit or derived unit?
-    if isinstance(conversion,str) and len(conversion) > 0:
+    if conversion != '':
       # Recursively parse the derived units
-      sc, n, d = parse_units(conversion)
-    else:
+      sc, n, d = parse_units(conversion, context=context)
+    # Final reduction?
+    elif name not in context_conversions:
       sc, n, d = 1, [name], []
-
-    if len(exponent) == 0: exponent = '1'
-    exponent = int(exponent)
+    # Explicitly keep the context name in reduced unit?
+    elif context_conversions[name] == '':
+      sc, n, d = 1, [name+'('+context+')'], []
+    else:
+      sc, n, d = parse_units(context_conversions[name], context=context)
 
     # Apply the scale factor from this term
     scale *= sc**exponent
