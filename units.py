@@ -163,5 +163,5 @@ def conversion_factor (from_units, to_units):
   scale2, numerator2, denominator2 = parse_units(to_units)
   if (numerator1 != numerator2) or (denominator1 != denominator2):
     raise ValueError ("Units '%s' and '%s' are not compatible"%(from_units,to_units))
-  return scale2 / scale1
+  return scale1 / scale2
 
