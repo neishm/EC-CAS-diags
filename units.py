@@ -1,7 +1,6 @@
 # Unit conversion routines
 
 # Standard prefixes for scaling
-"test"
 standard_prefixes = [
   ('Y', 'yotta', 1E21),
   ('Z', 'zetta', 1E21),
@@ -25,8 +24,8 @@ standard_prefixes = [
   ('y', 'yocto', 1E-24),
 ]
 
-# Define the standard units (that can be prefixed)
-prefixable_units = [
+# Define some built-in units that can be prefixed
+_prefixable_units = [
   ('g', 'grams', ''),
   ('m', 'metres', ''),
   ('s', 'seconds', ''),
@@ -37,8 +36,8 @@ prefixable_units = [
   ('J', 'joules', 'kg m2 s-2'),
 ]
 
-# Other units (that don't work with the standard prefixes)
-unprefixable_units = [
+# Other built-in units (that don't work with the standard prefixes)
+_unprefixable_units = [
   ('ppm', 'parts per million', '1E-6 mol mol-1'),
   ('ppb', 'parts per billion', '1E-9 mol mol-1'),
   ('ppt', 'parts per trillion', '1E-12 mol mol-1'),
@@ -46,21 +45,33 @@ unprefixable_units = [
   ('day', 'days', '24 h'),
 ]
 
-# Compile a final list of units
+# List of units (just for information purposes, not used internally)
 units = []
+# Fast lookup table for unit names
 _lookup = {}
-def _finalize_units():
-  # Clear out any existing entries
-  while len(units) > 0: units.pop()
-  # Combine all prefixes and prefixable units
-  for name, longname, conversion in prefixable_units:
-    units.append((name, longname, conversion))
-    for prefix, longprefix, scale in standard_prefixes:
-      units.append((prefix+name, longprefix+longname, str(scale)+' '+name))
-  # Add other _non-prefixable) units
-  units.extend(unprefixable_units)
-  _lookup.update((name,(name,longname,conversion)) for name,longname,conversion in units)
-_finalize_units()
+
+def register_unit (name, longname, conversion):
+  '''
+    Register a unit with this module.
+  '''
+  u = (name, longname, conversion)
+  units.append(u)
+  _lookup[name] = u
+
+def register_prefixable_unit (name, longname, conversion):
+  '''
+    Register a new prefixable unit with this module.
+    All combinations of standard prefixes will be registered at the same time.
+  '''
+  register_unit (name, longname, conversion)
+  for prefix, longprefix, scale in standard_prefixes:
+    register_unit(prefix+name, longprefix+longname, str(scale)+' '+name)
+
+
+# Initialize the units
+map (register_prefixable_unit, *zip(*_prefixable_units))
+map (register_unit, *zip(*_unprefixable_units))
+del _prefixable_units, _unprefixable_units
 
 
 def parse_units (s, keep=[]):
@@ -154,5 +165,4 @@ def conversion_factor (from_units, to_units):
   if (numerator1 != numerator2) or (denominator1 != denominator2):
     raise ValueError ("Units '%s' and '%s' are not compatible"%(from_units,to_units))
   return scale2 / scale1
-
 
