@@ -65,7 +65,7 @@ def register_prefixable_unit (name, longname, conversion):
   '''
   register_unit (name, longname, conversion)
   for prefix, longprefix, scale in standard_prefixes:
-    register_unit(prefix+name, longprefix+longname, str(scale)+' '+name)
+    register_unit(prefix+name, longprefix+longname, repr(scale)+' '+name)
 
 
 def register_context (name, **conversions):
@@ -172,7 +172,7 @@ def unparse_units (scale, numerator, denominator):
   '''
   from collections import Counter
   if scale == 1: s = []
-  else: s = [str(scale)]
+  else: s = [repr(scale)]
   for x,i in sorted(Counter(numerator).items()):
     if i == 1: s.append(x)
     else: s.append('%s%d'%(x,i))
