@@ -38,9 +38,10 @@ _prefixable_units = [
 
 # Other built-in units (that don't work with the standard prefixes)
 _unprefixable_units = [
-  ('ppm', 'parts per million', '1E-6 mol mol-1'),
-  ('ppb', 'parts per billion', '1E-9 mol mol-1'),
-  ('ppt', 'parts per trillion', '1E-12 mol mol-1'),
+  ('molefraction', 'mole fraction', 'mol mol-1'),
+  ('ppm', 'parts per million', '1E-6 molefraction'),
+  ('ppb', 'parts per billion', '1E-9 molefraction'),
+  ('ppt', 'parts per trillion', '1E-12 molefraction'),
   ('h', 'hours', '3600 s'),
   ('day', 'days', '24 h'),
 ]
