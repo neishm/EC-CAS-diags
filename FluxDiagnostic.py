@@ -263,9 +263,6 @@ def plotOrganize(flux1,flux2=None, flux3=None, names=['','',''], palette=None, n
       date += '-%02d'%(day)
       TimeStamp = str(day) + '/' + TimeStamp
 
-      # Quick kludge to workaround non-monotonic gph in CarbonTracker
-      if year==2009 and month==8 and day==7: continue
-
       if timefilter is not 'Daily':    #Hour specifications do not exist if daily mean is selected
         hour = data.time.hour[0]
         params['hour'] = hour
