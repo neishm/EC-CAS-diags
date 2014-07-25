@@ -83,17 +83,16 @@ map (register_unit, *zip(*_unprefixable_units))
 del _prefixable_units, _unprefixable_units
 
 
-def parse_units (s, keep=[], context=None):
+def parse_units (s, context=None):
   '''
     Parse a unit string into its basic building blocks.
     Returns scale, [numerator], [denominator]
 
-    Optionally, you can pass a list of base units in the 'keep' parameter,
-    which will stop these units from being reduced out.
+    Optionally, you can pass a context to the unit parser, to enable some
+    context-sensitive unit reductions.
   '''
   from re import match
   from collections import Counter
-  if isinstance(keep,str): keep = [keep]
 
   scale = 1.0
   numerator = []
@@ -146,17 +145,11 @@ def parse_units (s, keep=[], context=None):
     denominator.extend(d*exponent)
 
   # Eliminate common base units between numerator and denominator
-  # (ignore units that require further information for evaluation)
-  is_reducible_unit = lambda x: x not in keep
-  reducible_numerator = Counter(filter(is_reducible_unit,numerator))
-  reducible_denominator = Counter(filter(is_reducible_unit,denominator))
-  numerator = [n for n in numerator if n not in reducible_numerator]
-  denominator = [n for n in denominator if n not in reducible_denominator]
-  # Reduce the numerator / denominator
-  reducible_numerator, reducible_denominator = reducible_numerator-reducible_denominator, reducible_denominator-reducible_numerator
-  # Stick it all together again
-  numerator.extend(reducible_numerator.elements())
-  denominator.extend(reducible_denominator.elements())
+  numerator = Counter(numerator)
+  denominator = Counter(denominator)
+  numerator, denominator = numerator-denominator, denominator-numerator
+  numerator = numerator.elements()
+  denominator = denominator.elements()
 
   # Sort the terms, to simplify comparisons against these units
   numerator = sorted(numerator)
