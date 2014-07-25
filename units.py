@@ -91,8 +91,11 @@ def parse_units (s, context=None):
     Optionally, you can pass a context to the unit parser, to enable some
     context-sensitive unit reductions.
   '''
-  from re import match
+  from re import match, sub
   from collections import Counter
+
+  # First, preprocess the string to attach '/' symbols to the next term
+  s = sub(' / ', ' /', s)
 
   scale = 1.0
   numerator = []
@@ -104,12 +107,13 @@ def parse_units (s, context=None):
       continue
     except ValueError: pass
 
-    m = match(r"^(?P<name>[a-zA-Z]+)(\((?P<context>.*)\))?(?P<exponent>-?[0-9]+)?$", term)
+    m = match(r"^(?P<invert>/)?(?P<name>[a-zA-Z]+)(\((?P<context>.*)\))?(?P<exponent>-?[0-9]+)?$", term)
     if m is None:
       raise ValueError ("Unparseable unit string '%s'"%term)
     m = m.groupdict()
     name = m['name']
     exponent = int(m['exponent'] or '1')
+    if m['invert']: exponent = -exponent
     context = m['context'] or context
     if context is None:
       context_conversions = {}
