@@ -486,6 +486,12 @@ class DataInterface (object):
     if requirement is not None:
       candidates = filter(requirement, candidates)
 
+    if isinstance(maximize,tuple):
+      maximize = lambda x,F=maximize: [f(x) for f in F]
+
+    if isinstance(minimize,tuple):
+      minimize = lambda x,F=minimize: [f(x) for f in F]
+
     # Sort by the criteria (higher value is better)
     if maximize is not None:
       candidates = sorted(candidates, key=maximize, reverse=True)

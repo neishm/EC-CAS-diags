@@ -1,17 +1,10 @@
 # Timeseries diagnostic
 
-# Criteria for getting the data closest to the surface
-# (and the maximum number of timesteps)
-def surface_output_frequency (varlist):
-  from common import closeness_to_surface, number_of_timesteps
-  # Rank by closeness to surface first, then # of timesteps for tiebreaker
-  return closeness_to_surface(varlist), number_of_timesteps(varlist)
-
 #TODO: Interpolate directly to station locations
 # This method computes the surface values of a model dataset
 def get_sfc_data (model, fieldname):
-  from common import select_surface, have_gridded_data
-  field = model.data.find_best(fieldname, requirement=have_gridded_data, maximize = surface_output_frequency)
+  from common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
+  field = model.data.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
   field = select_surface(field)
   # Cache the data for faster subsequent access
   field = model.cache.write(field, prefix='sfc_'+fieldname)

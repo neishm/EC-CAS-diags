@@ -6,13 +6,13 @@ def compute_totalmass (model, fieldname):
 
     # Total air mass?
     if fieldname == 'air':
-     dp, area = model.data.find_best(['dp','cell_area'], maximize=number_of_levels)
+     dp, area = model.data.find_best(['dp','cell_area'], maximize=(number_of_levels,number_of_timesteps))
      # Integrate to get total column
      tc = (dp*100).sum('zaxis') / g
 
     # Total tracer mass?
     else:
-     c, dp, area = model.data.find_best([fieldname,'dp','cell_area'], maximize=number_of_levels)
+     c, dp, area = model.data.find_best([fieldname,'dp','cell_area'], maximize=(number_of_levels,number_of_timesteps))
      # Convert from ppm to kg / kg
      if c.atts['units'] != 'ppm':
        raise ValueError ("Unhandled units '%s'"%c.atts['units'])

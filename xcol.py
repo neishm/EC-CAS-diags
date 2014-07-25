@@ -6,9 +6,9 @@
 # Compute total column of a tracer
 # (in kg/m2)
 def totalcolumn (model, fieldname):
-  from common import molecular_weight as mw, grav as g, number_of_levels
+  from common import molecular_weight as mw, grav as g, number_of_levels, number_of_timesteps
 
-  c, dp = model.data.find_best([fieldname,'dp'], maximize=number_of_levels)
+  c, dp = model.data.find_best([fieldname,'dp'], maximize=(number_of_levels,number_of_timesteps))
   # Convert from ppm to kg / kg
   if c.atts['units'] != 'ppm':
     raise ValueError ("Unhandled units '%s'"%c.atts['units'])
@@ -29,8 +29,8 @@ def totalcolumn (model, fieldname):
 
 # Compute average column of a tracer
 def avgcolumn (model, fieldname):
-  from common import number_of_levels
-  c, dp = model.data.find_best([fieldname,'dp'], maximize=number_of_levels)
+  from common import number_of_levels, number_of_timesteps
+  c, dp = model.data.find_best([fieldname,'dp'], maximize=(number_of_levels,number_of_timesteps))
   data = (c*dp).sum('zaxis') / dp.sum('zaxis')
   data.name = fieldname
   if 'units' in c.atts:

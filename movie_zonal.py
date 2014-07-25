@@ -2,10 +2,10 @@
 def zonalmean_gph (model, fieldname):
   from pygeode.interp import interpolate
   from pygeode.axis import Height
-  from common import number_of_levels, remove_extra_longitude
+  from common import number_of_levels, number_of_timesteps, remove_extra_longitude
   import numpy as np
 
-  var, z = model.data.find_best([fieldname,'geopotential_height'], maximize=number_of_levels)
+  var, z = model.data.find_best([fieldname,'geopotential_height'], maximize=(number_of_levels,number_of_timesteps))
   assert z.atts['units'] == 'm'
 
   height = Height(range(68), name='height')
