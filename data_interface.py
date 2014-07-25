@@ -486,6 +486,12 @@ class DataInterface (object):
     if requirement is not None:
       candidates = filter(requirement, candidates)
 
+    # At the very least, order by domain shapes
+    # (so we never have an arbitrary order of matches)
+    def domain_size (varlist):
+      return sorted((v.name,v.shape) for v in varlist)
+    candidates = sorted(candidates, key=domain_size, reverse=True)
+
     if isinstance(maximize,tuple):
       maximize = lambda x,F=maximize: [f(x) for f in F]
 
