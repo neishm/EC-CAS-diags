@@ -38,7 +38,7 @@ _prefixable_units = [
 
 # Other built-in units (that don't work with the standard prefixes)
 _unprefixable_units = [
-  ('molefraction', 'mole fraction', 'mol mol-1'),
+  ('molefraction', 'mole fraction', ''),
   ('ppm', 'parts per million', '1E-6 molefraction'),
   ('ppb', 'parts per billion', '1E-9 molefraction'),
   ('ppt', 'parts per trillion', '1E-12 molefraction'),
