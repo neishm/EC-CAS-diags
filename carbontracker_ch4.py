@@ -104,10 +104,6 @@ def ct_products (data):
     dp.atts['units'] = 'hPa'
     data['dp'] = dp
 
-    # Air mixing ratio (constant)
-    from common import Constant_Var
-    # (ppb)
-    data['air'] = Constant_Var(axes=data['air_pressure'].axes, value=1.0E9)
 
   # Compute grid cell area
   from common import get_area
@@ -130,61 +126,9 @@ def ct_products (data):
   return data
 
 
-# Method for calculating zonal mean on-the-fly
-def ct_zonal (field):
-  from pygeode.climat import dailymean
-  import numpy as np
-
-  # Interpolate to geopotential height
-  from pygeode.interp import interpolate
-  from pygeode.axis import Height
-  height = Height(range(68))
-  ct_ch4 = interpolate(field, inaxis='lev', outaxis=height, inx = molefractions.gph/1000)
-  ct_ch4 = ct_ch4.nanmean('lon')
-  ct_ch4 = ct_ch4.transpose(0,2,1)
-  ct_ch4 = dailymean(ct_ch4)
-
-  return ct_ch4
-
-# Similar to above, but use an average of the 22:30 and 1:30 to get
-# a 00:00 field
-def ct_zonal_24h (field,gph):
-  import numpy as np
-
-  # Interpolate to geopotential height
-  from pygeode.interp import interpolate
-  from pygeode.axis import Height
-  height = Height(range(68))
-  ct_ch4 = interpolate(field, inaxis='lev', outaxis=height, inx = gph/1000)
-  ct_ch4 = ct_ch4.nanmean('lon')
-  ct_ch4 = ct_ch4.transpose(0,2,1)
-
-  ch4_2230 = ct_ch4(hour=22,minute=30)(i_time = (0,364))
-
-  ch4_0130 = ct_ch4(hour=1, minute=30)(i_time = (1,365))
-
-  # New time axis
-  from pygeode.timeaxis import StandardTime
-  taxis = ct_ch4.time
-  taxis = StandardTime((ch4_2230.time.values+ch4_0130.time.values)/2, startdate=taxis.startdate, units=taxis.units)
-  ch4_2230 = ch4_2230.replace_axes(time=taxis)
-  ch4_0130 = ch4_0130.replace_axes(time=taxis)
-
-  ct_ch4 = ((ch4_2230 + ch4_0130)/2).rename(ct_ch4.name)
-
-  return ct_ch4
 
 
 # Some useful criteria for searching for fields
-def have_surface (varlist):
-  from pygeode.axis import ZAxis
-  from pygeode.formats.fstd import Hybrid, LogHybrid
-  for var in varlist:
-    if var.hasaxis('lev'):
-      return 1 in var.lev.values
-  # No vertical info?
-  return False
-
 def number_of_timesteps (varlist):
   from pygeode.axis import TAxis
   for var in varlist:
@@ -225,97 +169,4 @@ class CarbonTracker_CH4 (object):
 
     self.data = DataInterface(map(ct_products,self.data))
 
-
-  # Data interface
-  def get_data (self, domain, field, stat='mean'):
-
-    if stat != 'mean':
-      raise KeyError("No '%s' stat available for CarbonTracker"%stat)
-
-    # Zonal mean (over geopotential height)
-    if domain == 'zonalmean_gph':
-      data, gph = self.data.find_best([field,'geopotential_height'], maximize=number_of_levels)
-      data = ct_zonal_24h(data,gph)
-      data.atts['units'] = 'ppb'
-
-    # "surface" data (lowest level of molefractions dataset)
-    elif domain == 'sfc':
-      data = self.data.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
-      data = data(lev=1)
-      data.atts['units'] = 'ppb'
-
-    # Total column
-    elif domain == 'totalcolumn':
-      from common import molecular_weight as mw, grav as g
-
-      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
-      # Convert from ppb to kg / kg
-      c *= 1E-9 * mw[field] / mw['air']
-
-      # Integrate
-      data = (c*dp*100).sum('zaxis') / g
-      data.name = field
-      data.atts['units'] = 'kg m-2'
-
-
-    # Column averages
-    elif domain == 'avgcolumn':
-      from common import molecular_weight as mw
-      tc = self.get_data('totalcolumn', field)
-      tc_air = self.get_data('totalcolumn','air')
-      data = tc / tc_air
-      # Convert kg/kg to ppb
-      data *= mw['air']/mw[field] * 1E9
-
-      data.name = field
-      data.atts['units'] = 'ppb'
-
-    # Total mass
-    elif domain == 'totalmass':
-      from common import molecular_weight as mw, grav as g
-      c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
-      # Convert from ppb to kg / kg
-      c *= 1E-9 * mw[field] / mw['air']
-
-      # Integrate to get total column
-      tc = (c*dp*100).sum('zaxis') / g
-
-      # Integrate horizontally
-      mass = (tc * area).sum('lat','lon')
-
-      # Convert from kg to Pg
-      mass *= 1E-12
-      data = mass
-      data.name = field
-      data.atts['units'] = 'Pg'
-
-
-    # Integrated fluxes (moles s-1)
-    elif domain == 'totalflux':
-      data, area = self.data.find_best([field+'_flux','cell_area'], maximize=number_of_timesteps)
-      data = (data*area).sum('lat','lon')
-      data.name = field
-      data.atts['units'] = 'mol s-1'
-      # The time is the *midpoint* of the flux period.
-      # Rewind to the *start* of the flux period (-1.5 hours)
-      time = data.time
-      assert time.units == 'days'
-      time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
-      data = data.replace_axes(time=time)
-
-    elif domain == 'flux':
-      data = self.fluxes[field]
-      # The time is the *midpoint* of the flux period.
-      # Rewind to the *start* of the flux period (-1.5 hours)
-      time = data.time
-      assert time.units == 'days'
-      time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
-      data = data.replace_axes(time=time)
-      return data   # No caching
-
-    else: raise ValueError ("Unknown domain '%s'"%domain)
-
-    units = data.atts.get('units',None)
-    data = self.cache.write(data,prefix='%s_%s'%(domain,field))
-    return data
 

@@ -14,6 +14,8 @@ def timeseries (models, fieldname, units, outdir, plot_months=None,timefilter=No
 
   from common import unit_scale
 
+  from timeseries import get_sfc_data, get_station_data
+
   line_colours = ['blue', 'green', 'red']
 
   datasets = [d for d in models if d is not None]
@@ -38,7 +40,7 @@ def timeseries (models, fieldname, units, outdir, plot_months=None,timefilter=No
   sfc_data = []
   for d in datasets:
     try:
-      sfc_data.append(d.get_data('sfc',fieldname))
+      sfc_data.append(get_sfc_data(d,fieldname))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_data.append(None)
@@ -46,7 +48,8 @@ def timeseries (models, fieldname, units, outdir, plot_months=None,timefilter=No
   sfc_std = []
   for d in datasets:
     try:
-      sfc_std.append(d.get_data('sfc',fieldname,'std'))
+      # Try finding an ensemble spread
+      sfc_std.append(get_sfc_data(d,fieldname+'_ensemblespread'))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_std.append(None)
@@ -108,9 +111,9 @@ def timeseries (models, fieldname, units, outdir, plot_months=None,timefilter=No
       else:
         # For now, assume that we have an obs dataset,
         # so this command shouldn't fail.
-        data = d.get_data(location,fieldname,'mean')
+        data = get_station_data(d,location,fieldname)
         series.append(data)
-        std.append(d.get_data(location,fieldname,'std'))
+        std.append(get_station_data(d,location,fieldname+'_std'))
 
     # Scale to the plot units
     for i,x in enumerate(series):

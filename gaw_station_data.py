@@ -172,12 +172,15 @@ class GAW_Station_Data (object):
 
     data = DataInterface.from_files([cachefile], opener=gaw_station_opener)
 
+    # Rename CO2_mean to CO2
+    data = data.filter(strip_mean)
+
     self.data = data
 
     # Find obs locations from the file
     #TODO: remove this once the diagnostics use the station axis directly.
     obs_locations = {}
-    data = self.data.find_best('CO2_mean')
+    data = self.data.find_best('CO2')
     stations = data.station.values
     lats = data.station.lat
     lons = data.station.lon
@@ -186,17 +189,13 @@ class GAW_Station_Data (object):
       obs_locations[station] = (lat,lon,country)
     self.obs_locations = obs_locations
 
-
-  def get_data (self, station, field, stat='mean'):
-    import numpy as np
-
-    data = self.data.find_best(field+'_'+stat)
-
-    stations = data.station.values
-    if station not in stations: raise KeyError
-
-    s = np.where(stations == station)[0][0]
-
-    return data(i_station=s).squeeze('station')
+# Helper function - filter out '_mean' suffix from data
+def strip_mean (varlist):
+  out = []
+  for var in varlist:
+    if var.name.endswith('_mean'):
+      var = var.rename(var.name.rsplit('_mean')[0])
+    out.append(var)
+  return out
 
 

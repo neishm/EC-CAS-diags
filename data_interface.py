@@ -417,6 +417,16 @@ class DataInterface (object):
     from pygeode.dataset import asdataset
     self.datasets = tuple(map(asdataset,datasets))
 
+  # Return a new DataInterface after pushing this one through a series
+  # of filters.
+  def filter (self, *filters):
+    datasets = []
+    for dataset in self.datasets:
+      for f in filters:
+        dataset = f(dataset)
+      datasets.append(dataset)
+    return DataInterface(datasets)
+
   # Create a dataset from a set of files and an opener
   @classmethod
   def from_files (cls, filelist, opener, manifest=None):
@@ -475,6 +485,12 @@ class DataInterface (object):
 
     if requirement is not None:
       candidates = filter(requirement, candidates)
+
+    if isinstance(maximize,tuple):
+      maximize = lambda x,F=maximize: [f(x) for f in F]
+
+    if isinstance(minimize,tuple):
+      minimize = lambda x,F=minimize: [f(x) for f in F]
 
     # Sort by the criteria (higher value is better)
     if maximize is not None:

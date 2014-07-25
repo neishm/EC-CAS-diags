@@ -38,7 +38,7 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
   convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
   convert_CO2_flux = mw['CO2'] / mw['C']
   suffix = ""
-  if chmmean: suffix = "_ensemblemean"
+  #if chmmean: suffix = "_ensemblemean"
   if chmstd: suffix = "_ensemblespread"
   conversions += (
     ('ECO2', 'CO2_flux', convert_CO2_flux, None, 'g s-1'),
@@ -154,9 +154,6 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
   if P is not None:
     P.atts['units'] = 'hPa'
     data['air_pressure'] = P
-    # Define air mass on the same domain as 3D pressure
-    from common import Constant_Var
-    data['air'] = Constant_Var(axes=P.axes, value=1.0E6)  # ppm
 
   if dP is not None:
     dP.atts['units'] = 'hPa'
@@ -165,14 +162,15 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
   # Grid cell areas
   if 'DX' in data:
     data['cell_area'] = data.pop('DX')
-    data['cell_area'].atts['units'] = 'm2'
-  elif 'surface_pressure' in data:
-    lat = data['surface_pressure'].lat
-    lon = data['surface_pressure'].lon
-    time = data['surface_pressure'].time
-    from common import get_area
-    data['cell_area'] = get_area(lat,lon).extend(0,time)
-
+  else:
+    for varname in 'CO2_flux', 'surface_pressure':
+      if varname in data:
+        lat = data[varname].lat
+        lon = data[varname].lon
+        time = data[varname].time
+        from common import get_area
+        data['cell_area'] = get_area(lat,lon).extend(0,time)
+        break
 
   # General cleanup stuff
 
@@ -195,24 +193,6 @@ def eccas_chmmean_products (dataset):
 def eccas_chmstd_products (dataset):
   return eccas_products(dataset, chmstd=True)
 
-# Convert zonal mean data (on height)
-def to_gph (var, z):
-  from pygeode.interp import interpolate
-  from pygeode.axis import Height
-  from pygeode.dataset import Dataset
-  import numpy as np
-
-  # Remove extra longitude from the data
-  var = var.slice[:,:,:,:-1]
-  z = z.slice[:,:,:,:-1]
-
-  height = Height(range(68), name='height')
-
-  var = interpolate(var, inaxis='zaxis', outaxis=height, inx=z/1000.)
-
-  var = var.transpose(0,3,1,2)
-
-  return var
 
 # Wrapper for getting GEM data back out of a cached netcdf file
 # (This will hook into the cache, to preserve FSTD axes after save/reloading)
@@ -224,16 +204,6 @@ def gem_load_cache_hook (dataset):
 
 
 # Some useful criteria for searching for fields
-def have_surface (varlist):
-  from pygeode.axis import ZAxis
-  from pygeode.formats.fstd import Hybrid, LogHybrid
-  for var in varlist:
-    if var.hasaxis(Hybrid):
-      return 1.0 in var.getaxis(Hybrid).values
-    if var.hasaxis(LogHybrid):
-      return 1.0 in var.getaxis(LogHybrid).values
-  # No vertical info?
-  return False
 
 def number_of_timesteps (varlist):
   from pygeode.axis import TAxis
@@ -320,127 +290,5 @@ class GEM_Data (object):
     self.data = DataInterface(chmmean_data.datasets+chmstd_data.datasets+flux_data.datasets+forward_data.datasets)
 
     self.cache = cache
-
-
-  # The data interface
-  # Handles the computing of general diagnostic domains (zonal means, etc.)
-  def get_data (self, domain, standard_name, stat='mean'):
-
-    field = standard_name
-    # Check for ensemble mean / standard deviation requests
-    if stat == 'mean' and self.data.have(standard_name+'_ensemblemean'):
-      field = standard_name+'_ensemblemean'
-    elif stat == 'std':
-      field = standard_name+'_ensemblespread'
-
-    # Determine which data is needed
-
-    # Surface data (lowest model level)
-    if domain == 'sfc':
-      data = self.data.find_best(field, requirement=have_surface, maximize=number_of_timesteps)
-      data = data(eta=1.0, zeta=1.0, ignore_mismatch=True)
-
-    # Zonal mean, with data interpolated to a fixed set of geopotential heights
-    elif domain == 'zonalmean_gph':
-      data, GZ = self.data.find_best([field,'geopotential_height'], maximize=number_of_levels)
-      data = to_gph(data,GZ).nanmean('lon')
-      data.atts['units'] = 'ppm'
-
-    # "total column" (in kg/m2)
-    elif domain == 'totalcolumn':
-      from common import molecular_weight as mw, grav as g
-
-      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
-      # Convert from ppm to kg / kg
-      c *= 1E-6 * mw[standard_name] / mw['air']
-
-      # Integrate
-      data = (c*dp*100).sum('zaxis') / g
-      data.name = field
-      data.atts['units'] = 'kg m-2'
-
-    # Average column (ppm)
-    elif domain == 'avgcolumn':
-
-      c, dp = self.data.find_best([field,'dp'], maximize=number_of_levels)
-      data = (c*dp).sum('zaxis') / dp.sum('zaxis')
-      data.name = field
-      if 'units' in c.atts:
-        data.atts['units'] = c.atts['units']
-
-
-    # Total mass (Pg)
-    #TODO: re-use totalcolumn data from above
-    elif domain == 'totalmass':
-      from common import molecular_weight as mw, grav as g
-      # Do we have the pressure change in the vertical?
-      if self.data.have('dp'):
-         c, dp, area = self.data.find_best([field,'dp','cell_area'], maximize=number_of_levels)
-         # Convert from ppm to kg / kg
-         c *= 1E-6 * mw[standard_name] / mw['air']
-
-         # Integrate to get total column
-         tc = (c*dp*100).sum('zaxis') / g
-
-      # Otherwise, if we only need air mass, assume a lid of 0hPa and take a
-      # shortcut
-      elif field == 'air':
-         from warnings import warn
-         warn ("No 'dp' data found in '%s'.  Approximating total air mass from surface pressure"%self.name)
-         p0, area = self.data.find_best(['surface_pressure','cell_area'], maximize=number_of_timesteps)
-         tc = p0*100 / g
-      else:
-         raise KeyError("No 'dp' field found in '%s'.  Cannot compute total mass."%self.name)
-
-      # Integrate horizontally
-      # Assume global grid - remove repeated longitude
-      mass = (tc * area).slice[:,:,:-1].sum('lat','lon')
-
-      # Convert from kg to Pg
-      mass *= 1E-12
-      data = mass
-      data.name = field
-      data.atts['units'] = 'Pg'
-
-    # Integrated flux (if available)
-    elif domain == 'totalflux':
-      from common import molecular_weight as mw
-
-      data = self.data.find_best(field+'_flux', maximize=number_of_timesteps)
-
-      # Sum, skipping the last (repeated) longitude
-      data = data.slice[:,:,:-1].sum('lat','lon')
-      # Convert from g/s to moles/s
-      data /= mw[standard_name]
-      data.name = field
-      data.atts['units'] = 'mol s-1'
-
-    elif domain == 'flux':
-      if stat != 'mean': raise KeyError("Don't have stddev on fluxes")
-      from common import molecular_weight as mw
-      data, area = self.data.find_best([field+'_flux','cell_area'])
-      # Convert from g/s to moles/s
-      data /= mw[standard_name]
-      # Convert to moles/m2/s
-      data = data.slice[:,:,:-1]  # remove repeated longitude
-      if area.hasaxis('time'): area = area(i_time=0).squeeze()
-      area = area.slice[:,:-1]  # remove repeated longitude
-      data /= area
-      data.name = field
-      data.atts['units'] = 'mol m-2 s-1'
-
-    elif domain == 'Toronto':
-      data = self.data.find_best(field, maximize=number_of_levels)
-      data = data.squeeze(lat=43.7833,lon=280.5333)
-      data.name = field
-      data.atts['units'] = 'ppm'
-
-    else: raise ValueError ("Unknown domain '%s'"%domain)
-
-    if stat == 'mean':
-      prefix = '%s_%s'%(domain,field)
-    else:
-      prefix = '%s_%s_%s'%(stat,domain,field)
-    return self.cache.write(data,prefix)
 
 

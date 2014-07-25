@@ -1,23 +1,11 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from pygeode import Var
 
-def rescale (field, units):
-  from common import unit_scale
-  input_units = field.atts['units']
-  if input_units == units: return field
-  low = field.atts['low']
-  high = field.atts['high']
-  name = field.name
-  field = field / unit_scale[input_units] * unit_scale[units]
-  field.name = name
-  field.atts['low'] = low / unit_scale[input_units] * unit_scale[units]
-  field.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
-  return field
 
 def CvHgraph(X,names=['','','']):
 
   """This function handles the actual graphing mechanisms"""
+
+  import numpy as np
+  import matplotlib.pyplot as plt
 
   #Figure prep
   fig = plt.figure(figsize=(6*len(X),9))
@@ -68,6 +56,7 @@ def plotCvH(field1,field2=None, field3=None, title1='plot1', title2='plot2', tit
 
   """This function loops through the data time-wise and preps the data for the graphing function"""
 
+  import matplotlib.pyplot as plt
   from plot_wrapper import Colorbar, Plot, Overlay, Multiplot
   from plot_shortcuts import pcolor, contour, contourf, Map
   from os.path import exists
@@ -122,22 +111,21 @@ def plotCvH(field1,field2=None, field3=None, title1='plot1', title2='plot2', tit
   pbar.update(100)
 
 
-def movie_CvH (models, fieldname, units, outdir, stat='mean'):
+def movie_CvH (models, fieldname, units, outdir):
 
   from common import unit_scale
+  from movie_zonal import zonalmean_gph, rescale
 
   assert len(models) > 0
   assert len(models) <= 3  # too many things to plot
   models = [m for m in models if m is not None]
 
   imagedir=outdir+"/images_%s_CvH%s"%('_'.join(m.name for m in models), fieldname)
-  if stat != 'mean':
-    imagedir += '_' + stat
 
   #Names of each model - For plot titles later
   Names = [m.name for m in models]
 
-  fields = [m.get_data('zonalmean_gph',fieldname,stat=stat) for m in models]
+  fields = [zonalmean_gph(m,fieldname) for m in models]
 
   # Unit conversion
   fields = [rescale(f,units) for f in fields]
@@ -151,7 +139,7 @@ def movie_CvH (models, fieldname, units, outdir, stat='mean'):
   plotCvH(field1=fields[0], field2=fields[1], field3=fields[2], title1=titles[0], title2=titles[1], title3=titles[2],preview=False, outdir=imagedir, names=Names)
 
   #Turn output images into movie file
-  moviefile = "%s/%s_CvH%s_%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname, stat)
+  moviefile = "%s/%s_CvH%s.avi"%(outdir, '_'.join(m.name for m in models), fieldname)
 
   from os import system
   from os.path import exists

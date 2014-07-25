@@ -4,10 +4,11 @@
 # comparable to satellite observations.
 
 # Get column average
-def get_xcol (experiment, fieldname, units, stat):
+def get_xcol (experiment, fieldname, units):
   from common import rotate_grid, unit_scale
+  from xcol import avgcolumn
 
-  xcol = experiment.get_data('avgcolumn', fieldname, stat)
+  xcol = avgcolumn(experiment, fieldname)
 
   # Rotate the longitudes to 0,360
   if xcol.lon[1] < 0:
@@ -22,7 +23,6 @@ def get_xcol (experiment, fieldname, units, stat):
     xcol.atts['low'] = low / unit_scale[input_units] * unit_scale[units]
     xcol.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
 
-  xcol.name = fieldname+' '+stat  # Verbose name for plotting
   return xcol
 
 
@@ -39,7 +39,7 @@ def xcol_enkf (model, fieldname, units, outdir):
   imagedir = outdir + "/images_%s_%s"%(model.name,plotname)
   if not exists(imagedir): makedirs(imagedir)
 
-  model_data = [get_xcol(model,fieldname,units,stat) for stat in ('mean','std')]
+  model_data = [get_xcol(model,field,units) for field in (fieldname,fieldname+'_ensemblespread')]
 
   clevs = [get_contours(*get_range(m)) for m in model_data]
 

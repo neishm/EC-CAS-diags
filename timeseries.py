@@ -1,4 +1,26 @@
-# CO2 timeseries
+# Timeseries diagnostic
+
+#TODO: Interpolate directly to station locations
+# This method computes the surface values of a model dataset
+def get_sfc_data (model, fieldname):
+  from common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
+  field = model.data.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
+  field = select_surface(field)
+  # Cache the data for faster subsequent access
+  field = model.cache.write(field, prefix='sfc_'+fieldname)
+  return field
+
+# Get station data.
+# Assume there is only one dataset, with station data in it.
+def get_station_data (obs, location, fieldname):
+  import numpy as np
+  field = obs.data.find_best(fieldname)
+  stations = field.station.values
+  if location not in stations:
+    raise KeyError ("Station '%s' not found in obs"%location)
+  return field(station=location).squeeze('station')  # No caching
+
+
 
 def timeseries (datasets, fieldname, units, outdir, plot_months=None):
 
@@ -35,7 +57,7 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
   sfc_data = []
   for d in datasets:
     try:
-      sfc_data.append(d.get_data('sfc',fieldname))
+      sfc_data.append(get_sfc_data(d,fieldname))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_data.append(None)
@@ -43,7 +65,8 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
   sfc_std = []
   for d in datasets:
     try:
-      sfc_std.append(d.get_data('sfc',fieldname,'std'))
+      # Try finding an ensemble spread
+      sfc_std.append(get_sfc_data(d,fieldname+'_ensemblespread'))
     except KeyError:
       # Put a 'None' placeholder to indicate this isn't model surface data
       sfc_std.append(None)
@@ -104,9 +127,9 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
       else:
         # For now, assume that we have an obs dataset,
         # so this command shouldn't fail.
-        data = d.get_data(location,fieldname,'mean')
+        data = get_station_data(d, location,fieldname)
         series.append(data)
-        std.append(d.get_data(location,fieldname,'std'))
+        std.append(get_station_data(d, location,fieldname+'_std'))
 
     # Scale to the plot units
     for i,x in enumerate(series):
