@@ -96,7 +96,6 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
     for day in daylist:
       val = timeaxis(month=month,day=day,hour=0).get()
       if len(val) == 0: continue
-      assert len(val) == 1
       xticks.append(float(val[0]))
       xticklabels.append("%s %d"%(months[month], day))
 
