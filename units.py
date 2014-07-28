@@ -32,7 +32,7 @@ _prefixable_units = [
   ('mol', 'moles', ''),
   ('N', 'newtons', 'kg m s-2'),
   ('Pa', 'pascals', 'N m-2'),
-  ('bar', 'bars', '1E3 hPa'),
+  ('bar', 'bars', '1000 hPa'),
   ('J', 'joules', 'kg m2 s-2'),
 ]
 
@@ -49,47 +49,61 @@ _unprefixable_units = [
 # Fast lookup table for unit names
 units = {}
 
-# Additional contexts for units
-# (if unit conversion depends on the matrial/substance in question, etc.)
-contexts = {}
-
-def register_unit (name, longname, conversion):
+def define_unit (name, longname, conversion=None):
   '''
     Register a unit with this module.
   '''
-  units[name] = (longname,conversion)
+  units[name] = (longname,conversion,{})
 
-def register_prefixable_unit (name, longname, conversion):
+def define_prefixable_unit (name, longname, conversion=None):
   '''
     Register a new prefixable unit with this module.
     All combinations of standard prefixes will be registered at the same time.
   '''
-  register_unit (name, longname, conversion)
+  define_unit (name, longname, conversion)
   for prefix, longprefix, scale in standard_prefixes:
-    register_unit(prefix+name, longprefix+longname, repr(scale)+' '+name)
+    define_unit(prefix+name, longprefix+longname, repr(scale)+' '+name)
 
 
-def register_context (name, **conversions):
+def define_conversion (name, conversion):
   '''
-    Register a new context for a unit.  Some units need a specific context
-    (e.g. a material/substance) in order to do some kinds of conversions.
+    Define a conversion from one unit to another, valid under a particular
+    context.
+
+    Example:
+      define_conversion ('mol(air)', '28.97 g(air)')
+
+    Would tell the unit convertor how to convert from moles of air to grams
+    of air.
   '''
-  contexts[name] = conversions
+  from re import match
+  m = match(r'^(?P<name>[^()]+)(\((?P<context>.*)\))?$', name)
+  if m is None:
+    raise ValueError ("Can't parse unit '%s'"%name)
+  m = m.groupdict()
+  name = m['name']
+  context = m['context']
+  if name not in units:
+    raise ValueError ("Unrecognized unit '%s'"%name)
+  new_conversion = conversion
+  longname, conversion, context_conversion = units[name]
+  if context is None:
+    conversion = new_conversion
+  else:
+    context_conversion[context] = new_conversion
+  units[name] = longname, conversion, context_conversion
 
 
 # Initialize the units
-map (register_prefixable_unit, *zip(*_prefixable_units))
-map (register_unit, *zip(*_unprefixable_units))
+map (define_prefixable_unit, *zip(*_prefixable_units))
+map (define_unit, *zip(*_unprefixable_units))
 del _prefixable_units, _unprefixable_units
 
 
-def parse_units (s, context=None):
+def parse_units (s, global_context=None):
   '''
     Parse a unit string into its basic building blocks.
     Returns scale, [numerator], [denominator]
-
-    Optionally, you can pass a context to the unit parser, to enable some
-    context-sensitive unit reductions.
   '''
   from re import match, sub
   from collections import Counter
@@ -112,31 +126,27 @@ def parse_units (s, context=None):
       raise ValueError ("Unparseable unit string '%s'"%term)
     m = m.groupdict()
     name = m['name']
+    if name not in units:
+      raise ValueError ("Unrecognized unit: %s"%name)
     exponent = int(m['exponent'] or '1')
     if m['invert']: exponent = -exponent
-    context = m['context'] or context
-    if context is None:
-      context_conversions = {}
-    elif context not in contexts:
-      raise KeyError("Unrecognized unit context '%s'"%context)
-    else:
-      context_conversions = contexts[context]
+    context = m['context'] or global_context
 
-    if name not in units:
-      raise KeyError ("Unrecognized unit: %s"%name)
-    longname, conversion = units[name]
+    longname, conversion, context_conversion = units[name]
+
+    if context in context_conversion:
+      conversion = context_conversion[context]
+
     # Base unit or derived unit?
     if conversion != '':
       # Recursively parse the derived units
-      sc, n, d = parse_units(conversion, context=context)
+      sc, n, d = parse_units(conversion,context)
     # Final reduction?
-    elif name not in context_conversions:
-      sc, n, d = 1, [name], []
-    # Explicitly keep the context name in reduced unit?
-    elif context_conversions[name] == '':
-      sc, n, d = 1, [name+'('+context+')'], []
     else:
-      sc, n, d = parse_units(context_conversions[name], context=context)
+      if context is None:
+        sc, n, d = 1, [name], []
+      else:
+        sc, n, d = 1, [name+'('+context+')'], []
 
     # Apply the scale factor from this term
     scale *= sc**exponent
