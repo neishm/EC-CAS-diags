@@ -46,6 +46,14 @@ _unprefixable_units = [
   ('day', 'days', '24 h'),
 ]
 
+# Container for defining a unit
+class Unit(object):
+  def __init__ (self, longname, conversion, context_conversions):
+    self.longname = str(longname)
+    self.conversion = str(conversion)
+    self.context_conversions = dict(context_conversions)
+
+
 # Fast lookup table for unit names
 units = {}
 
@@ -53,7 +61,7 @@ def define_unit (name, longname, conversion=None):
   '''
     Register a unit with this module.
   '''
-  units[name] = (longname,conversion,{})
+  units[name] = Unit(longname,conversion,{})
 
 def define_prefixable_unit (name, longname, conversion=None):
   '''
@@ -85,13 +93,10 @@ def define_conversion (name, conversion):
   context = m['context']
   if name not in units:
     raise ValueError ("Unrecognized unit '%s'"%name)
-  new_conversion = conversion
-  longname, conversion, context_conversion = units[name]
   if context is None:
-    conversion = new_conversion
+    units[name].conversion = conversion
   else:
-    context_conversion[context] = new_conversion
-  units[name] = longname, conversion, context_conversion
+    units[name].context_conversions[context] = conversion
 
 
 # Initialize the units
@@ -132,10 +137,9 @@ def parse_units (s, global_context=None):
     if m['invert']: exponent = -exponent
     context = m['context'] or global_context
 
-    longname, conversion, context_conversion = units[name]
-
-    if context in context_conversion:
-      conversion = context_conversion[context]
+    conversion = units[name].conversion
+    if context in units[name].context_conversions:
+      conversion = units[name].context_conversions[context]
 
     # Base unit or derived unit?
     if conversion != '':
