@@ -1,7 +1,7 @@
 # Functions / constants common to multiple modules
 
 # Molecular weights
-molecular_weight = {'CO2':44.01, 'CH4':16.04, 'C':12., 'air':28.97, 'CO2_background':44.01, 'CO2_bio':44.01, 'CO2_ocean':44.01, 'CO2_fossil':44.01, 'CO2_fire':44.01, 'H2O':18.01528}
+molecular_weight = {'CO2':44.01, 'CH4':16.04, 'C':12.01, 'air':28.97, 'CO2_background':44.01, 'CO2_bio':44.01, 'CO2_ocean':44.01, 'CO2_fossil':44.01, 'CO2_fire':44.01, 'H2O':18.01528}
 
 # Unit conversion
 from units import units, define_conversion, conversion_factor as unit_conversion_factor
