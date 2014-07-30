@@ -2,7 +2,7 @@
 
 # Standard prefixes for scaling
 standard_prefixes = [
-  ('Y', 'yotta', 1E21),
+  ('Y', 'yotta', 1E24),
   ('Z', 'zetta', 1E21),
   ('E', 'exa', 1E18),
   ('P', 'peta', 1E15),
