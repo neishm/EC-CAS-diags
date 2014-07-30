@@ -57,13 +57,13 @@ class Unit(object):
 # Fast lookup table for unit names
 units = {}
 
-def define_unit (name, longname, conversion=None):
+def define_unit (name, longname, conversion=''):
   '''
     Register a unit with this module.
   '''
   units[name] = Unit(longname,conversion,{})
 
-def define_prefixable_unit (name, longname, conversion=None):
+def define_prefixable_unit (name, longname, conversion=''):
   '''
     Register a new prefixable unit with this module.
     All combinations of standard prefixes will be registered at the same time.
