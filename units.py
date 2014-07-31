@@ -224,22 +224,6 @@ def parse_units_old (s, global_context=None):
   return scale, numerator, denominator
 
 
-# Opposite of parse_units - get a string representation
-# Inputs: scale, [numerator], [denominator]
-def unparse_units (scale, numerator, denominator):
-  '''
-    Get a string representation from parsed units (opposite of parse_units).
-  '''
-  from collections import Counter
-  if scale == 1: s = []
-  else: s = [repr(scale)]
-  for x,i in sorted(Counter(numerator).items()):
-    if i == 1: s.append(x)
-    else: s.append('%s%d'%(x,i))
-  for x,i in sorted(Counter(denominator).items()):
-    s.append('%s-%d'%(x,i))
-  return ' '.join(s)
-
 
 def conversion_factor (from_units, to_units):
   '''
