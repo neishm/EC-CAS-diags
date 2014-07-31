@@ -104,8 +104,56 @@ map (define_prefixable_unit, *zip(*_prefixable_units))
 map (define_unit, *zip(*_unprefixable_units))
 del _prefixable_units, _unprefixable_units
 
+def parse_units(s):
+  '''
+  Iterates over a unit string, parsing each term into a tuple of:
+    1) name of the unit
+    2) context of the unit (or None)
+    3) exponent on the unit
 
-def parse_units (s, global_context=None):
+  If the unit string starts with a scale factor, then a float will be returned
+  as the first item.
+
+  Examples:
+
+    parse_units('m s-2') will yield ('m',None,1), ('s',None,-2).
+
+    parse_units('100 ppm') will yield 100.0, ('ppm',None,1)
+
+    parse_units('kg(H2O) kg(air)-1') will yield ('kg','H2O',1), ('kg','air',-1)
+
+  Note: You can omit the spaces between each term, if it does not create any
+  ambiguity.
+  '''
+  from re import match
+
+  # From Python regular expression documentation
+  scale_pattern = r'[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?'
+
+  # Look for a scale factor at the start of the string
+  m = match(scale_pattern, s)
+  if m is not None:
+    yield float(m.group(0))
+    s = s[m.end():].lstrip()
+
+  # Match a unit with an optional context and exponent
+  # E.g. "m", "m2", "kg(CO2)"
+  # First, get a list of all valid unit names (preferencing long names over short names)
+  unit_names = sorted(units.iterkeys(), key=len, reverse=True)
+  unit_pattern = r'(?P<name>%s)(\((?P<context>[^()]*)\))?(?P<exponent>-?[0-9]+)? *'%('|'.join(unit_names))
+  while len(s) > 0:
+    m = match(unit_pattern, s)
+    if m is None:
+      raise ValueError ("Unable to parse unit substring '%s'"%s)
+    d = m.groupdict()
+    name = d['name']
+    context = d['context']
+    exponent = int(d['exponent'] or 1)
+    yield (name,context,exponent)
+    s = s[m.end():]
+
+
+def parse_units_old (s, global_context=None):
   '''
     Parse a unit string into its basic building blocks.
     Returns scale, [numerator], [denominator]
@@ -144,7 +192,7 @@ def parse_units (s, global_context=None):
     # Base unit or derived unit?
     if conversion != '':
       # Recursively parse the derived units
-      sc, n, d = parse_units(conversion,context)
+      sc, n, d = parse_units_old(conversion,context)
     # Final reduction?
     else:
       if context is None:
@@ -197,9 +245,22 @@ def conversion_factor (from_units, to_units):
   '''
     Return the scale factor to convert from one set of units to another.
   '''
-  scale1, numerator1, denominator1 = parse_units(from_units)
-  scale2, numerator2, denominator2 = parse_units(to_units)
+  scale1, numerator1, denominator1 = parse_units_old(from_units)
+  scale2, numerator2, denominator2 = parse_units_old(to_units)
   if (numerator1 != numerator2) or (denominator1 != denominator2):
     raise ValueError ("Units '%s' and '%s' are not compatible"%(from_units,to_units))
   return scale1 / scale2
+
+define_conversion ('g(C:CO2)', repr(44.01/12.)+' g(CO2)')
+define_conversion ('mol(CO2)', '44.01 g(CO2)')
+define_conversion ('mol(air)', '28.97 g(air)')
+define_conversion ('molefraction', 'mol mol(air)-1')
+
+print parse_units_old ('ppm(CO2)')
+print parse_units_old ('ppb(CO2)')
+print parse_units_old ('mol(CO2) m-2 s-1')
+
+print conversion_factor('ug(C:CO2) kg(air)-1', 'ppm(CO2)')
+print conversion_factor('ppm(CO2)', 'ug(C:CO2) kg(air)-1')
+
 
