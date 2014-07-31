@@ -73,7 +73,7 @@ def define_prefixable_unit (name, longname, conversion=''):
     define_unit(prefix+name, longprefix+longname, repr(scale)+' '+name)
 
 
-def define_conversion (name, conversion):
+def define_conversion (unit, conversion):
   '''
     Define a conversion from one unit to another, valid under a particular
     context.
@@ -84,15 +84,19 @@ def define_conversion (name, conversion):
     Would tell the unit convertor how to convert from moles of air to grams
     of air.
   '''
-  from re import match
-  m = match(r'^(?P<name>[^()]+)(\((?P<context>.*)\))?$', name)
-  if m is None:
-    raise ValueError ("Can't parse unit '%s'"%name)
-  m = m.groupdict()
-  name = m['name']
-  context = m['context']
+  # Extract the input information (unit name and context)
+  unit = list(parse_units(unit))
+  if len(unit) > 1:
+    raise ValueError ("Expected a single unit to be provided, got %s."%unit)
+  unit = unit[0]
+  if isinstance(unit,float):
+    raise ValueError ("Expected a unit, got '%s'."%unit)
+  name, context, exponent = unit
+  if exponent != 1:
+    raise ValueError ("Unexpected exponent on input unit.")
   if name not in units:
     raise ValueError ("Unrecognized unit '%s'"%name)
+
   if context is None:
     units[name].conversion = conversion
   else:
