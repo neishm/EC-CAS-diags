@@ -157,37 +157,23 @@ def parse_units(s):
     s = s[m.end():]
 
 
-def parse_units_old (s, global_context=None):
-  '''
-    Parse a unit string into its basic building blocks.
-    Returns scale, [numerator], [denominator]
-  '''
-  from re import match, sub
+# Reduce a unit to some canonical base units.
+# This is used as a common ground when trying to convert one unit to another.
+def _reduce_units (unit, global_context=None):
   from collections import Counter
-
-  # First, preprocess the string to attach '/' symbols to the next term
-  s = sub(' / ', ' /', s)
-
+  if isinstance(unit,str): unit = parse_units(unit)
   scale = 1.0
   numerator = []
   denominator = []
-  for term in s.split(' '):
-    # Scale factor?
-    try:
-      scale *= float(term)
+  for u in unit:
+    if isinstance(u,float):
+      scale *= u
       continue
-    except ValueError: pass
-
-    m = match(r"^(?P<invert>/)?(?P<name>[a-zA-Z]+)(\((?P<context>.*)\))?(?P<exponent>-?[0-9]+)?$", term)
-    if m is None:
-      raise ValueError ("Unparseable unit string '%s'"%term)
-    m = m.groupdict()
-    name = m['name']
+    name, context, exponent = u
     if name not in units:
       raise ValueError ("Unrecognized unit: %s"%name)
-    exponent = int(m['exponent'] or '1')
-    if m['invert']: exponent = -exponent
-    context = m['context'] or global_context
+    # Apply a default context?
+    if context is None: context = global_context
 
     conversion = units[name].conversion
     if context in units[name].context_conversions:
@@ -196,7 +182,7 @@ def parse_units_old (s, global_context=None):
     # Base unit or derived unit?
     if conversion != '':
       # Recursively parse the derived units
-      sc, n, d = parse_units_old(conversion,context)
+      sc, n, d = _reduce_units(conversion,context)
     # Final reduction?
     else:
       if context is None:
@@ -228,13 +214,12 @@ def parse_units_old (s, global_context=None):
   return scale, numerator, denominator
 
 
-
 def conversion_factor (from_units, to_units):
   '''
     Return the scale factor to convert from one set of units to another.
   '''
-  scale1, numerator1, denominator1 = parse_units_old(from_units)
-  scale2, numerator2, denominator2 = parse_units_old(to_units)
+  scale1, numerator1, denominator1 = _reduce_units(from_units)
+  scale2, numerator2, denominator2 = _reduce_units(to_units)
   if (numerator1 != numerator2) or (denominator1 != denominator2):
     raise ValueError ("Units '%s' and '%s' are not compatible"%(from_units,to_units))
   return scale1 / scale2
@@ -244,9 +229,9 @@ define_conversion ('mol(CO2)', '44.01 g(CO2)')
 define_conversion ('mol(air)', '28.97 g(air)')
 define_conversion ('molefraction', 'mol mol(air)-1')
 
-print parse_units_old ('ppm(CO2)')
-print parse_units_old ('ppb(CO2)')
-print parse_units_old ('mol(CO2) m-2 s-1')
+print _reduce_units ('ppm(CO2)')
+print _reduce_units ('ppb(CO2)')
+print _reduce_units ('mol(CO2) m-2 s-1')
 
 print conversion_factor('ug(C:CO2) kg(air)-1', 'ppm(CO2)')
 print conversion_factor('ppm(CO2)', 'ug(C:CO2) kg(air)-1')
