@@ -48,20 +48,22 @@ _unprefixable_units = [
 
 # Container for defining a unit
 class Unit(object):
-  def __init__ (self, longname, conversion, context_conversions):
-    self.longname = str(longname)
-    self.conversion = str(conversion)
-    self.context_conversions = dict(context_conversions)
-
+  def __init__ (self, longname, conversion):
+    self.longname = longname      # Description of the unit
+    # Set default conversion (when no context is specified)
+    self.conversions = {None:conversion}
 
 # Fast lookup table for unit names
 units = {}
 
-def define_unit (name, longname, conversion=''):
+def define_unit (name, longname, conversion=None):
   '''
     Register a unit with this module.
   '''
-  units[name] = Unit(longname,conversion,{})
+  # Interpret a blank conversion as no conversion specified
+  if conversion == '': conversion = None
+
+  units[name] = Unit(longname,conversion)
 
 def define_prefixable_unit (name, longname, conversion=''):
   '''
@@ -97,10 +99,7 @@ def define_conversion (unit, conversion):
   if name not in units:
     raise ValueError ("Unrecognized unit '%s'"%name)
 
-  if context is None:
-    units[name].conversion = conversion
-  else:
-    units[name].context_conversions[context] = conversion
+  units[name].conversions[context] = conversion
 
 
 # Initialize the units
@@ -175,12 +174,14 @@ def _reduce_units (unit, global_context=None):
     # Apply a default context?
     if context is None: context = global_context
 
-    conversion = units[name].conversion
-    if context in units[name].context_conversions:
-      conversion = units[name].context_conversions[context]
+    if context in units[name].conversions:
+      conversion = units[name].conversions[context]
+    else:
+      # Fall back to default conversion if this context is unapplicable
+      conversion = units[name].conversions[None]
 
     # Base unit or derived unit?
-    if conversion != '':
+    if conversion is not None:
       # Recursively parse the derived units
       sc, n, d = _reduce_units(conversion,context)
     # Final reduction?
