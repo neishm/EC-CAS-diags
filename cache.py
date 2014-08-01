@@ -17,12 +17,17 @@ def default_load_hook (dataset):
 
 
 # Create a "unique" string to identify the spatial domain of a variable
+# and the units.
 def domain_hash (var):
   from pygeode.axis import TAxis
   import pickle, hashlib, base64
 
   # Get all the points in the domain
   data = [list(a.values) for a in var.axes if not isinstance(a,TAxis)]
+
+  # Append the unit information
+  if 'units' in var.atts:
+    data.append(var.atts['units'])
 
   # Convert to a bytestream
   data = pickle.dumps(data)
