@@ -116,7 +116,8 @@ class EC_Station_Data (object):
             array[:,i] = data[(station,field,stat)].get()
             units = data[(station,field,stat)].atts['units']
           var = Var([time,stations], values=array, name=field+'_'+stat)
-          var.atts['units'] = units
+          if not var.name.endswith('_nval'):
+            var.atts['units'] = units
           big_data.append(var)
 
 
