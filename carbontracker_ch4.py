@@ -52,12 +52,12 @@ def ct_products (data):
   # Convert some standard quantities
   # (old_name, new_name, scale, offset, units)
   conversions = (
-    ('bgrnd', 'CH4_background', None, None, 'ppb'),
-    ('fossil', 'CH4_fossil', None, None, 'ppb'),
-    ('agwaste', 'CH4_agwaste', None, None, 'ppm'),
-    ('ocean', 'CH4_ocean', None, None, 'ppm'),
-    ('bioburn', 'CH4_bioburn', None, None, 'ppm'),
-    ('natural', 'CH4_natural', None, None, 'ppm'),
+    ('bgrnd', 'CH4_background', None, None, 'ppb(CH4)'),
+    ('fossil', 'CH4_fossil', None, None, 'ppb(CH4)'),
+    ('agwaste', 'CH4_agwaste', None, None, 'ppb(CH4)'),
+    ('ocean', 'CH4_ocean', None, None, 'ppb(CH4)'),
+    ('bioburn', 'CH4_bioburn', None, None, 'ppb(CH4)'),
+    ('natural', 'CH4_natural', None, None, 'ppb(CH4)'),
     ('pressure', 'air_pressure', None, None, 'hPa'),
     ('gph', 'geopotential_height', None, None, 'm'),
   )

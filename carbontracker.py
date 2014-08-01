@@ -29,15 +29,15 @@ def ct_products (data):
   # Convert some standard quantities
   # (old_name, new_name, scale, offset, units)
   conversions = (
-    ('bg', 'CO2_background', None, None, 'ppm'),
-    ('ff', 'CO2_fossil', None, None, 'ppm'),
-    ('bio', 'CO2_bio', None, None, 'ppm'),
-    ('ocean', 'CO2_ocean', None, None, 'ppm'),
-    ('fires', 'CO2_fire', None, None, 'ppm'),
-    ('fossil_imp', 'CO2_fossil_flux', None, None, 'mol m-2 s-1'),
-    ('bio_flux_opt', 'CO2_bio_flux', None, None, 'mol m-2 s-1'),
-    ('ocn_flux_opt', 'CO2_ocean_flux', None, None, 'mol m-2 s-1'),
-    ('fire_flux_imp', 'CO2_fire_flux', None, None, 'mol m-2 s-1'),
+    ('bg', 'CO2_background', None, None, 'ppm(CO2)'),
+    ('ff', 'CO2_fossil', None, None, 'ppm(CO2)'),
+    ('bio', 'CO2_bio', None, None, 'ppm(CO2)'),
+    ('ocean', 'CO2_ocean', None, None, 'ppm(CO2)'),
+    ('fires', 'CO2_fire', None, None, 'ppm(CO2)'),
+    ('fossil_imp', 'CO2_fossil_flux', None, None, 'mol(CO2) m-2 s-1'),
+    ('bio_flux_opt', 'CO2_bio_flux', None, None, 'mol(CO2) m-2 s-1'),
+    ('ocn_flux_opt', 'CO2_ocean_flux', None, None, 'mol(CO2) m-2 s-1'),
+    ('fire_flux_imp', 'CO2_fire_flux', None, None, 'mol(CO2) m-2 s-1'),
     ('press', 'air_pressure', 1E-2, None, 'hPa'),
     ('gph', 'geopotential_height', None, None, 'm'),
   )
