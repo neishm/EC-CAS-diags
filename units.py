@@ -225,16 +225,21 @@ def conversion_factor (from_units, to_units):
     raise ValueError ("Units '%s' and '%s' are not compatible"%(from_units,to_units))
   return scale1 / scale2
 
-define_conversion ('g(C:CO2)', repr(44.01/12.)+' g(CO2)')
-define_conversion ('mol(CO2)', '44.01 g(CO2)')
-define_conversion ('mol(air)', '28.97 g(air)')
-define_conversion ('molefraction', 'mol mol(air)-1')
+if __name__ == '__main__':
+  define_conversion ('g(C:CO2)', repr(44.01/12.)+' g(CO2)')
+  define_conversion ('mol(CO2)', '44.01 g(CO2)')
+  define_conversion ('mol(air)', '28.97 g(air)')
+  define_conversion ('molefraction', 'mol mol(air)-1')
 
-print _reduce_units ('ppm(CO2)')
-print _reduce_units ('ppb(CO2)')
-print _reduce_units ('mol(CO2) m-2 s-1')
+  print _reduce_units ('ppm(CO2)')
+  print _reduce_units ('ppb(CO2)')
+  print _reduce_units ('mol(CO2) m-2 s-1')
 
-print conversion_factor('ug(C:CO2) kg(air)-1', 'ppm(CO2)')
-print conversion_factor('ppm(CO2)', 'ug(C:CO2) kg(air)-1')
+  print conversion_factor('ug(C:CO2) kg(air)-1', 'ppm(CO2)')
+  print conversion_factor('ppm(CO2)', 'ug(C:CO2) kg(air)-1')
 
+  # Try out partial pressure
+  define_conversion ('Pa', 'Pa(air) mol mol(air)-1')
+  define_conversion ('Pa(air)', None)  # To avoid infinite recursion
+  print conversion_factor('ug(C:CO2) kg(air)-1', 'Pa(CO2) Pa(air)-1')*160000
 
