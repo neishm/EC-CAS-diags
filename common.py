@@ -4,7 +4,7 @@
 molecular_weight = {'CO2':44.01, 'CH4':16.04, 'C':12.01, 'air':28.97, 'CO2_background':44.01, 'CO2_bio':44.01, 'CO2_ocean':44.01, 'CO2_fossil':44.01, 'CO2_fire':44.01, 'H2O':18.01528}
 
 # Unit conversion
-from units import units, define_conversion, conversion_factor as unit_conversion_factor
+from units import define_conversion, conversion_factor
 
 # Define the molar masses
 define_conversion ('mol(CO2)', '44.01 g(CO2)')
@@ -20,6 +20,14 @@ define_conversion ('g(C:CO2)', repr(44.01/12.01)+' g(CO2)')
 define_conversion ('molefraction', 'mol mol(air)-1')
 
 unit_scale = {'ppm':1E6, 'ppb':1E9}
+
+
+# Convert a variable from one unit to another
+def convert (var, units):
+  if var.atts['units'] == units: return var  # No conversion necessary
+  var = var * conversion_factor (var.atts['units'], units)
+  var.atts['units'] = units
+  return var
 
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 

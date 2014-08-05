@@ -65,11 +65,11 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
       data[new_name] = var
 
   # Offset the ocean and land fields by 100ppm
-  from common import unit_conversion_factor
+  from common import conversion_factor
   if 'CO2_ocean' in data:
-    data['CO2_ocean'] -= unit_conversion_factor('100ppm(CO2)', 'ug(C:CO2) kg(air)-1')
+    data['CO2_ocean'] -= conversion_factor('100ppm(CO2)', 'ug(C:CO2) kg(air)-1')
   if 'CO2_bio' in data:
-    data['CO2_bio'] -= unit_conversion_factor('100ppm(CO2)', 'ug(C:CO2) kg(air)-1')
+    data['CO2_bio'] -= conversion_factor('100ppm(CO2)', 'ug(C:CO2) kg(air)-1')
 
   # Add a water tracer, if we have humidity
   if 'specific_humidity' in data:
