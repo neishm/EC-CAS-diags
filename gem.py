@@ -26,39 +26,35 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
   # Convert some standard quantities
   # (old_name, new_name, scale, offset, units)
   conversions = (
-    ('GZ', 'geopotential_height', 10, None, 'm'),
+    ('GZ', 'geopotential_height', None, None, 'dam'),
     ('P0', 'surface_pressure', None, None, 'hPa'),
     ('TT', 'air_temperature', None, None, 'K'),
     ('HU', 'specific_humidity', None, None, 'kg(H2O) kg(air)-1'),
   )
 
   # EC-CAS specific conversions:
-  from common import molecular_weight as mw
-  convert_CO2 = 1E-9 * mw['air'] / mw['C'] * 1E6
-  convert_CH4 = 1E-9 * mw['air'] / mw['CH4'] * 1E6
-  convert_CO2_flux = mw['CO2'] / mw['C']
   suffix = ""
   #if chmmean: suffix = "_ensemblemean"
   if chmstd: suffix = "_ensemblespread"
   conversions += (
-    ('ECO2', 'CO2_flux', convert_CO2_flux, None, 'g(CO2) s-1'),
-    ('ECBB', 'CO2_fire_flux', convert_CO2_flux, None, 'g(CO2) s-1'),
-    ('ECFF', 'CO2_fossil_flux', convert_CO2_flux, None, 'g(CO2) s-1'),
-    ('ECOC', 'CO2_ocean_flux', convert_CO2_flux, None, 'g(CO2) s-1'),
-    ('ECLA', 'CO2_bio_flux', convert_CO2_flux, None, 'g(CO2) s-1'),
-    ('CO2', 'CO2'+suffix, convert_CO2, None, 'ppm(CO2)'),
-    ('CBB', 'CO2_fire'+suffix, convert_CO2, None, 'ppm(CO2)'),
-    ('CFF', 'CO2_fossil'+suffix, convert_CO2, None, 'ppm(CO2)'),
-    ('COC', 'CO2_ocean'+suffix, convert_CO2, -100, 'ppm(CO2)'),
-    ('CLA', 'CO2_bio'+suffix, convert_CO2, -100, 'ppm(CO2)'),
-    ('CO2B', 'CO2_background'+suffix, convert_CO2, None, 'ppm(CO2)'),
-    ('CH4', 'CH4', convert_CH4, None, 'ppm(CH4)'),
-    ('CH4B', 'CH4_background', convert_CH4, None, 'ppm(CH4)'),
-    ('CHFF', 'CH4_fossil', convert_CH4, None, 'ppm(CH4)'),
-    ('CHBB', 'CH4_fire', convert_CH4, None, 'ppm(CH4)'),
-    ('CHOC', 'CH4_ocean', convert_CH4, None, 'ppm(CH4)'),
-    ('CHNA', 'CH4_natural', convert_CH4, None, 'ppm(CH4)'),
-    ('CHAG', 'CH4_agriculture', convert_CH4, None, 'ppm(CH4)'),
+    ('ECO2', 'CO2_flux', None, None, 'g(C:CO2) s-1'),
+    ('ECBB', 'CO2_fire_flux', None, None, 'g(C:CO2) s-1'),
+    ('ECFF', 'CO2_fossil_flux', None, None, 'g(C:CO2) s-1'),
+    ('ECOC', 'CO2_ocean_flux', None, None, 'g(C:CO2) s-1'),
+    ('ECLA', 'CO2_bio_flux', None, None, 'g(C:CO2) s-1'),
+    ('CO2', 'CO2'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
+    ('CBB', 'CO2_fire'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
+    ('CFF', 'CO2_fossil'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
+    ('COC', 'CO2_ocean'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
+    ('CLA', 'CO2_bio'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
+    ('CO2B', 'CO2_background'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
+    ('CH4', 'CH4', None, None, 'ug(CH4) kg(air)-1'),
+    ('CH4B', 'CH4_background', None, None, 'ug(CH4) kg(air)-1'),
+    ('CHFF', 'CH4_fossil', None, None, 'ug(CH4) kg(air)-1'),
+    ('CHBB', 'CH4_fire', None, None, 'ug(CH4) kg(air)-1'),
+    ('CHOC', 'CH4_ocean', None, None, 'ug(CH4) kg(air)-1'),
+    ('CHNA', 'CH4_natural', None, None, 'ug(CH4) kg(air)-1'),
+    ('CHAG', 'CH4_agriculture', None, None, 'ug(CH4) kg(air)-1'),
   )
 
   # Do the conversions
@@ -70,12 +66,16 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
       if units is not None: var.atts['units'] = units
       data[new_name] = var
 
+  # Offset the ocean and land fields by 100ppm
+  from common import unit_conversion_factor
+  if 'CO2_ocean' in data:
+    data['CO2_ocean'] -= unit_conversion_factor('100ppm(CO2)', 'ug(C:CO2) kg(air)-1')
+  if 'CO2_bio' in data:
+    data['CO2_bio'] -= unit_conversion_factor('100ppm(CO2)', 'ug(C:CO2) kg(air)-1')
+
   # Add a water tracer, if we have humidity
   if 'specific_humidity' in data:
-    q = data['specific_humidity']
-    assert q.atts['units'] == 'kg(H2O) kg(air)-1'
-    data['H2O'] = q / mw['H2O'] * mw['air'] * 1E6
-    data['H2O'].atts['units'] = 'ppm(H2O)'
+    data['H2O'] = data['specific_humidity']
 
   # Compute a pressure field.
   # Also, compute a dp field (vertical change in pressure within a gridbox).

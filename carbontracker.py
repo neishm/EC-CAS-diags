@@ -38,7 +38,7 @@ def ct_products (data):
     ('bio_flux_opt', 'CO2_bio_flux', None, None, 'mol(CO2) m-2 s-1'),
     ('ocn_flux_opt', 'CO2_ocean_flux', None, None, 'mol(CO2) m-2 s-1'),
     ('fire_flux_imp', 'CO2_fire_flux', None, None, 'mol(CO2) m-2 s-1'),
-    ('press', 'air_pressure', 1E-2, None, 'hPa'),
+    ('press', 'air_pressure', None, None, 'Pa'),
     ('gph', 'geopotential_height', None, None, 'm'),
   )
 
@@ -54,10 +54,12 @@ def ct_products (data):
   # Find the total CO2 (sum of components)
   if 'CO2_background' in data:
     data['CO2'] = data['CO2_background'] + data['CO2_fossil'] + data['CO2_bio'] + data['CO2_ocean'] + data['CO2_fire']
+    data['CO2'].atts['units'] = data['CO2_background'].atts['units']
 
   # Create a total flux product
   if 'CO2_fire_flux' in data:
     data['CO2_flux'] = data['CO2_fossil_flux'] + data['CO2_bio_flux'] + data['CO2_ocean_flux'] + data['CO2_fire_flux']
+    data['CO2_flux'].atts['units'] = data['CO2_fire_flux'].atts['units']
 
   # Fudge the tmie axis for all flux products.
   for varname in data:
@@ -77,14 +79,15 @@ def ct_products (data):
   if 'air_pressure' in data:
     # Surface pressure
     # Get pressure at the bottom mid-level
-    pmid = data['air_pressure'].squeeze(level=1) * 100.
+    pmid = data['air_pressure'].squeeze(level=1)
 
     # Compute surface pressure from this
     # p1 = A1 + B1*Ps
     # pmid = (ps + A1 + B1*Ps) / 2 = Ps(1+B1)/2 + (0+A1)/2
     # Ps = (2*pmid - A1)/(1+B1)
     P0 = (2*pmid - A_interface[1])/(B_interface[1]+1)
-    data['surface_pressure'] = P0 / 100.
+    P0.atts['units'] = 'Pa'
+    data['surface_pressure'] = P0
 
     # Vertical change in pressure
     #NOTE: generated from A/B interface values, not the 3D pressure field.
@@ -95,9 +98,9 @@ def ct_products (data):
     dA = Var([data['air_pressure'].level], values=dA)
     dB = -np.diff(B_interface)
     dB = Var([data['air_pressure'].level], values=dB)
-    dp = dA/100. + dB * data['surface_pressure']
+    dp = dA + dB * data['surface_pressure']
     dp = dp.transpose('time','zaxis','lat','lon')
-    dp.atts['units'] = 'hPa'
+    dp.atts['units'] = 'Pa'
     data['dp'] = dp
 
 
@@ -109,7 +112,6 @@ def ct_products (data):
   else:
     x = data['CO2_flux']
   data['cell_area'] = get_area(x.lat, x.lon).extend(0,x.time)
-  data['cell_area'].atts['units'] = 'm2'
 
 
   # General cleanup stuff
