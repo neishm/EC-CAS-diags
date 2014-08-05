@@ -25,9 +25,14 @@ unit_scale = {'ppm':1E6, 'ppb':1E9}
 # Convert a variable from one unit to another
 def convert (var, units):
   if var.atts['units'] == units: return var  # No conversion necessary
+  name = var.name
   scale = conversion_factor (var.atts['units'], units, context=var.name)
   var = var * scale
   var.atts['units'] = units
+  var.name = name
+  # Extra parameters from the cache interface
+  if 'low' in var.atts: var.atts['low'] *= scale
+  if 'high' in var.atts: var.atts['high'] *= scale
   return var
 
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
