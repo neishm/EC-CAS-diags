@@ -25,7 +25,8 @@ unit_scale = {'ppm':1E6, 'ppb':1E9}
 # Convert a variable from one unit to another
 def convert (var, units):
   if var.atts['units'] == units: return var  # No conversion necessary
-  var = var * conversion_factor (var.atts['units'], units)
+  scale = conversion_factor (var.atts['units'], units, context=var.name)
+  var = var * scale
   var.atts['units'] = units
   return var
 

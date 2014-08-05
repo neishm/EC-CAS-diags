@@ -215,12 +215,12 @@ def _reduce_units (unit, global_context=None):
   return scale, numerator, denominator
 
 
-def conversion_factor (from_units, to_units):
+def conversion_factor (from_units, to_units, context=None):
   '''
     Return the scale factor to convert from one set of units to another.
   '''
-  scale1, numerator1, denominator1 = _reduce_units(from_units)
-  scale2, numerator2, denominator2 = _reduce_units(to_units)
+  scale1, numerator1, denominator1 = _reduce_units(from_units,context)
+  scale2, numerator2, denominator2 = _reduce_units(to_units,context)
   if (numerator1 != numerator2) or (denominator1 != denominator2):
     raise ValueError ("Units '%s' and '%s' are not compatible"%(from_units,to_units))
   return scale1 / scale2
@@ -242,4 +242,6 @@ if __name__ == '__main__':
   define_conversion ('Pa', 'Pa(air) mol mol(air)-1')
   define_conversion ('Pa(air)', None)  # To avoid infinite recursion
   print conversion_factor('ug(C:CO2) kg(air)-1', 'Pa(CO2) Pa(air)-1')*160000
+
+  print conversion_factor('ug(C:CO2) kg(air)-1', 'ppm', context='CO2')
 
