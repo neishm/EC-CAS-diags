@@ -52,22 +52,20 @@ def ct_products (data):
   # Convert some standard quantities
   # (old_name, new_name, scale, offset, units)
   conversions = (
-    ('bgrnd', 'CH4_background', None, None, 'ppb(CH4)'),
-    ('fossil', 'CH4_fossil', None, None, 'ppb(CH4)'),
-    ('agwaste', 'CH4_agwaste', None, None, 'ppb(CH4)'),
-    ('ocean', 'CH4_ocean', None, None, 'ppb(CH4)'),
-    ('bioburn', 'CH4_bioburn', None, None, 'ppb(CH4)'),
-    ('natural', 'CH4_natural', None, None, 'ppb(CH4)'),
-    ('pressure', 'air_pressure', None, None, 'hPa'),
+    ('bgrnd', 'CH4_background', 'ppb(CH4)'),
+    ('fossil', 'CH4_fossil', 'ppb(CH4)'),
+    ('agwaste', 'CH4_agwaste', 'ppb(CH4)'),
+    ('ocean', 'CH4_ocean', 'ppb(CH4)'),
+    ('bioburn', 'CH4_bioburn', 'ppb(CH4)'),
+    ('natural', 'CH4_natural', 'ppb(CH4)'),
+    ('pressure', 'air_pressure', 'hPa'),
   )
 
   # Do the conversions
-  for old_name, new_name, scale, offset, units in conversions:
+  for old_name, new_name, units in conversions:
     if old_name in data:
       var = data.pop(old_name)
-      if scale is not None: var *= scale
-      if offset is not None: var += offset
-      if units is not None: var.atts['units'] = units
+      var.atts['units'] = units
       data[new_name] = var
 
   # Find the total CH4 (sum of components)

@@ -29,26 +29,24 @@ def ct_products (data):
   # Convert some standard quantities
   # (old_name, new_name, scale, offset, units)
   conversions = (
-    ('bg', 'CO2_background', None, None, 'ppm(CO2)'),
-    ('ff', 'CO2_fossil', None, None, 'ppm(CO2)'),
-    ('bio', 'CO2_bio', None, None, 'ppm(CO2)'),
-    ('ocean', 'CO2_ocean', None, None, 'ppm(CO2)'),
-    ('fires', 'CO2_fire', None, None, 'ppm(CO2)'),
-    ('fossil_imp', 'CO2_fossil_flux', None, None, 'mol(CO2) m-2 s-1'),
-    ('bio_flux_opt', 'CO2_bio_flux', None, None, 'mol(CO2) m-2 s-1'),
-    ('ocn_flux_opt', 'CO2_ocean_flux', None, None, 'mol(CO2) m-2 s-1'),
-    ('fire_flux_imp', 'CO2_fire_flux', None, None, 'mol(CO2) m-2 s-1'),
-    ('press', 'air_pressure', None, None, 'Pa'),
-    ('gph', 'geopotential_height', None, None, 'm'),
+    ('bg', 'CO2_background', 'ppm(CO2)'),
+    ('ff', 'CO2_fossil', 'ppm(CO2)'),
+    ('bio', 'CO2_bio', 'ppm(CO2)'),
+    ('ocean', 'CO2_ocean', 'ppm(CO2)'),
+    ('fires', 'CO2_fire', 'ppm(CO2)'),
+    ('fossil_imp', 'CO2_fossil_flux', 'mol(CO2) m-2 s-1'),
+    ('bio_flux_opt', 'CO2_bio_flux', 'mol(CO2) m-2 s-1'),
+    ('ocn_flux_opt', 'CO2_ocean_flux', 'mol(CO2) m-2 s-1'),
+    ('fire_flux_imp', 'CO2_fire_flux', 'mol(CO2) m-2 s-1'),
+    ('press', 'air_pressure', 'Pa'),
+    ('gph', 'geopotential_height', 'm'),
   )
 
   # Do the conversions
-  for old_name, new_name, scale, offset, units in conversions:
+  for old_name, new_name, units in conversions:
     if old_name in data:
       var = data.pop(old_name)
-      if scale is not None: var *= scale
-      if offset is not None: var += offset
-      if units is not None: var.atts['units'] = units
+      var.atts['units'] = units
       data[new_name] = var
 
   # Find the total CO2 (sum of components)

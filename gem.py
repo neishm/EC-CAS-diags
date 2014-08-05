@@ -26,10 +26,10 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
   # Convert some standard quantities
   # (old_name, new_name, scale, offset, units)
   conversions = (
-    ('GZ', 'geopotential_height', None, None, 'dam'),
-    ('P0', 'surface_pressure', None, None, 'hPa'),
-    ('TT', 'air_temperature', None, None, 'K'),
-    ('HU', 'specific_humidity', None, None, 'kg(H2O) kg(air)-1'),
+    ('GZ', 'geopotential_height', 'dam'),
+    ('P0', 'surface_pressure', 'hPa'),
+    ('TT', 'air_temperature', 'K'),
+    ('HU', 'specific_humidity', 'kg(H2O) kg(air)-1'),
   )
 
   # EC-CAS specific conversions:
@@ -37,33 +37,31 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
   #if chmmean: suffix = "_ensemblemean"
   if chmstd: suffix = "_ensemblespread"
   conversions += (
-    ('ECO2', 'CO2_flux', None, None, 'g(C:CO2) s-1'),
-    ('ECBB', 'CO2_fire_flux', None, None, 'g(C:CO2) s-1'),
-    ('ECFF', 'CO2_fossil_flux', None, None, 'g(C:CO2) s-1'),
-    ('ECOC', 'CO2_ocean_flux', None, None, 'g(C:CO2) s-1'),
-    ('ECLA', 'CO2_bio_flux', None, None, 'g(C:CO2) s-1'),
-    ('CO2', 'CO2'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
-    ('CBB', 'CO2_fire'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
-    ('CFF', 'CO2_fossil'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
-    ('COC', 'CO2_ocean'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
-    ('CLA', 'CO2_bio'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
-    ('CO2B', 'CO2_background'+suffix, None, None, 'ug(C:CO2) kg(air)-1'),
-    ('CH4', 'CH4', None, None, 'ug(CH4) kg(air)-1'),
-    ('CH4B', 'CH4_background', None, None, 'ug(CH4) kg(air)-1'),
-    ('CHFF', 'CH4_fossil', None, None, 'ug(CH4) kg(air)-1'),
-    ('CHBB', 'CH4_fire', None, None, 'ug(CH4) kg(air)-1'),
-    ('CHOC', 'CH4_ocean', None, None, 'ug(CH4) kg(air)-1'),
-    ('CHNA', 'CH4_natural', None, None, 'ug(CH4) kg(air)-1'),
-    ('CHAG', 'CH4_agriculture', None, None, 'ug(CH4) kg(air)-1'),
+    ('ECO2', 'CO2_flux', 'g(C:CO2) s-1'),
+    ('ECBB', 'CO2_fire_flux', 'g(C:CO2) s-1'),
+    ('ECFF', 'CO2_fossil_flux', 'g(C:CO2) s-1'),
+    ('ECOC', 'CO2_ocean_flux', 'g(C:CO2) s-1'),
+    ('ECLA', 'CO2_bio_flux', 'g(C:CO2) s-1'),
+    ('CO2', 'CO2'+suffix, 'ug(C:CO2) kg(air)-1'),
+    ('CBB', 'CO2_fire'+suffix, 'ug(C:CO2) kg(air)-1'),
+    ('CFF', 'CO2_fossil'+suffix, 'ug(C:CO2) kg(air)-1'),
+    ('COC', 'CO2_ocean'+suffix, 'ug(C:CO2) kg(air)-1'),
+    ('CLA', 'CO2_bio'+suffix, 'ug(C:CO2) kg(air)-1'),
+    ('CO2B', 'CO2_background'+suffix, 'ug(C:CO2) kg(air)-1'),
+    ('CH4', 'CH4', 'ug(CH4) kg(air)-1'),
+    ('CH4B', 'CH4_background', 'ug(CH4) kg(air)-1'),
+    ('CHFF', 'CH4_fossil', 'ug(CH4) kg(air)-1'),
+    ('CHBB', 'CH4_fire', 'ug(CH4) kg(air)-1'),
+    ('CHOC', 'CH4_ocean', 'ug(CH4) kg(air)-1'),
+    ('CHNA', 'CH4_natural', 'ug(CH4) kg(air)-1'),
+    ('CHAG', 'CH4_agriculture', 'ug(CH4) kg(air)-1'),
   )
 
   # Do the conversions
-  for old_name, new_name, scale, offset, units in conversions:
+  for old_name, new_name, units in conversions:
     if old_name in data:
       var = data.pop(old_name)
-      if scale is not None: var *= scale
-      if offset is not None: var += offset
-      if units is not None: var.atts['units'] = units
+      var.atts['units'] = units
       data[new_name] = var
 
   # Offset the ocean and land fields by 100ppm
