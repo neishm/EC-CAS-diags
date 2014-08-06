@@ -172,9 +172,6 @@ class GAW_Station_Data (object):
 
     data = DataInterface.from_files([cachefile], opener=gaw_station_opener)
 
-    # Annotate the units
-    data = data.filter(annotate_units)
-
     # Rename CO2_mean to CO2
     data = data.filter(strip_mean)
 
@@ -191,13 +188,6 @@ class GAW_Station_Data (object):
     for station,lat,lon,country in zip(stations,lats,lons,countries):
       obs_locations[station] = (lat,lon,country)
     self.obs_locations = obs_locations
-
-# Helper function - annotate the units with the species name.
-def annotate_units (varlist):
-  for var in varlist:
-    if var.name.endswith('_mean'):
-      var.atts['units'] = var.atts['units'] + '(' + var.name.rsplit('_mean')[0] + ')'
-  return varlist
 
 # Helper function - filter out '_mean' suffix from data
 def strip_mean (varlist):

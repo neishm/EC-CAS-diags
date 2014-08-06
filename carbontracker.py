@@ -29,15 +29,15 @@ def ct_products (data):
   # Convert some standard quantities
   # (old_name, new_name, scale, offset, units)
   conversions = (
-    ('bg', 'CO2_background', 'ppm(CO2)'),
-    ('ff', 'CO2_fossil', 'ppm(CO2)'),
-    ('bio', 'CO2_bio', 'ppm(CO2)'),
-    ('ocean', 'CO2_ocean', 'ppm(CO2)'),
-    ('fires', 'CO2_fire', 'ppm(CO2)'),
-    ('fossil_imp', 'CO2_fossil_flux', 'mol(CO2) m-2 s-1'),
-    ('bio_flux_opt', 'CO2_bio_flux', 'mol(CO2) m-2 s-1'),
-    ('ocn_flux_opt', 'CO2_ocean_flux', 'mol(CO2) m-2 s-1'),
-    ('fire_flux_imp', 'CO2_fire_flux', 'mol(CO2) m-2 s-1'),
+    ('bg', 'CO2_background', 'ppm'),
+    ('ff', 'CO2_fossil', 'ppm'),
+    ('bio', 'CO2_bio', 'ppm'),
+    ('ocean', 'CO2_ocean', 'ppm'),
+    ('fires', 'CO2_fire', 'ppm'),
+    ('fossil_imp', 'CO2_fossil_flux', 'mol m-2 s-1'),
+    ('bio_flux_opt', 'CO2_bio_flux', 'mol m-2 s-1'),
+    ('ocn_flux_opt', 'CO2_ocean_flux', 'mol m-2 s-1'),
+    ('fire_flux_imp', 'CO2_fire_flux', 'mol m-2 s-1'),
     ('press', 'air_pressure', 'Pa'),
     ('gph', 'geopotential_height', 'm'),
   )
