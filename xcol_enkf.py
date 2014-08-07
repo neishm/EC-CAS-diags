@@ -5,7 +5,7 @@
 
 # Get column average
 def get_xcol (experiment, fieldname, units):
-  from common import rotate_grid, unit_scale
+  from common import rotate_grid, convert
   from xcol import avgcolumn
 
   xcol = avgcolumn(experiment, fieldname)
@@ -15,13 +15,7 @@ def get_xcol (experiment, fieldname, units):
     xcol = rotate_grid(xcol)
 
   # Convert to the required units
-  input_units = xcol.atts['units']
-  if input_units != units:
-    low = xcol.atts['low']
-    high = xcol.atts['high']
-    xcol = xcol / unit_scale[input_units] * unit_scale[units]
-    xcol.atts['low'] = low / unit_scale[input_units] * unit_scale[units]
-    xcol.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
+  xcol = convert(xcol,units)
 
   return xcol
 

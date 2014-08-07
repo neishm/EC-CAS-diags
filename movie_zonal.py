@@ -2,11 +2,11 @@
 def zonalmean_gph (model, fieldname):
   from pygeode.interp import interpolate
   from pygeode.axis import Height
-  from common import number_of_levels, remove_extra_longitude
+  from common import convert, number_of_levels, remove_extra_longitude
   import numpy as np
 
   var, z = model.data.find_best([fieldname,'geopotential_height'], maximize=number_of_levels)
-  assert z.atts['units'] == 'm'
+  z = convert(z,'m')
 
   height = Height(range(68), name='height')
 
@@ -33,19 +33,6 @@ def zonalmean_gph (model, fieldname):
   return var
 
 
-
-def rescale (field, units):
-  from common import unit_scale
-  input_units = field.atts['units']
-  if input_units == units: return field
-  low = field.atts['low']
-  high = field.atts['high']
-  name = field.name
-  field = field / unit_scale[input_units] * unit_scale[units]
-  field.name = name
-  field.atts['low'] = low / unit_scale[input_units] * unit_scale[units]
-  field.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
-  return field
 
 def create_images (field1, field2=None, field3=None, contours=None, title1='plot1', title2='plot2', title3='plot3', palette=None, norm=None, outdir='images'):
   from contouring import get_global_range, get_contours
@@ -137,7 +124,7 @@ def create_images (field1, field2=None, field3=None, contours=None, title1='plot
 
 def movie_zonal (models, fieldname, units, outdir):
 
-  from common import unit_scale
+  from common import convert
 
   assert len(models) > 0
   assert len(models) <= 3  # too many things to plot
@@ -148,7 +135,7 @@ def movie_zonal (models, fieldname, units, outdir):
   fields = [zonalmean_gph(m,fieldname) for m in models]
 
   # Unit conversion
-  fields = [rescale(f,units) for f in fields]
+  fields = [convert(f,units) for f in fields]
 
   titles = [m.title for m in models]
 

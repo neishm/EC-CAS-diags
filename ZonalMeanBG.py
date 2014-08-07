@@ -125,8 +125,8 @@ def plotBG(height, field1,field2=None, field3=None, names=['','',''], palette=No
 
 def movie_bargraph (models, height, fieldname, units, outdir):
 
-  from common import unit_scale
-  from movie_zonal import zonalmean_gph, rescale
+  from common import convert
+  from movie_zonal import zonalmean_gph
 
   models = [m for m in models if m is not None]
   assert len(models) > 0
@@ -137,7 +137,7 @@ def movie_bargraph (models, height, fieldname, units, outdir):
   fields = [zonalmean_gph(m,fieldname) for m in models]
 
   # Unit conversion
-  fields = [rescale(f,units) for f in fields]
+  fields = [convert(f,units) for f in fields]
 
   Names = [m.name for m in models]
 

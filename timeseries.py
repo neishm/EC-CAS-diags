@@ -38,7 +38,7 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
 
   from os.path import exists
 
-  from common import unit_scale
+  from common import convert
 
   line_colours = ['blue', 'green', 'red']
 
@@ -140,13 +140,9 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
 
     # Scale to the plot units
     for i,x in enumerate(series):
-      input_units = x.atts['units']
-      if input_units == units: continue  # already in the correct units
-      x = x / unit_scale[input_units] * unit_scale[units]
-      x.name = fieldname
-      series[i] = x
+      series[i] = convert(x,units)
       if std[i] is not None:
-        std[i] = std[i] / unit_scale[input_units] * unit_scale[units]
+        std[i] = convert(std[i],units)
 
     # Limit the time period to plot
     series = [x(time=(time1,time2)) for x in series]

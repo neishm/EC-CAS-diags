@@ -1,6 +1,6 @@
 # Total mass (Pg)
 def compute_totalmass (model, fieldname):
-  from common import molecular_weight as mw, grav as g, number_of_levels, number_of_timesteps, remove_extra_longitude
+  from common import convert, grav as g, number_of_levels, number_of_timesteps, remove_extra_longitude
   # Do we have the pressure change in the vertical?
   if model.data.have('dp'):
 
@@ -8,18 +8,17 @@ def compute_totalmass (model, fieldname):
     if fieldname == 'air':
      dp, area = model.data.find_best(['dp','cell_area'], maximize=number_of_levels)
      # Integrate to get total column
-     tc = (dp*100).sum('zaxis') / g
+     dp = convert(dp,'Pa')
+     tc = dp.sum('zaxis') / g
 
     # Total tracer mass?
     else:
      c, dp, area = model.data.find_best([fieldname,'dp','cell_area'], maximize=number_of_levels)
-     # Convert from ppm to kg / kg
-     if c.atts['units'] != 'ppm':
-       raise ValueError ("Unhandled units '%s'"%c.atts['units'])
-     c *= 1E-6 * mw[fieldname] / mw['air']
+     c = convert(c,'kg kg(air)-1')
+     dp = convert(dp,'Pa')
 
      # Integrate to get total column
-     tc = (c*dp*100).sum('zaxis') / g
+     tc = (c*dp).sum('zaxis') / g
 
   # Otherwise, if we only need air mass, assume a lid of 0hPa and take a
   # shortcut
@@ -27,12 +26,14 @@ def compute_totalmass (model, fieldname):
      from warnings import warn
      warn ("No 'dp' data found in '%s'.  Approximating total air mass from surface pressure"%model.name)
      p0, area = model.data.find_best(['surface_pressure','cell_area'], maximize=number_of_timesteps)
-     tc = p0*100 / g
+     p0 = convert(p0,'Pa')
+     tc = p0 / g
   else:
      raise KeyError("No 'dp' field found in '%s'.  Cannot compute total mass."%model.name)
 
   # Integrate horizontally
   # Assume global grid - remove repeated longitude
+  area = convert(area,'m2')
   mass = remove_extra_longitude(tc * area).sum('lat','lon')
 
   # Convert from kg to Pg
@@ -46,24 +47,23 @@ def compute_totalmass (model, fieldname):
 
 # Integrated flux (moles per second)
 def compute_totalflux (model, fieldname):
-  from common import molecular_weight as mw, number_of_timesteps, remove_extra_longitude
+  from common import convert, number_of_timesteps, remove_extra_longitude
 
-  data = model.data.find_best(fieldname+'_flux', maximize=number_of_timesteps)
-
-  if data.atts['units'] not in ('g s-1', 'mol m-2 s-1'):
-    raise ValueError ("Unhandled units '%s'"%data.atts['units'])
-
-  if data.atts['units'] == 'mol m-2 s-1':
+  # Check if we already have integrated flux (per grid cell)
+  try:
+    data = model.data.find_best(fieldname+'_flux', maximize=number_of_timesteps)
+    data = convert(data,'mol s-1')
+  # Otherwise, we need to integrate over the grid cell area.
+  except ValueError:
     data, area = model.data.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
-    data = data * area * mw[fieldname]
+    data = convert(data,'mol m-2 s-1')
+    area = convert(cell_area,'m2')
+    data = data*area
 
   # Sum, skipping the last (repeated) longitude
   data = remove_extra_longitude(data)
   data = data.sum('lat','lon')
-  # Convert from g/s to moles/s
-  data /= mw[fieldname]
   data.name = fieldname+'_flux'
-  data.atts['units'] = 'mol s-1'
 
   # Cache the data
   return model.cache.write(data,prefix="totalflux_"+fieldname)
@@ -85,7 +85,7 @@ def doplot (outfile, title, fields, colours, styles, labels):
 def totalmass (models, fieldname, pg_of, outdir, normalize_air_mass=False):
   from os.path import exists
   from pygeode.var import Var
-  from common import molecular_weight as mw
+  from common import convert
   from pygeode import timeutils
 
   totalmass_colours = 'blue', 'green', 'red', 'black'
@@ -112,7 +112,8 @@ def totalmass (models, fieldname, pg_of, outdir, normalize_air_mass=False):
 
     # Total mass
     # Possibly change plot units (e.g. Pg CO2 -> Pg C)
-    mass = compute_totalmass(model,fieldname) / mw[fieldname] * mw[pg_of]
+    mass = compute_totalmass(model,fieldname)
+    mass = convert(mass, "Pg(%s)"%pg_of)
     mass = mass(time=(t0,t1))   # Limit time period to plot
     if normalize_air_mass:
       mass = mass / airmass * airmass0
@@ -142,11 +143,10 @@ def totalmass (models, fieldname, pg_of, outdir, normalize_air_mass=False):
       # Initial time is *after* the first sum
       assert time.units == 'days'
       time = time.__class__(values=time.values+dt/86400., units='days', startdate=time.startdate)
-      # Convert from moles to Pg
-      totalflux *= mw[pg_of]
-      totalflux *= 1E-15  # g to Pg
       # Re-wrap as a PyGeode var
       totalflux = Var([time], values=totalflux)
+      # Convert from moles to Pg
+      totalflux = convert(totalflux, "Pg(%s)"%pg_of)
       # Offset the flux mass
       totalflux -= float(totalflux(time=tx).get().squeeze())
       totalflux += float(mass(time=tx).get().squeeze())

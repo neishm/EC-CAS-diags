@@ -1,8 +1,5 @@
 # Functions / constants common to multiple modules
 
-# Molecular weights
-molecular_weight = {'CO2':44.01, 'CH4':16.04, 'C':12.01, 'air':28.97, 'CO2_background':44.01, 'CO2_bio':44.01, 'CO2_ocean':44.01, 'CO2_fossil':44.01, 'CO2_fire':44.01, 'H2O':18.01528}
-
 # Unit conversion
 from units import define_conversion, conversion_factor
 
@@ -15,11 +12,12 @@ define_conversion ('mol(H2O)', '18.01528 g(H2O)')
 # Define a conversion from "grams of the carbon part of CO2 molecules"
 define_conversion ('g(C:CO2)', repr(44.01/12.01)+' g(CO2)')
 
+# If we have a context of carbon, what we mean is carbon in CO2
+define_conversion ('g(C)', 'g(C:CO2)')
+
 # For the purpose of these diagnostics, assume mole fractions are always with
 # respect to air.
 define_conversion ('molefraction', 'mol mol(air)-1')
-
-unit_scale = {'ppm':1E6, 'ppb':1E9}
 
 
 # Convert a variable from one unit to another
