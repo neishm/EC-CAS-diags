@@ -30,6 +30,7 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
     ('P0', 'surface_pressure', 'hPa'),
     ('TT', 'air_temperature', 'K'),
     ('HU', 'specific_humidity', 'kg(H2O) kg(air)-1'),
+    ('DX', 'cell_area', 'm2'),
   )
 
   # EC-CAS specific conversions:
@@ -158,9 +159,7 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
     data['dp'] = dP  #TODO: better name?
 
   # Grid cell areas
-  if 'DX' in data:
-    data['cell_area'] = data.pop('DX')
-  else:
+  if 'cell_area' not in data:
     for varname in 'CO2_flux', 'surface_pressure':
       if varname in data:
         lat = data[varname].lat
