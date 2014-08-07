@@ -59,7 +59,7 @@ def ct_products (data):
     data['CO2_flux'] = data['CO2_fossil_flux'] + data['CO2_bio_flux'] + data['CO2_ocean_flux'] + data['CO2_fire_flux']
     data['CO2_flux'].atts['units'] = data['CO2_fire_flux'].atts['units']
 
-  # Fudge the tmie axis for all flux products.
+  # Fudge the time axis for all flux products.
   for varname in data:
     if varname.endswith('_flux'):
       # The time is the *midpoint* of the flux period.
@@ -162,6 +162,9 @@ class CarbonTracker_Data (object):
 
     molefractions = glob("/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc")
     fluxes = glob("/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc")
+
+    # Blacklist the 2009-08-07 molefractions file, which has bad data at 10:30
+    molefractions = [m for m in molefractions if "2009-08-07" not in m]
 
     manifest = self.cache.full_path("manifest", writeable=True)
     self.data = DataInterface.from_files (molefractions+fluxes, opener=netcdf.open, manifest=manifest)
