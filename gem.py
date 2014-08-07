@@ -203,19 +203,6 @@ def gem_load_cache_hook (dataset):
   return data[0]
 
 
-# Some useful criteria for searching for fields
-
-def number_of_timesteps (varlist):
-  from pygeode.axis import TAxis
-  for var in varlist:
-    if var.hasaxis(TAxis):
-      return len(var.getaxis(TAxis))
-
-def number_of_levels (varlist):
-  from pygeode.axis import ZAxis
-  for var in varlist:
-    if var.hasaxis(ZAxis):
-      return len(var.getaxis(ZAxis))
 
 
 # GEM data interface
