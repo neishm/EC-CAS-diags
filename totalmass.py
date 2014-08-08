@@ -83,7 +83,7 @@ def doplot (outfile, title, fields, colours, styles, labels):
 
   fig.savefig(outfile)
 
-def totalmass (models, fieldname, pg_of, outdir, normalize_air_mass=False):
+def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
   from os.path import exists
   from pygeode.var import Var
   from common import convert
@@ -114,7 +114,7 @@ def totalmass (models, fieldname, pg_of, outdir, normalize_air_mass=False):
     # Total mass
     # Possibly change plot units (e.g. Pg CO2 -> Pg C)
     mass = compute_totalmass(model,fieldname)
-    mass = convert(mass, "Pg(%s)"%pg_of)
+    mass = convert(mass, units)
     mass = mass(time=(t0,t1))   # Limit time period to plot
     if normalize_air_mass:
       mass = mass / airmass * airmass0
@@ -150,7 +150,7 @@ def totalmass (models, fieldname, pg_of, outdir, normalize_air_mass=False):
       # Update the flux units to reflect the time integration
       totalflux.atts['units'] = flux_units + ' s'
       # Convert from moles to Pg
-      totalflux = convert(totalflux, "Pg(%s)"%pg_of)
+      totalflux = convert(totalflux, units)
       # Offset the flux mass
       totalflux -= float(totalflux(time=tx).get().squeeze())
       totalflux += float(mass(time=tx).get().squeeze())
@@ -164,9 +164,6 @@ def totalmass (models, fieldname, pg_of, outdir, normalize_air_mass=False):
 
   outfile = outdir + "/%s_totalmass_%s%s.png"%('_'.join(m.name for m in models if m is not None),fieldname,'_normalized' if normalize_air_mass else '')
   if not exists(outfile):
-    if pg_of == fieldname:
-      title = "Total mass %s (Pg)"%fieldname
-    else:
-      title = "Total mass %s (Pg %s)"%(fieldname,pg_of)
+    title = "Total mass %s in %s"%(fieldname,units)
     doplot (outfile, title, fields, colours, styles, labels)
 
