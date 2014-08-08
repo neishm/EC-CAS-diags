@@ -75,7 +75,7 @@ def plotCvH(field1,field2=None, field3=None, title1='plot1', title2='plot2', tit
   # Loop over all available times
   for i,t in enumerate(field1.time):
 
-    data = field1(i_time=t)
+    data = field1(time=t)
     year = data.time.year[0]
     month = data.time.month[0]
     day = data.time.day[0]
