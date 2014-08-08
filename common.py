@@ -1,7 +1,7 @@
 # Functions / constants common to multiple modules
 
 # Unit conversion
-from units import define_conversion, conversion_factor
+from units import define_conversion, define_unit, conversion_factor
 
 # Define the molar masses
 define_conversion ('mol(CO2)', '44.01 g(CO2)')
@@ -9,11 +9,12 @@ define_conversion ('mol(CH4)', '16.04 g(CH4)')
 define_conversion ('mol(air)', '28.97 g(air)')
 define_conversion ('mol(H2O)', '18.01528 g(H2O)')
 
-# Define a conversion from "grams of the carbon part of CO2 molecules"
-define_conversion ('g(C:CO2)', repr(44.01/12.01)+' g(CO2)')
-
-# If we have a context of carbon, what we mean is carbon in CO2
-define_conversion ('g(C)', 'g(C:CO2)')
+# The following is a hack to get mass in terms of carbon atoms
+# I.e. to allow converting mass to Pg(C)
+define_unit ('C_atom', 'Carbon atoms in the molecule')
+define_conversion ('g(C)', repr(1/12.01) + ' mol C_atom-1')
+define_conversion ('C_atom(CO2)', '1')
+define_conversion ('C_atom(CH4)', '1')
 
 # For the purpose of these diagnostics, assume mole fractions are always with
 # respect to air.
