@@ -21,10 +21,11 @@ define_conversion ('molefraction', 'mol mol(air)-1')
 
 
 # Convert a variable from one unit to another
-def convert (var, units):
+def convert (var, units, context=None):
   if var.atts['units'] == units: return var  # No conversion necessary
   name = var.name
-  scale = conversion_factor (var.atts['units'], units, context=var.name)
+  if context is None:  context = var.name
+  scale = conversion_factor (var.atts['units'], units, context)
   var = var * scale
   var.atts['units'] = units
   var.name = name

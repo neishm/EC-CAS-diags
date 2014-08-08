@@ -52,18 +52,19 @@ def compute_totalflux (model, fieldname):
   # Check if we already have integrated flux (per grid cell)
   try:
     data = model.data.find_best(fieldname+'_flux', maximize=number_of_timesteps)
-    data = convert(data,'mol s-1')
+    data = convert(data,'mol s-1',context=fieldname)
   # Otherwise, we need to integrate over the grid cell area.
   except ValueError:
     data, area = model.data.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
-    data = convert(data,'mol m-2 s-1')
-    area = convert(cell_area,'m2')
+    # Convert the units, using the specified tracer name for mass conversion
+    data = convert(data,'mol m-2 s-1',context=fieldname)
+    area = convert(area,'m2')
     data = data*area
 
   # Sum, skipping the last (repeated) longitude
   data = remove_extra_longitude(data)
   data = data.sum('lat','lon')
-  data.name = fieldname+'_flux'
+  data.name = fieldname
 
   # Cache the data
   return model.cache.write(data,prefix="totalflux_"+fieldname)
@@ -125,6 +126,7 @@ def totalmass (models, fieldname, pg_of, outdir, normalize_air_mass=False):
     # Total flux, integrated in time
     try:
       totalflux = compute_totalflux(model,fieldname)
+      flux_units = totalflux.atts['units']
       time = totalflux.time
 
       # Find the closest "start" time in the flux data that aligns with the model data
@@ -144,7 +146,9 @@ def totalmass (models, fieldname, pg_of, outdir, normalize_air_mass=False):
       assert time.units == 'days'
       time = time.__class__(values=time.values+dt/86400., units='days', startdate=time.startdate)
       # Re-wrap as a PyGeode var
-      totalflux = Var([time], values=totalflux)
+      totalflux = Var([time], values=totalflux, name=fieldname)
+      # Update the flux units to reflect the time integration
+      totalflux.atts['units'] = flux_units + ' s'
       # Convert from moles to Pg
       totalflux = convert(totalflux, "Pg(%s)"%pg_of)
       # Offset the flux mass
