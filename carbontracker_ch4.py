@@ -52,28 +52,26 @@ def ct_products (data):
   # Convert some standard quantities
   # (old_name, new_name, scale, offset, units)
   conversions = (
-    ('bgrnd', 'CH4_background', None, None, 'ppb'),
-    ('fossil', 'CH4_fossil', None, None, 'ppb'),
-    ('agwaste', 'CH4_agwaste', None, None, 'ppm'),
-    ('ocean', 'CH4_ocean', None, None, 'ppm'),
-    ('bioburn', 'CH4_bioburn', None, None, 'ppm'),
-    ('natural', 'CH4_natural', None, None, 'ppm'),
-    ('pressure', 'air_pressure', None, None, 'hPa'),
-    ('gph', 'geopotential_height', None, None, 'm'),
+    ('bgrnd', 'CH4_background', 'ppb'),
+    ('fossil', 'CH4_fossil', 'ppb'),
+    ('agwaste', 'CH4_agwaste', 'ppb'),
+    ('ocean', 'CH4_ocean', 'ppb'),
+    ('bioburn', 'CH4_bioburn', 'ppb'),
+    ('natural', 'CH4_natural', 'ppb'),
+    ('pressure', 'air_pressure', 'hPa'),
   )
 
   # Do the conversions
-  for old_name, new_name, scale, offset, units in conversions:
+  for old_name, new_name, units in conversions:
     if old_name in data:
       var = data.pop(old_name)
-      if scale is not None: var *= scale
-      if offset is not None: var += offset
-      if units is not None: var.atts['units'] = units
+      var.atts['units'] = units
       data[new_name] = var
 
   # Find the total CH4 (sum of components)
   if 'CH4_background' in data:
     data['CH4'] = data['CH4_background'] + data['CH4_fossil'] + data['CH4_agwaste'] + data['CH4_ocean'] + data['CH4_bioburn'] + data['CH4_natural']
+    data['CH4'].atts['units'] = data['CH4_background'].atts['units']
 
 
   # Other (more heavily derived) products
@@ -88,7 +86,8 @@ def ct_products (data):
     # pmid = (ps + A1 + B1*Ps) / 2 = Ps(1+B1)/2 + (0+A1)/2
     # Ps = (2*pmid - A1)/(1+B1)
     P0 = (2*pmid - A_interface[1])/(B_interface[1]+1)
-    data['surface_pressure'] = P0 / 100.
+    P0.atts['units'] = 'Pa'
+    data['surface_pressure'] = P0
 
     # Vertical change in pressure
     #NOTE: generated from A/B interface values, not the 3D pressure field.
@@ -99,9 +98,9 @@ def ct_products (data):
     dA = Var([data['air_pressure'].lev], values=dA)
     dB = -np.diff(B_interface)
     dB = Var([data['air_pressure'].lev], values=dB)
-    dp = dA/100. + dB * data['surface_pressure']
+    dp = dA/ + dB * data['surface_pressure']
     dp = dp.transpose('time','zaxis','lat','lon')
-    dp.atts['units'] = 'hPa'
+    dp.atts['units'] = 'Pa'
     data['dp'] = dp
 
 
@@ -112,7 +111,6 @@ def ct_products (data):
   else:
     raise Exception ("This should not happen")
   data['cell_area'] = get_area(x.lat, x.lon).extend(0,x.time)
-  data['cell_area'].atts['units'] = 'm2'
 
 
   # General cleanup stuff

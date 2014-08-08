@@ -29,37 +29,37 @@ def ct_products (data):
   # Convert some standard quantities
   # (old_name, new_name, scale, offset, units)
   conversions = (
-    ('bg', 'CO2_background', None, None, 'ppm'),
-    ('ff', 'CO2_fossil', None, None, 'ppm'),
-    ('bio', 'CO2_bio', None, None, 'ppm'),
-    ('ocean', 'CO2_ocean', None, None, 'ppm'),
-    ('fires', 'CO2_fire', None, None, 'ppm'),
-    ('fossil_imp', 'CO2_fossil_flux', None, None, 'mol m-2 s-1'),
-    ('bio_flux_opt', 'CO2_bio_flux', None, None, 'mol m-2 s-1'),
-    ('ocn_flux_opt', 'CO2_ocean_flux', None, None, 'mol m-2 s-1'),
-    ('fire_flux_imp', 'CO2_fire_flux', None, None, 'mol m-2 s-1'),
-    ('press', 'air_pressure', 1E-2, None, 'hPa'),
-    ('gph', 'geopotential_height', None, None, 'm'),
+    ('bg', 'CO2_background', 'ppm'),
+    ('ff', 'CO2_fossil', 'ppm'),
+    ('bio', 'CO2_bio', 'ppm'),
+    ('ocean', 'CO2_ocean', 'ppm'),
+    ('fires', 'CO2_fire', 'ppm'),
+    ('fossil_imp', 'CO2_fossil_flux', 'mol m-2 s-1'),
+    ('bio_flux_opt', 'CO2_bio_flux', 'mol m-2 s-1'),
+    ('ocn_flux_opt', 'CO2_ocean_flux', 'mol m-2 s-1'),
+    ('fire_flux_imp', 'CO2_fire_flux', 'mol m-2 s-1'),
+    ('press', 'air_pressure', 'Pa'),
+    ('gph', 'geopotential_height', 'm'),
   )
 
   # Do the conversions
-  for old_name, new_name, scale, offset, units in conversions:
+  for old_name, new_name, units in conversions:
     if old_name in data:
       var = data.pop(old_name)
-      if scale is not None: var *= scale
-      if offset is not None: var += offset
-      if units is not None: var.atts['units'] = units
+      var.atts['units'] = units
       data[new_name] = var
 
   # Find the total CO2 (sum of components)
   if 'CO2_background' in data:
     data['CO2'] = data['CO2_background'] + data['CO2_fossil'] + data['CO2_bio'] + data['CO2_ocean'] + data['CO2_fire']
+    data['CO2'].atts['units'] = data['CO2_background'].atts['units']
 
   # Create a total flux product
   if 'CO2_fire_flux' in data:
     data['CO2_flux'] = data['CO2_fossil_flux'] + data['CO2_bio_flux'] + data['CO2_ocean_flux'] + data['CO2_fire_flux']
+    data['CO2_flux'].atts['units'] = data['CO2_fire_flux'].atts['units']
 
-  # Fudge the tmie axis for all flux products.
+  # Fudge the time axis for all flux products.
   for varname in data:
     if varname.endswith('_flux'):
       # The time is the *midpoint* of the flux period.
@@ -77,14 +77,15 @@ def ct_products (data):
   if 'air_pressure' in data:
     # Surface pressure
     # Get pressure at the bottom mid-level
-    pmid = data['air_pressure'].squeeze(level=1) * 100.
+    pmid = data['air_pressure'].squeeze(level=1)
 
     # Compute surface pressure from this
     # p1 = A1 + B1*Ps
     # pmid = (ps + A1 + B1*Ps) / 2 = Ps(1+B1)/2 + (0+A1)/2
     # Ps = (2*pmid - A1)/(1+B1)
     P0 = (2*pmid - A_interface[1])/(B_interface[1]+1)
-    data['surface_pressure'] = P0 / 100.
+    P0.atts['units'] = 'Pa'
+    data['surface_pressure'] = P0
 
     # Vertical change in pressure
     #NOTE: generated from A/B interface values, not the 3D pressure field.
@@ -95,9 +96,9 @@ def ct_products (data):
     dA = Var([data['air_pressure'].level], values=dA)
     dB = -np.diff(B_interface)
     dB = Var([data['air_pressure'].level], values=dB)
-    dp = dA/100. + dB * data['surface_pressure']
+    dp = dA + dB * data['surface_pressure']
     dp = dp.transpose('time','zaxis','lat','lon')
-    dp.atts['units'] = 'hPa'
+    dp.atts['units'] = 'Pa'
     data['dp'] = dp
 
 
@@ -109,7 +110,6 @@ def ct_products (data):
   else:
     x = data['CO2_flux']
   data['cell_area'] = get_area(x.lat, x.lon).extend(0,x.time)
-  data['cell_area'].atts['units'] = 'm2'
 
 
   # General cleanup stuff
@@ -146,6 +146,9 @@ class CarbonTracker_Data (object):
 
     molefractions = glob("/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc")
     fluxes = glob("/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc")
+
+    # Blacklist the 2009-08-07 molefractions file, which has bad data at 10:30
+    molefractions = [m for m in molefractions if "2009-08-07" not in m]
 
     manifest = self.cache.full_path("manifest", writeable=True)
     self.data = DataInterface.from_files (molefractions+fluxes, opener=netcdf.open, manifest=manifest)

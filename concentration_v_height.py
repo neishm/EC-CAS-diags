@@ -110,8 +110,8 @@ def plotCvH(field1,field2=None, field3=None, title1='plot1', title2='plot2', tit
 
 def movie_CvH (models, fieldname, units, outdir):
 
-  from common import unit_scale
-  from movie_zonal import zonalmean_gph, rescale
+  from common import convert
+  from movie_zonal import zonalmean_gph
 
   assert len(models) > 0
   assert len(models) <= 3  # too many things to plot
@@ -125,7 +125,7 @@ def movie_CvH (models, fieldname, units, outdir):
   fields = [zonalmean_gph(m,fieldname) for m in models]
 
   # Unit conversion
-  fields = [rescale(f,units) for f in fields]
+  fields = [convert(f,units) for f in fields]
 
   titles = [m.title for m in models]
 

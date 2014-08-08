@@ -1,16 +1,20 @@
 # Get a flux product for the given experiment and tracer name.
 def get_flux (model, fieldname):
-  from common import molecular_weight as mw, number_of_timesteps, remove_extra_longitude
+  from common import convert, number_of_timesteps, remove_extra_longitude
 
-  data = model.data.find_best(fieldname+'_flux', maximize=number_of_timesteps)
-
-  if data.atts['units'] not in ('g s-1', 'mol m-2 s-1'):
-    raise ValueError ("Unhandled units '%s'"%data.atts['units'])
-
-  if data.atts['units'] == 'g s-1':
+  # Check if we already have the right units
+  try:
+    data = model.data.find_best(fieldname+'_flux', maximize=number_of_timesteps)
+    data = convert(data,'mol m-2 s-1',context=fieldname)
+  # Otherwise, assume we have integrated flux, need to divide by area
+  except ValueError:
     data, area = model.data.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
-    data = data / area / mw[fieldname]
-    data.name = fieldname+'_flux'
+    data = convert(data,'mol s-1',context=fieldname)
+    area = convert(area,'m2')
+    data = data/area
+
+  data.name = fieldname
+  data.atts['units'] = 'mol m-2 s-1'
 
   # Strip out the extra longitude from the fluxes
   # (just for compatibility with Jake's code further below, which is hard-coded
@@ -309,8 +313,6 @@ def plotOrganize(flux1,flux2=None, flux3=None, names=['','',''], palette=None, n
 
 
 def movie_flux (models, fieldname, units, outdir, timefilter=None,plottype='BG'):
-
-  from common import unit_scale
 
   assert len(models) > 0
   assert len(models) <= 3  # too many things to plot

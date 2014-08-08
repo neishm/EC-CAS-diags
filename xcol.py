@@ -6,20 +6,14 @@
 # Compute total column of a tracer
 # (in kg/m2)
 def totalcolumn (model, fieldname):
-  from common import molecular_weight as mw, grav as g, number_of_levels, number_of_timesteps
+  from common import convert, grav as g, number_of_levels, number_of_timesteps
 
   c, dp = model.data.find_best([fieldname,'dp'], maximize=(number_of_levels,number_of_timesteps))
-  # Convert from ppm to kg / kg
-  if c.atts['units'] != 'ppm':
-    raise ValueError ("Unhandled units '%s'"%c.atts['units'])
-
-  if dp.atts['units'] not in ('hPa','mbar'):
-    raise ValueError ("dp in unhandled units '%s'"%dp.atts['units'])
-
-  c *= 1E-6 * mw[fieldname] / mw['air']
+  c = convert(c, 'kg kg(air)-1')
+  dp = convert(dp, 'Pa')
 
   # Integrate
-  data = (c*dp*100).sum('zaxis') / g
+  data = (c*dp).sum('zaxis') / g
   data.name = fieldname
   data.atts['units'] = 'kg m-2'
 
@@ -44,7 +38,7 @@ def avgcolumn (model, fieldname):
 
 # Get column average
 def get_xcol (experiment, fieldname, units):
-  from common import rotate_grid, unit_scale
+  from common import rotate_grid, convert
 
   xcol = avgcolumn(experiment, fieldname)
 
@@ -53,13 +47,7 @@ def get_xcol (experiment, fieldname, units):
     xcol = rotate_grid(xcol)
 
   # Convert to the required units
-  input_units = xcol.atts['units']
-  if input_units != units:
-    low = xcol.atts['low']
-    high = xcol.atts['high']
-    xcol = xcol / unit_scale[input_units] * unit_scale[units]
-    xcol.atts['low'] = low / unit_scale[input_units] * unit_scale[units]
-    xcol.atts['high'] = high / unit_scale[input_units] * unit_scale[units]
+  xcol = convert(xcol,units)
 
   xcol.name = experiment.title  # Verbose name for plotting
   return xcol
