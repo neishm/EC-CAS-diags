@@ -115,13 +115,13 @@ def parse_units(s):
     3) exponent on the unit
 
   If the unit string starts with a scale factor, then a float will be returned
-  as the first item.
+  as the first unit name.
 
   Examples:
 
     parse_units('m s-2') will yield ('m',None,1), ('s',None,-2).
 
-    parse_units('100 ppm') will yield 100.0, ('ppm',None,1)
+    parse_units('100 ppm') will yield (100.0,None,1), ('ppm',None,1)
 
     parse_units('kg(H2O) kg(air)-1') will yield ('kg','H2O',1), ('kg','air',-1)
 
@@ -136,7 +136,7 @@ def parse_units(s):
   # Look for a scale factor at the start of the string
   m = match(scale_pattern, s)
   if m is not None:
-    yield float(m.group(0))
+    yield (float(m.group(0)),None,1)
     s = s[m.end():].lstrip()
 
   # Match a unit with an optional context and exponent
@@ -156,72 +156,83 @@ def parse_units(s):
     s = s[m.end():]
 
 
-# Reduce a unit to some canonical base units.
+# Recursively apply conversions to the given unit.
+# (Used internally only)
+def _reduce_units (term, global_context=None):
+
+  if isinstance(term,str):
+    terms = parse_units(term)
+    for term in terms:
+      for o in _reduce_units (term, global_context):
+        yield o
+    return
+
+  name, context, exponent = term
+  if isinstance(name,float):
+    yield name, context, exponent
+    return
+
+  if name not in units:
+    raise ValueError ("Unrecognized unit: %s"%name)
+
+  if context in units[name].conversions:
+    conversion = units[name].conversions[context]
+    # Swallow up the local context (to allow the conversion to specify any new context it wants to apply)
+    context = None
+  else:
+    # Fall back to default conversion if this context is unapplicable
+    conversion = units[name].conversions[None]
+
+  # Convert the unit, applying the local context
+  if conversion is None:
+    output = [(name, context, exponent)]
+  else:
+    # Apply the reduction (using the local context)
+    output = _reduce_units(conversion,context)
+    # Update the exponents
+    output = [(n,c,e*exponent) for n,c,e in output]
+
+  # Further convert the unit, applying the global context
+  if global_context is not None:
+    output = [list(_reduce_units((n,(c or global_context),e))) for n,c,e in output]
+    # Flatten it out
+    output = sum(output,[])
+
+  # Return the fully reduced terms, one by one.
+  for o in output:
+    yield o
+
+
+
+
+# Get a canonical representation of the unit
 # This is used as a common ground when trying to convert one unit to another.
-def _reduce_units (unit, global_context=None):
-  from collections import Counter
-  if isinstance(unit,str): unit = parse_units(unit)
+# Returns: scale, [terms]
+# Note: only used internally
+def _canonical_form (unit, global_context=None):
+  # Get all terms (fully evaluated to their reduced form)
+  terms = list(_reduce_units(unit,global_context))
+  # Separate out the scale factor and the unit terms.
+  # Gather all exponents for each type of unit
   scale = 1.0
-  numerator = []
-  denominator = []
-  for u in unit:
-    if isinstance(u,float):
-      scale *= u
-      continue
-    name, context, exponent = u
-    if name not in units:
-      raise ValueError ("Unrecognized unit: %s"%name)
-    # Apply a default context?
-    if context is None: context = global_context
-
-    if context in units[name].conversions:
-      conversion = units[name].conversions[context]
+  unit_exp = dict()
+  for n,c,e in terms:
+    if isinstance(n,float): scale *= (n**e)
     else:
-      # Fall back to default conversion if this context is unapplicable
-      conversion = units[name].conversions[None]
+      unit_exp[(n,c)] = unit_exp.setdefault((n,c),0) + e
 
-    # Base unit or derived unit?
-    if conversion is not None:
-      # Recursively parse the derived units
-      sc, n, d = _reduce_units(conversion,context)
-    # Final reduction?
-    else:
-      if context is None:
-        sc, n, d = 1, [name], []
-      else:
-        sc, n, d = 1, [name+'('+context+')'], []
-
-    # Apply the scale factor from this term
-    scale *= sc**exponent
-
-    # Apply the numerator / deomonator factors from this term
-    if exponent < 0:
-      n, d = d, n
-      exponent = -exponent
-    numerator.extend(n*exponent)
-    denominator.extend(d*exponent)
-
-  # Eliminate common base units between numerator and denominator
-  numerator = Counter(numerator)
-  denominator = Counter(denominator)
-  numerator, denominator = numerator-denominator, denominator-numerator
-  numerator = numerator.elements()
-  denominator = denominator.elements()
-
-  # Sort the terms, to simplify comparisons against these units
-  numerator = sorted(numerator)
-  denominator = sorted(denominator)
-
-  return scale, numerator, denominator
+  # Filter out terms that are cancelled out (exponenent is reduced to 0)
+  terms = [(n,c,e) for (n,c),e in sorted(unit_exp.items()) if e != 0]
+  return scale, terms
 
 
 def conversion_factor (from_units, to_units, context=None):
   '''
     Return the scale factor to convert from one set of units to another.
   '''
-  scale1, numerator1, denominator1 = _reduce_units(from_units,context)
-  scale2, numerator2, denominator2 = _reduce_units(to_units,context)
-  if (numerator1 != numerator2) or (denominator1 != denominator2):
+  scale1, terms1 = _canonical_form(from_units,context)
+  scale2, terms2 = _canonical_form(to_units,context)
+  if (terms1 != terms2):
     raise ValueError ("Units '%s' and '%s' are not compatible"%(from_units,to_units))
   return scale1 / scale2
 
@@ -231,17 +242,10 @@ if __name__ == '__main__':
   define_conversion ('mol(air)', '28.97 g(air)')
   define_conversion ('molefraction', 'mol mol(air)-1')
 
-  print _reduce_units ('ppm(CO2)')
-  print _reduce_units ('ppb(CO2)')
-  print _reduce_units ('mol(CO2) m-2 s-1')
+  print list(_reduce_units ('ppm(CO2)'))
+  print list(_reduce_units ('ppb(CO2)'))
+  print list(_reduce_units ('mol(CO2) m-2 s-1'))
 
   print conversion_factor('ug(C:CO2) kg(air)-1', 'ppm(CO2)')
   print conversion_factor('ppm(CO2)', 'ug(C:CO2) kg(air)-1')
-
-  # Try out partial pressure
-  define_conversion ('Pa', 'Pa(air) mol mol(air)-1')
-  define_conversion ('Pa(air)', None)  # To avoid infinite recursion
-  print conversion_factor('ug(C:CO2) kg(air)-1', 'Pa(CO2) Pa(air)-1')*160000
-
-  print conversion_factor('ug(C:CO2) kg(air)-1', 'ppm', context='CO2')
 
