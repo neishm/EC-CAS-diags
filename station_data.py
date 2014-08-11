@@ -37,6 +37,12 @@ class Station (Axis):
       else:
         indices.append(stations.index(station))
     return indices
+  # Need to override _getitem_asvar, because slicing a string array with None
+  # causes numpy to add an extra dimension?
+  def _getitem_asvar (self, slices):
+    from pygeode.axis import Axis
+    if slices is None: return self
+    return Axis._getitem_asvar (self, slices)
 
 del Axis
 
