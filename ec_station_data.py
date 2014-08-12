@@ -35,9 +35,9 @@ def read_station_data (filename):
 # A routine to open the netcdf data (and decode the station axis)
 def ec_station_opener (filename):
   from pygeode.formats import netcdf
-  from station_data import decode_station_data
+  from station_data import station_axis_load_hook
   data = netcdf.open(filename)
-  data = decode_station_data(data)
+  data = station_axis_load_hook(data)
   return data
 
 # Data interface for EC station observations
@@ -72,7 +72,7 @@ class EC_Station_Data (object):
     from pygeode.dataset import Dataset
     from common import common_taxis, fix_timeaxis
     from glob import glob
-    from station_data import make_station_axis, encode_station_data
+    from station_data import make_station_axis, station_axis_save_hook
     from pygeode.var import Var
     import numpy as np
     from data_interface import DataInterface
@@ -125,7 +125,7 @@ class EC_Station_Data (object):
       data = fix_timeaxis(data)
 
       # Save the data
-      data = encode_station_data(data)
+      data = station_axis_save_hook(data)
       netcdf.save(cachefile,data)
 
       # End of cache file creation
