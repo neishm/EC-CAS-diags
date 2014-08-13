@@ -81,7 +81,7 @@ class Cache (object):
 
 
   # Write out the data
-  def write (self, var, prefix, save_hooks=[], load_hooks=[]):
+  def write (self, var, prefix, save_hooks=[], load_hooks=[], **kwargs):
     from os.path import exists
     from os import remove
     from pygeode.formats import netcdf
@@ -89,6 +89,8 @@ class Cache (object):
     from pygeode.dataset import asdataset
     from common import fix_timeaxis
     import numpy as np
+
+    split_time = kwargs.get('split_time',self.split_time)
 
     # Make sure the data is saved with a consistent start date
     # (makes it easier to plot timeseries data from multiple sources)
@@ -172,7 +174,7 @@ class Cache (object):
 
       # Split into 1 file per timestep?
       # Useful for model output, where you might extend the data with extra timesteps later.
-      if self.split_time is True:
+      if split_time is True:
 
         # Loop over each time, save into a cache file
         from pygeode.progress import PBar
