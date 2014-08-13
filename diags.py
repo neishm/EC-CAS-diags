@@ -103,8 +103,8 @@ failures = []
 from timeseries import timeseries
 # CO2 Timeseries
 try:
-  timeseries (datasets=[experiment,ec_obs,control], fieldname='CO2', units='ppm', outdir=outdir)
-  timeseries (datasets=[experiment,gaw_obs,control], fieldname='CO2', units='ppm', outdir=outdir)
+  timeseries (models=[experiment,control], obs=ec_obs, fieldname='CO2', units='ppm', outdir=outdir)
+  timeseries (models=[experiment,control], obs=gaw_obs, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['CO2 timeseries', e])
 # CH4 Timeseries

@@ -95,7 +95,7 @@ def sample_model_at_obs (model, obs, fieldname):
 
 
 
-def timeseries (datasets, fieldname, units, outdir, plot_months=None):
+def timeseries (obs, models, fieldname, units, outdir, plot_months=None):
 
   from plot_shortcuts import plot, plot_stdfill
   from plot_wrapper import Multiplot, Legend, Overlay
@@ -106,52 +106,48 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
 
   from common import convert
 
-  line_colours = ['blue', 'green', 'red']
+  model_line_colours = ['blue', 'red']
+  obs_line_colour = 'green'
 
-  datasets = [d for d in datasets if d is not None]
+  models = [m for m in models if m is not None]
 
-  # Extract all observation locations from the datasets
-  obs_locations = {}
-  for d in datasets:
-    if hasattr(d,'obs_locations'):
-      obs_locations.update(d.obs_locations)
-
-#  ##TODO
-#  # Limit the time period to the current experiment
-#  # (sometimes we have a really short experiment)
-#  timeaxis = model_data[0].time
-#  times = timeaxis.get()
-#  time1 = min(times)
-#  time2 = max(times)
-#  obs_f = obs_f(time=(time1,time2))
-#  model_data = [x(time=(time1,time2)) for x in model_data]
-
-  # For model data, pre-fetch the surface data
-  sfc_data = []
-  for d in datasets:
+  model_data = []
+  model_spread = []
+  for m in models:
+    field = sample_model_at_obs(m,obs,fieldname)
+    field = convert(field, units, context=fieldname)
+    model_data.append(field)
     try:
-      sfc_data.append(get_sfc_data(d,fieldname))
-    except KeyError:
-      # Put a 'None' placeholder to indicate this isn't model surface data
-      sfc_data.append(None)
+      field = sample_model_at_obs(m,obs,fieldname+'_ensemblespread')
+      field = convert(field, units, context=fieldname)
+      model_spread.append(field)
+    except KeyError:  # No ensemble spread for this model data
+      model_spread.append(None)
 
-  sfc_std = []
-  for d in datasets:
-    try:
-      # Try finding an ensemble spread
-      sfc_std.append(get_sfc_data(d,fieldname+'_ensemblespread'))
-    except KeyError:
-      # Put a 'None' placeholder to indicate this isn't model surface data
-      sfc_std.append(None)
+  obs_data = obs.data.find_best(fieldname)
+  obs_data = convert(obs_data, units, context=fieldname)
+  try:
+    obs_stderr = obs.data.find_best(fieldname+'_std')
+    obs_stderr = convert(obs_stderr, units, context=fieldname)
+  except KeyError:
+    obs_stderr = None
+
+  # Combine model and obs data together into one set
+  data = model_data + [obs_data]
+  spread = model_spread + [obs_stderr]
+  line_colours = model_line_colours[:len(model_data)] + [obs_line_colour]
 
   # Use the first model data as a basis for the time axis.
-  timeaxis = (s.getaxis('time') for s in sfc_data if s is not None).next()
+  timeaxis = (d.getaxis('time') for d in data).next()
   # Limit the range to plot
   if plot_months is not None:
     timeaxis = timeaxis(year=2009,month=plot_months)
   times = timeaxis.get()
   time1 = min(times)
   time2 = max(times)
+
+  data = [d(time=(time1,time2)) for d in data]
+  spread = [None if s is None else s(time=(time1,time2)) for s in spread]
 
   # Create plots of each location
   xticks = []
@@ -173,7 +169,11 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
       xticklabels.append("%s %d"%(months[month], day))
 
   plots = []
-  for location, (lat, lon, country) in sorted(obs_locations.items()):
+  for location in data[0].station:
+    station_info = data[0](station=location).getaxis("station")
+    lat = station_info.lat[0]
+    lon = station_info.lon[0]
+    country = station_info.country[0]
 
     # Construct a title for the plot
     title = location + ' - (%4.2f'%abs(lat)
@@ -184,42 +184,12 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
     else: title += 'E'
     title += ') - ' + country
 
-    if lon < 0: lon += 360  # Model data is from longitudes 0 to 360
-
-    series = []
-    std = []
-    plot_units = ''
-    for s,sd,d in zip(sfc_data,sfc_std,datasets):
-      if s is not None:
-        series.append(s(lat=lat, lon=lon))
-        if sd is not None:
-          std.append(sd(lat=lat,lon=lon))
-        else:
-          std.append(None)
-      else:
-        # For now, assume that we have an obs dataset,
-        # so this command shouldn't fail.
-        data = get_station_data(d, location,fieldname)
-        series.append(data)
-        std.append(get_station_data(d, location,fieldname+'_std'))
-
-    # Scale to the plot units
-    for i,x in enumerate(series):
-      series[i] = convert(x,units)
-      if std[i] is not None:
-        std[i] = convert(std[i],units)
-
-    # Limit the time period to plot
-    series = [x(time=(time1,time2)) for x in series]
-    std = [s(time=(time1,time2)) if s is not None else None for s in std]
-
     parts = []
-    for i in range(len(series)):
-      color=line_colours[i]
-      if std[i] is not None:
-        parts.append(plot_stdfill(series[i],2*std[i],color=color))
+    for i in range(len(data)):
+      if spread[i] is not None:
+        parts.append(plot_stdfill(data[i](station=location),2*spread[i](station=location),color=line_colours[i]))
       else:
-        parts.append(plot(series[i],color=color))
+        parts.append(plot(data[i](station=location),color=line_colours[i]))
 
     theplot = Overlay (*parts, title=title.decode('latin-1'),
            xlabel='', ylabel='%s %s'%(fieldname,units), xticks=xticks, xticklabels=xticklabels)
@@ -233,13 +203,13 @@ def timeseries (datasets, fieldname, units, outdir, plot_months=None):
 
     theplots = plots[i:i+4]
     # Put a legend on the last plot
-    labels = [d.title for d in datasets]
+    labels = [d.title for d in models+[obs]]
     theplots[-1] = Legend(theplots[-1], labels)
 
     theplots = Multiplot([[p] for p in theplots])
     theplots.render(figure=fig)
 
-    outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in datasets),fieldname,i/4+1)
+    outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1)
     if not exists(outfile):
       fig.savefig(outfile)
 
