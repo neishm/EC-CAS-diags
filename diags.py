@@ -273,7 +273,7 @@ except Exception as e:
 
 import TimeSeriesAlternate as TSA
 try:
-  TSA.timeseries(models=[experiment,ec_obs],fieldname='CO2', units='ppm', outdir=outdir)
+  TSA.timeseries(models=[experiment],obs=ec_obs,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['time series alternate', e])
 
