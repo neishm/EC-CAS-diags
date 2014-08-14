@@ -1,6 +1,5 @@
 # Timeseries diagnostic
 
-#TODO: Interpolate directly to station locations
 # This method computes the surface values of a model dataset
 def get_sfc_data (model, fieldname):
   from common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
@@ -9,17 +8,6 @@ def get_sfc_data (model, fieldname):
   # Cache the data for faster subsequent access
   field = model.cache.write(field, prefix='sfc_'+fieldname)
   return field
-
-# Get station data.
-# Assume there is only one dataset, with station data in it.
-def get_station_data (obs, location, fieldname):
-  import numpy as np
-  field = obs.data.find_best(fieldname)
-  stations = field.station.values
-  if location not in stations:
-    raise KeyError ("Station '%s' not found in obs"%location)
-  return field(station=location).squeeze('station')  # No caching
-
 
 # Sample a model field at station locations
 from pygeode.var import Var
