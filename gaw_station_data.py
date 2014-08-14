@@ -177,17 +177,6 @@ class GAW_Station_Data (object):
 
     self.data = data
 
-    # Find obs locations from the file
-    #TODO: remove this once the diagnostics use the station axis directly.
-    obs_locations = {}
-    data = self.data.find_best('CO2')
-    stations = data.station.values
-    lats = data.station.lat
-    lons = data.station.lon
-    countries = data.station.country
-    for station,lat,lon,country in zip(stations,lats,lons,countries):
-      obs_locations[station] = (lat,lon,country)
-    self.obs_locations = obs_locations
 
 # Helper function - filter out '_mean' suffix from data
 def strip_mean (varlist):
