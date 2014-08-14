@@ -141,10 +141,10 @@ def timeseries (models, obs, fieldname, units, outdir, plot_months=None,timefilt
           NewModel.append(t)
       model = NewModel
 
-      obs_array = data[1](station=location,l_time=NewTimes).squeeze().get()
+      obs_array = data[-1](station=location,l_time=NewTimes).squeeze().get()
       Times=NewTimes
     else:
-      obs_array = data[1](station=location).squeeze().get()    #If not filtering, obs is just the default data[1]
+      obs_array = data[-1](station=location).squeeze().get()    #If not filtering, obs is just the default data[-1]
 
     #------Difference Plot------
     Difference = obs_array-model    #Difference data
