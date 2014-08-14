@@ -1,6 +1,6 @@
 # CO2 timeseries
 
-def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=420):
+def Barplot (models, obs, fieldname, units, outdir, plot_months=None,ymin=350,ymax=420):
 
   from plot_shortcuts import plot, plot_stdfill
   from plot_wrapper import Multiplot, Legend, Overlay, Text
@@ -14,52 +14,46 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
 
   from common import convert
 
-  from timeseries import get_sfc_data, get_station_data
+  from timeseries import sample_model_at_obs
 
-  datasets = [d for d in models if d is not None]
+  models = [m for m in models if m is not None]
 
-  # Extract all observation locations from the datasets
-  obs_locations = {}
-  for d in datasets:
-    if hasattr(d,'obs_locations'):
-      obs_locations.update(d.obs_locations)
-
-#  ##TODO
-#  # Limit the time period to the current experiment
-#  # (sometimes we have a really short experiment)
-#  timeaxis = model_data[0].time
-#  times = timeaxis.get()
-#  time1 = min(times)
-#  time2 = max(times)
-#  obs_f = obs_f(time=(time1,time2))
-#  model_data = [x(time=(time1,time2)) for x in model_data]
-
-  # For model data, pre-fetch the surface data
-  sfc_data = []
-  for d in datasets:
+  model_data = []
+  model_spread = []
+  for m in models:
+    field = sample_model_at_obs(m,obs,fieldname)
+    field = convert(field, units, context=fieldname)
+    model_data.append(field)
     try:
-      sfc_data.append(get_sfc_data(d,fieldname))
-    except KeyError:
-      # Put a 'None' placeholder to indicate this isn't model surface data
-      sfc_data.append(None)
+      field = sample_model_at_obs(m,obs,fieldname+'_ensemblespread')
+      field = convert(field, units, context=fieldname)
+      model_spread.append(field)
+    except KeyError:  # No ensemble spread for this model data
+      model_spread.append(None)
 
-  sfc_std = []
-  for d in datasets:
-    try:
-      # Try finding an ensemble spread
-      sfc_std.append(get_sfc_data(d,fieldname+'_ensemblespread'))
-    except KeyError:
-      # Put a 'None' placeholder to indicate this isn't model surface data
-      sfc_std.append(None)
+  obs_data = obs.data.find_best(fieldname)
+  obs_data = convert(obs_data, units, context=fieldname)
+  try:
+    obs_stderr = obs.data.find_best(fieldname+'_std')
+    obs_stderr = convert(obs_stderr, units, context=fieldname)
+  except KeyError:
+    obs_stderr = None
+
+  # Combine model and obs data together into one set
+  data = model_data + [obs_data]
+  spread = model_spread + [obs_stderr]
 
   # Use the first model data as a basis for the time axis.
-  timeaxis = (s.getaxis('time') for s in sfc_data if s is not None).next()
+  timeaxis = (d.getaxis('time') for d in data).next()
   # Limit the range to plot
   if plot_months is not None:
     timeaxis = timeaxis(year=2009,month=plot_months)
   times = timeaxis.get()
   time1 = min(times)
   time2 = max(times)
+
+  data = [d(time=(time1,time2)) for d in data]
+  spread = [None if s is None else s(time=(time1,time2)) for s in spread]
 
   # Create plots of each location
   xticks = []
@@ -85,7 +79,7 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
   Zones = [[],[],[],[],[]]
   Stds = [[],[],[],[],[]]
 
-  for q in datasets:
+  for q in models+[obs]:
     for i in range(5):
       Zones[i].append([])
       Stds[i].append([])
@@ -99,38 +93,15 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
   #List for counting the number of stations in each group
   Count = [0,0,0,0,0]
 
-  for location, (lat, lon, country) in sorted(obs_locations.items()):
-    if lon < 0: lon += 360  # Model data is from longitudes 0 to 360
-
-    series = []
-    std = []
-    for s,sd,d in zip(sfc_data,sfc_std,datasets):
-      if s is not None:
-        series.append(s(lat=lat, lon=lon))
-        if sd is not None:
-          std.append(sd(lat=lat,lon=lon))
-        else:
-          std.append(None)
-      else:
-        # For now, assume that we have an obs dataset,
-        # so this command shouldn't fail.
-        data = get_station_data(d,location,fieldname)
-        series.append(data)
-        std.append(get_station_data(d,location,fieldname+'_std'))
-
-    # Scale to the plot units
-    for i,x in enumerate(series):
-      series[i] = convert(x,units)
-      if std[i] is not None:
-        std[i] = convert(std[i],units)
-
-    # Limit the time period
-    series = [x(time=(time1,time2)) for x in series]
-    std = [s(time=(time1,time2)) if s is not None else None for s in std]
+  for location in data[0].station:
+    station_info = data[0](station=location).getaxis("station")
+    lat = station_info.lat[0]
+    lon = station_info.lon[0]
+    country = station_info.country[0]
 
     #-----Record Data------
-    for i,t in enumerate(series):
-      d = t.squeeze().get()
+    for i,d in enumerate(data):
+      d = d(station=location).squeeze().get()
 
       #Average values and standard deviations of each station's timeseries
       if lat > 30:
@@ -174,7 +145,7 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
   colourset = ['blue','red','cyan','magenta']
   colours = []
   rectangles = []
-  for i in range(len(datasets)-1):
+  for i in range(len(data)-1):
     colours.append(colourset[i])
     rectangles.append(mpl.patches.Rectangle((0, 0), 1, 1, fc=colourset[i]))
   colours.append('green')
@@ -183,7 +154,7 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
 
   for i in range(len(Zones)):
 
-    xvalues = np.arange(len(datasets)+1)+i*(len(datasets)+1)    #Format plot based on number of datasets
+    xvalues = np.arange(len(data)+1)+i*(len(data)+1)    #Format plot based on number of datasets
 
     Zones[i].append(0)    #Add empty space between each region group
     Stds[i].append(0)
@@ -197,19 +168,19 @@ def Barplot (models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=42
   pl.title('Average %s Concentrations'%(fieldname))
   pl.ylim(ymin=ymin,ymax=ymax)
   pl.ylabel('%s (%s)'%(fieldname,units))
-  pl.xticks(np.arange(5)*(len(datasets)+1)+len(datasets)/2.0,
+  pl.xticks(np.arange(5)*(len(data)+1)+len(data)/2.0,
     ['Northern\nHemisphere','Southern\nHemisphere','Tropics','North\nAmerica','Europe']
     ,horizontalalignment = 'center')
-  pl.legend(rectangles,[d.title for d in datasets],prop={'size':12})
+  pl.legend(rectangles,[d.title for d in models+[obs]],prop={'size':12})
   pl.text(.02,.96,'One standard deviation shown',transform = pl.gca().transAxes)
 
   #Format image directory
-  outdir = outdir + '/TimeSeriesRBP-images_%s_%s'%('_'.join(d.name for d in datasets),fieldname)
+  outdir = outdir + '/TimeSeriesRBP-images_%s_%s'%('_'.join(d.name for d in models+[obs]),fieldname)
   if not exists(outdir):
     from os import makedirs
     makedirs(outdir)
 
-  outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in datasets),fieldname,i/4+1)
+  outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1)
   if not exists(outfile):
     fig.savefig(outfile)
 

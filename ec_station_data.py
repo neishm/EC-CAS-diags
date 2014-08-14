@@ -1,5 +1,29 @@
 # EC station data
 
+# Hard-code the observation locations, since this information isn't provided
+# in the data!
+obs_locations = dict(
+  East_Trout_Lake = (54.3500, -104.9833, 'Canada'),
+  Chibougamau     = (49.6833,  -74.3333, 'Canada'),
+  Alert           = (82.4500,  -62.5167, 'Canada'),
+  Esther          = (51.6825, -110.2603, 'Canada'),
+  Bratts_Lake     = (51.2,    -104.7   , 'Canada'),
+  Egbert          = (44.2167,  -79.7833, 'Canada'),
+  Candle_Lake     = (53.9833, -105.1167, 'Canada'),
+  Toronto         = (43.7833,  -79.4667, 'Canada'),
+  Fraserdale      = (49.8833,  -81.5667, 'Canada'),
+  Estevan_Point   = (49.5833, -126.8667, 'Canada'),
+  Sable_Island    = (43.9333,  -60.0167, 'Canada'),
+  Lac_Labiche     = (54.95,   -112.45, 'Canada'),
+#  Behchoko        = (62.8025, -116.0464, 'Canada'),
+#  Cambridge_Bay   = (69.1172, -105.0531, 'Canada'),
+#  Chapais         = (49.7833, -74.85, 'Canada'),
+#  Churchill       = (58.7692, -94.16917, 'Canada'),
+#  Inuvik          = (68.3617, -133.7306, 'Canada'),
+#  Turkey_Point    = (42.681047,-80.332289, 'Canada'),
+)
+
+
 # Grab data from a single file
 def read_station_data (filename):
 
@@ -35,9 +59,9 @@ def read_station_data (filename):
 # A routine to open the netcdf data (and decode the station axis)
 def ec_station_opener (filename):
   from pygeode.formats import netcdf
-  from station_data import decode_station_data
+  from station_data import station_axis_load_hook
   data = netcdf.open(filename)
-  data = decode_station_data(data)
+  data = station_axis_load_hook(data)
   return data
 
 # Data interface for EC station observations
@@ -45,26 +69,6 @@ class EC_Station_Data (object):
   name = 'EC'
   title = 'EC Station Obs'
 
-  obs_locations = dict(
-    East_Trout_Lake = (54.3500, -104.9833, 'Canada'),
-    Chibougamau     = (49.6833,  -74.3333, 'Canada'),
-    Alert           = (82.4500,  -62.5167, 'Canada'),
-    Esther          = (51.6825, -110.2603, 'Canada'),
-    Bratts_Lake     = (51.2,    -104.7   , 'Canada'),
-    Egbert          = (44.2167,  -79.7833, 'Canada'),
-    Candle_Lake     = (53.9833, -105.1167, 'Canada'),
-    Toronto         = (43.7833,  -79.4667, 'Canada'),
-    Fraserdale      = (49.8833,  -81.5667, 'Canada'),
-    Estevan_Point   = (49.5833, -126.8667, 'Canada'),
-    Sable_Island    = (43.9333,  -60.0167, 'Canada'),
-    Lac_Labiche     = (54.95,   -112.45, 'Canada'),
-#    Behchoko        = (62.8025, -116.0464, 'Canada'),
-#    Cambridge_Bay   = (69.1172, -105.0531, 'Canada'),
-#    Chapais         = (49.7833, -74.85, 'Canada'),
-#    Churchill       = (58.7692, -94.16917, 'Canada'),
-#    Inuvik          = (68.3617, -133.7306, 'Canada'),
-#    Turkey_Point    = (42.681047,-80.332289, 'Canada'),
-  )
 
   def __init__ (self):
     from pygeode.formats import netcdf
@@ -72,7 +76,7 @@ class EC_Station_Data (object):
     from pygeode.dataset import Dataset
     from common import common_taxis, fix_timeaxis
     from glob import glob
-    from station_data import make_station_axis, encode_station_data
+    from station_data import make_station_axis, station_axis_save_hook
     from pygeode.var import Var
     import numpy as np
     from data_interface import DataInterface
@@ -80,7 +84,7 @@ class EC_Station_Data (object):
     cachefile = './ec_obs.nc'
     if not exists(cachefile):
       data = {}
-      for station in self.obs_locations.keys():
+      for station in obs_locations.keys():
        for field,units,indir in [['CO2','ppm',"/wrk1/EC-CAS/surface/EC-2013"], ['CH4','ppb',"/wrk1/EC-CAS/surface_ch4/EC-2013"]]:
         filename = '%s/%s-%s-Hourly*.DAT'%(indir,station,field)
         # Needed for Esther CH4 data (to expand wildcard above)
@@ -102,7 +106,7 @@ class EC_Station_Data (object):
       time = vars[0].time
 
       # Create a station axis
-      stations = make_station_axis(self.obs_locations)
+      stations = make_station_axis(obs_locations)
 
       fields = list(set(field for station,field,stat in data.iterkeys()))
       stats = list(set(stat for station,field,stat in data.iterkeys()))
@@ -125,7 +129,7 @@ class EC_Station_Data (object):
       data = fix_timeaxis(data)
 
       # Save the data
-      data = encode_station_data(data)
+      data = station_axis_save_hook(data)
       netcdf.save(cachefile,data)
 
       # End of cache file creation

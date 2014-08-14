@@ -197,7 +197,7 @@ def gem_load_cache_hook (dataset):
   from pygeode.formats.fstd import detect_fstd_axes
   data = list(dataset.vars)
   detect_fstd_axes(data)
-  return data[0]
+  return data
 
 
 
@@ -214,7 +214,7 @@ class GEM_Data (object):
     self.name = name
     self.title = title
     fallback_dirs = [tmpdir] if tmpdir is not None else []
-    cache = Cache(dir = indir + "/nc_cache", fallback_dirs=fallback_dirs, global_prefix=name+"_", load_hook=gem_load_cache_hook)
+    cache = Cache(dir = indir + "/nc_cache", fallback_dirs=fallback_dirs, global_prefix=name+"_", load_hooks=[gem_load_cache_hook])
 
     files = []
 

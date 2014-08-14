@@ -37,6 +37,12 @@ class Station (Axis):
       else:
         indices.append(stations.index(station))
     return indices
+  # Need to override _getitem_asvar, because slicing a string array with None
+  # causes numpy to add an extra dimension?
+  def _getitem_asvar (self, slices):
+    from pygeode.axis import Axis
+    if slices is None: return self
+    return Axis._getitem_asvar (self, slices)
 
 del Axis
 
@@ -75,38 +81,53 @@ def decode_string_var (var):
 # Hook for encoding to a file
 # Roughly follows CF Metadata conventions for station data
 # http://cf-pcmdi.llnl.gov/documents/cf-conventions/1.6/aphs02.html
-def station_axis_save_hook (var):
-  from pygeode.dataset import asdataset, Dataset
+# NOTE: Assumes there is only one station axis to encode.
+def station_axis_save_hook (dataset):
   import numpy as np
   from pygeode.var import Var
   from pygeode.axis import Axis
   from copy import copy
 
-  if not var.hasaxis('station'): return asdataset(var)
+  outvars = []
+  station = None  # start with no station axis
+  for var in dataset:
 
-  var = copy(var)  # Shallow copy (so we can muck with the metadata)
-  var.atts = dict(var.atts)
+    if not var.hasaxis('station'):
+      outvars.append(var)
+      continue
 
-  # Consruct a generic 'station' axis (with a simple integer dimension)
-  station = Axis(name='station', values=np.arange(len(var.station), dtype='int32'))
+    var = copy(var)  # Shallow copy (so we can muck with the metadata)
+    var.atts = dict(var.atts)
 
-  # Get the lat/lon coordinates on this generic axis
-  coordinates = [Var(axes=[station], values=val, name=name) for name,val in var.station.auxarrays.items()]
+    # First station data encountered?
+    # Need to construct a station axis
+    if station is None:
+      # Consruct a generic 'station' axis (with a simple integer dimension)
+      station = Axis(name='station', values=np.arange(len(var.station), dtype='int32'))
 
-  var.atts['coordinates'] = ' '.join(c.name for c in coordinates)
+      # Get the lat/lon coordinates on this generic axis
+      coordinates = [Var(axes=[station], values=val, name=name) for name,val in var.station.auxarrays.items()]
 
-  # Encode string-based coordinates (such as country)
-  coordinates = [encode_string_var(c) if c.dtype.name.startswith('string') else c for c in coordinates]
+      coordinate_names = ' '.join(c.name for c in coordinates)
 
-  # Construct a 2D character array to hold station names
-  station_name = encode_string_var(var.station)
+      # Encode string-based coordinates (such as country)
+      coordinates = [encode_string_var(c) if c.dtype.name.startswith('string') else c for c in coordinates]
 
-  # Replace the station axis in the var (with the simple one created here)
-  var = var.replace_axes(station=station)
-  station_name = station_name.replace_axes(station=station)
+      # Construct a 2D character array to hold station names
+      station_name = encode_string_var(var.station)
 
-  # Return everything needed to recreate the Station coordinate
-  return Dataset([var, station_name]+coordinates)
+    var.atts['coordinates'] = coordinate_names
+
+    # Replace the station axis in the var (with the simple one created here)
+    var = var.replace_axes(station=station)
+    station_name = station_name.replace_axes(station=station)
+
+    # Return everything needed to recreate the Station coordinate
+    outvars.append(var)
+
+  if station is not None:
+    outvars.extend([station_name]+coordinates)
+  return outvars
 
 #TODO: Create a special PyGeode axis class that will write only a dimension
 # entry, no other metadata (BareDimension?)
@@ -118,32 +139,37 @@ def station_axis_load_hook (dataset):
 
   # If there is no station axis, then nothing to do.
   if not any(v.hasaxis('station') for v in dataset.vars):
-    return dataset.vars[0]
+    return dataset.vars
 
-  # Find the actual variable (the only thing with a 'coordinates' attribute
-  var = [v for v in dataset if 'coordinates' in v.atts][0]
+  outvars = []
 
-  # Make a shallow copy of the var (to edit the metadata in-place)
-  var = copy(var)
-  var.atts = dict(var.atts)
+  # Find the actual variables (the things with a 'coordinates' attribute
+  invars = [v for v in dataset if 'coordinates' in v.atts]
 
-  # Find all the coordinates
-  coordinates = {}
-  for c in var.atts['coordinates'].split():
-    if c in dataset:
-      coordinates[c] = dataset[c].get()
-    elif c+"_name" in dataset:
-      coordinates[c] = decode_string_var(dataset[c+"_name"]).get()
-  del var.atts['coordinates']
+  for var in invars:
+    # Make a shallow copy of the var (to edit the metadata in-place)
+    var = copy(var)
+    var.atts = dict(var.atts)
 
-  # Convert the 2D character array to a 1D string array
-  station_name = decode_string_var(dataset.station_name)
-  station = Station(values=station_name.values, **coordinates)
+    # Find all the coordinates
+    coordinates = {}
+    for c in var.atts['coordinates'].split():
+      if c in dataset:
+        coordinates[c] = dataset[c].get()
+      elif c+"_name" in dataset:
+        coordinates[c] = decode_string_var(dataset[c+"_name"]).get()
+    del var.atts['coordinates']
 
-  # Replace the station axis
-  var = var.replace_axes(station=station)
+    # Convert the 2D character array to a 1D string array
+    station_name = decode_string_var(dataset.station_name)
+    station = Station(values=station_name.values, **coordinates)
 
-  return var
+    # Replace the station axis
+    var = var.replace_axes(station=station)
+
+    outvars.append(var)
+
+  return outvars
 
 # Given a dictionary of obs locations, construct a station axis.
 def make_station_axis (obs_locations):
@@ -160,38 +186,4 @@ def make_station_axis (obs_locations):
     countries.append(country)
 
   return Station(values=stations, lat=lats, lon=lons, country=countries)
-
-# Prep a station dataset for writing to netcdf
-def encode_station_data (dataset):
-  from pygeode.dataset import Dataset
-  out_vars = []
-  for i, var in enumerate(dataset.vars):
-    stuff = station_axis_save_hook(var)
-    # Append the data
-    # Include station auxiliary data once only
-    if i == 0:
-      out_vars.extend(stuff.vars)
-    else:
-      out_vars.append(stuff[var.name])
-
-  return Dataset(out_vars)
-
-# Reconstruct station data from a netcdf file
-def decode_station_data (dataset):
-  from pygeode.dataset import Dataset
-
-  # Collect the station auxiliary data (anything without a 'coordinates' attribute?)
-  station_meta = [var for var in dataset.vars if 'coordinates' not in var.atts]
-
-  # Similarly, collect the actual variables
-  in_vars = [var for var in dataset.vars if 'coordinates' in var.atts]
-
-  # Get the station axis
-  station = station_axis_load_hook(dataset).station
-
-  # Construct a dataset with the variables, and the decoded station axis
-  dataset = Dataset(in_vars)
-  dataset = dataset.replace_axes(station=station)
-
-  return dataset
 

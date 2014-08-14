@@ -103,8 +103,8 @@ failures = []
 from timeseries import timeseries
 # CO2 Timeseries
 try:
-  timeseries (datasets=[experiment,ec_obs,control], fieldname='CO2', units='ppm', outdir=outdir)
-  timeseries (datasets=[experiment,gaw_obs,control], fieldname='CO2', units='ppm', outdir=outdir)
+  timeseries (models=[experiment,control], obs=ec_obs, fieldname='CO2', units='ppm', outdir=outdir)
+  timeseries (models=[experiment,control], obs=gaw_obs, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['CO2 timeseries', e])
 # CH4 Timeseries
@@ -267,19 +267,19 @@ except Exception as e:
 
 import TimeSeriesHist as TSH
 try:
-  TSH.timeseries(models=[experiment,ec_obs],fieldname='CO2', units='ppm', outdir=outdir)
+  TSH.timeseries(models=[experiment],obs=ec_obs,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['timeseries histogram', e])
 
 import TimeSeriesAlternate as TSA
 try:
-  TSA.timeseries(models=[experiment,ec_obs],fieldname='CO2', units='ppm', outdir=outdir)
+  TSA.timeseries(models=[experiment],obs=ec_obs,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['time series alternate', e])
 
 from TimeSeriesRBP import Barplot
 try:
-  Barplot(models=[experiment,control,gaw_obs],fieldname='CO2', units='ppm', outdir=outdir)
+  Barplot(models=[experiment,control], obs=gaw_obs,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['time series rbp', e])
 

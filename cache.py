@@ -3,19 +3,6 @@
 
 # Helper methods:
 
-# A default hook for saving data to a file.
-# All it does is wrap the var into a dataset.
-def default_save_hook (var):
-  from pygeode.dataset import asdataset
-  return asdataset(var)
-
-# A default hook for loading data back from a file.
-# All it does is return the first variable it finds (assuming there's only one variable
-# in the file).
-def default_load_hook (dataset):
-  return dataset.vars[0]
-
-
 # Create a "unique" string to identify the spatial domain of a variable
 # and the units.
 def domain_hash (var):
@@ -53,12 +40,12 @@ class CacheWriteError (IOError): pass
 # The Cache object:
 
 class Cache (object):
-  def __init__ (self, dir, fallback_dirs=[], global_prefix='', save_hook=default_save_hook, load_hook=default_load_hook, split_time=True):
+  def __init__ (self, dir, fallback_dirs=[], global_prefix='', save_hooks=[], load_hooks=[], split_time=True):
     from os.path import exists, isdir
     from os import mkdir, remove
 
-    self.save_hook = save_hook
-    self.load_hook = load_hook
+    self.save_hooks = save_hooks
+    self.load_hooks = load_hooks
     self.global_prefix = global_prefix
     self.split_time = split_time
 
@@ -94,13 +81,16 @@ class Cache (object):
 
 
   # Write out the data
-  def write (self, var, prefix):
+  def write (self, var, prefix, save_hooks=[], load_hooks=[], **kwargs):
     from os.path import exists
     from os import remove
     from pygeode.formats import netcdf
     from pygeode.formats.multifile import open_multi
+    from pygeode.dataset import asdataset
     from common import fix_timeaxis
     import numpy as np
+
+    split_time = kwargs.get('split_time',self.split_time)
 
     # Make sure the data is saved with a consistent start date
     # (makes it easier to plot timeseries data from multiple sources)
@@ -121,14 +111,18 @@ class Cache (object):
       filename = self.full_path(prefix + ".nc")
       if not exists(filename):
         filename = self.full_path(prefix + ".nc", writeable=True)
-        dataset = self.save_hook(var)
+        dataset = asdataset([var])
+        for save_hook in save_hooks + self.save_hooks:
+          dataset = asdataset(save_hook(dataset))
         try:
           netcdf.save(filename, dataset)
         except KeyboardInterrupt:
           remove(filename)
           raise
       dataset = netcdf.open(filename)
-      var = self.load_hook(dataset)
+      for load_hook in self.load_hooks + load_hooks:
+        dataset = asdataset(load_hook(dataset))
+      var = dataset.vars[0]
       return var
 
     taxis = var.getaxis('time')
@@ -180,7 +174,7 @@ class Cache (object):
 
       # Split into 1 file per timestep?
       # Useful for model output, where you might extend the data with extra timesteps later.
-      if self.split_time is True:
+      if split_time is True:
 
         # Loop over each time, save into a cache file
         from pygeode.progress import PBar
@@ -193,7 +187,9 @@ class Cache (object):
           filename = self.full_path(prefix+"_"+datestring+".nc", writeable=True)
 
           # Save the data
-          data = var(i_time=i)
+          data = asdataset([var(i_time=i)])
+          for save_hook in save_hooks + self.save_hooks:
+            data = asdataset(save_hook(data))
           try:
             netcdf.save(filename, data)
           except KeyboardInterrupt:
@@ -210,6 +206,11 @@ class Cache (object):
         var = open_multi(filenames, format=netcdf, pattern="_"+pattern+"\.nc")[var.name]
         # Use a consistent time axis (override the start date imposed by open_multi)
         var = fix_timeaxis(var)
+
+        dataset = asdataset([var])
+        for load_hook in self.load_hooks + load_hooks:
+          dataset = asdataset(load_hook(dataset))
+        var = dataset.vars[0]
 
       # (end of time split)
 
@@ -229,7 +230,9 @@ class Cache (object):
       var.atts['high'] = high
 
       # Apply any hooks for saving the var (extra metadata encoding?)
-      dataset = self.save_hook(var)
+      dataset = asdataset([var])
+      for save_hook in save_hooks + self.save_hooks:
+        dataset = asdataset(save_hook(dataset))
       # Re-save back to a big file
       try:
         netcdf.save (bigfile, dataset)
@@ -243,7 +246,9 @@ class Cache (object):
     dataset = netcdf.open(bigfile)
 
     # Apply any hooks for loading the var (extra metadata decoding?)
-    var = self.load_hook(dataset)
+    for load_hook in self.load_hooks + load_hooks:
+      dataset = asdataset(load_hook(dataset))
+    var = dataset.vars[0]
 
     return var
 

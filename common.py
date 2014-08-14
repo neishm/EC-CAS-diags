@@ -60,10 +60,11 @@ def best_type (x):
 def common_taxis (*invars):
   import numpy as np
   from pygeode.timeaxis import StandardTime
+  from pygeode.timeutils import reltime
   from pygeode import Var
   newvars = []
   startdate=dict(year=1950)  # arbitrary (but consistent) start date
-  oldtimes = [var.time.reltime(units='hours',startdate=startdate) for var in invars]
+  oldtimes = [reltime(var.time,units='hours',startdate=startdate) for var in invars]
   firsttime = min(times[0] for times in oldtimes)
   lasttime = max(times[-1] for times in oldtimes)
   newtimes = np.arange(firsttime, lasttime+1)
