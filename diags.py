@@ -267,7 +267,7 @@ except Exception as e:
 
 import TimeSeriesHist as TSH
 try:
-  TSH.timeseries(models=[experiment,ec_obs],fieldname='CO2', units='ppm', outdir=outdir)
+  TSH.timeseries(models=[experiment],obs=ec_obs,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['timeseries histogram', e])
 
