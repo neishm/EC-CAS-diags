@@ -279,7 +279,7 @@ except Exception as e:
 
 from TimeSeriesRBP import Barplot
 try:
-  Barplot(models=[experiment,control,gaw_obs],fieldname='CO2', units='ppm', outdir=outdir)
+  Barplot(models=[experiment,control], obs=gaw_obs,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['time series rbp', e])
 
