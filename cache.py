@@ -116,7 +116,7 @@ class Cache (object):
           dataset = asdataset(save_hook(dataset))
         try:
           netcdf.save(filename, dataset)
-        except KeyboardInterrupt:
+        except Exception:
           remove(filename)
           raise
       dataset = netcdf.open(filename)
@@ -192,7 +192,7 @@ class Cache (object):
             data = asdataset(save_hook(data))
           try:
             netcdf.save(filename, data)
-          except KeyboardInterrupt:
+          except Exception:
             # Clean up the partial file, if the user aborts the process.
             remove(filename)
             raise
@@ -236,7 +236,7 @@ class Cache (object):
       # Re-save back to a big file
       try:
         netcdf.save (bigfile, dataset)
-      except KeyboardInterrupt:
+      except Exception:
         remove(bigfile)
         raise
 
