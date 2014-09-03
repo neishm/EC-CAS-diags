@@ -108,13 +108,20 @@ class TiledMovie(Movie):
     self.title = title
     self.subtitles = subtitles
     self.shape = tuple(shape)
+    self.width = width
+    self.height = height
 
   def render (self, fig, fields, datestring):
+    # Need to allocate space at the top for the title
+    title_size = 20
+    # Assume we need about 2.5 times the font height
+    fig.subplots_adjust (top = 1-2.5*title_size/72./self.height)
+
     for k,field in enumerate(fields):
       shape = self.shape+(k+1,)
       ax = fig.add_subplot(*shape)
       self.render_panel (ax, field, k)
-    fig.suptitle(self.title+'  -  '+datestring, fontsize=20)
+    fig.suptitle(self.title+'  -  '+datestring, fontsize=title_size)
 
   # Implement this method for each subclass.
   def render_panel (self, axis, field, n):
