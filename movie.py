@@ -30,6 +30,10 @@ class Movie(object):
     from os import makedirs
     from pygeode.progress import PBar
 
+    # Early exit if the final movie file already exists.
+    moviefile = "%s/%s.avi"%(outdir,prefix)
+    if exists(moviefile): return
+
     # Find a common time range
     # NOTE: assuming all time axes have the same reference date
     start = max(f.time[0] for f in self.fields if f.hasaxis('time'))
@@ -79,10 +83,8 @@ class Movie(object):
     pbar.update(100)
 
     # Generate the movie
-    moviefile = "%s/%s.avi"%(outdir,prefix)
     from os import system
-    if not exists(moviefile):
-      system("mencoder -o %s mf://%s/*.png -ovc lavc -lavcopts vcodec=msmpeg4v2"%(moviefile, imagedir))
+    system("mencoder -o %s mf://%s/*.png -ovc lavc -lavcopts vcodec=msmpeg4v2"%(moviefile, imagedir))
 
   # Render the given field snapshots into the figure, producing one frame of
   # the movie.
