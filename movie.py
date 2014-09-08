@@ -57,7 +57,14 @@ class Movie(object):
       day = fields[0].time.day[0]
       hour = fields[0].time.hour[0]
       minute = fields[0].time.minute[0]
-      outfile = imagedir + "/%04d%02d%02d%02d%02d.png"%(year,month,day,hour,minute)
+      # If the minutes are all '0', then don't use minutes in the filenames.
+      # Allows backwards compatibility with previous version of the diagnostics.
+      if list(set(minute)) == [0]:
+        outfile = imagedir + "/%04d%02d%02d%02d.png"%(year,month,day,hour)
+      # Otherwise, need to include minute information to distinguish each
+      # timestep.
+      else:
+        outfile = imagedir + "/%04d%02d%02d%02d%02d.png"%(year,month,day,hour,minute)
 
 #      datestring = taxis.formatvalue(t, fmt="$Y-$m-$d ${H}:${M}")
       datestring = "%04d-%02d-%02d %02d:%02d"%(year,month,day,hour,minute)
