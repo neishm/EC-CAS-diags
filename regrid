@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+
+import argparse
+from os.path import exists, isdir
+import os
+import importlib  # For dynamic module importing
+from pygeode.dataset import asdataset
+from pygeode.timeaxis import Time
+
+# Parse the command-line arguments
+
+parser = argparse.ArgumentParser(description="A command-line wrapper for running the flux data converter.")
+parser.add_argument ("converter", help="The converter routine to use.", choices=["ct_co2"])
+parser.add_argument ("infiles", help="The input file(s).", nargs='+', metavar="infile")
+parser.add_argument ("--gridfile", help="A file that contains the target grid to convert the data to.  If there is more than one grid defined in the file, you can optionally specify a variable with the particular grid you want.", metavar="FILE[:VAR]", required=True)
+parser.add_argument ("--gridfilefmt", help="The format of the gridfile.  Default is fstd.", choices=["netcdf","fstd"], default="fstd")
+#parser.add_argument ("--gridvar", help="A particular field in the gridfile that contains the target grid.  Only needed if the gridfile contains multiple grids.")
+parser.add_argument ("--outdir", help="The directory to write the output files.  If not specified, the current directory is used.", metavar="DIR", default="./")
+parser.add_argument ("--outfmt", help="The format to use for the output files.  Default is fstd.", choices=["netcdf","fstd"], default="fstd")
+
+parser.add_argument ("--no-split", help="Don't split the data into individual files for each timestep.  Instead, write only one output file for each input file.", action="store_true", dest="nosplit")
+
+args = parser.parse_args()
+
+
+# Get the target grid
+# Should be from a file
+if args.gridfile is not None:
+  gridfile = args.gridfile
+  gridvar = None
+  gridfilefmt = importlib.import_module("pygeode.formats."+args.gridfilefmt)
+  # Was a variable specified?
+  if ':' in gridfile:
+    gridfile, gridvar = gridfile.split(':',1)
+  if not exists(gridfile):
+    parser.error("Grid file '%s' does not exist."%(gridfile))
+  griddata = gridfilefmt.open(gridfile)
+  if gridvar is not None:
+    if gridvar not in griddata:
+      parser.error("Grid file '%s' does not contain a field named '%s'."%(gridfile,gridvar))
+    griddata = griddata[gridvar]
+  lat = getattr(griddata,'lat',None)
+  lon = getattr(griddata,'lon',None)
+  if lat is None or lon is None:
+    parser.error("Unable to find a lat/lon grid in '%s'."%gridfile)
+  del griddata
+
+# Otherwise, no target grid, so no regridding.
+else:
+  raise Exception ("This should not happen.")
+
+
+outdir = args.outdir
+if not outdir.endswith("/"):
+  outdir = outdir + "/"
+if not isdir(outdir):
+  parser.error("'%s' is not a valid directory."%outdir)
+if not os.access(outdir, os.W_OK):
+  parser.error("You do not have permission to write to directory '%s'."%outdir)
+
+# There is a 1:1 mapping between converter names and the module (file) names
+converter = importlib.import_module(args.converter)
+
+outfmt = importlib.import_module("pygeode.formats."+args.outfmt)
+
+# Do the conversion
+for infile in args.infiles:
+  # Make sure the input files exist
+  if not exists(infile):
+    parser.error("Input file '%s' does not exist."%infile)
+  print "=>", infile
+  data = converter.convert(infile, lat, lon)
+  data = asdataset(data)
+
+  # Set the typvar, deet
+  for field in data:
+    field.atts['typvar'] = "F"
+    field.atts['deet'] = 3600
+
+  # Convert to 32-bit values to save space
+  data = data.as_type('float32')
+
+  # Write out the data
+  timeaxis = data.vars[0].getaxis(Time)
+  for i in range(len(timeaxis)):
+    year = timeaxis.year[i]
+    month = timeaxis.month[i]
+    day = timeaxis.day[i]
+    hour = timeaxis.hour[i]
+    filename = outdir+"area_%04d%02d%02d%02d"%(year,month,day,hour)
+    if args.nosplit:
+      outfmt.save(filename, data)  # Write all the data
+      break  # Only write once
+    else:
+      # Write this chunk of data
+      chunk = data(year=year,month=month,day=day,hour=hour)
+      # Force the IP2 value to be the same as the hour of day
+      # (for compatibility with the emissions preprocessor)
+      #TODO: call prepare_records() instead, once we have an updated version of
+      # the pygeode.fstd module.
+      if args.outfmt == "fstd":
+        from pygeode.formats.fstd import prepare_records
+        from pygeode.formats.fstd_core import write_records
+        # Convert to FSTD record structure
+        records = prepare_records(chunk)
+        tictoc = (records['nomvar'] == '>>  ') | (records['nomvar'] == '^^  ')
+        # Update the IP2 of all non-coordinate records to contain the hour
+        # of the day.
+        records['ip2'][-tictoc] = hour
+        # Also, set 'deet' to zero, to be compatible with the Fortran version
+        # of the regridder
+        records['deet'] = 0
+        write_records (filename, records)
+
+      else:  # All other formats
+        outfmt.save(filename, chunk)
+
