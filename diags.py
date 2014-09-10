@@ -62,7 +62,7 @@ if control_dir is not None and exists(control_dir+"/model"):
   control_dir += "/model"
 
 # Get the data
-from gem import GEM_Data
+from products.gem import GEM_Data
 flux_dir = args.emissions
 experiment = GEM_Data(experiment_dir, flux_dir=flux_dir, name=experiment_name, title=experiment_title, tmpdir=experiment_tmpdir)
 if control_dir is not None:
@@ -72,15 +72,15 @@ else:
 
 # CarbonTracker data
 #TODO: limit CT data to time range of experiment.
-from carbontracker import CarbonTracker_Data
+from products.carbontracker import CarbonTracker_Data
 carbontracker = CarbonTracker_Data(tmpdir=args.tmpdir)
-from carbontracker_ch4 import CarbonTracker_CH4
+from products.carbontracker_ch4 import CarbonTracker_CH4
 carbontracker_ch4 = CarbonTracker_CH4(tmpdir=args.tmpdir)
 
 # Observation data
-from ec_station_data import EC_Station_Data
+from products.ec_station_data import EC_Station_Data
 ec_obs = EC_Station_Data()
-from gaw_station_data import GAW_Station_Data
+from products.gaw_station_data import GAW_Station_Data
 gaw_obs = GAW_Station_Data()
 
 
