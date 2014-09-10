@@ -20,7 +20,8 @@ def ct_file2date(filename):
   date['day']   = int(date['day'])
   return date
 
-def ct_opener (filename):
+# Method to open a single file
+def open (filename):
   from pygeode.formats import netcdf
   data = netcdf.open(filename)
   # The time axis in the file is wrong!
@@ -36,7 +37,9 @@ def ct_opener (filename):
   data = data.replace_axes(time=taxis)
   return data
 
-def ct_products (data):
+# Method to decode an opened dataset (standardize variable names, and add any
+# extra info needed (pressure values, cell area, etc.)
+def decode (data):
   from pygeode.axis import ZAxis
 
   # Don't worry about non-CH4 variables.
@@ -123,6 +126,11 @@ def ct_products (data):
 
   return data
 
+# Method to find all files in the given directory, which can be accessed
+# through this interface.
+def find_files (dirname):
+  from glob import glob
+  return glob(dirname+"/????????.nc")
 
 
 # Define the data interface for CarbonTracker
@@ -147,8 +155,8 @@ class CarbonTracker_CH4 (object):
     molefractions = glob("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc")
 
     manifest = self.cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files (molefractions, opener=ct_opener, manifest=manifest)
+    self.data = DataInterface.from_files (molefractions, opener=open, manifest=manifest)
 
-    self.data = DataInterface(map(ct_products,self.data))
+    self.data = DataInterface(map(decode,self.data))
 
 
