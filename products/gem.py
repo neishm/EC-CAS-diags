@@ -1,17 +1,29 @@
-# Opener for EC-CAS data
-def eccas_opener (filename):
+
+# Method to open a single file
+def open (filename):
   from pygeode.formats import fstd
   return fstd.open(filename, raw_list=True)
 
 
-def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
+# Method to decode an opened dataset (standardize variable names, and add any
+# extra info needed (pressure values, cell area, etc.)
+def decode (dataset, dry_air=False):
   from pygeode.formats import fstd
   from pygeode.ufunc import exp, log
   from pygeode.var import concat, Var
   from pygeode.axis import ZAxis
+  from pygeode.dataset import asdataset
+
+  dataset = asdataset(dataset)
 
   # Convert to a dictionary (for referencing by variable name)
   data = dict((var.name,var) for var in dataset)
+
+  # Determine if we have ensemble spread data from EC-CAS
+  chmstd = False
+  for var in data.itervalues():
+    if var.atts.get('etiket') == 'STDDEV':
+      chmstd = True
 
   # Temporarily blacklist GZ and P0 from ensemble spread files.
   if chmstd:
@@ -35,7 +47,6 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
 
   # EC-CAS specific conversions:
   suffix = ""
-  #if chmmean: suffix = "_ensemblemean"
   if chmstd: suffix = "_ensemblespread"
   conversions += (
     ('ECO2', 'CO2_flux', 'g(C) s-1'),
@@ -184,16 +195,46 @@ def eccas_products (dataset, chmmean=False, chmstd=False, dry_air=False):
 
   return data
 
-# Shortcuts functions with chmmean/chmstd flags set
-def eccas_chmmean_products (dataset):
-  return eccas_products(dataset, chmmean=True)
-def eccas_chmstd_products (dataset):
-  return eccas_products(dataset, chmstd=True)
+
+# Method to find all files in the given directory, which can be accessed
+# through this interface.
+def find_files (dirname):
+  from os.path import exists
+  from glob import glob
+
+  files = []
+
+  ##############################
+  # Model output
+  ##############################
+
+  if exists (dirname+'/model'):
+    model_dir = dirname+'/model'
+  else:
+    model_dir = dirname
+
+  files.extend(glob(model_dir+"/[0-9]*_[0-9]*"))
+  files.extend(glob(model_dir+"/km[0-9]*_[0-9]*"))
+  files.extend(glob(model_dir+"/dm[0-9]*_[0-9]*"))
+  files.extend(glob(model_dir+"/pm[0-9]*_[0-9]*"))
+  files.extend(glob(model_dir+"/k[0-9]*_[0-9]*"))
+  files.extend(glob(model_dir+"/d[0-9]*_[0-9]*"))
+  files.extend(glob(model_dir+"/p[0-9]*_[0-9]*"))
+  # Omit 0h forecasts
+  files = [f for f in files if not f.endswith('_000') and not f.endswith('_000h')]
+
+  ##############################
+  # Fluxes
+  ##############################
+
+  files.extend(glob(dirname+"/area_??????????"))
+
+  return files
 
 
 # Wrapper for getting GEM data back out of a cached netcdf file
 # (This will hook into the cache, to preserve FSTD axes after save/reloading)
-def gem_load_cache_hook (dataset):
+def load_hook (dataset):
   from pygeode.formats.fstd import detect_fstd_axes
   data = list(dataset.vars)
   detect_fstd_axes(data)
@@ -214,7 +255,7 @@ class GEM_Data (object):
     self.name = name
     self.title = title
     fallback_dirs = [tmpdir] if tmpdir is not None else []
-    cache = Cache(dir = indir + "/nc_cache", fallback_dirs=fallback_dirs, global_prefix=name+"_", load_hooks=[gem_load_cache_hook])
+    cache = Cache(dir = indir + "/nc_cache", fallback_dirs=fallback_dirs, global_prefix=name+"_", load_hooks=[load_hook])
 
     files = []
 
@@ -243,27 +284,27 @@ class GEM_Data (object):
 
     # Ensemble mean data
     chmmean_files = [f for f in files if f.endswith('_chmmean')]
-    chmmean_data = DataInterface.from_files(chmmean_files, opener=eccas_opener, manifest=manifest)
+    chmmean_data = DataInterface.from_files(chmmean_files, opener=open, manifest=manifest)
     # Apply the conversions & transformations
-    chmmean_data = DataInterface(map(eccas_chmmean_products,chmmean_data))
+    chmmean_data = DataInterface(map(decode,chmmean_data))
 
     # Ensemble spread data
     chmstd_files = [f for f in files if f.endswith('_chmstd')]
-    chmstd_data = DataInterface.from_files(chmstd_files, opener=eccas_opener, manifest=manifest)
+    chmstd_data = DataInterface.from_files(chmstd_files, opener=open, manifest=manifest)
     # Apply the conversions & transformations
-    chmstd_data = DataInterface(map(eccas_chmstd_products,chmstd_data))
+    chmstd_data = DataInterface(map(decode,chmstd_data))
 
     # Area emissions
     flux_files = [f for f in files if '/area_' in f]
-    flux_data = DataInterface.from_files(flux_files, opener=eccas_opener, manifest=manifest)
+    flux_data = DataInterface.from_files(flux_files, opener=open, manifest=manifest)
     # Apply the conversions & transformations
-    flux_data = DataInterface(map(eccas_products,flux_data))
+    flux_data = DataInterface(map(decode,flux_data))
 
     # Forward model data
     forward_files = sorted(set(files)-set(chmmean_files)-set(chmstd_files)-set(flux_files))
-    forward_data = DataInterface.from_files(forward_files, opener=eccas_opener, manifest=manifest)
+    forward_data = DataInterface.from_files(forward_files, opener=open, manifest=manifest)
     # Apply the conversions & transformations
-    forward_data = DataInterface([eccas_products(fd, dry_air=dry_air) for fd in forward_data])
+    forward_data = DataInterface([decode(fd, dry_air=dry_air) for fd in forward_data])
 
     # Fix the area emissions data, to have the proper lat/lon
     lat = forward_data.datasets[0].lat
