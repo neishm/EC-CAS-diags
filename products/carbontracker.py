@@ -12,7 +12,12 @@ B_interface = np.array(B_interface)
 
 # Helper methods
 
-def ct_products (data):
+# Method to open a single file
+from pygeode.formats.netcdf import open
+
+# Method to decode an opened dataset (standardize variable names, and add any
+# extra info needed (pressure values, cell area, etc.)
+def decode (data):
   from pygeode.axis import ZAxis
 
   # Don't worry about the date_components and decimal_date domain?
@@ -123,6 +128,19 @@ def ct_products (data):
   return data
 
 
+# Method to find all files in the given directory, which can be accessed
+# through this interface.
+def find_files (dirname):
+  from glob import glob
+  molefractions = glob(dirname+"/CT????.molefrac_glb3x2_????-??-??.nc")
+  fluxes = glob(dirname+"/CT????.flux1x1.????????.nc")
+
+  # Blacklist the 2009-08-07 molefractions file, which has bad data at 10:30
+  # (For CT2010 dataset)
+  molefractions = [m for m in molefractions if "2009-08-07" not in m]
+
+  return molefractions+fluxes
+
 
 
 # Define the data interface for CarbonTracker
@@ -153,5 +171,5 @@ class CarbonTracker_Data (object):
     manifest = self.cache.full_path("manifest", writeable=True)
     self.data = DataInterface.from_files (molefractions+fluxes, opener=netcdf.open, manifest=manifest)
 
-    self.data = DataInterface(map(ct_products,self.data))
+    self.data = DataInterface(map(decode,self.data))
 
