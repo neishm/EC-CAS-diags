@@ -49,65 +49,25 @@ def get_xcol (experiment, fieldname, units):
   # Convert to the required units
   xcol = convert(xcol,units)
 
-  xcol.name = experiment.title  # Verbose name for plotting
   return xcol
 
 
 def xcol (models, fieldname, units, outdir):
-  import matplotlib.pyplot as pl
-  from contouring import get_global_range, get_contours
-  from pygeode.plot import plotvar
-  from pygeode.progress import PBar
-  from os.path import exists
-  from os import makedirs
+  from movie import ContourMovie
 
   plotname = 'X'+fieldname
-
   models = [m for m in models if m is not None]
+  prefix = '_'.join(m.name for m in models) + '_' + plotname
 
-  imagedir = outdir + "/images_%s_%s"%('_'.join(m.name for m in models),plotname)
-  if not exists(imagedir): makedirs(imagedir)
+  fields = [get_xcol(m,fieldname,units) for m in models]
+  subtitles = [m.title for m in models]
+  title = '%s (in %s)'%(plotname,units)
 
-  model_data = [get_xcol(m,fieldname,units) for m in models]
+  aspect_ratio = 0.4  # height / width for each panel
 
-  low, high = get_global_range (*model_data)
-  clevs = get_contours(low, high)
+  shape = (len(fields),1)
 
-  # Generate each individual frame
-  #assert len(model_data) in (1,2,3)
-  if len(model_data) == 3:
-    fig = pl.figure(figsize=(8,10))
-    n = 3
-  elif len(model_data) == 1:
-    fig = pl.figure(figsize=(10,5))
-    n = 1
-  else:
-    fig = pl.figure(figsize=(10,8))
-    n = 2
+  movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio)
 
-  times = model_data[0].time.values
-  pbar = PBar()
-  print "Saving %s images"%plotname
-  for i,t in enumerate(times):
+  movie.save (outdir=outdir, prefix=prefix)
 
-    taxis = model_data[0].time(time=t)
-    year, month, day, hour = taxis.year[0], taxis.month[0], taxis.day[0], taxis.hour[0]
-    outfile = imagedir + "/%04d%02d%02d%02d.png"%(year,month,day,hour)
-
-    if exists(outfile): continue
-
-    fig.clear()
-
-    for k in range(n):
-      ax = pl.subplot(n,1,k+1)
-      plotvar (model_data[k](time=t), ax=ax, clevs=clevs)
-
-    fig.savefig(outfile)
-
-    pbar.update(i*100./len(times))
-
-  # Generate the movie
-  moviefile = "%s/%s_%s.avi"%(outdir,'_'.join(m.name for m in models),plotname)
-  from os import system
-  if not exists(moviefile):
-    system("mencoder -o %s mf://%s/*.png -ovc lavc -lavcopts vcodec=msmpeg4v2"%(moviefile, imagedir))
