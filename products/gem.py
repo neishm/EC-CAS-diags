@@ -1,6 +1,6 @@
 
 # Method to open a single file
-def open (filename):
+def open_file (filename):
   from pygeode.formats import fstd
   return fstd.open(filename, raw_list=True)
 
@@ -284,25 +284,25 @@ class GEM_Data (object):
 
     # Ensemble mean data
     chmmean_files = [f for f in files if f.endswith('_chmmean')]
-    chmmean_data = DataInterface.from_files(chmmean_files, opener=open, manifest=manifest)
+    chmmean_data = DataInterface.from_files(chmmean_files, opener=open_file, manifest=manifest)
     # Apply the conversions & transformations
     chmmean_data = DataInterface(map(decode,chmmean_data))
 
     # Ensemble spread data
     chmstd_files = [f for f in files if f.endswith('_chmstd')]
-    chmstd_data = DataInterface.from_files(chmstd_files, opener=open, manifest=manifest)
+    chmstd_data = DataInterface.from_files(chmstd_files, opener=open_file, manifest=manifest)
     # Apply the conversions & transformations
     chmstd_data = DataInterface(map(decode,chmstd_data))
 
     # Area emissions
     flux_files = [f for f in files if '/area_' in f]
-    flux_data = DataInterface.from_files(flux_files, opener=open, manifest=manifest)
+    flux_data = DataInterface.from_files(flux_files, opener=open_file, manifest=manifest)
     # Apply the conversions & transformations
     flux_data = DataInterface(map(decode,flux_data))
 
     # Forward model data
     forward_files = sorted(set(files)-set(chmmean_files)-set(chmstd_files)-set(flux_files))
-    forward_data = DataInterface.from_files(forward_files, opener=open, manifest=manifest)
+    forward_data = DataInterface.from_files(forward_files, opener=open_file, manifest=manifest)
     # Apply the conversions & transformations
     forward_data = DataInterface([decode(fd, dry_air=dry_air) for fd in forward_data])
 

@@ -13,7 +13,7 @@ B_interface = np.array(B_interface)
 # Helper methods
 
 # Method to open a single file
-from pygeode.formats.netcdf import open
+from pygeode.formats.netcdf import open as open_file
 
 # Method to decode an opened dataset (standardize variable names, and add any
 # extra info needed (pressure values, cell area, etc.)
@@ -169,7 +169,7 @@ class CarbonTracker_Data (object):
     molefractions = [m for m in molefractions if "2009-08-07" not in m]
 
     manifest = self.cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files (molefractions+fluxes, opener=netcdf.open, manifest=manifest)
+    self.data = DataInterface.from_files (molefractions+fluxes, opener=open_file, manifest=manifest)
 
     self.data = DataInterface(map(decode,self.data))
 

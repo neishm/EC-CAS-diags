@@ -21,7 +21,7 @@ def ct_file2date(filename):
   return date
 
 # Method to open a single file
-def open (filename):
+def open_file (filename):
   from pygeode.formats import netcdf
   data = netcdf.open(filename)
   # The time axis in the file is wrong!
@@ -155,7 +155,7 @@ class CarbonTracker_CH4 (object):
     molefractions = glob("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc")
 
     manifest = self.cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files (molefractions, opener=open, manifest=manifest)
+    self.data = DataInterface.from_files (molefractions, opener=open_file, manifest=manifest)
 
     self.data = DataInterface(map(decode,self.data))
 
