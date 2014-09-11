@@ -239,9 +239,9 @@ class AxisManager (object):
   def get_axis_union (self, axes):
     key = tuple(sorted(map(id,axes)))
     if key in self._unions: return self._unions[key]
-    values = map(self.flatten_axis, axes)
-    values = reduce(set.union, values, set())
-    union = self.unflatten_axis (axes[0], values)
+    values = map(self.settify_axis, axes)
+    values = reduce(frozenset.union, values, frozenset())
+    union = self.unsettify_axis (axes[0], values)
     self._unions[key] = union
     return union
 
@@ -249,9 +249,9 @@ class AxisManager (object):
   def get_axis_intersection (self, axes):
     key = tuple(sorted(map(id,axes)))
     if key in self._intersections: return self._intersections[key]
-    values = map(self.flatten_axis, axes)
-    values = reduce(set.intersection, values, set(values[0]))
-    intersection = self.unflatten_axis (axes[0], values)
+    values = map(self.settify_axis, axes)
+    values = reduce(frozenset.intersection, values, values[0])
+    intersection = self.unsettify_axis (axes[0], values)
     self._intersections[key] = intersection
     return intersection
 
