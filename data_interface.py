@@ -28,7 +28,11 @@ def scan_files (files, opener, manifest=None):
     with gzip.open(manifest,'r') as f:
       version = pickle.load(f)
       table = f.read()
-      table = pickle.loads(table)
+      try:
+        table = pickle.loads(table)
+      except ImportError:
+        version = None  # Unable to read the symbols, so treat this as an
+                        # incompatible version
     mtime = getmtime(manifest)
   if manifest is None or not exists(manifest) or version != MANIFEST_VERSION:
     table = {}
