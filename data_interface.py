@@ -385,8 +385,11 @@ class DataInterface (object):
     # Early termination if 2 or more axes are non-intersectable
     non_intersectable = 0
     for axis_name in axis_names:
-      a1 = axis_manager.settify_axis(d1.get_axis(axis_name))
-      a2 = axis_manager.settify_axis(d2.get_axis(axis_name))
+      a1 = d1.get_axis(axis_name)
+      a2 = d2.get_axis(axis_name)
+      if a1 is None or a2 is None: continue
+      a1 = axis_manager.settify_axis(a1)
+      a2 = axis_manager.settify_axis(a2)
       if len(a1 & a2) == 0:
         non_intersectable += 1
     if non_intersectable > 1:
