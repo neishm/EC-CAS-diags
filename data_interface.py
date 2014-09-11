@@ -114,6 +114,10 @@ class AxisManager (object):
     self._flattened_axes = {}
     self._unflattened_axes = {}
 
+    # For axes that are flattened and subsequently converted to a set
+    self._settified_axes = {}
+    self._unsettified_axes = {}
+
     # For union / intersection of axes
     self._unions = {}
     self._intersections = {}
@@ -173,6 +177,19 @@ class AxisManager (object):
     self._unflattened_axes.setdefault(type(axis),dict())[flat] = axis
     return flat
 
+  # Convert an axis to unordered set of tuples
+  def settify_axis (self, axis):
+    axis = self.lookup_axis(axis)
+    axis_id = id(axis)
+    if axis_id in self._settified_axes:
+      return self._settified_axes[axis_id]
+
+    out = frozenset(self.flatten_axis (axis))
+    self._settified_axes[axis_id] = out
+    self._unsettified_axes.setdefault(type(axis),dict())[out] = axis
+    return out
+
+
   # Convert some flattened coordinates back into an axis
   def unflatten_axis (self, sample, values):
     import numpy as np
@@ -202,6 +219,20 @@ class AxisManager (object):
 
     axis = self.lookup_axis(axis)
     self._unflattened_axes[type(sample)][key] = axis
+    return axis
+
+  # Convert some settified coordinates back into an axis
+  #TODO: store reverse _settified_axes as well?
+  # (and do same with unflatten_axis()?)
+  def unsettify_axis (self, sample, values):
+    # Check if we can already get one
+    key = values
+    axis = self._unsettified_axes.setdefault(type(sample),dict()).get(key,None)
+    if axis is not None: return axis
+
+    axis = self.unflatten_axis(sample, values)
+
+    self._unsettified_axes[type(sample)][key] = axis
     return axis
 
   # Merge axes together
@@ -346,6 +377,19 @@ class DataInterface (object):
       d1, d2 = d2, d1  # Swap
     else:
       return set()  # Nothing can be done
+
+    # Early termination if 2 or more axes are non-intersectable
+    non_intersectable = 0
+    for axis_name in axis_names:
+      a1 = axis_manager.settify_axis(d1.get_axis(axis_name))
+      a2 = axis_manager.settify_axis(d2.get_axis(axis_name))
+      if len(a1 & a2) == 0:
+        non_intersectable += 1
+    if non_intersectable > 1:
+      return set()  # We will alway have an empty domain after a merge
+                    # over any single axis.
+
+
     # Give the domains the same axes (broadcasting to extra axes)
     d2 = cls.Domain([d2.get_axis(a.name) or a for a in d1.axes])
     for merge_axis_name in axis_names:
