@@ -86,35 +86,6 @@ def common_taxis (*invars):
   return newvars
 
 
-# Limit the vars to the region where they all overlap.
-# Assuming the axes need to match on type only.
-# NOTE: an exact match is required here - no error tolerance.
-# NOTE: also assuming the values define the axis - will need to ensure things like time axis have the same start date, units before calling this method.
-def overlapping (*varlist):
-  from warnings import warn
-  from pygeode.view import simplify
-
-  # Get an initial set of axes
-  axes = dict([a.__class__, a.values] for v in varlist for a in v.axes)
-
-  # We need the axes to have unique values, or the mapping is ill defined.
-  for axis_class in axes.keys():
-    for var in varlist:
-      if var.hasaxis(axis_class):
-        values = var.getaxis(axis_class).values
-        if len(set(values)) != len(values):
-          warn ("non-unique '%s' axis found - cannot define a unique mapping between vars.  Ignoring this axis."%axis_class.__name__)
-          del axes[axis_class]
-          break
-
-  # Reduce the axes to the common overlap
-  for var in varlist:
-    for a in var.axes:
-      axis_class = a.__class__
-      #TODO
-
-  return varlist
-
 # Adjust a lat/lon grid from -180,180 to 0,360
 def rotate_grid (data):
   from pygeode.var import concat
