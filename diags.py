@@ -109,7 +109,7 @@ except Exception as e:
   failures.append(['CO2 timeseries', e])
 # CH4 Timeseries
 try:
-  timeseries (datasets=[experiment,ec_obs,control], fieldname='CH4', units='ppb', outdir=outdir)
+  timeseries (models=[experiment,control], obs=ec_obs, fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['CH4 timeseries', e])
 
