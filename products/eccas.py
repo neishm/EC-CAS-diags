@@ -3,11 +3,6 @@ from gem import GEM_Data
 class ECCAS_Data(GEM_Data):
 
   field_list = GEM_Data.field_list + (
-    ('ECO2', 'CO2_flux', 'g(C) s-1'),
-    ('ECBB', 'CO2_fire_flux', 'g(C) s-1'),
-    ('ECFF', 'CO2_fossil_flux', 'g(C) s-1'),
-    ('ECOC', 'CO2_ocean_flux', 'g(C) s-1'),
-    ('ECLA', 'CO2_bio_flux', 'g(C) s-1'),
     ('CO2', 'CO2', 'ug(C) kg(air)-1'),
     ('CBB', 'CO2_fire', 'ug(C) kg(air)-1'),
     ('CFF', 'CO2_fossil', 'ug(C) kg(air)-1'),
@@ -57,19 +52,6 @@ class ECCAS_Data(GEM_Data):
 
     return dataset
 
-
-  # Method to find all files in the given directory, which can be accessed
-  # through this interface.
-  @staticmethod
-  def find_files (dirname):
-    from glob import glob
-
-    files = GEM_Data.find_files(dirname)
-
-    # Search for flux data as well
-    files.extend(glob(dirname+"/area_??????????"))
-
-    return files
 
 # Instantiate the interface
 interface = ECCAS_Data()
