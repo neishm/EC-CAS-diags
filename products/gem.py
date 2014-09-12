@@ -195,6 +195,71 @@ class GEM_Data(object):
     return data
 
 
+  # Method to re-encode data into the source context
+  # (e.g., rename fields to what would be originally in these kinds of files)
+  def encode (self, dataset):
+    # Convert to a dictionary (for referencing by variable name)
+    data = dict((var.name,var) for var in dataset)
+
+    # Convert to GEM-friendly field names and units
+    for gem_name, standard_name, units in self.field_list:
+      if standard_name in data:
+        var = data.pop(standard_name)
+        var = convert(var, units)
+        data[gem_name] = var
+
+    # Remove generated fields
+    data.pop('air_pressure',None)
+    data.pop('dp',None)
+
+    # Check for any stragglers, remove them
+    for varname in data.keys():
+      if all(varname != name for n, name, u in self.field_list):
+        from warnings import warn
+        warn ("Dropping unrecognized field '%s'"%varname)
+        data.pop(varname)
+
+    # General cleanup stuff
+
+    # Make sure the variables have the appropriate names
+    for name, var in data.iteritems():  var.name = name
+
+    # Convert to a list
+    data = list(data.values())
+
+    return data
+
+
+  # Method to write data to file(s).
+  @staticmethod
+  def write (datasets, dirname):
+    from pygeode.dataset import asdataset
+    from pygeode.formats import fstd, fstd_core
+    from os.path import exists
+    if len(datasets) > 1:
+      raise ValueError("Unable to handle multiple datasets yet")
+
+    dataset = asdataset(datasets[0])
+    # Write the data into one file per hour / forecast
+    #TODO: make this prettier
+    for year in sorted(set(dataset.time.year)):
+      dataset_y = dataset(year=year)
+      for month in sorted(set(dataset_y.time.month)):
+        dataset_ym = dataset_y(month=month)
+        for day in sorted(set(dataset_ym.time.day)):
+          dataset_ymd = dataset_ym(day=day)
+          for hour in sorted(set(dataset_ymd.time.hour)):
+            dataset_ymdh = dataset_ymd(hour=hour)
+            if hasattr(dataset,'forecast'):
+              for forecast in dataset_ymdh.forecast:
+                dataset_ymdhf = dataset_ymdh(forecast=forecast)
+                filename = dirname+"/%04d%02d%02d%02d_%03d"%(year,month,day,hour,forecast)
+                fstd.save(filename,dataset_ymdhf)
+            else:
+              filename = dirname+"/%04d%02d%02d%02d_000"%(year,month,day,hour)
+              fstd.save(filename,dataset_ymdh)
+
+
 # Instantiate this interface
 interface = GEM_Data()
 
