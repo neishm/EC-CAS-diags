@@ -62,7 +62,7 @@ if control_dir is not None and exists(control_dir+"/model"):
   control_dir += "/model"
 
 # Get the data
-from products.gem import GEM_Data
+from products.eccas import GEM_Data
 flux_dir = args.emissions
 experiment = GEM_Data(experiment_dir, flux_dir=flux_dir, name=experiment_name, title=experiment_title, tmpdir=experiment_tmpdir)
 if control_dir is not None:
