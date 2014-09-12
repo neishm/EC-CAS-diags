@@ -1,4 +1,35 @@
 
+# Define all the possible variables we might have in this dataset.
+# (original_name, standard_name, units)
+field_list = (
+  ('GZ', 'geopotential_height', 'dam'),
+  ('P0', 'surface_pressure', 'hPa'),
+  ('TT', 'air_temperature', 'K'),
+  ('HU', 'specific_humidity', 'kg(H2O) kg(air)-1'),
+  ('DX', 'cell_area', 'm2'),
+)
+
+field_list += (
+  ('ECO2', 'CO2_flux', 'g(C) s-1'),
+  ('ECBB', 'CO2_fire_flux', 'g(C) s-1'),
+  ('ECFF', 'CO2_fossil_flux', 'g(C) s-1'),
+  ('ECOC', 'CO2_ocean_flux', 'g(C) s-1'),
+  ('ECLA', 'CO2_bio_flux', 'g(C) s-1'),
+  ('CO2', 'CO2', 'ug(C) kg(air)-1'),
+  ('CBB', 'CO2_fire', 'ug(C) kg(air)-1'),
+  ('CFF', 'CO2_fossil', 'ug(C) kg(air)-1'),
+  ('COC', 'CO2_ocean', 'ug(C) kg(air)-1'),
+  ('CLA', 'CO2_bio', 'ug(C) kg(air)-1'),
+  ('CO2B', 'CO2_background', 'ug(C) kg(air)-1'),
+  ('CH4', 'CH4', 'ug kg(air)-1'),
+  ('CH4B', 'CH4_background', 'ug kg(air)-1'),
+  ('CHFF', 'CH4_fossil', 'ug kg(air)-1'),
+  ('CHBB', 'CH4_fire', 'ug kg(air)-1'),
+  ('CHOC', 'CH4_ocean', 'ug kg(air)-1'),
+  ('CHNA', 'CH4_natural', 'ug kg(air)-1'),
+  ('CHAG', 'CH4_agriculture', 'ug kg(air)-1'),
+)
+
 # Method to open a single file
 def open_file (filename):
   from pygeode.formats import fstd
@@ -25,52 +56,14 @@ def decode (dataset, dry_air=False):
     if var.atts.get('etiket') == 'STDDEV':
       chmstd = True
 
-  # Temporarily blacklist GZ and P0 from ensemble spread files.
-  if chmstd:
-    del data["GZ"]
-    del data["P0"]
-
   # Special case: tracer is in mass mixing ratio w.r.t. dry air
   # Put it in moist air to be consistent with other experiments.
   if dry_air and 'HU' in data:
     data['CO2'] *= (1 - data['HU'])
 
-  # Convert some standard quantities
-  # (old_name, new_name, scale, offset, units)
-  conversions = (
-    ('GZ', 'geopotential_height', 'dam'),
-    ('P0', 'surface_pressure', 'hPa'),
-    ('TT', 'air_temperature', 'K'),
-    ('HU', 'specific_humidity', 'kg(H2O) kg(air)-1'),
-    ('DX', 'cell_area', 'm2'),
-  )
-
-  # EC-CAS specific conversions:
-  suffix = ""
-  if chmstd: suffix = "_ensemblespread"
-  conversions += (
-    ('ECO2', 'CO2_flux', 'g(C) s-1'),
-    ('ECBB', 'CO2_fire_flux', 'g(C) s-1'),
-    ('ECFF', 'CO2_fossil_flux', 'g(C) s-1'),
-    ('ECOC', 'CO2_ocean_flux', 'g(C) s-1'),
-    ('ECLA', 'CO2_bio_flux', 'g(C) s-1'),
-    ('CO2', 'CO2'+suffix, 'ug(C) kg(air)-1'),
-    ('CBB', 'CO2_fire'+suffix, 'ug(C) kg(air)-1'),
-    ('CFF', 'CO2_fossil'+suffix, 'ug(C) kg(air)-1'),
-    ('COC', 'CO2_ocean'+suffix, 'ug(C) kg(air)-1'),
-    ('CLA', 'CO2_bio'+suffix, 'ug(C) kg(air)-1'),
-    ('CO2B', 'CO2_background'+suffix, 'ug(C) kg(air)-1'),
-    ('CH4', 'CH4', 'ug kg(air)-1'),
-    ('CH4B', 'CH4_background', 'ug kg(air)-1'),
-    ('CHFF', 'CH4_fossil', 'ug kg(air)-1'),
-    ('CHBB', 'CH4_fire', 'ug kg(air)-1'),
-    ('CHOC', 'CH4_ocean', 'ug kg(air)-1'),
-    ('CHNA', 'CH4_natural', 'ug kg(air)-1'),
-    ('CHAG', 'CH4_agriculture', 'ug kg(air)-1'),
-  )
-
   # Do the conversions
-  for old_name, new_name, units in conversions:
+  for old_name, new_name, units in field_list:
+    if chmstd: new_name += "_ensemblespread"
     if old_name in data:
       var = data.pop(old_name)
       var.atts['units'] = units
