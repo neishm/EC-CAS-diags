@@ -236,28 +236,25 @@ class GEM_Data(object):
     from pygeode.dataset import asdataset
     from pygeode.formats import fstd, fstd_core
     from os.path import exists
+    from common import datelist
     if len(datasets) > 1:
       raise ValueError("Unable to handle multiple datasets yet")
-
     dataset = asdataset(datasets[0])
+
+    dates = datelist(dataset.time)
+
     # Write the data into one file per hour / forecast
     #TODO: make this prettier
-    for year in sorted(set(dataset.time.year)):
-      dataset_y = dataset(year=year)
-      for month in sorted(set(dataset_y.time.month)):
-        dataset_ym = dataset_y(month=month)
-        for day in sorted(set(dataset_ym.time.day)):
-          dataset_ymd = dataset_ym(day=day)
-          for hour in sorted(set(dataset_ymd.time.hour)):
-            dataset_ymdh = dataset_ymd(hour=hour)
-            if hasattr(dataset,'forecast'):
-              for forecast in dataset_ymdh.forecast:
-                dataset_ymdhf = dataset_ymdh(forecast=forecast)
-                filename = dirname+"/%04d%02d%02d%02d_%03d"%(year,month,day,hour,forecast)
-                fstd.save(filename,dataset_ymdhf)
-            else:
-              filename = dirname+"/%04d%02d%02d%02d_000"%(year,month,day,hour)
-              fstd.save(filename,dataset_ymdh)
+    for date in dates:
+      dataset_ymdh = dataset(year=date.year, month=date.month, day=date.day, hour=date.hour)
+      if hasattr(dataset,'forecast'):
+        for forecast in dataset_ymdh.forecast:
+          dataset_ymdhf = dataset_ymdh(forecast=forecast)
+          filename = dirname+"/%04d%02d%02d%02d_%03d"%(date.year,date.month,date.day,date.hour,forecast)
+          fstd.save(filename,dataset_ymdhf)
+      else:
+        filename = dirname+"/%04d%02d%02d%02d_000"%(date.year,date.month,date.day,date.hour)
+        fstd.save(filename,dataset_ymdh)
 
 
 # Instantiate this interface
