@@ -30,7 +30,7 @@ def scan_files (files, opener, manifest=None):
       table = f.read()
       try:
         table = pickle.loads(table)
-      except ImportError:
+      except (ImportError, AttributeError, EOFError):
         version = None  # Unable to read the symbols, so treat this as an
                         # incompatible version
     mtime = getmtime(manifest)
