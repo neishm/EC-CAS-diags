@@ -18,6 +18,10 @@ class ECCAS_Flux_Data(GEM_Data):
     from glob import glob
     return glob(dirname+"/area_??????????")
 
+  # Tell the parent GEM interface what filenames to use for writing data.
+  @staticmethod
+  def _fstd_date2filename (date, forecast):
+    return "area_%04d%02d%02d%02d"%(date.year,date.month,date.day,date.hour)
 
 # Instantiate the interface
 interface = ECCAS_Flux_Data()

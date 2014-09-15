@@ -176,11 +176,6 @@ class GEM_Data(object):
     # Omit 0h forecasts
     files = [f for f in files if not f.endswith('_000') and not f.endswith('_000h')]
 
-    ##############################
-    # Fluxes
-    ##############################
-
-    files.extend(glob(dirname+"/area_??????????"))
 
     return files
 
@@ -231,8 +226,7 @@ class GEM_Data(object):
 
 
   # Method to write data to file(s).
-  @staticmethod
-  def write (datasets, dirname):
+  def write (self, datasets, dirname):
     from pygeode.dataset import asdataset
     from pygeode.formats import fstd, fstd_core
     import numpy as np
@@ -259,7 +253,7 @@ class GEM_Data(object):
       dateo = int(fstd_core.stamp2date(r['dateo'])[0])
       date = cmc_start + timedelta(seconds=dateo)
       forecast = r['npas'] * r['deet'] / 3600
-      filename = dirname+"/%04d%02d%02d%02d_%03d"%(date.year,date.month,date.day,date.hour,forecast)
+      filename = dirname + "/" + self._fstd_date2filename(date,forecast)
       output.setdefault(filename,[]).append(i)
     for filename in output:
       output[filename] = records[coord_output + output[filename]]
@@ -270,6 +264,13 @@ class GEM_Data(object):
       fstd_core.write_records(filename, output[filename])
 
 
+  # This little stub is needed by all GEM-related interfaces to indicate how
+  # to convert dates to filenames.
+  # Input: datetime object and forecast hour
+  # Output: filename
+  @staticmethod
+  def _fstd_date2filename (date, forecast):
+    return "%04d%02d%02d%02d_%03d"%(date.year,date.month,date.day,date.hour,forecast)
 
 # Instantiate this interface
 interface = GEM_Data()
