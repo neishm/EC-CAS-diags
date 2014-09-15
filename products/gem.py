@@ -193,6 +193,8 @@ class GEM_Data(object):
   # Method to re-encode data into the source context
   # (e.g., rename fields to what would be originally in these kinds of files)
   def encode (self, dataset):
+    from common import convert
+
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
 
