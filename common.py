@@ -91,14 +91,27 @@ def common_taxis (*invars):
 # Adjust a lat/lon grid from -180,180 to 0,360
 def rotate_grid (data):
   from pygeode.var import concat
-  east = data(lon=(-180,0))
-  west = data(lon=(0,180))
+  from pygeode.axis import Lon
+  import numpy as np
+  lons = data.lon.values
+  # Check if we're already rotated
+  if all (lon >= 0 for lon in lons): return data
 
-  oldlons = east.lon
-  newlons = type(oldlons)(oldlons.values + 360)
-  east = east.replace_axes(lon=newlons)
+  # Split the data into east / west components
+  east_slice = [slice(None)] * data.naxes
+  west_slice = [slice(None)] * data.naxes
+  ilon = data.whichaxis('lon')
+  east_slice[ilon] = slice(np.where(lons<0)[0][-1]+1,None)
+  west_slice[ilon] = slice(0,np.where(lons<0)[0][-1]+1)
+  east_data = data.slice[east_slice]
+  west_data = data.slice[west_slice]
 
-  return concat(west, east)
+  # Update the west longtidues
+  west_data = west_data.replace_axes(lon=Lon(west_data.lon.values + 360))
+
+  # Concatenate the pieces together again.
+  return concat(east_data, west_data)
+
 
 # Remove extra longitude from global data (if it wraps around)
 def remove_extra_longitude (data):

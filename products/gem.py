@@ -237,8 +237,12 @@ class GEM_Data(object):
     from pygeode.formats import fstd, fstd_core
     import numpy as np
     from datetime import datetime, timedelta
+    from common import rotate_grid
 
     cmc_start = datetime(year=1980, month=1, day=1)
+
+    # Rotate all longitudes to be in range (0,360)
+    datasets = [[rotate_grid(d) for d in dataset] for dataset in datasets]
 
     # Collect everything in a set of FSTD records
     records = []
