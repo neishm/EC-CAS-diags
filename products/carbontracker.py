@@ -68,6 +68,11 @@ class CT_Data(object):
       data['CO2_flux'] = data['CO2_fossil_flux'] + data['CO2_bio_flux'] + data['CO2_ocean_flux'] + data['CO2_fire_flux']
       data['CO2_flux'].atts['units'] = data['CO2_fire_flux'].atts['units']
 
+    # Add species name for all products (to assist in things like unit conversion)
+    for varname in data:
+      if varname.startswith('CO2'):
+        data[varname].atts['specie'] = 'CO2'
+
     # Fudge the time axis for all flux products.
     for varname in data:
       if varname.endswith('_flux'):

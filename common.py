@@ -27,7 +27,7 @@ def convert (var, units, context=None):
     raise ValueError ("Variable '%s' has no units defined, can't do unit conversion!"%var.name)
   if var.atts['units'] == units: return var  # No conversion necessary
   name = var.name
-  if context is None:  context = var.name
+  if context is None:  context = var.atts.get('specie') or var.name
   scale = conversion_factor (var.atts['units'], units, context)
   var = var * scale
   var.atts['units'] = units

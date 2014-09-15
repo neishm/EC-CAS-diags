@@ -47,6 +47,14 @@ class ECCAS_Data(GEM_Data):
     if 'CO2_bio' in data:
       data['CO2_bio'] -= conversion_factor('100 ppm', 'ug(C) kg(air)-1', context='CO2')
 
+    # Add species name for all products (to assist in things like unit conversion)
+    for varname in data:
+      if varname.startswith('CO2'):
+        data[varname].atts['specie'] = 'CO2'
+      elif varname.startswith('CH4'):
+        data[varname].atts['specie'] = 'CH4'
+
+
     # Convert froma dictionary back to a list
     dataset = list(data.values())
 

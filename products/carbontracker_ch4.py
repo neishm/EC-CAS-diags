@@ -84,6 +84,12 @@ class CTCH4_Data(object):
       data['CH4'].atts['units'] = data['CH4_background'].atts['units']
 
 
+    # Add species name for all products (to assist in things like unit conversion)
+    for varname in data:
+      if varname.startswith('CH4'):
+        data[varname].atts['specie'] = 'CH4'
+
+
     # Other (more heavily derived) products
 
     if 'air_pressure' in data:
