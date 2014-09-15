@@ -216,7 +216,7 @@ class GEM_Data(object):
 
     # Check for any stragglers, remove them
     for varname in data.keys():
-      if all(varname != name for n, name, u in self.field_list):
+      if all(varname != name for name, n, u in self.field_list):
         warn ("Dropping unrecognized field '%s'"%varname)
         data.pop(varname)
 
