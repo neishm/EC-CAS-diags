@@ -235,26 +235,40 @@ class GEM_Data(object):
   def write (datasets, dirname):
     from pygeode.dataset import asdataset
     from pygeode.formats import fstd, fstd_core
-    from os.path import exists
-    from common import datelist
-    if len(datasets) > 1:
-      raise ValueError("Unable to handle multiple datasets yet")
-    dataset = asdataset(datasets[0])
+    import numpy as np
+    from datetime import datetime, timedelta
 
-    dates = datelist(dataset.time)
+    cmc_start = datetime(year=1980, month=1, day=1)
 
-    # Write the data into one file per hour / forecast
-    #TODO: make this prettier
-    for date in dates:
-      dataset_ymdh = dataset(year=date.year, month=date.month, day=date.day, hour=date.hour)
-      if hasattr(dataset,'forecast'):
-        for forecast in dataset_ymdh.forecast:
-          dataset_ymdhf = dataset_ymdh(forecast=forecast)
-          filename = dirname+"/%04d%02d%02d%02d_%03d"%(date.year,date.month,date.day,date.hour,forecast)
-          fstd.save(filename,dataset_ymdhf)
-      else:
-        filename = dirname+"/%04d%02d%02d%02d_000"%(date.year,date.month,date.day,date.hour)
-        fstd.save(filename,dataset_ymdh)
+    # Collect everything in a set of FSTD records
+    records = []
+    for dataset in datasets:
+      records.append(fstd.prepare_records(dataset))
+    records = np.concatenate(records)
+
+    # Eliminate duplicate records
+    #(TODO)
+
+    # Organize into different files (don't write yet)
+    output = dict()
+    coord_output = []
+    for i,r in enumerate(records):
+      if r['nomvar'] in ('!!  ','>>  ','^^  ', 'HY  '):
+        coord_output.append(i)
+        continue
+      dateo = int(fstd_core.stamp2date(r['dateo'])[0])
+      date = cmc_start + timedelta(seconds=dateo)
+      forecast = r['npas'] * r['deet'] / 3600
+      filename = dirname+"/%04d%02d%02d%02d_%03d"%(date.year,date.month,date.day,date.hour,forecast)
+      output.setdefault(filename,[]).append(i)
+    for filename in output:
+      output[filename] = records[coord_output + output[filename]]
+
+    # Write out the file(s)
+    for filename in sorted(output.keys()):
+      print '=>', filename
+      fstd_core.write_records(filename, output[filename])
+
 
 
 # Instantiate this interface
