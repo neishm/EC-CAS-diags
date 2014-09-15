@@ -194,6 +194,7 @@ class GEM_Data(object):
   # (e.g., rename fields to what would be originally in these kinds of files)
   def encode (self, dataset):
     from common import convert
+    from warnings import warn
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
@@ -202,7 +203,11 @@ class GEM_Data(object):
     for gem_name, standard_name, units in self.field_list:
       if standard_name in data:
         var = data.pop(standard_name)
-        var = convert(var, units)
+        try:
+          var = convert(var, units)
+        except ValueError as e:
+          warn ("Unable to encode '%s' to '%s': %s"%(standard_name, gem_name, e))
+          continue
         data[gem_name] = var
 
     # Remove generated fields
@@ -212,7 +217,6 @@ class GEM_Data(object):
     # Check for any stragglers, remove them
     for varname in data.keys():
       if all(varname != name for n, name, u in self.field_list):
-        from warnings import warn
         warn ("Dropping unrecognized field '%s'"%varname)
         data.pop(varname)
 
