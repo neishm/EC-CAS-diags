@@ -116,6 +116,7 @@ def rotate_grid (data):
 # Remove extra longitude from global data (if it wraps around)
 def remove_extra_longitude (data):
   import numpy as np
+  if not data.hasaxis('lon'): return data
   v1 = data.lon.values[0]
   v2 = data.lon.values[-1]
   if np.allclose((v2-v1)%360, 0.):
@@ -123,6 +124,22 @@ def remove_extra_longitude (data):
     slices[data.whichaxis('lon')] = slice(0,len(data.lon)-1)
     data = data.slice[slices]
   return data
+
+# Add an extra longitude for global data
+def add_repeated_longitude (data):
+  import numpy as np
+  from pygeode.axis import Lon
+  from pygeode.var import concat
+  if not data.hasaxis('lon'): return data
+  v1 = data.lon.values[0]
+  v2 = data.lon.values[-1]
+  # Check if we already have a repeated longitude
+  if np.allclose((v2-v1)%360, 0.): return data
+  # Use the same data as 0 degree longitude (but treat it as 360 degrees)
+  extra = data(lon=v1)
+  extra = extra.replace_axes(lon=Lon([v1+360]))
+
+  return concat(data, extra)
 
 # Compute grid cell areas (how GEM does it)
 def get_area (latvar, lonvar):

@@ -237,12 +237,23 @@ class GEM_Data(object):
     from pygeode.formats import fstd, fstd_core
     import numpy as np
     from datetime import datetime, timedelta
-    from common import rotate_grid
+    from common import rotate_grid, add_repeated_longitude
 
     cmc_start = datetime(year=1980, month=1, day=1)
 
     # Rotate all longitudes to be in range (0,360)
     datasets = [[rotate_grid(d) for d in dataset] for dataset in datasets]
+
+    # Add a repeated longitude, for global data
+    for i,dataset in enumerate(datasets):
+      dataset = list(dataset)
+      for j,var in enumerate(dataset):
+        if not var.hasaxis('lon'): continue
+        lon = var.lon.values
+        if lon[-1] + 2*(lon[-1]-lon[-2]) > 360.:
+          if lon[0] - 2*(lon[1]-lon[0]) < 0.:
+            dataset[j] = add_repeated_longitude(var)
+      datasets[i] = dataset
 
     # Collect everything in a set of FSTD records
     records = []
