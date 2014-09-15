@@ -23,6 +23,8 @@ define_conversion ('molefraction', 'mol mol(air)-1')
 
 # Convert a variable from one unit to another
 def convert (var, units, context=None):
+  if 'units' not in var.atts:
+    raise ValueError ("Variable '%s' has no units defined, can't do unit conversion!"%var.name)
   if var.atts['units'] == units: return var  # No conversion necessary
   name = var.name
   if context is None:  context = var.name
