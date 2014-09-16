@@ -278,6 +278,7 @@ class GEM_Data(object):
       output.setdefault(filename,[]).append(i)
     for filename in output:
       output[filename] = records[coord_output + output[filename]]
+      self._fstd_tweak_records(output[filename])
 
     # Write out the file(s)
     for filename in sorted(output.keys()):
@@ -292,6 +293,12 @@ class GEM_Data(object):
   @staticmethod
   def _fstd_date2filename (date, forecast):
     return "%04d%02d%02d%02d_%03d"%(date.year,date.month,date.day,date.hour,forecast)
+
+  # Any extra FSTD record tweaking would go into here.
+  # Input/Output: array of FSTD records
+  @staticmethod
+  def _fstd_tweak_records (records):
+    return  # Nothing done by default.
 
 # Instantiate this interface
 interface = GEM_Data()

@@ -23,6 +23,16 @@ class ECCAS_Flux_Data(GEM_Data):
   def _fstd_date2filename (date, forecast):
     return "area_%04d%02d%02d%02d"%(date.year,date.month,date.day,date.hour)
 
+  # We need to edit the FSTD records before they're written, in order to
+  # set IP2 to the hour of day (needed by the emissions preprocessor).
+  @staticmethod
+  def _fstd_tweak_records (records):
+    from pygeode.formats.fstd_core import stamp2date
+    # Select non-coordinate records (things that aren't already using IP2)
+    ind = (records['ip2'] == 0)
+    # Set IP2 to the hour
+    records['ip2'][ind] = (stamp2date(records['dateo'][ind]) / 3600) % 24
+
 # Instantiate the interface
 interface = ECCAS_Flux_Data()
 
