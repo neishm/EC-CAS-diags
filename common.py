@@ -234,6 +234,47 @@ def squash_forecasts(var):
   assert isinstance(var,Var), "Unhandled case '%s'"%type(var)
   return SquashForecasts(var)
 
+# Force a variable to take on a superset of axis coordinates.
+# E.g., extend a variable to a longer time period, putting missing values (NaN)
+# where the variable is not defined.
+# NOTE: assumes the coordinate values are in ascending order.
+from pygeode.var import Var
+class EmbiggenAxis (Var):
+  def __init__ (self, var, iaxis, new_axis):
+    from pygeode.var import Var, copy_meta
+    axes = list(var.axes)
+    axes[iaxis] = new_axis
+    Var.__init__ (self, axes, dtype=var.dtype)
+    copy_meta (var, self)
+    self._var = var
+    if var.dtype.name.startswith('float'):
+      self._blank = float('nan')
+    else:
+      self._blank = 0
+    self._iaxis = iaxis
+    self._valid_axis_values = set(var.axes[iaxis].values)
+  def getview (self, view, pbar):
+    import numpy as np
+    out = np.empty(view.shape, dtype=self.dtype)
+    out[()] = self._blank
+    # Find where we have actual data we can fill in.
+    iaxis = self._iaxis
+    requested_indices = view.integer_indices[iaxis]
+    requested_values = view.subaxis(iaxis).values
+    cromulent_values = sorted(self._valid_axis_values & set(requested_values))
+    cromulent_axis = view.axes[iaxis].withnewvalues(cromulent_values)
+    view = view.replace_axis(iaxis, cromulent_axis)
+    outsl = [slice(None)]*self.naxes
+    outsl[iaxis] = np.searchsorted(requested_values, cromulent_values)
+    out[outsl] = view.get(self._var)
+
+    return out
+del Var
+
+def embiggen_axis (var, old_axis, new_axis):
+  iaxis = var.whichaxis(old_axis)
+  return EmbiggenAxis(var, iaxis, new_axis)
+
 
 # Get a keyword / value that can be used to select a surface level for the
 # givem vertical axis.
