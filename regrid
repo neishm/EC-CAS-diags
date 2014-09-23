@@ -1,54 +1,100 @@
 #!/usr/bin/env python
 
+# Helper method - open the specified file(s) through the given model interface,
+# and return a model data object.
+# TODO: move this code out of here, so it can be shared by the diagnostic
+#       package as well.
+def read_model_data (model_name, files, manifest=None):
+  import importlib
+  from os.path import exists, isdir
+  from glob import glob
+  from data_interface import DataInterface
+  # Try to find a module with the given name
+  # Note: hyphens '-' are mangled to underscores '_' when looking for a module.
+  model = importlib.import_module("products."+model_name.replace('-','_'))
+  if isdir(files):
+    files = model.interface.find_files(files)
+  elif isinstance(files,str):
+    file_pattern = files
+    files = glob(file_pattern)
+    if len(files) == 0:
+      raise ValueError("No matches for '%s'."%file_pattern)
+  for f in files:
+    if not exists(f):
+      raise ValueError("File '%s' does not exist."%f)
+  data = DataInterface.from_files(files, opener=model.open_file, manifest=manifest)
+
+  # Filter the data (get standard field names, etc.)
+  data = data.filter(model.interface.decode)
+
+  return data
+
+# Helper method - write some data into file(s), using the specified model
+# interface.
+def write_model_data (model_name, dirname, datasets):
+  import importlib
+  from os.path import exists, isdir
+  from os import makedirs
+  # Try to find a module with the given name
+  model = importlib.import_module("products."+model_name)
+  # Make sure we have a directory to put this.
+  if not isdir(dirname):
+    if exists (dirname):
+      raise ValueError ("'%s' is not a directory."%dirname)
+    else: makedirs(dirname)
+  # Encode the data in a representation suitable for the given model type.
+  datasets = map(model.interface.encode, datasets)
+
+  # Write it out
+  model.interface.write (datasets, dirname)
+
+
+
+###########################
+##### The main script #####
+###########################
+
 import argparse
-from os.path import exists, isdir
-import os
-import importlib  # For dynamic module importing
-from pygeode.dataset import asdataset
-from pygeode.timeaxis import Time
 
 # Parse the command-line arguments
 
-parser = argparse.ArgumentParser(description="A command-line wrapper for running the flux data converter.")
-parser.add_argument ("converter", help="The converter routine to use.", choices=["ct_co2"])
-parser.add_argument ("infiles", help="The input file(s).", nargs='+', metavar="infile")
-parser.add_argument ("--gridfile", help="A file that contains the target grid to convert the data to.  If there is more than one grid defined in the file, you can optionally specify a variable with the particular grid you want.", metavar="FILE[:VAR]", required=True)
-parser.add_argument ("--gridfilefmt", help="The format of the gridfile.  Default is fstd.", choices=["netcdf","fstd"], default="fstd")
-#parser.add_argument ("--gridvar", help="A particular field in the gridfile that contains the target grid.  Only needed if the gridfile contains multiple grids.")
+parser = argparse.ArgumentParser(description="Converts model data from one format to another")
+parser.add_argument ("--intype", help="The type of input data to read.", choices=["carbontracker","carbontracker-ch4","gem","eccas","eccas-flux"], required=True)
+parser.add_argument ("--outtype", help="The type of output data to write.", choices=["gem","eccas","eccas-flux"], required=True)
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument ("--infiles", help="The input file(s).", nargs='+', metavar="INFILE")
+group.add_argument ("--indir", help="The input directory.  All relevant files from this directory are used.")
+parser.add_argument ("--gridfile", help="A file that contains the target grid to convert the data to.  Should be in the same format as the output.", required=True)
+parser.add_argument ("--gridvar", help="The variable in the --gridfile to use for the default target grid.  Only necessary if there is more than one set of coordinates in the --gridfile.")
 parser.add_argument ("--outdir", help="The directory to write the output files.  If not specified, the current directory is used.", metavar="DIR", default="./")
-parser.add_argument ("--outfmt", help="The format to use for the output files.  Default is fstd.", choices=["netcdf","fstd"], default="fstd")
-
-parser.add_argument ("--no-split", help="Don't split the data into individual files for each timestep.  Instead, write only one output file for each input file.", action="store_true", dest="nosplit")
+parser.add_argument ("--debug", help="Dump the full stack trace when there's an error.", action="store_true")
 
 args = parser.parse_args()
 
 
-# Get the target grid
-# Should be from a file
-if args.gridfile is not None:
-  gridfile = args.gridfile
-  gridvar = None
-  gridfilefmt = importlib.import_module("pygeode.formats."+args.gridfilefmt)
-  # Was a variable specified?
-  if ':' in gridfile:
-    gridfile, gridvar = gridfile.split(':',1)
-  if not exists(gridfile):
-    parser.error("Grid file '%s' does not exist."%(gridfile))
-  griddata = gridfilefmt.open(gridfile)
-  if gridvar is not None:
-    if gridvar not in griddata:
-      parser.error("Grid file '%s' does not contain a field named '%s'."%(gridfile,gridvar))
-    griddata = griddata[gridvar]
-  lat = getattr(griddata,'lat',None)
-  lon = getattr(griddata,'lon',None)
-  if lat is None or lon is None:
-    parser.error("Unable to find a lat/lon grid in '%s'."%gridfile)
-  del griddata
+# Try doing something
+# Fail gracefully if there's a problem
 
-# Otherwise, no target grid, so no regridding.
-else:
-  raise Exception ("This should not happen.")
+try:
 
+  # Get the target grid
+  grid_data = read_model_data (args.outtype, args.gridfile)
+  if args.gridvar is not None:
+    try:
+      default_grid = grid_data.find_best(args.gridvar).axes
+    except KeyError:
+      raise ValueError ("Unable to find field '%s' in the gridfile."%args.gridvar)
+  else:
+    default_grid = grid_data.datasets[0].axes
+
+
+except Exception as e:
+  from sys import exit
+  if args.debug: raise
+  print "Error: %s"%e
+  exit(1)
+
+quit()
 
 outdir = args.outdir
 if not outdir.endswith("/"):
