@@ -23,9 +23,11 @@ define_conversion ('molefraction', 'mol mol(air)-1')
 
 # Convert a variable from one unit to another
 def convert (var, units, context=None):
+  if 'units' not in var.atts:
+    raise ValueError ("Variable '%s' has no units defined, can't do unit conversion!"%var.name)
   if var.atts['units'] == units: return var  # No conversion necessary
   name = var.name
-  if context is None:  context = var.name
+  if context is None:  context = var.atts.get('specie') or var.name
   scale = conversion_factor (var.atts['units'], units, context)
   var = var * scale
   var.atts['units'] = units
@@ -86,50 +88,35 @@ def common_taxis (*invars):
   return newvars
 
 
-# Limit the vars to the region where they all overlap.
-# Assuming the axes need to match on type only.
-# NOTE: an exact match is required here - no error tolerance.
-# NOTE: also assuming the values define the axis - will need to ensure things like time axis have the same start date, units before calling this method.
-def overlapping (*varlist):
-  from warnings import warn
-  from pygeode.view import simplify
-
-  # Get an initial set of axes
-  axes = dict([a.__class__, a.values] for v in varlist for a in v.axes)
-
-  # We need the axes to have unique values, or the mapping is ill defined.
-  for axis_class in axes.keys():
-    for var in varlist:
-      if var.hasaxis(axis_class):
-        values = var.getaxis(axis_class).values
-        if len(set(values)) != len(values):
-          warn ("non-unique '%s' axis found - cannot define a unique mapping between vars.  Ignoring this axis."%axis_class.__name__)
-          del axes[axis_class]
-          break
-
-  # Reduce the axes to the common overlap
-  for var in varlist:
-    for a in var.axes:
-      axis_class = a.__class__
-      #TODO
-
-  return varlist
-
 # Adjust a lat/lon grid from -180,180 to 0,360
 def rotate_grid (data):
   from pygeode.var import concat
-  east = data(lon=(-180,0))
-  west = data(lon=(0,180))
+  from pygeode.axis import Lon
+  import numpy as np
+  lons = data.lon.values
+  # Check if we're already rotated
+  if all (lon >= 0 for lon in lons): return data
 
-  oldlons = east.lon
-  newlons = type(oldlons)(oldlons.values + 360)
-  east = east.replace_axes(lon=newlons)
+  # Split the data into east / west components
+  east_slice = [slice(None)] * data.naxes
+  west_slice = [slice(None)] * data.naxes
+  ilon = data.whichaxis('lon')
+  east_slice[ilon] = slice(np.where(lons<0)[0][-1]+1,None)
+  west_slice[ilon] = slice(0,np.where(lons<0)[0][-1]+1)
+  east_data = data.slice[east_slice]
+  west_data = data.slice[west_slice]
 
-  return concat(west, east)
+  # Update the west longtidues
+  west_data = west_data.replace_axes(lon=Lon(west_data.lon.values + 360))
+
+  # Concatenate the pieces together again.
+  return concat(east_data, west_data)
+
 
 # Remove extra longitude from global data (if it wraps around)
 def remove_extra_longitude (data):
   import numpy as np
+  if not data.hasaxis('lon'): return data
   v1 = data.lon.values[0]
   v2 = data.lon.values[-1]
   if np.allclose((v2-v1)%360, 0.):
@@ -137,6 +124,22 @@ def remove_extra_longitude (data):
     slices[data.whichaxis('lon')] = slice(0,len(data.lon)-1)
     data = data.slice[slices]
   return data
+
+# Add an extra longitude for global data
+def add_repeated_longitude (data):
+  import numpy as np
+  from pygeode.axis import Lon
+  from pygeode.var import concat
+  if not data.hasaxis('lon'): return data
+  v1 = data.lon.values[0]
+  v2 = data.lon.values[-1]
+  # Check if we already have a repeated longitude
+  if np.allclose((v2-v1)%360, 0.): return data
+  # Use the same data as 0 degree longitude (but treat it as 360 degrees)
+  extra = data(lon=v1)
+  extra = extra.replace_axes(lon=Lon([v1+360]))
+
+  return concat(data, extra)
 
 # Compute grid cell areas (how GEM does it)
 def get_area (latvar, lonvar):
@@ -230,6 +233,47 @@ def squash_forecasts(var):
     return Dataset(map(squash_forecasts,var), atts=var.atts)
   assert isinstance(var,Var), "Unhandled case '%s'"%type(var)
   return SquashForecasts(var)
+
+# Force a variable to take on a superset of axis coordinates.
+# E.g., extend a variable to a longer time period, putting missing values (NaN)
+# where the variable is not defined.
+# NOTE: assumes the coordinate values are in ascending order.
+from pygeode.var import Var
+class EmbiggenAxis (Var):
+  def __init__ (self, var, iaxis, new_axis):
+    from pygeode.var import Var, copy_meta
+    axes = list(var.axes)
+    axes[iaxis] = new_axis
+    Var.__init__ (self, axes, dtype=var.dtype)
+    copy_meta (var, self)
+    self._var = var
+    if var.dtype.name.startswith('float'):
+      self._blank = float('nan')
+    else:
+      self._blank = 0
+    self._iaxis = iaxis
+    self._valid_axis_values = set(var.axes[iaxis].values)
+  def getview (self, view, pbar):
+    import numpy as np
+    out = np.empty(view.shape, dtype=self.dtype)
+    out[()] = self._blank
+    # Find where we have actual data we can fill in.
+    iaxis = self._iaxis
+    requested_indices = view.integer_indices[iaxis]
+    requested_values = view.subaxis(iaxis).values
+    cromulent_values = sorted(self._valid_axis_values & set(requested_values))
+    cromulent_axis = view.axes[iaxis].withnewvalues(cromulent_values)
+    view = view.replace_axis(iaxis, cromulent_axis)
+    outsl = [slice(None)]*self.naxes
+    outsl[iaxis] = np.searchsorted(requested_values, cromulent_values)
+    out[outsl] = view.get(self._var)
+
+    return out
+del Var
+
+def embiggen_axis (var, old_axis, new_axis):
+  iaxis = var.whichaxis(old_axis)
+  return EmbiggenAxis(var, iaxis, new_axis)
 
 
 # Get a keyword / value that can be used to select a surface level for the
