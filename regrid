@@ -1,54 +1,143 @@
 #!/usr/bin/env python
 
+# Helper method - get a model interface
+def get_model_interface (model_name):
+  import importlib
+  # Try to find a module with the given name
+  # Note: hyphens '-' are mangled to underscores '_' when looking for a module.
+  model = importlib.import_module("products."+model_name.replace('-','_'))
+  return model.interface
+
 # Helper method - open the specified file(s) through the given model interface,
 # and return a model data object.
 # TODO: move this code out of here, so it can be shared by the diagnostic
 #       package as well.
 def read_model_data (model_name, files, manifest=None):
-  import importlib
   from os.path import exists, isdir
   from glob import glob
   from data_interface import DataInterface
-  # Try to find a module with the given name
-  # Note: hyphens '-' are mangled to underscores '_' when looking for a module.
-  model = importlib.import_module("products."+model_name.replace('-','_'))
-  if isdir(files):
-    files = model.interface.find_files(files)
+  import importlib
+  interface = get_model_interface(model_name)
+  if isinstance(files,(list,tuple)):
+    pass  # Already parsed into a list of files
+  elif isdir(files):
+    files = interface.find_files(files)
   elif isinstance(files,str):
     file_pattern = files
     files = glob(file_pattern)
     if len(files) == 0:
       raise ValueError("No matches for '%s'."%file_pattern)
+  else: raise ValueError("Invalid file argument '%s'"%files)
   for f in files:
     if not exists(f):
       raise ValueError("File '%s' does not exist."%f)
-  data = DataInterface.from_files(files, opener=model.open_file, manifest=manifest)
+  #TODO: remove this call, once the manifest is changed to contain a simple model string instead of an opener function.
+  opener = importlib.import_module("products."+model_name.replace('-','_')).open_file
+  data = DataInterface.from_files(files, opener=opener, manifest=manifest)
 
   # Filter the data (get standard field names, etc.)
-  data = data.filter(model.interface.decode)
+  data = data.filter(interface.decode)
 
   return data
 
 # Helper method - write some data into file(s), using the specified model
 # interface.
 def write_model_data (model_name, dirname, datasets):
-  import importlib
   from os.path import exists, isdir
   from os import makedirs
   # Try to find a module with the given name
-  model = importlib.import_module("products."+model_name)
+  interface = get_model_interface(model_name)
   # Make sure we have a directory to put this.
   if not isdir(dirname):
     if exists (dirname):
       raise ValueError ("'%s' is not a directory."%dirname)
     else: makedirs(dirname)
   # Encode the data in a representation suitable for the given model type.
-  datasets = map(model.interface.encode, datasets)
+  datasets = map(interface.encode, datasets)
 
   # Write it out
-  model.interface.write (datasets, dirname)
+  interface.write (datasets, dirname)
 
 
+# Helper interface - vertical regridding
+from pygeode.var import Var
+class VertRegrid (Var):
+  def __init__ (self, p0, source_p, source_dp, target_p, target_dp, source):
+    from pygeode.var import Var
+    from common import convert
+    assert source_dp.axes == source.axes
+    assert source_p.axes == source.axes
+    assert target_p.axes == target_dp.axes
+    zdim = source.whichaxis('zaxis')
+    assert source_p.axes[:zdim] + source_p.axes[zdim+1:] == p0.axes
+    assert target_p.axes[:zdim] + target_p.axes[zdim+1:] == p0.axes
+    self._p0 = convert(p0,'Pa')
+    self._source_dp = convert(source_dp,'Pa')
+    self._target_dp = convert(target_dp,'Pa')
+    self._source = source
+    Var.__init__(self, target_dp.axes, dtype='float32', name=source.name)
+  def getview (self, view, pbar):
+    import numpy as np
+    from regrid_vert import regrid_vert
+    # Un-slice the vertical axis of the target (get the whole domain)
+    zdim = view.index('zaxis')
+    zslice = view.slices[zdim]
+    view = view.unslice('zaxis')
+    # Get the target pressure info
+    p0 = view.get(self._p0)
+    target_p = view.get(self._target_p)
+    target_dp = view.get(self._target_dp)
+    # Get the source values & pressure
+    source_view = view.replace_axis('zaxis', self._source.zaxis)
+    source_p = source_view.get(self._source_p)
+    source_dp = source_view.get(self._source_dp)
+    source = source_view.get(self._source)
+    # Flatten the arrays so they have dimensions [nz, everything else]
+    source_shape = source_dp.shape
+    target_shape = target_dp.shape
+    nz_source = source_shape[zdim]
+    nz_target = target_shape[zdim]
+    p0 = p0.flatten()
+    target_p = target_p.rollaxis(zdim).reshape(nz_target,-1)
+    target_dp = target_dp.rollaxis(zdim).reshape(nz_target,-1)
+    source_p = source_p.rollaxis(zdim).reshape(nz_source,-1)
+    source_dp = source_dp.rollaxis(zdim).reshape(nz_source,-1)
+    source = source.rollaxis(zdim).reshape(nz_source,-1)
+
+    # Do we need to invert the z-axis of the source / target?
+    if source_p[0,0] < source_p[1,0]:
+      source_p = source_p[::-1,:]
+      source_dp = source_dp[::-1,:]
+      source = source[::-1,:]
+
+    if target_p[0,0] < target_p[1,0]:
+      target_p = target_p[::-1,:]
+      target_dp = target_dp[::-1,:]
+      invert_target = True
+    else: invert_target = False
+
+    # Compute source / target plevels
+    source_plev = np.empty([source.shape[0]+1,source.shape[1]], dtype='float32')
+    source_plev[0,:] = p0
+    source_plev[1:,:] = np.cumsum(source_dp,axis=0) + p0
+    target_plev = np.empty([target.shape[0]+1,target.shape[1]], dtype='float32')
+    target_plev[0,:] = p0
+    target_plev[1:,:] = np.cumsum(target_dp,axis=0) + p0.reshape(1,-1)
+
+    # Call the regridding routine
+    target, source_colmass, target_colmass = regrid_vert(source_plev, target_plev, source)
+    #TODO
+    pbar.update(100)
+    return np.zeros(view.shape, dtype=self.dtype)
+
+    # Reshape to 2D array (zaxis, everything else)
+    #TODO
+    nz = self._source.shape[zdim]
+    p0 = p0.rollaxis(zdim).reshape(nz,-1)
+    target_dp = target_dp.rollaxis(zdim).reshape(nz,-1)
+    pbar.update(100)
+    return target
+del Var
 
 ###########################
 ##### The main script #####
@@ -65,7 +154,7 @@ group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument ("--infiles", help="The input file(s).", nargs='+', metavar="INFILE")
 group.add_argument ("--indir", help="The input directory.  All relevant files from this directory are used.")
 parser.add_argument ("--gridfile", help="A file that contains the target grid to convert the data to.  Should be in the same format as the output.", required=True)
-parser.add_argument ("--gridvar", help="The variable in the --gridfile to use for the default target grid.  Only necessary if there is more than one set of coordinates in the --gridfile.")
+#parser.add_argument ("--gridvar", help="The variable in the --gridfile to use for the default target grid.  Only necessary if there is more than one set of coordinates in the --gridfile.")
 parser.add_argument ("--outdir", help="The directory to write the output files.  If not specified, the current directory is used.", metavar="DIR", default="./")
 parser.add_argument ("--debug", help="Dump the full stack trace when there's an error.", action="store_true")
 
@@ -79,14 +168,50 @@ try:
 
   # Get the target grid
   grid_data = read_model_data (args.outtype, args.gridfile)
-  if args.gridvar is not None:
-    try:
-      default_grid = grid_data.find_best(args.gridvar).axes
-    except KeyError:
-      raise ValueError ("Unable to find field '%s' in the gridfile."%args.gridvar)
-  else:
-    default_grid = grid_data.datasets[0].axes
 
+  # Get the input data
+  input_data = read_model_data (args.intype, args.infiles or args.indir)
+
+  # Get the output interface
+  out_interface = get_model_interface (args.outtype)
+
+  # Vertical regridding (keeping source surface pressure)
+  from pygeode.axis import ZAxis
+  source_datasets = list(input_data.datasets)
+  target_datasets = []
+  for source_dataset in source_datasets:
+    # Drop datasets with no surface pressure available.
+    if 'surface_pressure' not in source_dataset or 'air_pressure' not in source_dataset or 'dp' not in source_dataset:
+      continue
+    p0 = source_dataset['surface_pressure']
+    source_p = source_dataset['air_pressure']
+    source_dp = source_dataset['dp']
+    target_dataset = []
+    for var in source_dataset.vars:
+      # Don't interpolate 2D variables, just copy them.
+      if not var.hasaxis('zaxis'):
+        target_dataset.append(var)
+        continue
+
+      # Find the appropriate target grid.
+      # If this variable is defined in the grid file, then use that specific grid.
+      try:
+        dummy_target = grid_data.find_best(var.name)
+      # If the variable is not in the grid file, use a default.
+      except KeyError:
+#        dummy_target = grid_data.find_best('air_pressure')
+        dummy_target = grid_data.find_best('dp')
+
+      # Compute the dp for the target grid (forcing the source surface pressure)
+      try:
+        target_p = out_interface.compute_pressure(dummy_target.zaxis, p0)
+        target_dp = out_interface.compute_dp(dummy_target.zaxis, p0)
+      except ValueError:
+        print "Skipping %s - unable to get pressure levels and/or dp"%var.name
+        continue
+
+      var = VertRegrid(p0, source_p, source_dp, target_p, target_dp, var)
+      print var
 
 except Exception as e:
   from sys import exit
