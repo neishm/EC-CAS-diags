@@ -65,6 +65,7 @@ class VertRegrid (Var):
   def __init__ (self, p0, source_p, source_dp, target_p, target_dp, source):
     from pygeode.var import Var
     from common import convert
+    from pygeode.var import copy_meta
     assert source_dp.axes == source.axes
     assert source_p.axes == source.axes
     assert target_p.axes == target_dp.axes
@@ -73,9 +74,12 @@ class VertRegrid (Var):
     assert target_p.axes[:zdim] + target_p.axes[zdim+1:] == p0.axes
     self._p0 = convert(p0,'Pa')
     self._source_dp = convert(source_dp,'Pa')
+    self._source_p = convert(source_p,'Pa')
     self._target_dp = convert(target_dp,'Pa')
+    self._target_p = convert(target_p,'Pa')
     self._source = source
-    Var.__init__(self, target_dp.axes, dtype='float32', name=source.name)
+    Var.__init__(self, target_dp.axes, dtype='float32')
+    copy_meta (source, self)
   def getview (self, view, pbar):
     import numpy as np
     from regrid_vert import regrid_vert
