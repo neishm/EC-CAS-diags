@@ -90,27 +90,16 @@ def common_taxis (*invars):
 
 # Adjust a lat/lon grid from -180,180 to 0,360
 def rotate_grid (data):
-  from pygeode.var import concat
   from pygeode.axis import Lon
   import numpy as np
-  lons = data.lon.values
-  # Check if we're already rotated
-  if all (lon >= 0 for lon in lons): return data
+  if not data.hasaxis('lon'): return data
+  lon = np.array(data.getaxis('lon').values)
+  lon[lon<0] += 360.
+  lon = Lon(lon)
+  data = data.replace_axes(lon=lon)
+  # Re-sort the data
+  return data.sorted('lon')
 
-  # Split the data into east / west components
-  east_slice = [slice(None)] * data.naxes
-  west_slice = [slice(None)] * data.naxes
-  ilon = data.whichaxis('lon')
-  east_slice[ilon] = slice(np.where(lons<0)[0][-1]+1,None)
-  west_slice[ilon] = slice(0,np.where(lons<0)[0][-1]+1)
-  east_data = data.slice[east_slice]
-  west_data = data.slice[west_slice]
-
-  # Update the west longtidues
-  west_data = west_data.replace_axes(lon=Lon(west_data.lon.values + 360))
-
-  # Concatenate the pieces together again.
-  return concat(east_data, west_data)
 
 
 # Remove extra longitude from global data (if it wraps around)
@@ -127,19 +116,24 @@ def remove_extra_longitude (data):
 
 # Add an extra longitude for global data
 def add_repeated_longitude (data):
-  import numpy as np
   from pygeode.axis import Lon
-  from pygeode.var import concat
+  import numpy as np
   if not data.hasaxis('lon'): return data
-  v1 = data.lon.values[0]
-  v2 = data.lon.values[-1]
+  lon = np.array(data.getaxis('lon').values)
   # Check if we already have a repeated longitude
-  if np.allclose((v2-v1)%360, 0.): return data
-  # Use the same data as 0 degree longitude (but treat it as 360 degrees)
-  extra = data(lon=v1)
-  extra = extra.replace_axes(lon=Lon([v1+360]))
+  if np.allclose((lon[0]-lon[-1])%360, 0.): return data
+  # Otherwise, add it in as an extra array index
+  lon_indices = range(len(lon)) + [0]
+  slices = [slice(None)]*data.naxes
+  slices[data.whichaxis('lon')] = lon_indices
+  data = data.slice[slices]
+  # Construct a new longitude axis with the repeated longitude
+  lon = lon[lon_indices]
+  lon[-1] += 360.
+  lon = Lon(lon)
+  data = data.replace_axes(lon=lon)
+  return data
 
-  return concat(data, extra)
 
 # Compute grid cell areas (how GEM does it)
 def get_area (latvar, lonvar):
