@@ -45,85 +45,17 @@ class GEM_Data(object):
 
     # Compute a pressure field.
     # Also, compute a dp field (vertical change in pressure within a gridbox).
-    P = None
-    dP = None
-
     if 'surface_pressure' in data:
-
       Ps = data['surface_pressure']
-
-      # eta coordinates?
-      eta_vars = [var for var in data.itervalues() if var.hasaxis(fstd.Hybrid)]
-      if len(eta_vars) > 0:
-        eta = eta_vars[0].getaxis(fstd.Hybrid)
-        A = eta.auxasvar('A')
-        B = eta.auxasvar('B')
-        P = A + B * Ps * 100
-        P = P.transpose('time','forecast','eta','lat','lon')
-        P /= 100 # hPa
-
-        # dP
-        #TODO: Use ptop as upper boundary, instead of ignoring (zeroing) that layer?
-        # Need to overwrite the eta axis with a generic one before concatenating,
-        # because eta axes require explict A/B arrays (which concat doesn't see)
-        from pygeode.axis import ZAxis
-        PP = P.replace_axes(eta=ZAxis(P.eta.values))
-        P_k = concat(PP.slice[:,:,0,:,:].replace_axes(zaxis=ZAxis([-1.])), PP.slice[:,:,:-1,:,:]).replace_axes(zaxis=PP.zaxis)
-        P_kp1 = concat(PP.slice[:,:,1:,:,:], PP.slice[:,:,-1,:,:].replace_axes(zaxis=ZAxis([2.]))).replace_axes(zaxis=PP.zaxis)
-        dP = abs(P_kp1 - P_k)/2
-        # Put the eta axis back
-        dP = dP.replace_axes(zaxis=P.eta)
-
-      # zeta coordinates?
-      zeta_vars = [var for var in data.itervalues() if var.hasaxis(fstd.LogHybrid)]
-      if len(zeta_vars) > 0:
-        zeta = zeta_vars[0].getaxis(fstd.LogHybrid)
-        A = zeta.auxasvar('A')
-        B = zeta.auxasvar('B')
-        pref = zeta.atts['pref']
-        ptop = zeta.atts['ptop']
-
-        P = exp(A + B * log(Ps*100/pref))
-        P = P.transpose('time','forecast','zeta','lat','lon')
-        P /= 100 # hPa
-
-        # dP
-        #TODO: produce dP for both thermodynamic and momentum levels
-        # (currently just thermo)
-        if set(zeta.auxarrays['A']) <= set(zeta.atts['a_t']):
-          A_m = list(zeta.atts['a_m'])
-          B_m = list(zeta.atts['b_m'])
-          # Add model top (not a true level, but needed for dP calculation)
-          # Also, duplicate the bottom (surface) level to get dP=0 at bottom
-          import math
-          A_m = [math.log(ptop)] + A_m + [A_m[-1]]
-          B_m = [0] + B_m + [B_m[-1]]
-          # Convert to Var objects
-          zaxis = ZAxis(range(len(A_m)))
-          A_m = Var(axes=[zaxis], values=A_m)
-          B_m = Var(axes=[zaxis], values=B_m)
-          # Compute pressure on (extended) momentum levels
-          P_m = exp(A_m + B_m * log(Ps*100/pref))
-          P_m = P_m.transpose('time','forecast','zaxis','lat','lon')
-          # Compute dP
-          P_m_1 = P_m.slice[:,:,1:,:,:]
-          P_m_2 = P_m.slice[:,:,:-1,:,:].replace_axes(zaxis=P_m_1.zaxis)
-          dP = P_m_1 - P_m_2
-          # Put on proper thermodynamic levels
-          from pygeode.formats.fstd_core import decode_levels
-          values, kind = decode_levels(zeta.atts['ip1_t'])
-          zaxis = fstd.LogHybrid(values=values, A=zeta.atts['a_t'], B=zeta.atts['b_t'])
-          dP = dP.replace_axes(zaxis=zaxis)
-          dP /= 100 # hPa
-
-
-    if P is not None:
-      P.atts['units'] = 'hPa'
-      data['air_pressure'] = P
-
-    if dP is not None:
-      dP.atts['units'] = 'hPa'
-      data['dp'] = dP  #TODO: better name?
+      for var in data.itervalues():
+        if var.hasaxis('zaxis'):
+          zaxis = var.getaxis('zaxis')
+          # We might not be able to do this, e.g. for Hybrid axes or GZ levels
+          try:
+            data['air_pressure'] = self.compute_pressure(zaxis, Ps)
+            data['dp'] = self.compute_dp(zaxis, Ps)
+          except (TypeError, ValueError): pass
+          break
 
     # Grid cell areas
     if 'cell_area' not in data:
@@ -316,6 +248,17 @@ class GEM_Data(object):
     # eta coordinates?
     if isinstance(zaxis,fstd.Hybrid):
       raise TypeError("Not enough information to compute pressure interfaces on GEM eta levels.")
+#      # dP
+#      #TODO: Use ptop as upper boundary, instead of ignoring (zeroing) that layer?
+#      # Need to overwrite the eta axis with a generic one before concatenating,
+#      # because eta axes require explict A/B arrays (which concat doesn't see)
+#      from pygeode.axis import ZAxis
+#      PP = P.replace_axes(eta=ZAxis(P.eta.values))
+#      P_k = concat(PP.slice[:,:,0,:,:].replace_axes(zaxis=ZAxis([-1.])), PP.slice[:,:,:-1,:,:]).replace_axes(zaxis=PP.zaxis)
+#      P_kp1 = concat(PP.slice[:,:,1:,:,:], PP.slice[:,:,-1,:,:].replace_axes(zaxis=ZAxis([2.]))).replace_axes(zaxis=PP.zaxis)
+#      dP = abs(P_kp1 - P_k)/2
+#      # Put the eta axis back
+#      dP = dP.replace_axes(zaxis=P.eta)
 
     # zeta coordinates?
     elif isinstance(zaxis,fstd.LogHybrid):
