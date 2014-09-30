@@ -80,59 +80,84 @@ class VertRegrid (Var):
     self._source = source
     Var.__init__(self, target_dp.axes, dtype='float32')
     copy_meta (source, self)
-  def getview (self, view, pbar):
+  def getview (self, view, pbar, cache=[None,None]):
     import numpy as np
     from regrid_vert import regrid_vert
+
+    dummy = np.zeros(view.shape, dtype=self.dtype)
+
     # Un-slice the vertical axis of the target (get the whole domain)
-    zdim = view.index('zaxis')
+    zdim = self.whichaxis('zaxis')
     zslice = view.slices[zdim]
-    view = view.unslice('zaxis')
-    # Get the target pressure info
-    p0 = view.get(self._p0)
-    target_p = view.get(self._target_p)
-    target_dp = view.get(self._target_dp)
-    # Get the source values & pressure
-    source_view = view.replace_axis('zaxis', self._source.zaxis)
-    source_p = source_view.get(self._source_p)
-    source_dp = source_view.get(self._source_dp)
-    source = source_view.get(self._source)
-    # Flatten the arrays so they have dimensions [nz, everything else]
-    source_shape = source_dp.shape
-    target_shape = target_dp.shape
-    nz_source = source_shape[zdim]
-    nz_target = target_shape[zdim]
-    p0 = p0.flatten()
-    target_p = target_p.rollaxis(zdim).reshape(nz_target,-1)
-    target_dp = target_dp.rollaxis(zdim).reshape(nz_target,-1)
-    source_p = source_p.rollaxis(zdim).reshape(nz_source,-1)
-    source_dp = source_dp.rollaxis(zdim).reshape(nz_source,-1)
-    source = source.rollaxis(zdim).reshape(nz_source,-1)
+    view = view.unslice(zdim)
 
-    # Do we need to invert the z-axis of the source / target?
-    if source_p[0,0] < source_p[1,0]:
-      source_p = source_p[::-1,:]
-      source_dp = source_dp[::-1,:]
-      source = source[::-1,:]
+    # Use cached values?
+    last_key, cached_data = cache
+    key = tuple(map(tuple, view.integer_indices))
+    if key == last_key:
+      target = cached_data
 
-    if target_p[0,0] < target_p[1,0]:
-      target_p = target_p[::-1,:]
-      target_dp = target_dp[::-1,:]
-      invert_target = True
-    else: invert_target = False
+    else:
 
-    # Compute source / target plevels
-    source_plev = np.empty([source.shape[0]+1,source.shape[1]], dtype='float32')
-    source_plev[0,:] = p0
-    source_plev[1:,:] = np.cumsum(source_dp,axis=0) + p0
-    target_plev = np.empty([target.shape[0]+1,target.shape[1]], dtype='float32')
-    target_plev[0,:] = p0
-    target_plev[1:,:] = np.cumsum(target_dp,axis=0) + p0.reshape(1,-1)
+      # Get the target pressure info
+      p0 = view.get(self._p0)
+      target_p = view.get(self._target_p)
+      target_dp = view.get(self._target_dp)
+      # Get the source values & pressure
+      source_view = view.replace_axis(zdim, self._source.zaxis)
+      source_p = source_view.get(self._source_p)
+      source_dp = source_view.get(self._source_dp)
+      source = source_view.get(self._source)
+      # Flatten the arrays so they have dimensions [nz, everything else]
+      source_shape = source_dp.shape
+      target_shape = target_dp.shape
+      nz_source = source_shape[zdim]
+      nz_target = target_shape[zdim]
+      p0 = p0.flatten()
+      target_p = np.rollaxis(target_p, zdim).reshape(nz_target,-1)
+      target_dp = np.rollaxis(target_dp, zdim).reshape(nz_target,-1)
+      source_p = np.rollaxis(source_p, zdim).reshape(nz_source,-1)
+      source_dp = np.rollaxis(source_dp, zdim).reshape(nz_source,-1)
+      source = np.rollaxis(source, zdim).reshape(nz_source,-1)
 
-    # Call the regridding routine
-    target, source_colmass, target_colmass = regrid_vert(source_plev, target_plev, source)
-    #TODO
+      # Do we need to invert the z-axis of the source / target?
+      if source_p[0,0] < source_p[1,0]:
+        source_p = source_p[::-1,:]
+        source_dp = source_dp[::-1,:]
+        source = source[::-1,:]
+
+      if target_p[0,0] < target_p[1,0]:
+        target_p = target_p[::-1,:]
+        target_dp = target_dp[::-1,:]
+        invert_target = True
+      else: invert_target = False
+
+      # Compute source / target plevels
+      source_plev = np.empty([source_dp.shape[0]+1,source_dp.shape[1]], dtype='float32')
+      source_plev[0,:] = p0
+      source_plev[1:,:] = np.cumsum(source_dp,axis=0) + p0
+      target_plev = np.empty([target_dp.shape[0]+1,target_dp.shape[1]], dtype='float32')
+      target_plev[0,:] = p0
+      target_plev[1:,:] = np.cumsum(target_dp,axis=0) + p0.reshape(1,-1)
+
+      # Cast to the expected types
+      source_plev = np.asarray(source_plev, dtype='float32')
+      target_plev = np.asarray(target_plev, dtype='float32')
+      source = np.asarray(source, dtype='float32')
+
+      # Need to transpose to Fortran order?
+      source_plev = source_plev.transpose()
+      target_plev = target_plev.transpose()
+      source = source.transpose()
+
+      # Call the regridding routine
+      target, source_colmass, target_colmass = regrid_vert(source_plev, target_plev, source)
+      #TODO
+
+
     pbar.update(100)
-    return np.zeros(view.shape, dtype=self.dtype)
+    cache[:] = key, target
+    return dummy
 
     # Reshape to 2D array (zaxis, everything else)
     #TODO
@@ -215,7 +240,13 @@ try:
         continue
 
       var = VertRegrid(p0, source_p, source_dp, target_p, target_dp, var)
-      print var
+      target_dataset.append(var)
+    target_datasets.append(target_dataset)
+
+  #TODO: horizontal regridding
+
+  # Write the data out.
+  write_model_data(args.outtype, args.outdir, target_datasets)
 
 except Exception as e:
   from sys import exit
