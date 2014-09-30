@@ -78,13 +78,12 @@ class VertRegrid (Var):
     self._target_dp = convert(target_dp,'Pa')
     self._target_p = convert(target_p,'Pa')
     self._source = source
+    self._cache = [None, None]  # Store info on last data request
     Var.__init__(self, target_dp.axes, dtype='float32')
     copy_meta (source, self)
-  def getview (self, view, pbar, cache=[None,None]):
+  def getview (self, view, pbar):
     import numpy as np
     from regrid_vert import regrid_vert
-
-    dummy = np.zeros(view.shape, dtype=self.dtype)
 
     # Un-slice the vertical axis of the target (get the whole domain)
     zdim = self.whichaxis('zaxis')
@@ -92,7 +91,7 @@ class VertRegrid (Var):
     view = view.unslice(zdim)
 
     # Use cached values?
-    last_key, cached_data = cache
+    last_key, cached_data = self._cache
     key = tuple(map(tuple, view.integer_indices))
     if key == last_key:
       target = cached_data
@@ -152,20 +151,30 @@ class VertRegrid (Var):
 
       # Call the regridding routine
       target, source_colmass, target_colmass = regrid_vert(source_plev, target_plev, source)
-      #TODO
+
+      # Transpose to C order
+      target = target.transpose()
+
+      # Do we need to un-invert the grid?
+      if invert_target:
+        target = target[::-1,:]
+
+      # Add the extra dimensions back in
+      target = target.reshape((nz_target,)+target_shape[:zdim]+target_shape[zdim+1:])
+
+      # Put the z-axis in the appropriate spot
+      target = target.transpose (range(1,zdim+1)+[0]+range(zdim+1,self.naxes))
+      self._cache[:] = key, target
 
 
     pbar.update(100)
-    cache[:] = key, target
-    return dummy
+
+    # Apply the final slicing
+    slices = [slice(None)]*self.naxes
+    slices[zdim] = zslice
+    return target[slices]
 
     # Reshape to 2D array (zaxis, everything else)
-    #TODO
-    nz = self._source.shape[zdim]
-    p0 = p0.rollaxis(zdim).reshape(nz,-1)
-    target_dp = target_dp.rollaxis(zdim).reshape(nz,-1)
-    pbar.update(100)
-    return target
 del Var
 
 ###########################
