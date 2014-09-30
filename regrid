@@ -135,10 +135,10 @@ class VertRegrid (Var):
       # Compute source / target plevels
       source_plev = np.empty([source_dp.shape[0]+1,source_dp.shape[1]], dtype='float32')
       source_plev[0,:] = p0
-      source_plev[1:,:] = np.cumsum(source_dp,axis=0) + p0
+      source_plev[1:,:] = p0.reshape(1,-1) - np.cumsum(source_dp,axis=0)
       target_plev = np.empty([target_dp.shape[0]+1,target_dp.shape[1]], dtype='float32')
       target_plev[0,:] = p0
-      target_plev[1:,:] = np.cumsum(target_dp,axis=0) + p0.reshape(1,-1)
+      target_plev[1:,:] = p0.reshape(1,-1) - np.cumsum(target_dp,axis=0)
 
       # Cast to the expected types
       source_plev = np.asarray(source_plev, dtype='float32')
