@@ -86,6 +86,10 @@
           !===============================================================
           do k=1,nk_t
     
+            ! Ignore diagnostic levels (no physical extent)
+            if (plev_s(i,l) .eq. plev_s(i,l+1)) cycle
+            if (plev_t(i,k) .eq. plev_t(i,k+1)) cycle
+
             !==============================================================
             ! Contribution if:
             ! ----------------
@@ -159,6 +163,19 @@
           do k=1,nk_t
              tracer_t(i,k) = mass_t(i,k)/(plev_t(i,k) - plev_t(i,k+1))
           enddo
+
+          ! Fill in diagnostic level(s) with nearest available data
+          do k=2,nk_t
+             if (plev_t(i,k) .eq. plev_t(i,k+1)) then
+               tracer_t(i,k) = tracer_t(i,k-1)
+             endif
+          enddo
+          do k=nk_t-1,1,-1
+             if (plev_t(i,k) .eq. plev_t(i,k+1)) then
+               tracer_t(i,k) = tracer_t(i,k+1)
+             endif
+          enddo
+
       enddo    ! loop over columns
 
       !================================================================
