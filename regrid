@@ -155,6 +155,10 @@ class VertRegrid (Var):
       # Transpose to C order
       target = target.transpose()
 
+      # Fill in diagnostic level (won't have any sensible data right now)
+      if target_dp[0,0] == 0:
+        target[0,:] = target[1,:]
+
       # Do we need to un-invert the grid?
       if invert_target:
         target = target[::-1,:]
