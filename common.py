@@ -37,6 +37,26 @@ def convert (var, units, context=None):
   if 'high' in var.atts: var.atts['high'] *= scale
   return var
 
+# Helper methods to determine if something is of a particular kind of unit.
+def can_convert (var, units):
+  try:
+    convert (var, units)
+    return True
+  except ValueError: return False
+
+def is_mixing_ratio (var):
+  return can_convert (var, 'molefraction')
+
+def is_concentration (var):
+  return can_convert (var, 'mol m-3')
+
+def is_mass_flux (var):
+  return can_convert (var, 'mol m-2 s-1')
+
+def is_integrated_mass_flux (var):
+  return can_convert (var, 'mol s-1')
+
+
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
 # Normalize the time axes to the same start date / units
