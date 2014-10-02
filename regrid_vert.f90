@@ -175,6 +175,8 @@
          colmass_t(i) = 0.0
          do k=1,nk_t
             dp_t = plev_t(i,k) - plev_t(i,k+1)
+            ! Skip diagnostic level
+            if (dp_t .eq. 0) cycle
             mass_t(i,k) = dp_t*tracer_t(i,k)
             ! write(*,*) k, dp_t, mass_t(i,k)
             colmass_t(i) = colmass_t(i) + mass_t(i,k)
