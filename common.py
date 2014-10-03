@@ -114,6 +114,8 @@ def rotate_grid (data):
   import numpy as np
   if not data.hasaxis('lon'): return data
   lon = np.array(data.getaxis('lon').values)
+  # Check if already rotated
+  if lon[1] > 0: return data
   lon[lon<0] += 360.
   lon = Lon(lon)
   data = data.replace_axes(lon=lon)

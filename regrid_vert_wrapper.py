@@ -4,9 +4,8 @@
 from pygeode.var import Var
 class VertRegrid (Var):
   def __init__ (self, p0, source_p, source_dp, target_p, target_dp, source):
-    from pygeode.var import Var
+    from pygeode.var import Var, copy_meta
     from common import convert
-    from pygeode.var import copy_meta
     assert source_dp.axes == source.axes
     assert source_p.axes == source.axes
     assert target_p.axes == target_dp.axes
@@ -134,6 +133,7 @@ del Var
 def do_vertical_regridding (input_data, grid_data, out_interface):
 
   from pygeode.axis import ZAxis
+  from data_interface import DataInterface
   source_datasets = list(input_data.datasets)
   target_datasets = []
   for source_dataset in source_datasets:
@@ -171,5 +171,5 @@ def do_vertical_regridding (input_data, grid_data, out_interface):
       target_dataset.append(var)
     target_datasets.append(target_dataset)
 
-  return target_datasets
+  return DataInterface(target_datasets)
 
