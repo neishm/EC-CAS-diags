@@ -1,31 +1,4 @@
-# Some generic functions that may be useful for the regridding / converting code.
-
-# Rotate a field so the longitudes range from 0..360
-# Input: PyGeode object
-# Output: PyGeode object
-def rotate_grid (field):
-  from pygeode.var import Var
-  from pygeode.axis import Lon
-  import numpy as np
-  in_data = np.array(field.get())
-  in_lon = np.array(field.lon.get())
-  out_data = np.empty(in_data.shape, dtype=in_data.dtype)
-  out_lon = np.empty(in_lon.shape, dtype=in_lon.dtype)
-  # Determine index of first positive longitude
-  i = np.where(in_lon>=0)[0][0]
-  if i == 0: return field  # Already from 0..360
-  # Positive longitudes
-  out_data[...,:-i] = in_data[...,i:]
-  out_lon[:-i] = in_lon[i:]
-  # Negative longtiudes
-  out_data[...,-i:] = in_data[...,:i]
-  out_lon[-i:] = in_lon[:i] + 360.
-
-  axes = list(field.axes)
-  axes[-1] = Lon(out_lon)
-
-  return Var(axes=axes, values=out_data, name=field.name, atts=field.atts)
-
+# Helper methods for dealing with horizontal regridding step
 
 # Determine latitude bounds
 # Assume a global grid (end points are -90 and +90).
@@ -66,10 +39,11 @@ def get_lonbounds (lon):
 # Output:
 #   The regridded field (PyGeode object)
 def regrid (field, lat, lon):
-  from regrid import regridmodule
+  from regrid_horz import regridmodule
   import numpy as np
   from pygeode.var import Var
   from math import pi
+  from common import rotate_grid
 
   # Rotate the field so it's from 0 to 360
   field = rotate_grid(field)
