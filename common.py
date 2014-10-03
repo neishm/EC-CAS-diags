@@ -11,10 +11,10 @@ define_conversion ('mol(H2O)', '18.01528 g(H2O)')
 
 # The following is a hack to get mass in terms of carbon atoms
 # I.e. to allow converting mass to Pg(C)
-define_unit ('C_atom', 'Carbon atoms in the molecule')
-define_conversion ('g(C)', repr(1/12.01) + ' mol C_atom-1')
-define_conversion ('C_atom(CO2)', '1')
-define_conversion ('C_atom(CH4)', '1')
+define_unit ('C_atoms_per_molecule', 'Carbon atoms in the molecule')
+define_conversion ('g(C)', repr(1/12.01) + 'C_atoms_per_molecule mol')
+define_conversion ('C_atoms_per_molecule(CO2)', '1')
+define_conversion ('C_atoms_per_molecule(CH4)', '1')
 
 # For the purpose of these diagnostics, assume mole fractions are always with
 # respect to air.
