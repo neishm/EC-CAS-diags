@@ -156,7 +156,10 @@ def add_repeated_longitude (data):
 
 
 # Compute grid cell areas (how GEM does it)
-def get_area (latvar, lonvar):
+# If flat is True, then use a 'flattened' surface for latitude weighting.
+# E.g., use approximation cos(lat_center)*(lat_upper-lat_lower)
+# The default is to use  sin(lat_upper) - sin(lat_lower)
+def get_area (latvar, lonvar, flat=False):
 
   import numpy as np
   from pygeode.var import Var
@@ -167,20 +170,31 @@ def get_area (latvar, lonvar):
   lat_bounds = (lats[:-1] + lats[1:]) * 0.5
   # Including the poles
   lat_bounds = np.concatenate([[-pi/2], lat_bounds, [pi/2]])
+  # Get the boundaries of the longitudes.
+  # Assume the longitudes are equally spaced and monotonically increasing.
+  lons = lonvar.values * (pi / 180)
+  lon_bounds = np.empty([len(lons)+1], dtype=lons.dtype)
+  lon_bounds[1:-1] = (lons[0:-1] + lons[1:]) / 2
+  lon_bounds[0] = lon_bounds[1] - (lon_bounds[2] - lon_bounds[1])
+  lon_bounds[-1] = lon_bounds[-2] + (lon_bounds[-2] - lon_bounds[-3])
+
   # Length in y direction
   dlat = np.diff(lat_bounds)
-  # Length in x direction (assuming global grid)
-  lons = lonvar.values * (pi/180)
-  # Assume global & equidistant longitudes
-  dlon = lons[1] - lons[0]
-  dlon = np.repeat(dlon, len(lons))
+  dlat = dlat.reshape([-1,1])
+  # Length in x direction
+  dlon = np.diff(lon_bounds)
+  dlon = dlon.reshape([1,-1])
 
-  dlat = dlat.reshape(-1,1)
-  dlon = dlon.reshape(1,-1)
-  clat = np.cos(lats).reshape(-1,1)
-  dxdy = r*r * clat * dlat * dlon
-  dxdy = np.asarray(dxdy, dtype='float32')
-  dxdy = Var([latvar, lonvar], values=dxdy, name='DX')
+  # Define some trig functions on latitude.
+  clat = np.cos(lats).reshape([-1,1])
+  dsinlat = np.diff(np.sin(lat_bounds)).reshape([-1,1])
+
+  if flat is True:
+    dxdy = r*r * clat * dlat * dlon
+  else:
+    dxdy = r*r * dsinlat * dlon
+
+  dxdy = Var([latvar, lonvar], values=dxdy)
   dxdy.atts['units'] = 'm2'
 
   return dxdy

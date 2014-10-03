@@ -62,7 +62,7 @@ class GEM_Data(object):
       # Pick some arbitrary (but deterministic) variable to get the lat/lon
       var = sorted(data.values())[0]
       from common import get_area
-      data['cell_area'] = get_area(var.lat,var.lon).extend(0,var.time, var.forecast)
+      data['cell_area'] = get_area(var.lat,var.lon,flat=True).extend(0,var.time, var.forecast)
 
     # General cleanup stuff
 

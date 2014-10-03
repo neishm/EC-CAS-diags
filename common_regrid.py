@@ -102,22 +102,3 @@ def regrid (field, lat, lon):
   return Var(axes=axes, values=out_data, name=field.name)
 
 
-# Compute the area of a given lat/lon field
-#TODO: consolidate this with EC-CAS_diags.common.get_area()
-def get_area (lat, lon):
-  r = 6371220.  # Radius of Earth (in metres)
-  from math import pi
-  import numpy as np
-  from pygeode.var import Var
-  lonbounds = get_lonbounds(lon) / 180. * pi
-  dlon = np.diff(lonbounds)
-  latbounds = get_latbounds(lat) / 180. * pi
-  dsinlat = np.diff(np.sin(latbounds))
-
-  dsinlat = dsinlat.reshape([-1,1])
-  dlon = dlon.reshape([1,-1])
-
-  area = r**2 * dsinlat * dlon
-  return Var(axes=[lat,lon], values=area)
-
-
