@@ -61,6 +61,20 @@ class ECCAS_Data(GEM_Data):
     return dataset
 
 
+  # Method to re-encode data into the source context
+  # (e.g., rename fields to what would be originally in these kinds of files)
+  def encode (self, dataset):
+    from gem import GEM_Data
+    from common import conversion_factor
+    # Call the generic GEM encoder to convert to the right units and field names
+    dataset = GEM_Data.encode(self, dataset)
+    # Do some extra stuff to offset COC / CLA fields
+    for i, var in enumerate(dataset):
+      if var.name in ('COC','CLA'):
+        dataset[i] = var + conversion_factor('100 ppm', 'ug(C) kg(air)-1', context='CO2')
+    return dataset
+
+
 # Instantiate the interface
 interface = ECCAS_Data()
 
