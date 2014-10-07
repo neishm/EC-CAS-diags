@@ -314,6 +314,7 @@ class GEM_Data(object):
     else:
       dp = dp.transpose('time','zaxis','lat','lon')
 
+    dp.name = 'dp'
     dp.atts['units'] = 'Pa'
     return dp
 
@@ -349,6 +350,7 @@ class GEM_Data(object):
       p = p.transpose('time','forecast','zaxis','lat','lon')
     else:
       p = p.transpose('time','zaxis','lat','lon')
+    p.name = 'air_pressure'
     p.atts['units'] = 'Pa'
     return p
 
