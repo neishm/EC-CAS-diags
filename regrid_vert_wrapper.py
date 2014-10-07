@@ -137,12 +137,6 @@ def do_vertical_regridding (input_data, grid_data, out_interface):
   source_datasets = list(input_data.datasets)
   target_datasets = []
   for source_dataset in source_datasets:
-    # Drop datasets with no surface pressure available.
-    if 'surface_pressure' not in source_dataset or 'air_pressure' not in source_dataset or 'dp' not in source_dataset:
-      continue
-    p0 = source_dataset['surface_pressure']
-    source_p = source_dataset['air_pressure']
-    source_dp = source_dataset['dp']
     target_dataset = []
     for var in source_dataset.vars:
       # Don't interpolate 2D variables, just copy them.
@@ -150,6 +144,14 @@ def do_vertical_regridding (input_data, grid_data, out_interface):
         target_dataset.append(var)
         continue
 
+      #TODO: check units
+
+      if 'surface_pressure' not in source_dataset or 'air_pressure' not in source_dataset or 'dp' not in source_dataset:
+        print 'Dropping field "%s" - no pressure information available to do the vertical interpolation.'
+        continue
+      p0 = source_dataset['surface_pressure']
+      source_p = source_dataset['air_pressure']
+      source_dp = source_dataset['dp']
       # Find the appropriate target grid.
       # If this variable is defined in the grid file, then use that specific grid.
       try:
