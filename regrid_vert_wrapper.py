@@ -138,11 +138,15 @@ def do_vertical_regridding (input_data, grid_data, out_interface):
   target_datasets = []
   for source_dataset in source_datasets:
     target_dataset = []
+    target_p = target_dp = None  # Generated further below
     for var in source_dataset.vars:
       # Don't interpolate 2D variables, just copy them.
       if not var.hasaxis('zaxis'):
         target_dataset.append(var)
         continue
+
+      # Skip pressure-related variables (they will be re-generated)
+      if var.name in ('air_pressure', 'dp'): continue
 
       #TODO: check units
 
@@ -171,6 +175,13 @@ def do_vertical_regridding (input_data, grid_data, out_interface):
 
       var = VertRegrid(p0, source_p, source_dp, target_p, target_dp, var)
       target_dataset.append(var)
+
+    # Add some pressure information back in
+    # (regenerated on appropriate grid).
+    if target_p is not None and target_dp is not None:
+      # Use the pressure info from the last converted variable
+      target_dataset.extend([target_p, target_dp])
+
     target_datasets.append(target_dataset)
 
   return DataInterface(target_datasets)
