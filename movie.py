@@ -63,7 +63,7 @@ class Movie(object):
       minute = fields[0].time.minute[0]
       # If the minutes are all '0', then don't use minutes in the filenames.
       # Allows backwards compatibility with previous version of the diagnostics.
-      if list(set(minute)) == [0]:
+      if list(set(taxis.minute)) == [0]:
         outfile = imagedir + "/%04d%02d%02d%02d.png"%(year,month,day,hour)
       # Otherwise, need to include minute information to distinguish each
       # timestep.
