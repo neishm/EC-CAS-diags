@@ -129,6 +129,13 @@ try:
   movie_zonal(models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['CH4 movie_zonal', e])
+from movie_zonal_diff import movie_zonal_diff
+# CO2 Zonal mean movies
+try:
+  if control is not None:
+    movie_zonal_diff(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['CO2 movie_zonal_diff', e])
 
 # Count of CO2 'holes'
 try:
