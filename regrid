@@ -70,10 +70,10 @@ import argparse
 
 parser = argparse.ArgumentParser(description="Converts model data from one format to another")
 parser.add_argument ("--intype", help="The type of input data to read.", choices=["carbontracker","carbontracker-ch4","gem","eccas","eccas-flux"], required=True)
-parser.add_argument ("--outtype", help="The type of output data to write.", choices=["gem","eccas","eccas-flux"], required=True)
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument ("--infiles", help="The input file(s).", nargs='+', metavar="INFILE")
 group.add_argument ("--indir", help="The input directory.  All relevant files from this directory are used.")
+parser.add_argument ("--outtype", help="The type of output data to write.", choices=["gem","eccas","eccas-flux"], required=True)
 parser.add_argument ("--gridfile", help="A file that contains the target grid to convert the data to.  Should be in the same format as the output.", required=True)
 #parser.add_argument ("--gridvar", help="The variable in the --gridfile to use for the default target grid.  Only necessary if there is more than one set of coordinates in the --gridfile.")
 parser.add_argument ("--outdir", help="The directory to write the output files.", required=True)
