@@ -10,6 +10,7 @@ from xcol import totalcolumn, avgcolumn, get_xcol
 
 def xcol_diff (models, fieldname, units, outdir):
   from movie import ContourMovie
+  from common import same_times
 
   plotname = 'X'+fieldname
   models = [m for m in models if m is not None]
@@ -22,6 +23,9 @@ def xcol_diff (models, fieldname, units, outdir):
   aspect_ratio = 0.4  # height / width for each panel
 
   shape = (len(fields)+1,1)
+ 
+  # Use only the common timesteps between the fields
+  fields = same_times (*fields)
 
   # Plot a difference field as well.
   if fields[0].axes != fields[1].axes:
