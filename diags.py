@@ -153,11 +153,17 @@ except Exception as e:
 
 from xcol import xcol
 from xcol_enkf import xcol_enkf
+from xcol_diff import xcol_diff
 # XCO2
 try:
   xcol (models=[experiment,control,carbontracker], fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCO2', e])
+# XCO2 diff movies
+try:
+  xcol_diff (models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XCO2_diff', e])
 # Average column of stats
 try:
   xcol_enkf (model=experiment, fieldname='CO2', units='ppm', outdir=outdir)
