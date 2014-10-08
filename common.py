@@ -108,6 +108,29 @@ def common_taxis (*invars):
   return newvars
 
 
+# Find overlapping time axis between two variables
+def same_times (*varlist):
+  # Use the same start date (so relative values are comparable)
+  varlist = map(fix_timeaxis,varlist)
+  # Get a common set of time values
+  times = [set(var.time.values) for var in varlist]
+  times = reduce(set.intersection,times,times[0])
+  times = sorted(times)
+  if len(times) == 0:
+    raise ValueError ("No overlapping timesteps found for %s"%(",".join(v.name for v in varlist)))
+  return [var(l_time=times) for var in varlist]
+
+# Grab the first available timestep of a variable, and remove the time info.
+def first_timestep (var):
+  if var.hasaxis('time'):
+    var = var(i_time = 0)
+    var = var.squeeze('time')
+  # Strip out forecast info too?
+  if var.hasaxis('forecast'):
+    var = var(i_forecast = 0)
+    var = var.squeeze('forecast')
+  return var
+
 # Adjust a lat/lon grid from -180,180 to 0,360
 def rotate_grid (data):
   from pygeode.axis import Lon
