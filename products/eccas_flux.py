@@ -1,6 +1,6 @@
-from gem import GEM_Data
+from eccas import ECCAS_Data
 
-class ECCAS_Flux_Data(GEM_Data):
+class ECCAS_Flux_Data(ECCAS_Data):
 
   field_list = (
     ('ECO2', 'CO2_flux', 'g(C) s-1'),
