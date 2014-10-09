@@ -168,6 +168,7 @@ def remove_repeated_longitude (data):
 def add_repeated_longitude (data):
   from pygeode.axis import Lon
   import numpy as np
+  import warnings
   if not data.hasaxis('lon'): return data
   # Check if we already have a repeated longitude
   if have_repeated_longitude(data): return data
@@ -176,7 +177,13 @@ def add_repeated_longitude (data):
   lon_indices = range(len(lon)) + [0]
   slices = [slice(None)]*data.naxes
   slices[data.whichaxis('lon')] = lon_indices
-  data = data.slice[slices]
+  # Temporarily disable warning about divide by zero, triggered because we
+  # are repeated an axis value, which screws up the code for computing a
+  # default relative tolerance
+  #TODO: refactor this routine to avoid this trick.
+  with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", "divide by zero")
+    data = data.slice[slices]
   # Construct a new longitude axis with the repeated longitude
   lon = lon[lon_indices]
   lon[-1] += 360.
