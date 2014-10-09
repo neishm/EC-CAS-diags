@@ -77,7 +77,7 @@ parser.add_argument ("--outtype", help="The type of output data to write.", choi
 parser.add_argument ("--gridfile", help="A file that contains the target grid to convert the data to.  Should be in the same format as the output.", required=True)
 #parser.add_argument ("--gridvar", help="The variable in the --gridfile to use for the default target grid.  Only necessary if there is more than one set of coordinates in the --gridfile.")
 parser.add_argument ("--outdir", help="The directory to write the output files.", required=True)
-parser.add_argument ("--debug", help="Dump the full stack trace when there's an error.", action="store_true")
+parser.add_argument ("--debug", help="Print debugging messages.  Also, dump the full stack trace when there's an error.", action="store_true")
 
 args = parser.parse_args()
 
@@ -86,7 +86,10 @@ args = parser.parse_args()
 # Fail gracefully if there's a problem
 
 import logging
-logging.basicConfig(level=logging.INFO)
+if args.debug:
+  logging.basicConfig(level=logging.DEBUG)
+else:
+  logging.basicConfig(level=logging.INFO)
 
 try:
 
