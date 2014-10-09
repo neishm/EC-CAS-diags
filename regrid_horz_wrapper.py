@@ -145,7 +145,7 @@ def horzregrid (source, target_lat, target_lon):
 
 # Do the horizontal regridding step
 def do_horizontal_regridding (input_data, grid_data, out_interface):
-  from common import can_convert, convert, same_times, first_timestep, remove_repeated_longitude
+  from common import can_convert, convert, first_timestep
   from data_interface import DataInterface
   from pygeode.var import copy_meta
   source_datasets = list(input_data.datasets)
@@ -200,32 +200,15 @@ def do_horizontal_regridding (input_data, grid_data, out_interface):
       # Case 3: mixing ratio
       ##################################################################
       elif can_convert(var, 'molefraction'):
-        if 'dp' not in source_dataset:
-          print 'Dropping field "%s" - layer thickness information unavailable.'%var.name
-          continue
-        source_dp = convert(source_dataset['dp'],'Pa')
-        if 'cell_area' not in source_dataset:
-          print 'Dropping field "%s" - area information unavailable.'%var.name
-          continue
-        source_area = convert(source_dataset['cell_area'],'m2')
+        # Find an appropriate target grid.
+        # If this field is defined in the grid file, then use that definition.
+        # Otherwise, find some other field with grid data (like 'dp').
         try:
-          # Try to find area & dp that has the same domain as the variable
-          # (if the variable is defined in the target grid file).
-          dummy_target, target_dp, target_area = grid_data.find_best([var.name,'dp','cell_area'])
+          dummy_target = grid_data.find_best(var.name)
         except KeyError:
-          # Otherwise, look for any dp information in the target grid.
-          target_dp, target_area = grid_data.find_best(['dp','cell_area'])
-          dummy_target = target_dp
-        # Need the same times as the source data
-        target_dp = convert(target_dp,'Pa')
-        target_area = convert(target_area,'m2')
-        var, target_dp, target_area = same_times(var, target_dp, target_area)
+          dummy_target = grid_data.find_best('dp')
         # Do the regridding
-#        orig = var
-#        var = var * source_dp
         var = horzregrid(var, dummy_target.lat, dummy_target.lon)
-#        var = var / target_dp
-#        copy_meta (orig, var)
 
       ##################################################################
       # Unhandled case
