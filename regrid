@@ -85,6 +85,9 @@ args = parser.parse_args()
 # Try doing something
 # Fail gracefully if there's a problem
 
+import logging
+logging.basicConfig(level=logging.INFO)
+
 try:
 
   # Get the target grid

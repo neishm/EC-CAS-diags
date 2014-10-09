@@ -24,6 +24,8 @@ class VertRegrid (Var):
   def getview (self, view, pbar):
     import numpy as np
     from regrid_vert import regrid_vert
+    import logging
+    logger = logging.getLogger(__name__)
 
     # Un-slice the vertical axis of the target (get the whole domain)
     zdim = self.whichaxis('zaxis')
@@ -97,7 +99,7 @@ class VertRegrid (Var):
       # Call the regridding routine
       target, source_colmass, target_colmass = regrid_vert(source_plev, target_plev, source)
       mass_diff = target_colmass - source_colmass
-#      print '??', np.mean(source_colmass), np.mean(target_colmass), max(abs(mass_diff))
+      logger.info("%s average source column mass: %s  average target column mass: %s  maximum difference: %s", self.name, np.mean(source_colmass), np.mean(target_colmass), max(abs(mass_diff)))
 
       # Transpose to C order
       target = target.transpose()
@@ -134,6 +136,9 @@ def do_vertical_regridding (input_data, grid_data, out_interface):
 
   from pygeode.axis import ZAxis
   from data_interface import DataInterface
+  import logging
+  logger = logging.getLogger(__name__)
+
   source_datasets = list(input_data.datasets)
   target_datasets = []
   for source_dataset in source_datasets:
@@ -151,7 +156,7 @@ def do_vertical_regridding (input_data, grid_data, out_interface):
       #TODO: check units
 
       if 'surface_pressure' not in source_dataset or 'air_pressure' not in source_dataset or 'dp' not in source_dataset:
-        print 'Dropping field "%s" - no pressure information available to do the vertical interpolation.'
+        logger.debug('Dropping field "%s" - no pressure information available to do the vertical interpolation.', var.name)
         continue
       p0 = source_dataset['surface_pressure']
       source_p = source_dataset['air_pressure']
@@ -170,7 +175,7 @@ def do_vertical_regridding (input_data, grid_data, out_interface):
         target_p = out_interface.compute_pressure(dummy_target.zaxis, p0)
         target_dp = out_interface.compute_dp(dummy_target.zaxis, p0)
       except ValueError:
-        print "Skipping %s - unable to get pressure levels and/or dp"%var.name
+        logger.debug("Skipping %s - unable to get pressure levels and/or dp", var.name)
         continue
 
       var = VertRegrid(p0, source_p, source_dp, target_p, target_dp, var)

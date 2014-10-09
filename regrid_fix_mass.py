@@ -24,6 +24,8 @@ class GlobalScale (Var):
     copy_meta (var_after, self)
   def getview (self, view, pbar):
     import numpy as np
+    import logging
+    logger = logging.getLogger(__name__)
 
     # Un-slice the lat,lon,z axes of the target (get the whole domain)
     #NOTE: assuming the order of dimensions is identical before/after
@@ -65,6 +67,7 @@ class GlobalScale (Var):
         mass_after = mass_after.sum(dim)
 
       #NOTE: assuming that the time axis is the leftmost axis
+      logger.info ("%s global scale factor to conserve mass: %s", self.name, (mass_before/mass_after))
       target = np.array(var_after * (mass_before/mass_after), dtype=self.dtype)
       self._cache[:] = key, target
 
@@ -83,6 +86,8 @@ del Var
 def global_scale (data, original_data, grid_data):
   from common import can_convert, convert, same_times, first_timestep, remove_repeated_longitude
   from data_interface import DataInterface
+  import logging
+  logger = logging.getLogger(__name__)
   input_datasets = list(data.datasets)
   output_datasets = []
   for input_dataset in input_datasets:
@@ -90,7 +95,7 @@ def global_scale (data, original_data, grid_data):
     for var in input_dataset.vars:
 
       if not can_convert(var, 'molefraction'):
-        print "Not scaling mass of '%s', since it's not a mixing ratio."%var.name
+        logger.debug("Not scaling mass of '%s', since it's not a mixing ratio.", var.name)
         output_dataset.append(var)
         continue
 
@@ -102,7 +107,7 @@ def global_scale (data, original_data, grid_data):
       try:
         original_var, original_dp, original_area = original_data.find_best([var.name,'dp','cell_area'])
       except KeyError:
-        print 'Not scaling mass of "%s" - original layer thickness and/or area information is unavailable.'%var.name
+        logger.info('Not scaling mass of "%s" - original layer thickness and/or area information is unavailable.', var.name)
         output_dataset.append(var)
         continue
 

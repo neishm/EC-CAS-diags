@@ -148,6 +148,8 @@ def do_horizontal_regridding (input_data, grid_data, out_interface):
   from common import can_convert, convert, first_timestep
   from data_interface import DataInterface
   from pygeode.var import copy_meta
+  import logging
+  logger = logging.getLogger(__name__)
   source_datasets = list(input_data.datasets)
   target_datasets = []
   for source_dataset in source_datasets:
@@ -176,7 +178,7 @@ def do_horizontal_regridding (input_data, grid_data, out_interface):
       ##################################################################
       elif can_convert(var, 'kg s-1') or can_convert(var, 'kg'):
         if 'cell_area' not in source_dataset:
-          print 'Dropping field "%s" - no grid area information available.'%var.name
+          logger.info('Dropping field "%s" - no grid area information available.', var.name)
           continue
         source_area = convert(source_dataset['cell_area'],'m2')
         try:
@@ -214,7 +216,7 @@ def do_horizontal_regridding (input_data, grid_data, out_interface):
       # Unhandled case
       ##################################################################
       else:
-        print 'Dropping field "%s" - unhandled units "%s"'%(var.name,var.atts['units'])
+        logger.debug('Dropping field "%s" - unhandled units "%s"', var.name, var.atts['units'])
         continue
 
       target_dataset.append(var)
