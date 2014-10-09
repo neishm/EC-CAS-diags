@@ -127,6 +127,8 @@ class GEM_Data(object):
   def encode (self, dataset):
     from common import convert
     from warnings import warn
+    import logging
+    logger = logging.getLogger(__name__)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
@@ -149,7 +151,7 @@ class GEM_Data(object):
     # Check for any stragglers, remove them
     for varname in data.keys():
       if all(varname != name for name, n, u in self.field_list):
-        warn ("Dropping unrecognized field '%s'"%varname)
+        logger.debug("Dropping unrecognized field '%s'", varname)
         data.pop(varname)
 
     # General cleanup stuff
