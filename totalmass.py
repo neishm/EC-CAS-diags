@@ -1,6 +1,6 @@
 # Total mass (Pg)
 def compute_totalmass (model, fieldname):
-  from common import convert, grav as g, number_of_levels, number_of_timesteps, remove_extra_longitude
+  from common import convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude
   # Do we have the pressure change in the vertical?
   if model.data.have('dp'):
 
@@ -34,7 +34,7 @@ def compute_totalmass (model, fieldname):
   # Integrate horizontally
   # Assume global grid - remove repeated longitude
   area = convert(area,'m2')
-  mass = remove_extra_longitude(tc * area).sum('lat','lon')
+  mass = remove_repeated_longitude(tc * area).sum('lat','lon')
 
   # Convert from kg to Pg
   mass *= 1E-12
@@ -47,7 +47,7 @@ def compute_totalmass (model, fieldname):
 
 # Integrated flux (moles per second)
 def compute_totalflux (model, fieldname):
-  from common import convert, number_of_timesteps, remove_extra_longitude
+  from common import convert, number_of_timesteps, remove_repeated_longitude
 
   # Check if we already have integrated flux (per grid cell)
   try:
@@ -62,7 +62,7 @@ def compute_totalflux (model, fieldname):
     data = data*area
 
   # Sum, skipping the last (repeated) longitude
-  data = remove_extra_longitude(data)
+  data = remove_repeated_longitude(data)
   data = data.sum('lat','lon')
   data.name = fieldname
 

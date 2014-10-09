@@ -148,7 +148,7 @@ def rotate_grid (data):
 
 
 # Remove extra longitude from global data (if it wraps around)
-def remove_extra_longitude (data):
+def remove_repeated_longitude (data):
   import numpy as np
   if not data.hasaxis('lon'): return data
   v1 = data.lon.values[0]
