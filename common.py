@@ -146,14 +146,19 @@ def rotate_grid (data):
   return data.sorted('lon')
 
 
-
-# Remove extra longitude from global data (if it wraps around)
-def remove_repeated_longitude (data):
+# Check if we have a repeated longitude (wraps around)
+def have_repeated_longitude (data):
   import numpy as np
-  if not data.hasaxis('lon'): return data
+  if not data.hasaxis('lon'): return False
   v1 = data.lon.values[0]
   v2 = data.lon.values[-1]
   if np.allclose((v2-v1)%360, 0.):
+    return True
+  return False
+
+# Remove repeated longitude from global data
+def remove_repeated_longitude (data):
+  if have_repeated_longitude(data):
     slices = [slice(None)]*data.naxes
     slices[data.whichaxis('lon')] = slice(0,len(data.lon)-1)
     data = data.slice[slices]
@@ -164,10 +169,10 @@ def add_repeated_longitude (data):
   from pygeode.axis import Lon
   import numpy as np
   if not data.hasaxis('lon'): return data
-  lon = np.array(data.getaxis('lon').values)
   # Check if we already have a repeated longitude
-  if np.allclose((lon[0]-lon[-1])%360, 0.): return data
+  if have_repeated_longitude(data): return data
   # Otherwise, add it in as an extra array index
+  lon = np.array(data.getaxis('lon').values)
   lon_indices = range(len(lon)) + [0]
   slices = [slice(None)]*data.naxes
   slices[data.whichaxis('lon')] = lon_indices
@@ -180,7 +185,7 @@ def add_repeated_longitude (data):
   return data
 
 
-# Compute grid cell areas (how GEM does it)
+# Compute grid cell areas
 # If flat is True, then use a 'flattened' surface for latitude weighting.
 # E.g., use approximation cos(lat_center)*(lat_upper-lat_lower)
 # The default is to use  sin(lat_upper) - sin(lat_lower)
