@@ -145,7 +145,7 @@ def horzregrid (source, target_lat, target_lon):
 
 # Do the horizontal regridding step
 def do_horizontal_regridding (input_data, grid_data, out_interface):
-  from common import can_convert, convert, same_times, first_timestep
+  from common import can_convert, convert, same_times, first_timestep, remove_repeated_longitude
   from data_interface import DataInterface
   from pygeode.var import copy_meta
   source_datasets = list(input_data.datasets)
@@ -169,7 +169,7 @@ def do_horizontal_regridding (input_data, grid_data, out_interface):
         # If the variable is not in the grid file, use a default.
         except KeyError:
           dummy_target = grid_data.datasets[0][0]
-        var = HorzRegrid(var, dummy_target.lat, dummy_target.lon)
+        var = horzregrid(var, dummy_target.lat, dummy_target.lon)
 
       ##################################################################
       # Case 2: flux data (mass / s)
@@ -192,7 +192,7 @@ def do_horizontal_regridding (input_data, grid_data, out_interface):
         target_area = first_timestep(target_area)
         orig = var
         var = var / source_area
-        var = HorzRegrid(var, dummy_target.lat, dummy_target.lon)
+        var = horzregrid(var, dummy_target.lat, dummy_target.lon)
         var = var * target_area
         copy_meta (orig, var)
 
@@ -203,21 +203,27 @@ def do_horizontal_regridding (input_data, grid_data, out_interface):
         if 'dp' not in source_dataset:
           print 'Dropping field "%s" - layer thickness information unavailable.'%var.name
           continue
-        source_dp = source_dataset['dp']
+        source_dp = convert(source_dataset['dp'],'Pa')
+        if 'cell_area' not in source_dataset:
+          print 'Dropping field "%s" - area information unavailable.'%var.name
+          continue
+        source_area = convert(source_dataset['cell_area'],'m2')
         try:
-          # Try to find a dp that has the same domain as the variable
+          # Try to find area & dp that has the same domain as the variable
           # (if the variable is defined in the target grid file).
-          dummy_target, target_dp = grid_data.find_best([var.name,'dp'])
+          dummy_target, target_dp, target_area = grid_data.find_best([var.name,'dp','cell_area'])
         except KeyError:
           # Otherwise, look for any dp information in the target grid.
-          target_dp = grid_data.find_best('dp')
+          target_dp, target_area = grid_data.find_best(['dp','cell_area'])
           dummy_target = target_dp
         # Need the same times as the source data
-        var, target_dp = same_times(var, target_dp)
+        target_dp = convert(target_dp,'Pa')
+        target_area = convert(target_area,'m2')
+        var, target_dp, target_area = same_times(var, target_dp, target_area)
         # Do the regridding
 #        orig = var
 #        var = var * source_dp
-        var = HorzRegrid(var, dummy_target.lat, dummy_target.lon)
+        var = horzregrid(var, dummy_target.lat, dummy_target.lon)
 #        var = var / target_dp
 #        copy_meta (orig, var)
 
