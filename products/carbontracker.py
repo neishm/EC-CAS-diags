@@ -33,7 +33,13 @@ class CT_Data(object):
   @staticmethod
   def open_file (filename):
     from pygeode.formats.netcdf import open
-    return open(filename)
+    import warnings
+    # Ignore warnings about the vertical axis.
+    # PyGeode complains because it sees a hybrid axis, but doesn't find
+    # A and B coefficients to properly define it.
+    with warnings.catch_warnings():
+      warnings.filterwarnings("ignore", "Cannot create a proper Hybrid vertical axis")
+      return open(filename)
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
