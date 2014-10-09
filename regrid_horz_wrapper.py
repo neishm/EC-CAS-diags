@@ -37,11 +37,8 @@ from pygeode.var import Var
 class HorzRegrid (Var):
   def __init__ (self, source, target_lat, target_lon):
     from pygeode.var import Var, copy_meta
-    from common import rotate_grid
     from math import pi
     import numpy as np
-    source = rotate_grid(source)
-    target_lon = rotate_grid(target_lon).lon
 
     axes = list(source.axes)
     axes[source.whichaxis('lat')] = target_lat
@@ -121,6 +118,29 @@ class HorzRegrid (Var):
 
 del Var
 
+# Wrapper for using the above class
+# (handles some details like repeated longitudes)
+def horzregrid (source, target_lat, target_lon):
+  from common import rotate_grid, have_repeated_longitude, remove_repeated_longitude, add_repeated_longitude
+  # Make sure the source/target longitudes have the same range
+  # (make them both 0..360).
+  #TODO: rotate back to the target grid after regridding?
+  source = rotate_grid(source)
+  target_lon = rotate_grid(target_lon).lon
+  # Check if we need to remove a repeated longitude on the source / target
+  if have_repeated_longitude(source):
+    source = remove_repeated_longitude(source)
+  if have_repeated_longitude(target_lon):
+    repeat_target = True
+    target_lon = remove_repeated_longitude(target_lon).lon
+  else: repeat_target = False
+  # Create the regridded variable
+  target = HorzRegrid (source, target_lat, target_lon)
+  # Do we need to add back in the repeated longitude?
+  if repeat_target:
+    target = add_repeated_longitude(target)
+
+  return target
 
 
 # Do the horizontal regridding step
