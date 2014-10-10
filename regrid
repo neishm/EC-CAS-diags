@@ -18,22 +18,20 @@ def read_model_data (model_name, files, manifest=None):
   from data_interface import DataInterface
   import importlib
   interface = get_model_interface(model_name)
-  if isinstance(files,(list,tuple)):
-    pass  # Already parsed into a list of files
-  elif isdir(files):
-    files = interface.find_files(files)
-  elif isinstance(files,str):
-    file_pattern = files
-    files = glob(file_pattern)
-    if len(files) == 0:
-      raise ValueError("No matches for '%s'."%file_pattern)
-  else: raise ValueError("Invalid file argument '%s'"%files)
+  expanded_files = []
   for f in files:
+    if isdir(f):
+      expanded_files.extend(interface.find_files(f))
+    else:
+      expanded_files.extend(glob(f))
+  if len(expanded_files) == 0:
+      raise ValueError("No matches for '%s'."%files)
+  for f in expanded_files:
     if not exists(f):
       raise ValueError("File '%s' does not exist."%f)
   #TODO: remove this call, once the manifest is changed to contain a simple model string instead of an opener function.
   opener = importlib.import_module("products."+model_name.replace('-','_')).open_file
-  data = DataInterface.from_files(files, opener=opener, manifest=manifest)
+  data = DataInterface.from_files(expanded_files, opener=opener, manifest=manifest)
 
   # Filter the data (get standard field names, etc.)
   data = data.filter(interface.decode)
