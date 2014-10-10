@@ -18,6 +18,42 @@ class ECCAS_Flux_Data(ECCAS_Data):
     from glob import glob
     return glob(dirname+"/area_??????????")
 
+  # Extra step to convert fluxes from mass / m2 / s to mass / g.
+  def encode (self, dataset):
+    from gem import GEM_Data
+    from common import can_convert, convert, get_area
+    from pygeode.var import copy_meta
+    import logging
+    logger = logging.getLogger(__name__)
+
+    dataset = list(dataset)
+
+    # Check the flux units, and optionally scale by grid area.
+    area = None
+    for var in dataset:
+      if var.name == 'cell_area': area = var
+    if area is None:
+      dummy = None
+      for var in dataset:
+        if var.hasaxis('lat') and var.hasaxis('lon'):
+          dummy = var
+      if dummy is not None:
+        area = get_area(dummy.lat, dummy.lon, flat=True)
+    if area is None:
+      logger.debug("Dropping dataset with no lat/lon information.")
+      return []
+
+    for i, var in enumerate(dataset):
+      if can_convert(var,'g m-2 s-1'):
+        orig = var
+        var *= area
+        copy_meta(orig,var)
+        var.atts['units'] += area.atts['units']
+        dataset[i] = var
+
+    # Continue with the encoding
+    return GEM_Data.encode(self, dataset)
+
   # Tell the parent GEM interface what filenames to use for writing data.
   @staticmethod
   def _fstd_date2filename (date, forecast):
