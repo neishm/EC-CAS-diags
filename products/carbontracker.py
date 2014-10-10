@@ -92,18 +92,6 @@ class CT_Data(object):
       if varname.startswith('CO2'):
         data[varname].atts['specie'] = 'CO2'
 
-    # Fudge the time axis for all flux products.
-    for varname in data:
-      if varname.endswith('_flux'):
-        # The time is the *midpoint* of the flux period.
-        # Rewind to the *start* of the flux period (-1.5 hours)
-        var = data[varname]
-        time = var.time
-        assert time.units == 'days'
-        time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
-        var = var.replace_axes(time=time)
-        data[varname] = var
-
 
     # Other (more heavily derived) products
 
