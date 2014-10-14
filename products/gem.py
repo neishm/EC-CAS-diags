@@ -41,7 +41,7 @@ class GEM_Data(object):
 
     # Add a water tracer, if we have humidity
     if 'specific_humidity' in data:
-      data['H2O'] = data['specific_humidity']
+      data['H2O'] = data['specific_humidity'].rename('H2O')
 
     # Compute a pressure field.
     # Also, compute a dp field (vertical change in pressure within a gridbox).
