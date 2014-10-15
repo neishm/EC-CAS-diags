@@ -82,7 +82,7 @@ class append_dictvalue(argparse.Action):
 
 # Parse the command-line arguments
 
-valid_types = ["carbontracker","carbontracker-ch4","gem","eccas","eccas-flux","geoschem-coards"]
+valid_types = ["carbontracker","carbontracker-ch4","gem","eccas","eccas-flux","geoschem-coards","macc-nc"]
 
 parser = argparse.ArgumentParser(description="Converts model data from one format to another.", epilog="TYPE can be: "+', '.join(valid_types))
 parser.add_argument ("--intype", help="The type of input data to read.", choices=valid_types, required=True, action=set_dictkey, metavar="TYPE", dest="input")
