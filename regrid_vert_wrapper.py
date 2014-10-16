@@ -49,34 +49,42 @@ class VertRegrid (Var):
       # Get the target pressure info
       p0 = view.get(self._p0)
       target_dp = view.get(self._target_dp)
+      # Flatten the arrays so they have dimensions [nz, everything else]
+      target_shape = target_dp.shape
+      nz_target = target_shape[zdim]
+      p0 = p0.flatten()
+      target_dp = np.rollaxis(target_dp, zdim).reshape(nz_target,-1)
+      # Do we need to invert the z-axis of the target?
+      if self._invert_target:
+        target_dp = target_dp[::-1,:]
+      # Compute target plevels
+      target_plev = np.empty([target_dp.shape[0]+1,target_dp.shape[1]], dtype='float32')
+      target_plev[0,:] = p0
+      target_plev[1:,:] = p0.reshape(1,-1) - np.cumsum(target_dp,axis=0)
+      # Check for a diagnostic level
+      if target_dp[0,0] == 0:
+        target_diagnostic_level = True
+      else: target_diagnostic_level = False
+      del target_dp
+
       # Get the source values & pressure
       source_view = view.replace_axis(zdim, self._source.zaxis)
       source_dp = source_view.get(self._source_dp)
       source = source_view.get(self._source)
       # Flatten the arrays so they have dimensions [nz, everything else]
       source_shape = source_dp.shape
-      target_shape = target_dp.shape
       nz_source = source_shape[zdim]
-      nz_target = target_shape[zdim]
-      p0 = p0.flatten()
-      target_dp = np.rollaxis(target_dp, zdim).reshape(nz_target,-1)
       source_dp = np.rollaxis(source_dp, zdim).reshape(nz_source,-1)
       source = np.rollaxis(source, zdim).reshape(nz_source,-1)
-
-      # Do we need to invert the z-axis of the source / target?
+      # Do we need to invert the z-axis of the source?
       if self._invert_source:
         source_dp = source_dp[::-1,:]
         source = source[::-1,:]
-      if self._invert_target:
-        target_dp = target_dp[::-1,:]
-
-      # Compute source / target plevels
+      # Compute source plevels
       source_plev = np.empty([source_dp.shape[0]+1,source_dp.shape[1]], dtype='float32')
       source_plev[0,:] = p0
       source_plev[1:,:] = p0.reshape(1,-1) - np.cumsum(source_dp,axis=0)
-      target_plev = np.empty([target_dp.shape[0]+1,target_dp.shape[1]], dtype='float32')
-      target_plev[0,:] = p0
-      target_plev[1:,:] = p0.reshape(1,-1) - np.cumsum(target_dp,axis=0)
+      del source_dp
 
       # Force the model tops to both be the same.
       # Easiest to just set them both to 0Pa.
@@ -102,7 +110,7 @@ class VertRegrid (Var):
       target = target.transpose()
 
       # Fill in diagnostic level (won't have any sensible data right now)
-      if target_dp[0,0] == 0:
+      if target_diagnostic_level:
         target[0,:] = target[1,:]
 
       # Do we need to un-invert the grid?
