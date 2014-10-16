@@ -45,17 +45,6 @@ class GlobalScale (Var):
 
     else:
 
-      var_after = view.get(self._var_after)
-      airmass_after = view.get(self._airmass_after)
-      mass_after = (var_after*airmass_after)
-      if self._repeated_target_lon:
-        sl = [slice(None)] * self.naxes
-        sl[londim] = slice(None,-1,None)
-        mass_after = mass_after[sl]
-      for dim in sorted([latdim,londim,zdim], reverse=True):
-        mass_after = mass_after.sum(dim)
-      del airmass_after
-
       source_view = view.replace_axis(latdim,self._var_before.lat).replace_axis(londim,self._var_before.lon).replace_axis(zdim,self._var_before.zaxis)
       var_before = source_view.get(self._var_before)
       airmass_before = source_view.get(self._airmass_before)
@@ -67,6 +56,17 @@ class GlobalScale (Var):
       for dim in sorted([latdim,londim,zdim], reverse=True):
         mass_before = mass_before.sum(dim)
       del var_before, airmass_before
+
+      var_after = view.get(self._var_after)
+      airmass_after = view.get(self._airmass_after)
+      mass_after = (var_after*airmass_after)
+      if self._repeated_target_lon:
+        sl = [slice(None)] * self.naxes
+        sl[londim] = slice(None,-1,None)
+        mass_after = mass_after[sl]
+      for dim in sorted([latdim,londim,zdim], reverse=True):
+        mass_after = mass_after.sum(dim)
+      del airmass_after
 
       #NOTE: assuming that the time axis is the leftmost axis
       logger.info ("%s global scale factor to conserve mass: %s", self.name, (mass_before/mass_after))
