@@ -70,7 +70,8 @@ class GlobalScale (Var):
 
       #NOTE: assuming that the time axis is the leftmost axis
       logger.info ("%s global scale factor to conserve mass: %s", self.name, (mass_before/mass_after))
-      target = var_after * (mass_before/mass_after)
+      target = np.array(var_after)
+      target *= (mass_before/mass_after)
       del var_after
       self._cache[:] = key, target
 
