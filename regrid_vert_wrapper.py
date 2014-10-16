@@ -12,11 +12,17 @@ class VertRegrid (Var):
     zdim = source.whichaxis('zaxis')
     assert source_p.axes[:zdim] + source_p.axes[zdim+1:] == p0.axes
     assert target_p.axes[:zdim] + target_p.axes[zdim+1:] == p0.axes
+    # Determine the order of the pressure levels.
+    column_slice = [0]*source_p.naxes
+    column_slice[zdim] = slice(None)
+    sample_source_p = source_p[column_slice].flatten()
+    sample_target_p = target_p[column_slice].flatten()
+    self._invert_source = sample_source_p[0] < sample_source_p[1]
+    self._invert_target = sample_target_p[0] < sample_target_p[1]
+    # Store the source / target parameters.
     self._p0 = convert(p0,'Pa')
     self._source_dp = convert(source_dp,'Pa')
-    self._source_p = convert(source_p,'Pa')
     self._target_dp = convert(target_dp,'Pa')
-    self._target_p = convert(target_p,'Pa')
     self._source = source
     self._cache = [None, None]  # Store info on last data request
     Var.__init__(self, target_dp.axes, dtype='float32')
@@ -42,11 +48,9 @@ class VertRegrid (Var):
 
       # Get the target pressure info
       p0 = view.get(self._p0)
-      target_p = view.get(self._target_p)
       target_dp = view.get(self._target_dp)
       # Get the source values & pressure
       source_view = view.replace_axis(zdim, self._source.zaxis)
-      source_p = source_view.get(self._source_p)
       source_dp = source_view.get(self._source_dp)
       source = source_view.get(self._source)
       # Flatten the arrays so they have dimensions [nz, everything else]
@@ -55,23 +59,16 @@ class VertRegrid (Var):
       nz_source = source_shape[zdim]
       nz_target = target_shape[zdim]
       p0 = p0.flatten()
-      target_p = np.rollaxis(target_p, zdim).reshape(nz_target,-1)
       target_dp = np.rollaxis(target_dp, zdim).reshape(nz_target,-1)
-      source_p = np.rollaxis(source_p, zdim).reshape(nz_source,-1)
       source_dp = np.rollaxis(source_dp, zdim).reshape(nz_source,-1)
       source = np.rollaxis(source, zdim).reshape(nz_source,-1)
 
       # Do we need to invert the z-axis of the source / target?
-      if source_p[0,0] < source_p[1,0]:
-        source_p = source_p[::-1,:]
+      if self._invert_source:
         source_dp = source_dp[::-1,:]
         source = source[::-1,:]
-
-      if target_p[0,0] < target_p[1,0]:
-        target_p = target_p[::-1,:]
+      if self._invert_target:
         target_dp = target_dp[::-1,:]
-        invert_target = True
-      else: invert_target = False
 
       # Compute source / target plevels
       source_plev = np.empty([source_dp.shape[0]+1,source_dp.shape[1]], dtype='float32')
@@ -109,7 +106,7 @@ class VertRegrid (Var):
         target[0,:] = target[1,:]
 
       # Do we need to un-invert the grid?
-      if invert_target:
+      if self._invert_target:
         target = target[::-1,:]
 
       # Add the extra dimensions back in
