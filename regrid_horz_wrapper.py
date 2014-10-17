@@ -121,12 +121,16 @@ del Var
 # Wrapper for using the above class
 # (handles some details like repeated longitudes)
 def horzregrid (source, target_lat, target_lon):
-  from common import rotate_grid, have_repeated_longitude, remove_repeated_longitude, add_repeated_longitude
+  from common import rotate_grid, have_repeated_longitude, remove_repeated_longitude, add_repeated_longitude, increasing_latitudes
   # Make sure the source/target longitudes have the same range
   # (make them both 0..360).
   #TODO: rotate back to the target grid after regridding?
   source = rotate_grid(source)
   target_lon = rotate_grid(target_lon).lon
+  # Make sure we have increasing latitudes
+  #TODO: flip back to the original target order after regridding?
+  source = increasing_latitudes(source)
+  target_lat = increasing_latitudes(target_lat).lat
   # Check if we need to remove a repeated longitude on the source / target
   if have_repeated_longitude(source):
     source = remove_repeated_longitude(source)
