@@ -107,11 +107,6 @@ class MACC_Data(object):
         if var.hasaxis('level'):
           dataset[i] = var.replace_axes(level=zaxis)
 
-    # Force time to be January 1, 2009 for testing
-    #TODO:remove this
-    for i, var in enumerate(dataset):
-      dataset[i] = var.replace_axes(time=type(var.time)(year=[2009],month=[1],day=[1],hour=[0],minute=[0],second=[0]))
-
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
 
