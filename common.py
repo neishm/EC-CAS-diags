@@ -145,6 +145,18 @@ def rotate_grid (data):
   # Re-sort the data
   return data.sorted('lon')
 
+# Make sure the latitudes are monotonically increasing
+def increasing_latitudes (data):
+  if not data.hasaxis('lat'): return data
+
+  # Check if already increasing
+  lat = data.getaxis('lat')
+  if lat.values[1] > lat.values[0]: return data
+
+  slices = [slice(None)] * data.naxes
+  slices[data.whichaxis('lat')] = slice(None,None,-1)
+  data = data.slice[slices]
+  return data
 
 # Check if we have a repeated longitude (wraps around)
 def have_repeated_longitude (data):
