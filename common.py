@@ -228,15 +228,16 @@ def get_area (latvar, lonvar, flat=False):
   lon_bounds[-1] = lon_bounds[-2] + (lon_bounds[-2] - lon_bounds[-3])
 
   # Length in y direction
-  dlat = np.diff(lat_bounds)
+  dlat = abs(np.diff(lat_bounds))
   dlat = dlat.reshape([-1,1])
   # Length in x direction
-  dlon = np.diff(lon_bounds)
+  dlon = abs(np.diff(lon_bounds))
   dlon = dlon.reshape([1,-1])
 
   # Define some trig functions on latitude.
   clat = np.cos(lats).reshape([-1,1])
-  dsinlat = np.diff(np.sin(lat_bounds)).reshape([-1,1])
+  dsinlat = abs(np.diff(np.sin(lat_bounds)))
+  dsinlat = dsinlat.reshape([-1,1])
 
   if flat is True:
     dxdy = r*r * clat * dlat * dlon
