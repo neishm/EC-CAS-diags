@@ -14,6 +14,11 @@
 !	- Change variable names to those familiar to GEM code
 !	- Add list of assumptions at top
 !	- Add calculation of mass before and after regridding
+!      Modifications:  M Neish (Oct. 17, 2014)
+!       - Remove the mass_s and mass_t arrays (to save space)
+!       - Make dp_s a scalar (to save more space)
+!       - Remove the fraction arrray, and refactor the code to avoid looping
+!         over all combinations of source / target levels.
 !
 !      INPUT
 !      -----
@@ -50,9 +55,8 @@
       REAL*8,    INTENT(OUT):: colmass_s(ni), colmass_t(ni)
 
 !     Local variables
-      INTEGER*4	:: i,k,l
-      REAL*4    :: mass_s(ni,nk_s), mass_t(ni,nk_t)
-      REAL*4    :: fraction(nk_s,nk_t), dp_s(ni,nk_s), dp_t
+      INTEGER*4 :: i,k,k_start,l
+      REAL*4    :: dp_s, dp_t
 
       !======================================================================
       ! Multiply "mass"/m^2 by mixing ratio (Units are arbitrary)
@@ -61,10 +65,8 @@
       do i=1,ni
         colmass_s(i) = 0.0
         do k=1,nk_s
-           dp_s(i,k) = plev_s(i,k) - plev_s(i,k+1)
-           mass_s(i,k) = dp_s(i,k)*tracer_s(i,k)
-           ! write(*,*) k, dp_s(i,k), mass_s(i,k)
-           colmass_s(i) = colmass_s(i) + mass_s(i,k)
+           dp_s = plev_s(i,k) - plev_s(i,k+1)
+           colmass_s(i) = colmass_s(i) + dp_s*tracer_s(i,k)
         enddo
       enddo
 
@@ -74,97 +76,47 @@
 
       do i=1,ni
 
-        fraction(:,:) = 0.0d0
-   
+        tracer_t(i,:) = 0.  ! Initialize target column
+
+        k_start = 1   ! First target level to look at
+
         !=================================================================
         ! Loop over SOURCE grid
         !=================================================================
         do l=1,nk_s
 
-          ! Ignore source diagnostic level
-          if (plev_s(i,l) .eq. plev_s(i,l+1)) cycle
-
           !===============================================================
           ! Loop over TARGET grid
           !===============================================================
-          do k=1,nk_t
+          do k=k_start,nk_t
+
+            dp_t = plev_t(i,k) - plev_t(i,k+1)
     
             ! Ignore target diagnostic level
-            if (plev_t(i,k) .eq. plev_t(i,k+1)) cycle
+            if (dp_t .eq. 0) cycle
 
-            !==============================================================
-            ! Contribution if:
-            ! ----------------
-            ! Entire SOURCE layer in TARGET layer
-            !==============================================================
+            ! If we're completely below the source grid, then need to move
+            ! to the next higher target level.
+            if (plev_t(i,k+1) .ge. plev_s(i,l)) cycle
 
-            if (  (plev_t(i,k) .ge. plev_s(i,l))  .AND.      &
-                  (plev_t(i,k+1) .le. plev_s(i,l+1)) ) then
-               fraction(l,k) = 1.0
-               cycle
-            endif
+            ! If we're completely above the source grid, then need to move
+            ! to the next higher source level.
+            if (plev_t(i,k) .le. plev_s(i,l+1)) exit
 
-            !==============================================================
-            ! Contribution if:
-            ! ----------------
-            ! Top of TARGET layer in SOURCE layer
-            !==============================================================
-            if (  (plev_t(i,k+1) .le. plev_s(i,l))  .AND.    &
-                  (plev_t(i,k) .ge. plev_s(i,l)) ) then
-               fraction(l,k) = (plev_s(i,l) - plev_t(i,k+1))/dp_s(i,l)
-               cycle
-            endif
+            ! Compute how much overlap there is with the source layer.
+            dp_s = min(plev_s(i,l), plev_t(i,k))  &
+                 - max(plev_s(i,l+1), plev_t(i,k+1))
 
-            !==============================================================
-            ! Contribution if:
-            ! ----------------
-            ! Entire TARGET layer in SOURCE layer
-            !==============================================================
-            if (  (plev_t(i,k) .le. plev_s(i,l))  .AND.    &
-                  (plev_t(i,k+1) .ge. plev_s(i,l+1)) ) then
-               fraction(l,k) = (plev_t(i,k) - plev_t(i,k+1))/dp_s(i,l)
-               cycle
-            endif
-
-            !==============================================================
-            ! Contribution if:
-            ! ----------------
-            ! Bottom of TARGET layer in SOURCE layer
-            !==============================================================
-            if (  (plev_t(i,k) .ge. plev_s(i,l+1))  .AND.    &
-                  (plev_t(i,k+1) .le. plev_s(i,l+1)) ) then
-               fraction(l,k) = (plev_t(i,k) - plev_s(i,l+1))/dp_s(i,l)
-               cycle
-            endif
+            ! Attribute this portion of source mass to the target mass
+            tracer_t(i,k) = tracer_t(i,k) + (dp_s/dp_t)*tracer_s(i,l)
 
             enddo  ! loop over TARGET grid (k)
+
+            k_start = max(1,k-1)
+
           enddo   ! loop over SOURCE grid (l)
 
-          !=================================================================
-          ! NOTE: GEOS-Chem top level is at 0.01 hPa whereas for GEM it is
-          ! at lower altitudes. We will neglect extrapolation in top layer.
-          !=================================================================
 
-          do l=1,nk_s
-             if ( abs(1.0 - sum(fraction(l,1:nk_t))) .gt. 1.0e-04) then
-                 write(*,*) 'Fraction does not add to 1'
-                 write(*,*) i,l,sum(fraction(l,1:nk_t))
-             endif
-          enddo
-
-          !================================================================
-          ! get new "mass" distribution on new grid
-          !================================================================
-          mass_t=0.0
-          do k=1,nk_t
-            do l=1,nk_s
-              mass_t(i,k) = mass_t(i,k) + mass_s(i,l)*fraction(l,k)
-            enddo
-          enddo
-
-          do k=1,nk_t
-             tracer_t(i,k) = mass_t(i,k)/(plev_t(i,k) - plev_t(i,k+1))
-          enddo
       enddo    ! loop over columns
 
       !================================================================
@@ -175,11 +127,7 @@
          colmass_t(i) = 0.0
          do k=1,nk_t
             dp_t = plev_t(i,k) - plev_t(i,k+1)
-            ! Skip diagnostic level
-            if (dp_t .eq. 0) cycle
-            mass_t(i,k) = dp_t*tracer_t(i,k)
-            ! write(*,*) k, dp_t, mass_t(i,k)
-            colmass_t(i) = colmass_t(i) + mass_t(i,k)
+            colmass_t(i) = colmass_t(i) + dp_t*tracer_t(i,k)
          enddo
        enddo
 
