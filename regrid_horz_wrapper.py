@@ -174,7 +174,7 @@ def do_horizontal_regridding (input_data, grid_data, out_interface):
           dummy_target = grid_data.find_best(var.name)
         # If the variable is not in the grid file, use a default.
         except KeyError:
-          dummy_target = grid_data.datasets[0][0]
+          dummy_target = grid_data.datasets[0].vars[0]
         var = horzregrid(var, dummy_target.lat, dummy_target.lon)
 
       ##################################################################
