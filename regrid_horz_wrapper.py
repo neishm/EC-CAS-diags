@@ -59,7 +59,7 @@ class HorzRegrid (Var):
 
   def getview (self, view, pbar):
     import numpy as np
-    from regrid_horz import regridmodule
+    from regrid_horz import fvdasregridmodule as regridmodule
 
     # Un-slice the lat/lon axes.
     # We will always regrid the whole source grid onto the whole target grid,
