@@ -68,6 +68,10 @@ class ECCAS_Flux_Data(ECCAS_Data):
     ind = (records['ip2'] == 0)
     # Set IP2 to the hour
     records['ip2'][ind] = (stamp2date(records['dateo'][ind]) / 3600) % 24
+    # Set other defaults that may be expected by the emissions preprocessor
+    records['typvar'][ind] = 'F'
+    records['deet'][ind] = 0
+
 
 # Instantiate the interface
 interface = ECCAS_Flux_Data()
