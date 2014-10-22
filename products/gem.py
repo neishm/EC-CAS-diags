@@ -154,6 +154,12 @@ class GEM_Data(object):
         logger.debug("Dropping unrecognized field '%s'", varname)
         data.pop(varname)
 
+    # Make sure the variables are 32-bit precision.
+    # (Otherwise, GEM may have problems reading them).
+    for varname in data.keys():
+      if data[varname].dtype != 'float32':
+        data[varname] = data[varname].as_type('float32')
+
     # General cleanup stuff
 
     # Make sure the variables have the appropriate names
