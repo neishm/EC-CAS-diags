@@ -71,8 +71,25 @@ class ECCAS_Data(GEM_Data):
     # Do some extra stuff to offset COC / CLA fields
     for i, var in enumerate(dataset):
       if var.name in ('COC','CLA'):
-        dataset[i] = var + conversion_factor('100 ppm', 'ug(C) kg(air)-1', context='CO2')
+        dataset[i] = (var + conversion_factor('100 ppm', 'ug(C) kg(air)-1', context='CO2')).as_type('float32')
     return dataset
+
+  # For our forward cycles, we need to hard-code the ig1/ig2 of the tracers.
+  # This is so we match the ip1/ip2 of the wind archive we're injecting
+  # into the "analysis" files.
+  @staticmethod
+  def _fstd_tweak_records (records):
+    # Select non-coordinate records (things that aren't already using IP2)
+    ind = (records['ip2'] == 0)
+    # Hard code the ig1 / ig2
+    records['ig1'][ind] = 88320
+    records['ig2'][ind] = 57863
+    # Update the coordinate records to be consistent.
+    records['ip1'][~ind] = 88320
+    records['ip2'][~ind] = 57863
+    # Just for completion, set the typvar and deet as well.
+    records['typvar'][ind] = 'A'
+    records['deet'][ind] = 0
 
 
 # Instantiate the interface
