@@ -59,6 +59,10 @@ class CT_Data(object):
     taxis = taxis.withnewvalues(taxis.values-(1./16))
     data = data.replace_axes(date=taxis)
 
+    # Rename the 'date' axis to 'time', since that's what every other dataset
+    # is using.
+    data = data.rename_axes(date='time')
+
     # Don't worry about the date_components and decimal_date domain?
     # (Doesn't have any CO2-related variables).
     varnames = [v.name for v in data]
