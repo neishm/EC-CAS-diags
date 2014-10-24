@@ -90,6 +90,7 @@ parser.add_argument ("--infiles", help="The input file(s), or an input directory
 parser.add_argument ("--outtype", help="The type of output data to write.", choices=valid_types, required=True, metavar="TYPE")
 parser.add_argument ("--gridfiles", help="File(s) or directory that contains the target grid to convert the data to.  Should be in the same format as the output.", nargs='+', metavar="FILE")
 parser.add_argument ("--outdir", help="The directory to write the output files.", required=True)
+parser.add_argument ("--use-target-time", help="Treat the input data as being valid at the first time in the target grid file.  Useful for generating initial conditions with data that comes from a different time period.", action="store_true")
 parser.add_argument ("--debug", help="Print debugging messages.  Also, dump the full stack trace when there's an error.", action="store_true")
 
 args = parser.parse_args()
@@ -115,6 +116,17 @@ try:
   for intype, infiles in args.input.iteritems():
     if intype is None: raise ValueError("No type specified for files %s"%infiles)
     input_data.extend(read_model_data(intype, infiles).datasets)
+
+  # Force the input data to be valid at the target grid time?
+  if args.use_target_time:
+    gridtime = grid_data.datasets[0].time(i_time=0)
+    logging.info("Forcing time: %s", gridtime)
+    for i, dataset in enumerate(input_data):
+      dataset = dataset(i_time=0)
+      dataset = dataset.replace_axes(time=gridtime)
+      input_data[i] = dataset
+
+
   input_data = DataInterface(input_data)
 
   # Get the output interface
