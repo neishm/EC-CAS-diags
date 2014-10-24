@@ -163,9 +163,18 @@ class GEM_Data (object):
     # Apply the conversions & transformations
     forward_data = DataInterface([interface.decode(fd) for fd in forward_data])
 
+    if len(forward_files) == 0 and len(chmmean_files) == 0 and len(chmstd_files) == 0:
+      raise ValueError ("No data found at %s"%experiment_dir)
+
     # Fix the area emissions data, to have the proper lat/lon
-    lat = forward_data.datasets[0].lat
-    lon = forward_data.datasets[0].lon
+    if len(forward_data.datasets) > 0:
+      lat = forward_data.datasets[0].lat
+      lon = forward_data.datasets[0].lon
+    elif len(chmmean_data.datasets) > 0:
+      lat = chmmean_data.datasets[0].lat
+      lon = chmmean_data.datasets[0].lon
+    else:
+      raise ValueError ("Don't know how to fix the emissions lat/lon")
     flux_data = DataInterface(d.replace_axes(lat=lat,lon=lon) for d in flux_data)
     # Decode the emissions fields
     import eccas_flux
