@@ -117,7 +117,7 @@ def timeseries (models, obs, fieldname, units, outdir, plot_months=None,timefilt
 
     #Create bins and plot histogram
 
-    parts.append(Histogram(series,color=colours,bins=range(Min,Max,1),lw=0))
+    parts.append(Histogram(series,color=colours,bins=range(Min,Max+1,1),lw=0))
 
     LocalStds = 'Standard Deviations: '
     LocalMeans = 'Mean Values (ppm): '
