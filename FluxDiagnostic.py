@@ -1,6 +1,6 @@
 # Get a flux product for the given experiment and tracer name.
 def get_flux (model, fieldname):
-  from common import convert, number_of_timesteps, remove_extra_longitude
+  from common import convert, number_of_timesteps, remove_repeated_longitude
 
   # Check if we already have the right units
   try:
@@ -19,7 +19,7 @@ def get_flux (model, fieldname):
   # Strip out the extra longitude from the fluxes
   # (just for compatibility with Jake's code further below, which is hard-coded
   #  for a 400x200 grid).
-  data = remove_extra_longitude(data)
+  data = remove_repeated_longitude(data)
 
   # Cache the data (mainly to get the high/low stats)
   data = model.cache.write(data, prefix='flux_'+fieldname)

@@ -11,10 +11,10 @@ define_conversion ('mol(H2O)', '18.01528 g(H2O)')
 
 # The following is a hack to get mass in terms of carbon atoms
 # I.e. to allow converting mass to Pg(C)
-define_unit ('C_atom', 'Carbon atoms in the molecule')
-define_conversion ('g(C)', repr(1/12.01) + ' mol C_atom-1')
-define_conversion ('C_atom(CO2)', '1')
-define_conversion ('C_atom(CH4)', '1')
+define_unit ('C_atoms_per_molecule', 'Carbon atoms in the molecule')
+define_conversion ('g(C)', repr(1/12.01) + 'C_atoms_per_molecule mol')
+define_conversion ('C_atoms_per_molecule(CO2)', '1')
+define_conversion ('C_atoms_per_molecule(CH4)', '1')
 
 # For the purpose of these diagnostics, assume mole fractions are always with
 # respect to air.
@@ -36,6 +36,26 @@ def convert (var, units, context=None):
   if 'low' in var.atts: var.atts['low'] *= scale
   if 'high' in var.atts: var.atts['high'] *= scale
   return var
+
+# Helper methods to determine if something is of a particular kind of unit.
+def can_convert (var, units):
+  try:
+    convert (var, units)
+    return True
+  except ValueError: return False
+
+def is_mixing_ratio (var):
+  return can_convert (var, 'molefraction')
+
+def is_concentration (var):
+  return can_convert (var, 'mol m-3')
+
+def is_mass_flux (var):
+  return can_convert (var, 'mol m-2 s-1')
+
+def is_integrated_mass_flux (var):
+  return can_convert (var, 'mol s-1')
+
 
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
@@ -88,38 +108,69 @@ def common_taxis (*invars):
   return newvars
 
 
+# Find overlapping time axis between two variables
+def same_times (*varlist):
+  # Use the same start date (so relative values are comparable)
+  varlist = map(fix_timeaxis,varlist)
+  # Get a common set of time values
+  times = [set(var.time.values) for var in varlist]
+  times = reduce(set.intersection,times,times[0])
+  times = sorted(times)
+  if len(times) == 0:
+    raise ValueError ("No overlapping timesteps found for %s"%(",".join(v.name for v in varlist)))
+  return [var(l_time=times) for var in varlist]
+
+# Grab the first available timestep of a variable, and remove the time info.
+def first_timestep (var):
+  if var.hasaxis('time'):
+    var = var(i_time = 0)
+    var = var.squeeze('time')
+  # Strip out forecast info too?
+  if var.hasaxis('forecast'):
+    var = var(i_forecast = 0)
+    var = var.squeeze('forecast')
+  return var
+
 # Adjust a lat/lon grid from -180,180 to 0,360
 def rotate_grid (data):
-  from pygeode.var import concat
   from pygeode.axis import Lon
   import numpy as np
-  lons = data.lon.values
-  # Check if we're already rotated
-  if all (lon >= 0 for lon in lons): return data
-
-  # Split the data into east / west components
-  east_slice = [slice(None)] * data.naxes
-  west_slice = [slice(None)] * data.naxes
-  ilon = data.whichaxis('lon')
-  east_slice[ilon] = slice(np.where(lons<0)[0][-1]+1,None)
-  west_slice[ilon] = slice(0,np.where(lons<0)[0][-1]+1)
-  east_data = data.slice[east_slice]
-  west_data = data.slice[west_slice]
-
-  # Update the west longtidues
-  west_data = west_data.replace_axes(lon=Lon(west_data.lon.values + 360))
-
-  # Concatenate the pieces together again.
-  return concat(east_data, west_data)
-
-
-# Remove extra longitude from global data (if it wraps around)
-def remove_extra_longitude (data):
-  import numpy as np
   if not data.hasaxis('lon'): return data
+  lon = np.array(data.getaxis('lon').values)
+  # Check if already rotated
+  if lon[1] > 0: return data
+  lon[lon<0] += 360.
+  lon = Lon(lon)
+  data = data.replace_axes(lon=lon)
+  # Re-sort the data
+  return data.sorted('lon')
+
+# Make sure the latitudes are monotonically increasing
+def increasing_latitudes (data):
+  if not data.hasaxis('lat'): return data
+
+  # Check if already increasing
+  lat = data.getaxis('lat')
+  if lat.values[1] > lat.values[0]: return data
+
+  slices = [slice(None)] * data.naxes
+  slices[data.whichaxis('lat')] = slice(None,None,-1)
+  data = data.slice[slices]
+  return data
+
+# Check if we have a repeated longitude (wraps around)
+def have_repeated_longitude (data):
+  import numpy as np
+  if not data.hasaxis('lon'): return False
   v1 = data.lon.values[0]
   v2 = data.lon.values[-1]
   if np.allclose((v2-v1)%360, 0.):
+    return True
+  return False
+
+# Remove repeated longitude from global data
+def remove_repeated_longitude (data):
+  if have_repeated_longitude(data):
     slices = [slice(None)]*data.naxes
     slices[data.whichaxis('lon')] = slice(0,len(data.lon)-1)
     data = data.slice[slices]
@@ -127,22 +178,37 @@ def remove_extra_longitude (data):
 
 # Add an extra longitude for global data
 def add_repeated_longitude (data):
-  import numpy as np
   from pygeode.axis import Lon
-  from pygeode.var import concat
+  import numpy as np
+  import warnings
   if not data.hasaxis('lon'): return data
-  v1 = data.lon.values[0]
-  v2 = data.lon.values[-1]
   # Check if we already have a repeated longitude
-  if np.allclose((v2-v1)%360, 0.): return data
-  # Use the same data as 0 degree longitude (but treat it as 360 degrees)
-  extra = data(lon=v1)
-  extra = extra.replace_axes(lon=Lon([v1+360]))
+  if have_repeated_longitude(data): return data
+  # Otherwise, add it in as an extra array index
+  lon = np.array(data.getaxis('lon').values)
+  lon_indices = range(len(lon)) + [0]
+  slices = [slice(None)]*data.naxes
+  slices[data.whichaxis('lon')] = lon_indices
+  # Temporarily disable warning about divide by zero, triggered because we
+  # are repeated an axis value, which screws up the code for computing a
+  # default relative tolerance
+  #TODO: refactor this routine to avoid this trick.
+  with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", "divide by zero")
+    data = data.slice[slices]
+  # Construct a new longitude axis with the repeated longitude
+  lon = lon[lon_indices]
+  lon[-1] += 360.
+  lon = Lon(lon)
+  data = data.replace_axes(lon=lon)
+  return data
 
-  return concat(data, extra)
 
-# Compute grid cell areas (how GEM does it)
-def get_area (latvar, lonvar):
+# Compute grid cell areas
+# If flat is True, then use a 'flattened' surface for latitude weighting.
+# E.g., use approximation cos(lat_center)*(lat_upper-lat_lower)
+# The default is to use  sin(lat_upper) - sin(lat_lower)
+def get_area (latvar, lonvar, flat=False):
 
   import numpy as np
   from pygeode.var import Var
@@ -153,20 +219,32 @@ def get_area (latvar, lonvar):
   lat_bounds = (lats[:-1] + lats[1:]) * 0.5
   # Including the poles
   lat_bounds = np.concatenate([[-pi/2], lat_bounds, [pi/2]])
-  # Length in y direction
-  dlat = np.diff(lat_bounds)
-  # Length in x direction (assuming global grid)
-  lons = lonvar.values * (pi/180)
-  # Assume global & equidistant longitudes
-  dlon = lons[1] - lons[0]
-  dlon = np.repeat(dlon, len(lons))
+  # Get the boundaries of the longitudes.
+  # Assume the longitudes are equally spaced and monotonically increasing.
+  lons = lonvar.values * (pi / 180)
+  lon_bounds = np.empty([len(lons)+1], dtype=lons.dtype)
+  lon_bounds[1:-1] = (lons[0:-1] + lons[1:]) / 2
+  lon_bounds[0] = lon_bounds[1] - (lon_bounds[2] - lon_bounds[1])
+  lon_bounds[-1] = lon_bounds[-2] + (lon_bounds[-2] - lon_bounds[-3])
 
-  dlat = dlat.reshape(-1,1)
-  dlon = dlon.reshape(1,-1)
-  clat = np.cos(lats).reshape(-1,1)
-  dxdy = r*r * clat * dlat * dlon
-  dxdy = np.asarray(dxdy, dtype='float32')
-  dxdy = Var([latvar, lonvar], values=dxdy, name='DX')
+  # Length in y direction
+  dlat = abs(np.diff(lat_bounds))
+  dlat = dlat.reshape([-1,1])
+  # Length in x direction
+  dlon = abs(np.diff(lon_bounds))
+  dlon = dlon.reshape([1,-1])
+
+  # Define some trig functions on latitude.
+  clat = np.cos(lats).reshape([-1,1])
+  dsinlat = abs(np.diff(np.sin(lat_bounds)))
+  dsinlat = dsinlat.reshape([-1,1])
+
+  if flat is True:
+    dxdy = r*r * clat * dlat * dlon
+  else:
+    dxdy = r*r * dsinlat * dlon
+
+  dxdy = Var([latvar, lonvar], values=dxdy)
   dxdy.atts['units'] = 'm2'
 
   return dxdy
