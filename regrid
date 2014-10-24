@@ -86,9 +86,9 @@ valid_types = ["carbontracker","carbontracker-ch4","gem","eccas","eccas-flux","g
 
 parser = argparse.ArgumentParser(description="Converts model data from one format to another.", epilog="TYPE can be: "+', '.join(valid_types))
 parser.add_argument ("--intype", help="The type of input data to read.", choices=valid_types, required=True, action=set_dictkey, metavar="TYPE", dest="input")
-parser.add_argument ("--infiles", help="The input file(s), or an input directory.", nargs='+', action=append_dictvalue, metavar="FILE", dest="input")
+parser.add_argument ("--infiles", help="The input file(s), or an input directory.", nargs='+', required=True, action=append_dictvalue, metavar="FILE", dest="input")
 parser.add_argument ("--outtype", help="The type of output data to write.", choices=valid_types, required=True, metavar="TYPE")
-parser.add_argument ("--gridfiles", help="File(s) or directory that contains the target grid to convert the data to.  Should be in the same format as the output.", nargs='+', metavar="FILE")
+parser.add_argument ("--gridfiles", help="File(s) or directory that contains the target grid to convert the data to.  Should be in the same format as the output.", nargs='+', required=True, metavar="FILE")
 parser.add_argument ("--outdir", help="The directory to write the output files.", required=True)
 parser.add_argument ("--use-target-time", help="Treat the input data as being valid at the first time in the target grid file.  Useful for generating initial conditions with data that comes from a different time period.", action="store_true")
 parser.add_argument ("--debug", help="Print debugging messages.  Also, dump the full stack trace when there's an error.", action="store_true")
