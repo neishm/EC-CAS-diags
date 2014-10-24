@@ -50,14 +50,15 @@ class CT_Data(object):
 
     data = asdataset(data)
 
-    # Adjust the time axis.
+    # Adjust the time axis for flux data.
     # The time is the mid-point of a 3-hour integration?
     # We will interpret this as being valid at the start of the integration,
     # although it's not clear what exactly CarbonTracker is providing...
-    taxis = data.date
-    assert taxis.units == 'days'
-    taxis = taxis.withnewvalues(taxis.values-(1./16))
-    data = data.replace_axes(date=taxis)
+    if 'bio_flux_opt' in data:
+      taxis = data.date
+      assert taxis.units == 'days'
+      taxis = taxis.withnewvalues(taxis.values-(1./16))
+      data = data.replace_axes(date=taxis)
 
     # Rename the 'date' axis to 'time', since that's what every other dataset
     # is using.
