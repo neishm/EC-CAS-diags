@@ -136,6 +136,9 @@ class GEM_Data (object):
     lat = forward_data.datasets[0].lat
     lon = forward_data.datasets[0].lon
     flux_data = DataInterface(d.replace_axes(lat=lat,lon=lon) for d in flux_data)
+    # Decode the emissions fields
+    import eccas_flux
+    flux_data = DataInterface([eccas_flux.interface.decode(fd) for fd in flux_data])
 
     # Combine all datasets into a single unit
     self.data = DataInterface(chmmean_data.datasets+chmstd_data.datasets+flux_data.datasets+forward_data.datasets)
