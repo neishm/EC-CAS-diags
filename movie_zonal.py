@@ -36,10 +36,16 @@ def zonalmean_gph (model, fieldname):
 # Modify ContourMovie to hack in the "height" label
 from movie import ContourMovie
 class ZonalMovie (ContourMovie):
+  # Modify the panel rendering to show the y-axis on the first panel,
+  # and override the latitude labels
   def render_panel (self, axis, field, n):
     from movie import ContourMovie
     ContourMovie.render_panel (self, axis, field, n)
-    axis.set_ylabel(field.zaxis.name)
+    if n == 0:
+      axis.set_ylabel(field.zaxis.name)
+    if self.shape[1] >= 3:
+      axis.set_xticks([-90,0,90])
+      axis.set_xticklabels(['90S','EQ','90N'])
 del ContourMovie
 
 def movie_zonal (models, fieldname, units, outdir):
