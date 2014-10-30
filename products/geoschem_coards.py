@@ -2,7 +2,8 @@
 # netCDF COARDS convenction (compatible with GAMAP routine BPCH2COARDS).
 
 
-class GEOSCHEM_Data(object):
+from products import ModelData
+class GEOSCHEM_Data(ModelData):
 
   # A and B interface values (for vertical coordinate)
 

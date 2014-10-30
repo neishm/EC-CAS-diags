@@ -1,5 +1,6 @@
 
-class GEM_Data(object):
+from products import ModelData
+class GEM_Data(ModelData):
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)

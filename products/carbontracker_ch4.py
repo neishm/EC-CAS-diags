@@ -11,7 +11,8 @@ def ct_file2date(filename):
   return date
 
 
-class CTCH4_Data(object):
+from products import ModelData
+class CTCH4_Data(ModelData):
 
   # Invariant data
   import numpy as np

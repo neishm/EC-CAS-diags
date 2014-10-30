@@ -1,6 +1,7 @@
 # Interface for CarbonTracker data
 
-class CT_Data(object):
+from products import ModelData
+class CT_Data(ModelData):
 
   # Invariant data
   import numpy as np
