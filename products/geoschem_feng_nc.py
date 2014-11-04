@@ -141,3 +141,31 @@ interface = GEOSCHEM_Data()
 def open_file (filename):
   return interface.open_file(filename)
 
+
+# Wrapper class for interfacing with the diagnostics
+#TODO: remove this, once the model interface code is refactored.
+class GEOSCHEM_Data_Wrapper (object):
+  def __init__ (self, experiment_dir, tmpdir=None):
+    from cache import Cache
+    from data_interface import DataInterface
+    from glob import glob
+
+    self.name = 'GEOS-CHEM'
+    self.title = 'GEOS-CHEM w/ CT CO2'
+    cache = Cache(dir=tmpdir, global_prefix=self.name+"_")
+
+    files = interface.find_files(experiment_dir)
+    if len(files) == 0:
+      raise ValueError ("No data found at %s"%experiment_dir)
+
+    manifest = cache.full_path("manifest", writeable=True)
+
+    # Get the data into the standard interface
+    data = DataInterface.from_files(files, opener=open_file, manifest=manifest)
+    # Apply the conversions & transformations
+    data = DataInterface(map(interface.decode,data))
+
+    self.data = data
+    self.cache = cache
+
+
