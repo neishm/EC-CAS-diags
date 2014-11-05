@@ -82,6 +82,8 @@ class GEOSCHEM_Data(object):
     date = dict([x,int(y)] for x,y in date.iteritems())
     from pygeode.timeaxis import StandardTime
     time = StandardTime(startdate=date, units='hours', values=range(24))
+    # Need the time axis to have a consistent start date
+    time = StandardTime(startdate={'year':2009, 'month':1, 'day':1}, units='hours', **time.auxarrays)
     data = data.replace_axes(time=time)
 
     return data
