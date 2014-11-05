@@ -98,6 +98,14 @@ class GEOSCHEM_Data(object):
     # Need to make the z-axis the right type (since there's no metadata hints
     # in the file to indicate the type)
     dataset = dataset.replace_axes(layer=ZAxis, edge_level=ZAxis)
+    if 'layer' in dataset:
+      zaxis = dataset.layer
+    elif 'edge_level' in dataset:
+      zaxis = dataset.edge_level
+    else: zaxis = None
+
+    if zaxis is not None:
+      zaxis.atts['positive'] = 'down'
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)

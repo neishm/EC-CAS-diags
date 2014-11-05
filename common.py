@@ -368,7 +368,12 @@ def select_surface (var):
   if not var.hasaxis(ZAxis): return var
   zaxis = var.getaxis(ZAxis)
   zaxis_type = type(zaxis)
-  sfc_val = surface_values[zaxis_type]
+  if zaxis_type in surface_values:
+    sfc_val = surface_values[zaxis_type]
+  else:
+    from warnings import warn
+    warn ("Incomplete information on z-axis.  Hopefully, the surface is being selected!")
+    sfc_val = zaxis.values[{'up':-1, 'down':0}[zaxis.atts['positive']]]
   selection = dict([(zaxis.name,sfc_val)])
   return var(**selection)
 
