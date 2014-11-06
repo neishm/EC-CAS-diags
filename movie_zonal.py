@@ -78,22 +78,29 @@ class ZonalMovie (ContourMovie):
     ContourMovie.render_panel (self, axis, field, n)
     if n == 0:
       axis.set_ylabel(field.zaxis.name)
+    else:
+      axis.set_ylabel('')
     if self.shape[1] >= 3:
       axis.set_xticks([-90,0,90])
       axis.set_xticklabels(['90S','EQ','90N'])
 del ContourMovie
 
-def movie_zonal (models, fieldname, units, outdir):
+def movie_zonal (models, fieldname, units, outdir, zaxis='gph'):
 
   from common import convert
 
+  assert zaxis in ('gph','plev')
+
   models = [m for m in models if m is not None]
-  prefix = '_'.join(m.name for m in models) + '_zonal'+fieldname
+  prefix = '_'.join(m.name for m in models) + '_zonal'+fieldname+'_on_'+zaxis
   title = 'Zonal mean %s (in %s)'%(fieldname,units)
   aspect_ratio = 1.0
   shape = (1,len(models))
 
-  fields = [zonalmean_gph(m,fieldname) for m in models]
+  if zaxis == 'gph':
+    fields = [zonalmean_gph(m,fieldname) for m in models]
+  else:
+    fields = [zonalmean_pres(m,fieldname) for m in models]
 
   # Unit conversion
   fields = [convert(f,units) for f in fields]
