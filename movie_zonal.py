@@ -33,6 +33,41 @@ def zonalmean_gph (model, fieldname):
   return var
 
 
+# Convert zonal mean data (on pressure levels)
+def zonalmean_pres (model, fieldname):
+  from pygeode.interp import interpolate
+  from pygeode.axis import Pres
+  from common import convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
+  import numpy as np
+
+  var, p = model.data.find_best([fieldname,'air_pressure'], maximize=(number_of_levels,number_of_timesteps))
+  p = convert(p,'hPa')
+
+  pres = Pres(np.exp(np.linspace(np.log(1000),np.log(.1),100)), name='pressure')
+
+  # Define the final expected order of axes
+  # (since 'interpolate' moves the interpolated axis)
+  axes = [a.name for a in var.axes]
+  axes[var.whichaxis('zaxis')] = 'pressure'
+
+  # Do the interpolation
+  var = interpolate(var, inaxis='zaxis', outaxis=pres, inx=p.log(), outx=pres.log())
+
+  # Recover the expected order of axes
+  var = var.transpose(*axes)
+
+  # Remove any repeated longtiude (for global data)
+  var = remove_repeated_longitude(var)
+
+  # Do the zonal mean
+  var = var.nanmean('lon')
+
+  # Cache the zonalmean data
+  var = model.cache.write(var, prefix='zonalmean_pres_'+fieldname)
+
+  return var
+
+
 # Modify ContourMovie to hack in the "height" label
 from movie import ContourMovie
 class ZonalMovie (ContourMovie):
