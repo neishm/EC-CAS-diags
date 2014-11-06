@@ -195,10 +195,13 @@ def timeseries (models, obs, fieldname, units, outdir, plot_months=None,timefilt
     theplots[-1] = Legend(theplots[-1], labels,prop={'size':11})
 
     #Add statistics to each plot
-    for j in range(4):
+    for j in range(len(theplots)):
       theplots[j] = Text(theplots[j],.01,.9,DiffStats[j+i],size=11)
       theplots[j] = Text(theplots[j],.01,.82,DiffStds[j+i],size=11)
       #theplots[j] = Text(theplots[j],.01,.76,std
+
+    # Add placeholders where there aren't enough plots for the figure
+    theplots = (theplots+[None,None,None])[:4]
 
     theplots = Multiplot([[p] for p in theplots])
     theplots.render(figure=fig)
