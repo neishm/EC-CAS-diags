@@ -81,8 +81,8 @@ class ZonalMovie (ContourMovie):
     else:
       axis.set_ylabel('')
     if self.shape[1] >= 3:
-      axis.set_xticks([-90,0,90])
-      axis.set_xticklabels(['90S','EQ','90N'])
+      axis.set_xticks([-90,-60,-30,0,30,60,90])
+      axis.set_xticklabels(['90S','','','EQ','','','90N'])
 del ContourMovie
 
 def movie_zonal (models, fieldname, units, outdir, zaxis='gph'):
