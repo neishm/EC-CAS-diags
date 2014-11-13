@@ -311,6 +311,7 @@ class Multiplot (PlotWrapper):
     for i, row in enumerate(self.plots):
       ncols = len(row)
       for j, plot in enumerate(row):
+        if plot is None: continue  # Skip 'None' placeholders
         axes = pl.subplot(nrows, ncols, i*ncols + j + 1)
         # Do the plot (assume no coordinate transformation, unless otherwise overridden)
         plot._doplot(figure=figure, axes=axes, pl=pl, transform=notransform)

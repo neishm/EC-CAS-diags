@@ -1,6 +1,6 @@
 def movie_zonal_diff (models, fieldname, units, outdir):
 
-  from common import convert
+  from common import convert, same_times
   from movie_zonal import zonalmean_gph, ZonalMovie
 
   models = [m for m in models if m is not None]
@@ -15,6 +15,9 @@ def movie_zonal_diff (models, fieldname, units, outdir):
   fields = [convert(f,units) for f in fields]
 
   subtitles = [m.title for m in models]
+
+  # Use only the common timesteps between the fields
+  fields = same_times (*fields)
 
   # Plot a difference field as well.
   if fields[0].axes != fields[1].axes:

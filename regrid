@@ -1,0 +1,157 @@
+#!/usr/bin/env python
+
+# Helper method - get a model interface
+def get_model_interface (model_name):
+  import importlib
+  # Try to find a module with the given name
+  # Note: hyphens '-' are mangled to underscores '_' when looking for a module.
+  model = importlib.import_module("products."+model_name.replace('-','_'))
+  return model.interface
+
+# Helper method - open the specified file(s) through the given model interface,
+# and return a model data object.
+# TODO: move this code out of here, so it can be shared by the diagnostic
+#       package as well.
+def read_model_data (model_name, files, manifest=None):
+  from os.path import exists, isdir
+  from glob import glob
+  from data_interface import DataInterface
+  import importlib
+  interface = get_model_interface(model_name)
+  expanded_files = []
+  for f in files:
+    if isdir(f):
+      expanded_files.extend(interface.find_files(f))
+    else:
+      expanded_files.extend(glob(f))
+  if len(expanded_files) == 0:
+      raise ValueError("No matches for '%s'."%files)
+  for f in expanded_files:
+    if not exists(f):
+      raise ValueError("File '%s' does not exist."%f)
+  #TODO: remove this call, once the manifest is changed to contain a simple model string instead of an opener function.
+  opener = importlib.import_module("products."+model_name.replace('-','_')).open_file
+  data = DataInterface.from_files(expanded_files, opener=opener, manifest=manifest)
+
+  # Filter the data (get standard field names, etc.)
+  data = data.filter(interface.decode)
+
+  return data
+
+# Helper method - write some data into file(s), using the specified model
+# interface.
+def write_model_data (model_name, dirname, datasets):
+  from os.path import exists, isdir
+  from os import makedirs
+  # Try to find a module with the given name
+  interface = get_model_interface(model_name)
+  # Make sure we have a directory to put this.
+  if not isdir(dirname):
+    if exists (dirname):
+      raise ValueError ("'%s' is not a directory."%dirname)
+    else: makedirs(dirname)
+  # Encode the data in a representation suitable for the given model type.
+  datasets = map(interface.encode, datasets)
+
+  # Write it out
+  interface.write (datasets, dirname)
+
+
+
+###########################
+##### The main script #####
+###########################
+
+import argparse
+
+# Custom action for collecting input arguments
+class set_dictkey(argparse.Action):
+  def __init__ (self, option_strings, dest, nargs=None, const=None, default={}, type=None, choices=None, required=False, help=None, metavar=None):
+    super(set_dictkey, self).__init__ (option_strings, dest, nargs, const, default, type, choices, required, help, metavar)
+  def __call__ (self, parser, namespace, values, option_string=None):
+    setattr(namespace, self.dest+'_last_key', values)
+class append_dictvalue(argparse.Action):
+  def __call__ (self, parser, namespace, values, option_string=None):
+    key = getattr(namespace, self.dest+'_last_key',None)
+    d = getattr(namespace, self.dest)
+    d.setdefault(key,[])
+    if isinstance(values,list):
+      d[key].extend(values)
+    else:
+      d[key].append(values)
+
+# Parse the command-line arguments
+
+valid_types = ["carbontracker","carbontracker-ch4","gem","eccas","eccas-flux","geoschem-coards","geoschem-feng-nc","macc-nc"]
+
+parser = argparse.ArgumentParser(description="Converts model data from one format to another.", epilog="TYPE can be: "+', '.join(valid_types))
+parser.add_argument ("--intype", help="The type of input data to read.", choices=valid_types, required=True, action=set_dictkey, metavar="TYPE", dest="input")
+parser.add_argument ("--infiles", help="The input file(s), or an input directory.", nargs='+', required=True, action=append_dictvalue, metavar="FILE", dest="input")
+parser.add_argument ("--outtype", help="The type of output data to write.", choices=valid_types, required=True, metavar="TYPE")
+parser.add_argument ("--gridfiles", help="File(s) or directory that contains the target grid to convert the data to.  Should be in the same format as the output.", nargs='+', required=True, metavar="FILE")
+parser.add_argument ("--outdir", help="The directory to write the output files.", required=True)
+parser.add_argument ("--use-target-time", help="Treat the input data as being valid at the first time in the target grid file.  Useful for generating initial conditions with data that comes from a different time period.", action="store_true")
+parser.add_argument ("--debug", help="Print debugging messages.  Also, dump the full stack trace when there's an error.", action="store_true")
+
+args = parser.parse_args()
+
+
+# Try doing something
+# Fail gracefully if there's a problem
+
+import logging
+if args.debug:
+  logging.basicConfig(level=logging.DEBUG)
+else:
+  logging.basicConfig(level=logging.INFO)
+
+try:
+
+  # Get the target grid
+  grid_data = read_model_data (args.outtype, args.gridfiles)
+
+  # Collect all the input data for various sources
+  from data_interface import DataInterface
+  input_data = []
+  for intype, infiles in args.input.iteritems():
+    if intype is None: raise ValueError("No type specified for files %s"%infiles)
+    input_data.extend(read_model_data(intype, infiles).datasets)
+
+  # Force the input data to be valid at the target grid time?
+  if args.use_target_time:
+    gridtime = grid_data.datasets[0].time(i_time=0)
+    logging.info("Forcing time: %s", gridtime)
+    for i, dataset in enumerate(input_data):
+      dataset = dataset(i_time=0)
+      dataset = dataset.replace_axes(time=gridtime)
+      input_data[i] = dataset
+
+
+  input_data = DataInterface(input_data)
+
+  # Get the output interface
+  out_interface = get_model_interface (args.outtype)
+
+  data = input_data
+
+  # Vertical regridding (keeping source surface pressure)
+  from regrid_vert_wrapper import do_vertical_regridding
+  data = do_vertical_regridding (data, grid_data, out_interface)
+
+  # Horizontal regridding
+  from regrid_horz_wrapper import do_horizontal_regridding
+  data = do_horizontal_regridding (data, grid_data, out_interface)
+
+  # Apply a global adjustment to conserve mass
+  from regrid_fix_mass import global_scale
+  data = global_scale (data, input_data, grid_data)
+
+  # Write the data out.
+  write_model_data(args.outtype, args.outdir, data)
+
+except Exception as e:
+  from sys import exit
+  if args.debug: raise
+  print "Error: %s"%e
+  exit(1)
+

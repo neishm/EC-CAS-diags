@@ -1,0 +1,142 @@
+# Interface for reading / writing GEOS-CHEM data that is converted to the
+# netCDF COARDS convenction (compatible with GAMAP routine BPCH2COARDS).
+
+
+class GEOSCHEM_Data(object):
+
+  # A and B interface values (for vertical coordinate)
+
+  A_interface = [
+    0.000000E+00, 4.804826E-02, 6.593752E+00, 1.313480E+01,
+    1.961311E+01, 2.609201E+01, 3.257081E+01, 3.898201E+01,
+    4.533901E+01, 5.169611E+01, 5.805321E+01, 6.436264E+01,
+    7.062198E+01, 7.883422E+01, 8.909992E+01, 9.936521E+01,
+    1.091817E+02, 1.189586E+02, 1.286959E+02, 1.429100E+02,
+    1.562600E+02, 1.696090E+02, 1.816190E+02, 1.930970E+02,
+    2.032590E+02, 2.121500E+02, 2.187760E+02, 2.238980E+02,
+    2.243630E+02, 2.168650E+02, 2.011920E+02, 1.769300E+02,
+    1.503930E+02, 1.278370E+02, 1.086630E+02, 9.236572E+01,
+    7.851231E+01, 5.638791E+01, 4.017541E+01, 2.836781E+01,
+    1.979160E+01, 9.292942E+00, 4.076571E+00, 1.650790E+00,
+    6.167791E-01, 2.113490E-01, 6.600001E-02, 1.000000E-02
+  ]
+
+  B_interface = [
+    1.000000E+00, 9.849520E-01, 9.634060E-01, 9.418650E-01,
+    9.203870E-01, 8.989080E-01, 8.774290E-01, 8.560180E-01,
+    8.346609E-01, 8.133039E-01, 7.919469E-01, 7.706375E-01,
+    7.493782E-01, 7.211660E-01, 6.858999E-01, 6.506349E-01,
+    6.158184E-01, 5.810415E-01, 5.463042E-01, 4.945902E-01,
+    4.437402E-01, 3.928911E-01, 3.433811E-01, 2.944031E-01,
+    2.467411E-01, 2.003501E-01, 1.562241E-01, 1.136021E-01,
+    6.372006E-02, 2.801004E-02, 6.960025E-03, 8.175413E-09,
+    0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00,
+    0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00,
+    0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00,
+    0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00
+  ]
+
+
+  # Method to open a single file
+  @staticmethod
+  def open_file (filename):
+    from pygeode.formats import netcdf
+    return netcdf.open(filename)
+
+
+  # Method to decode an opened dataset (standardize variable names, and add any
+  # extra info needed (pressure values, cell area, etc.)
+  def decode (self, dataset):
+    import numpy as np
+    from pygeode.axis import Hybrid
+    from pygeode.var import Var
+    from pygeode.dataset import asdataset
+
+    A_interface = np.array(self.A_interface)
+    B_interface = np.array(self.B_interface)
+    A = (A_interface[:-1] + A_interface[1:]) * 0.5
+    B = (B_interface[:-1] + B_interface[1:]) * 0.5
+    dA = (A_interface[:-1] - A_interface[1:])
+    dB = (B_interface[:-1] - B_interface[1:])
+
+    # Fudge the longitude axis
+    # (it's non-monotonic!)
+    dataset = asdataset(dataset)
+    lon = np.array(dataset.lon.values)
+    lon[lon>=180] -= 360
+    lon = dataset.lon.withnewvalues(lon)
+    dataset = dataset.replace_axes(lon=lon)
+
+    # Use some 'standardized' names, and locate a z-axis.
+    zaxis = None
+    dataset = list(dataset)
+    for i, var in enumerate(dataset):
+      if var.name.endswith('_CO2'):
+        var.name = 'CO2'
+        var.atts['units'] = 'ppb'
+      if var.name.endswith('_PSURF'):
+        var.name = 'surface_pressure'
+        var.atts['units'] = 'mbar'
+      if var.hasaxis('lev'):
+        zaxis = var.getaxis('lev')
+      dataset[i] = var
+
+    # Generate the expected vertical axis
+    if zaxis is not None:
+      zaxis = Hybrid(zaxis.values, A=A, B=B)
+      for i, var in enumerate(dataset):
+        if var.hasaxis('lev'):
+          dataset[i] = var.replace_axes(lev=zaxis)
+
+    # Convert to a dictionary (for referencing by variable name)
+    data = dict((var.name,var) for var in dataset)
+
+    # Compute a pressure field.
+    # Also, compute a dp field (vertical change in pressure within a gridbox).
+    if 'surface_pressure' in data and zaxis is not None:
+      Ps = data['surface_pressure']
+      A = zaxis.auxasvar('A')
+      B = zaxis.auxasvar('B')
+      P = A + B*Ps
+      P = P.transpose('time','zaxis','lat','lon')
+      P.atts['units'] = 'mbar'
+      data['air_pressure'] = P
+
+      dA = Var([zaxis], values=dA)
+      dB = Var([zaxis], values=dB)
+      dP = dA + dB*Ps
+      dP = dP.transpose('time','zaxis','lat','lon')
+      dP.atts['units'] = 'mbar'
+      data['dp'] = dP
+
+    # Grid cell areas
+    # Pick some arbitrary (but deterministic) variable to get the lat/lon
+    var = sorted(data.values())[0]
+    from common import get_area
+    data['cell_area'] = get_area(var.lat,var.lon)
+
+    # General cleanup stuff
+
+    # Make sure the variables have the appropriate names
+    for name, var in data.iteritems():  var.name = name
+
+    # Convert to a list
+    data = list(data.values())
+
+    return data
+
+
+  # Method to find all files in the given directory, which can be accessed
+  # through this interface.
+  @staticmethod
+  def find_files (dirname):
+    return []  # Don't have any good way of identifying GEOS-CHEM files.
+
+
+# Instantiate this interface
+interface = GEOSCHEM_Data()
+
+# Define the open method as a function, so it's picklable.
+def open_file (filename):
+  return interface.open_file(filename)
+

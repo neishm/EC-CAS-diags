@@ -61,6 +61,37 @@ class ECCAS_Data(GEM_Data):
     return dataset
 
 
+  # Method to re-encode data into the source context
+  # (e.g., rename fields to what would be originally in these kinds of files)
+  def encode (self, dataset):
+    from gem import GEM_Data
+    from common import conversion_factor
+    # Call the generic GEM encoder to convert to the right units and field names
+    dataset = GEM_Data.encode(self, dataset)
+    # Do some extra stuff to offset COC / CLA fields
+    for i, var in enumerate(dataset):
+      if var.name in ('COC','CLA'):
+        dataset[i] = (var + conversion_factor('100 ppm', 'ug(C) kg(air)-1', context='CO2')).as_type('float32')
+    return dataset
+
+  # For our forward cycles, we need to hard-code the ig1/ig2 of the tracers.
+  # This is so we match the ip1/ip2 of the wind archive we're injecting
+  # into the "analysis" files.
+  @staticmethod
+  def _fstd_tweak_records (records):
+    # Select non-coordinate records (things that aren't already using IP2)
+    ind = (records['ip2'] == 0)
+    # Hard code the ig1 / ig2
+    records['ig1'][ind] = 88320
+    records['ig2'][ind] = 57863
+    # Update the coordinate records to be consistent.
+    records['ip1'][~ind] = 88320
+    records['ip2'][~ind] = 57863
+    # Just for completion, set the typvar and deet as well.
+    records['typvar'][ind] = 'A'
+    records['deet'][ind] = 0
+
+
 # Instantiate the interface
 interface = ECCAS_Data()
 
@@ -132,10 +163,22 @@ class GEM_Data (object):
     # Apply the conversions & transformations
     forward_data = DataInterface([interface.decode(fd) for fd in forward_data])
 
+    if len(forward_files) == 0 and len(chmmean_files) == 0 and len(chmstd_files) == 0:
+      raise ValueError ("No data found at %s"%experiment_dir)
+
     # Fix the area emissions data, to have the proper lat/lon
-    lat = forward_data.datasets[0].lat
-    lon = forward_data.datasets[0].lon
+    if len(forward_data.datasets) > 0:
+      lat = forward_data.datasets[0].lat
+      lon = forward_data.datasets[0].lon
+    elif len(chmmean_data.datasets) > 0:
+      lat = chmmean_data.datasets[0].lat
+      lon = chmmean_data.datasets[0].lon
+    else:
+      raise ValueError ("Don't know how to fix the emissions lat/lon")
     flux_data = DataInterface(d.replace_axes(lat=lat,lon=lon) for d in flux_data)
+    # Decode the emissions fields
+    import eccas_flux
+    flux_data = DataInterface([eccas_flux.interface.decode(fd) for fd in flux_data])
 
     # Combine all datasets into a single unit
     self.data = DataInterface(chmmean_data.datasets+chmstd_data.datasets+flux_data.datasets+forward_data.datasets)

@@ -33,12 +33,36 @@ class CT_Data(object):
   @staticmethod
   def open_file (filename):
     from pygeode.formats.netcdf import open
-    return open(filename)
+    import warnings
+    # Ignore warnings about the vertical axis.
+    # PyGeode complains because it sees a hybrid axis, but doesn't find
+    # A and B coefficients to properly define it.
+    with warnings.catch_warnings():
+      warnings.filterwarnings("ignore", "Cannot create a proper Hybrid vertical axis")
+      return open(filename)
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
   def decode (self, data):
     from pygeode.axis import ZAxis
+    from pygeode.dataset import asdataset
+    from pygeode.timeaxis import StandardTime
+
+    data = asdataset(data)
+
+    # Adjust the time axis for flux data.
+    # The time is the mid-point of a 3-hour integration?
+    # We will interpret this as being valid at the start of the integration,
+    # although it's not clear what exactly CarbonTracker is providing...
+    if 'bio_flux_opt' in data:
+      taxis = data.date
+      assert taxis.units == 'days'
+      taxis = taxis.withnewvalues(taxis.values-(1./16))
+      data = data.replace_axes(date=taxis)
+
+    # Rename the 'date' axis to 'time', since that's what every other dataset
+    # is using.
+    data = data.rename_axes(date='time')
 
     # Don't worry about the date_components and decimal_date domain?
     # (Doesn't have any CO2-related variables).
@@ -72,18 +96,6 @@ class CT_Data(object):
     for varname in data:
       if varname.startswith('CO2'):
         data[varname].atts['specie'] = 'CO2'
-
-    # Fudge the time axis for all flux products.
-    for varname in data:
-      if varname.endswith('_flux'):
-        # The time is the *midpoint* of the flux period.
-        # Rewind to the *start* of the flux period (-1.5 hours)
-        var = data[varname]
-        time = var.time
-        assert time.units == 'days'
-        time = time.__class__(values=time.values - 0.0625, units='days', startdate=time.startdate)
-        var = var.replace_axes(time=time)
-        data[varname] = var
 
 
     # Other (more heavily derived) products
