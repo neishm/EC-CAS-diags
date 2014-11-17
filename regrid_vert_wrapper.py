@@ -140,7 +140,7 @@ del Var
 def do_vertical_regridding (input_data, grid_data, out_interface):
 
   from pygeode.axis import ZAxis
-  from data_interface import DataInterface
+  from interfaces.data_interface import DataInterface
   import logging
   logger = logging.getLogger(__name__)
 

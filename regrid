@@ -15,7 +15,7 @@ def get_model_interface (model_name):
 def read_model_data (model_name, files, manifest=None):
   from os.path import exists, isdir
   from glob import glob
-  from data_interface import DataInterface
+  from interfaces.data_interface import DataInterface
   import importlib
   interface = get_model_interface(model_name)
   expanded_files = []
@@ -111,7 +111,7 @@ try:
   grid_data = read_model_data (args.outtype, args.gridfiles)
 
   # Collect all the input data for various sources
-  from data_interface import DataInterface
+  from interfaces.data_interface import DataInterface
   input_data = []
   for intype, infiles in args.input.iteritems():
     if intype is None: raise ValueError("No type specified for files %s"%infiles)

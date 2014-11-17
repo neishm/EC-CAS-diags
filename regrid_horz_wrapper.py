@@ -150,7 +150,7 @@ def horzregrid (source, target_lat, target_lon):
 # Do the horizontal regridding step
 def do_horizontal_regridding (input_data, grid_data, out_interface):
   from common import can_convert, convert, first_timestep
-  from data_interface import DataInterface
+  from interfaces.data_interface import DataInterface
   from pygeode.var import copy_meta
   import logging
   logger = logging.getLogger(__name__)
