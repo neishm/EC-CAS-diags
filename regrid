@@ -5,7 +5,7 @@ def get_model_interface (model_name):
   import importlib
   # Try to find a module with the given name
   # Note: hyphens '-' are mangled to underscores '_' when looking for a module.
-  model = importlib.import_module("products."+model_name.replace('-','_'))
+  model = importlib.import_module("interfaces."+model_name.replace('-','_'))
   return model.interface
 
 # Helper method - open the specified file(s) through the given model interface,
@@ -30,7 +30,7 @@ def read_model_data (model_name, files, manifest=None):
     if not exists(f):
       raise ValueError("File '%s' does not exist."%f)
   #TODO: remove this call, once the manifest is changed to contain a simple model string instead of an opener function.
-  opener = importlib.import_module("products."+model_name.replace('-','_')).open_file
+  opener = importlib.import_module("interfaces."+model_name.replace('-','_')).open_file
   data = DataInterface.from_files(expanded_files, opener=opener, manifest=manifest)
 
   # Filter the data (get standard field names, etc.)

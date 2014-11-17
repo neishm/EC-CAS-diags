@@ -1,5 +1,5 @@
 
-from products import ModelData
+from interfaces import ModelData
 class MACC_Data(ModelData):
 
   # Define all the possible variables we might have in this dataset.

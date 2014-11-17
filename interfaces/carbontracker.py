@@ -1,18 +1,7 @@
 # Interface for CarbonTracker data
 
-# Get the proper date for the given filename
-# (since the date inside the file is wrong!)
-def ct_file2date(filename):
-  from re import search
-  date = search("(?P<year>\d{4})-?(?P<month>\d{2})-?(?P<day>\d{2})\.nc$", filename).groupdict()
-  date['year']  = int(date['year'])
-  date['month'] = int(date['month'])
-  date['day']   = int(date['day'])
-  return date
-
-
-from products import ModelData
-class CTCH4_Data(ModelData):
+from interfaces import ModelData
+class CT_Data(ModelData):
 
   # Invariant data
   import numpy as np
@@ -27,47 +16,62 @@ class CTCH4_Data(ModelData):
   # List of all possible fields we expect from the data
   # (original_name, standard_name, units)
   field_list = (
-    ('bgrnd', 'CH4_background', 'ppb'),
-    ('fossil', 'CH4_fossil', 'ppb'),
-    ('agwaste', 'CH4_agwaste', 'ppb'),
-    ('ocean', 'CH4_ocean', 'ppb'),
-    ('bioburn', 'CH4_bioburn', 'ppb'),
-    ('natural', 'CH4_natural', 'ppb'),
-    ('pressure', 'air_pressure', 'hPa'),
+    ('bg', 'CO2_background', 'ppm'),
+    ('ff', 'CO2_fossil', 'ppm'),
+    ('bio', 'CO2_bio', 'ppm'),
+    ('ocean', 'CO2_ocean', 'ppm'),
+    ('fires', 'CO2_fire', 'ppm'),
+    ('fossil_imp', 'CO2_fossil_flux', 'mol m-2 s-1'),
+    ('bio_flux_opt', 'CO2_bio_flux', 'mol m-2 s-1'),
+    ('ocn_flux_opt', 'CO2_ocean_flux', 'mol m-2 s-1'),
+    ('fire_flux_imp', 'CO2_fire_flux', 'mol m-2 s-1'),
+    ('press', 'air_pressure', 'Pa'),
+    ('gph', 'geopotential_height', 'm'),
   )
-
-
   # Helper methods
 
   # Method to open a single file
   @staticmethod
   def open_file (filename):
-    from pygeode.formats import netcdf
-    data = netcdf.open(filename)
-    # The time axis in the file is wrong!
-    # Override the year, month, and day
-    filedate = ct_file2date(filename)
-    year = [filedate['year']]*len(data.time)
-    month = [filedate['month']]*len(data.time)
-    day = [filedate['day']]*len(data.time)
-    hour= data.time.hour
-    minute = data.time.minute
-    from pygeode.timeaxis import StandardTime
-    taxis = StandardTime(startdate=data.time.startdate, year=year, month=month, day=day, hour=hour, minute=minute, units='days')
-    data = data.replace_axes(time=taxis)
-    return data
+    from pygeode.formats.netcdf import open
+    import warnings
+    # Ignore warnings about the vertical axis.
+    # PyGeode complains because it sees a hybrid axis, but doesn't find
+    # A and B coefficients to properly define it.
+    with warnings.catch_warnings():
+      warnings.filterwarnings("ignore", "Cannot create a proper Hybrid vertical axis")
+      return open(filename)
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
   def decode (self, data):
     from pygeode.axis import ZAxis
+    from pygeode.dataset import asdataset
+    from pygeode.timeaxis import StandardTime
 
-    # Don't worry about non-CH4 variables.
+    data = asdataset(data)
+
+    # Adjust the time axis for flux data.
+    # The time is the mid-point of a 3-hour integration?
+    # We will interpret this as being valid at the start of the integration,
+    # although it's not clear what exactly CarbonTracker is providing...
+    if 'bio_flux_opt' in data:
+      taxis = data.date
+      assert taxis.units == 'days'
+      taxis = taxis.withnewvalues(taxis.values-(1./16))
+      data = data.replace_axes(date=taxis)
+
+    # Rename the 'date' axis to 'time', since that's what every other dataset
+    # is using.
+    data = data.rename_axes(date='time')
+
+    # Don't worry about the date_components and decimal_date domain?
+    # (Doesn't have any CO2-related variables).
     varnames = [v.name for v in data]
-    if 'fossil' not in varnames: return data
+    if 'bio' not in varnames and 'bio_flux_opt' not in varnames: return data
 
     # Force vertical axis to be a ZAxis
-    data = data.replace_axes(lev = ZAxis)
+    data = data.replace_axes(level = ZAxis)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in data)
@@ -79,16 +83,20 @@ class CTCH4_Data(ModelData):
         var.atts['units'] = units
         data[new_name] = var
 
-    # Find the total CH4 (sum of components)
-    if 'CH4_background' in data:
-      data['CH4'] = data['CH4_background'] + data['CH4_fossil'] + data['CH4_agwaste'] + data['CH4_ocean'] + data['CH4_bioburn'] + data['CH4_natural']
-      data['CH4'].atts['units'] = data['CH4_background'].atts['units']
+    # Find the total CO2 (sum of components)
+    if 'CO2_background' in data:
+      data['CO2'] = data['CO2_background'] + data['CO2_fossil'] + data['CO2_bio'] + data['CO2_ocean'] + data['CO2_fire']
+      data['CO2'].atts['units'] = data['CO2_background'].atts['units']
 
+    # Create a total flux product
+    if 'CO2_fire_flux' in data:
+      data['CO2_flux'] = data['CO2_fossil_flux'] + data['CO2_bio_flux'] + data['CO2_ocean_flux'] + data['CO2_fire_flux']
+      data['CO2_flux'].atts['units'] = data['CO2_fire_flux'].atts['units']
 
     # Add species name for all products (to assist in things like unit conversion)
     for varname in data:
-      if varname.startswith('CH4'):
-        data[varname].atts['specie'] = 'CH4'
+      if varname.startswith('CO2'):
+        data[varname].atts['specie'] = 'CO2'
 
 
     # Other (more heavily derived) products
@@ -96,7 +104,7 @@ class CTCH4_Data(ModelData):
     if 'air_pressure' in data:
       # Surface pressure
       # Get pressure at the bottom mid-level
-      pmid = data['air_pressure'].squeeze(lev=1) * 100.
+      pmid = data['air_pressure'].squeeze(level=1)
 
       # Compute surface pressure from this
       # p1 = A1 + B1*Ps
@@ -112,21 +120,22 @@ class CTCH4_Data(ModelData):
       import numpy as np
       from pygeode.var import Var
       dA = -np.diff(self.A_interface)
-      dA = Var([data['air_pressure'].lev], values=dA)
+      dA = Var([data['air_pressure'].level], values=dA)
       dB = -np.diff(self.B_interface)
-      dB = Var([data['air_pressure'].lev], values=dB)
-      dp = dA/ + dB * data['surface_pressure']
+      dB = Var([data['air_pressure'].level], values=dB)
+      dp = dA + dB * data['surface_pressure']
       dp = dp.transpose('time','zaxis','lat','lon')
       dp.atts['units'] = 'Pa'
       data['dp'] = dp
 
 
     # Compute grid cell area
+    # NOTE: will be different for fluxes and 3D mole fractions
     from common import get_area
-    if 'CH4' in data:
-      x = data['CH4'].squeeze(lev=1)
+    if 'CO2' in data:
+      x = data['CO2'].squeeze(level=1)
     else:
-      raise Exception ("This should not happen")
+      x = data['CO2_flux']
     data['cell_area'] = get_area(x.lat, x.lon).extend(0,x.time)
 
 
@@ -140,15 +149,23 @@ class CTCH4_Data(ModelData):
 
     return data
 
+
   # Method to find all files in the given directory, which can be accessed
   # through this interface.
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+"/????????.nc")
+    molefractions = glob(dirname+"/CT????.molefrac_glb3x2_????-??-??.nc")
+    fluxes = glob(dirname+"/CT????.flux1x1.????????.nc")
+
+    # Blacklist the 2009-08-07 molefractions file, which has bad data at 10:30
+    # (For CT2010 dataset)
+    molefractions = [m for m in molefractions if "2009-08-07" not in m]
+
+    return molefractions+fluxes
 
 # Instantiate this interface
-interface = CTCH4_Data()
+interface = CT_Data()
 
 # Define the open method as a function, so it's picklable.
 def open_file (filename):
@@ -156,10 +173,9 @@ def open_file (filename):
 
 
 
-
 # Define the data interface for CarbonTracker
 
-class CarbonTracker_CH4 (object):
+class CarbonTracker_Data (object):
 
   def __init__ (self, tmpdir=None):
 
@@ -169,18 +185,21 @@ class CarbonTracker_CH4 (object):
     from pygeode.formats import netcdf
 
     # Higher-level information about the data
-    self.name = 'CTCH42010'
+    self.name = 'CT2010'
     self.title = 'CarbonTracker'
 
-    cachedir = '/wrk6/eltonc/ct_ch4/molefractions/nc_cache'
+    cachedir = '/wrk1/EC-CAS/CarbonTracker/nc_cache'
     fallback_dirs = [tmpdir] if tmpdir is not None else []
     self.cache = Cache (dir=cachedir, fallback_dirs=fallback_dirs, global_prefix=self.name+'_')
 
-    molefractions = glob("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc")
+    molefractions = glob("/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc")
+    fluxes = glob("/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc")
+
+    # Blacklist the 2009-08-07 molefractions file, which has bad data at 10:30
+    molefractions = [m for m in molefractions if "2009-08-07" not in m]
 
     manifest = self.cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files (molefractions, opener=open_file, manifest=manifest)
+    self.data = DataInterface.from_files (molefractions+fluxes, opener=open_file, manifest=manifest)
 
     self.data = DataInterface(map(interface.decode,self.data))
-
 

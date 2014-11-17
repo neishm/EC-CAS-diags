@@ -2,7 +2,7 @@
 # from Feng Deng's scripts.
 
 
-from products import ModelData
+from interfaces import ModelData
 class GEOSCHEM_Data(ModelData):
 
   # Define all the possible variables we might have in this dataset.
