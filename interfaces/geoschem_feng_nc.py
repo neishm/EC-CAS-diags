@@ -91,12 +91,10 @@ class GEOSCHEM_Data(ModelData):
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
-  def decode (self, dataset):
+  @classmethod
+  def decode (cls,dataset):
     import numpy as np
     from pygeode.axis import ZAxis
-    from pygeode.dataset import asdataset
-
-    dataset = asdataset(dataset)
 
     # Need to make the z-axis the right type (since there's no metadata hints
     # in the file to indicate the type)
@@ -110,15 +108,11 @@ class GEOSCHEM_Data(ModelData):
     if zaxis is not None:
       zaxis.atts['positive'] = 'down'
 
+    # Apply fieldname conversions
+    data = ModelData.decode.__func__(cls,dataset)
+
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
-
-    # Do the conversions
-    for old_name, new_name, units in self.field_list:
-      if old_name in data:
-        var = data.pop(old_name)
-        var.atts['units'] = units
-        data[new_name] = var
 
     # Grid cell areas
     # Pick some arbitrary (but deterministic) variable to get the lat/lon

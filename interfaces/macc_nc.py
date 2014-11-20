@@ -80,15 +80,15 @@ class MACC_Data(ModelData):
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
-  def decode (self, dataset):
+  @classmethod
+  def decode (cls, dataset):
     from pygeode.axis import Hybrid
     from pygeode.ufunc import exp
     from pygeode.var import Var
-    from pygeode.dataset import asdataset
     import numpy as np
 
-    A_interface = np.array(self.A_interface)
-    B_interface = np.array(self.B_interface)
+    A_interface = np.array(cls.A_interface)
+    B_interface = np.array(cls.B_interface)
     A = (A_interface[1:] + A_interface[:-1]) * 0.5
     B = (B_interface[1:] + B_interface[:-1]) * 0.5
     dA = (A_interface[1:] - A_interface[:-1])
@@ -108,15 +108,11 @@ class MACC_Data(ModelData):
         if var.hasaxis('level'):
           dataset[i] = var.replace_axes(level=zaxis)
 
+    # Apply fieldname conversions
+    dataset = ModelData.decode.__func__(dataset)
+
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
-
-    # Do the conversions
-    for old_name, new_name, units in self.field_list:
-      if old_name in data:
-        var = data.pop(old_name)
-        var.atts['units'] = units
-        data[new_name] = var
 
     # Add pressure info
     if 'logarithm_of_surface_pressure' in data and zaxis is not None:

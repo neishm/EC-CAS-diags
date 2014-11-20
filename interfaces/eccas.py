@@ -20,12 +20,13 @@ class ECCAS_Data(GEM_Data):
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
-  def decode (self, dataset):
-    from pygeode.dataset import asdataset
+  @classmethod
+  def decode (cls,dataset):
     from common import conversion_factor
     from gem import GEM_Data
 
-    dataset = GEM_Data.decode(self, dataset)
+    # Do generic GEM field decoding
+    dataset = GEM_Data.decode.__func__(cls,dataset)
 
     # Determine if we have ensemble spread data from EC-CAS
     chmstd = False
@@ -63,11 +64,12 @@ class ECCAS_Data(GEM_Data):
 
   # Method to re-encode data into the source context
   # (e.g., rename fields to what would be originally in these kinds of files)
-  def encode (self, dataset):
-    from gem import GEM_Data
+  @classmethod
+  def encode (cls, dataset):
     from common import conversion_factor
+    from gem import GEM_Data
     # Call the generic GEM encoder to convert to the right units and field names
-    dataset = GEM_Data.encode(self, dataset)
+    dataset = GEM_Data.encode.__func__(cls,dataset)
     # Do some extra stuff to offset COC / CLA fields
     for i, var in enumerate(dataset):
       if var.name in ('COC','CLA'):

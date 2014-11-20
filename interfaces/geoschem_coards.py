@@ -47,14 +47,15 @@ class GEOSCHEM_Data(ModelData):
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
-  def decode (self, dataset):
+  @classmethod
+  def decode (cls, dataset):
     import numpy as np
     from pygeode.axis import Hybrid
     from pygeode.var import Var
     from pygeode.dataset import asdataset
 
-    A_interface = np.array(self.A_interface)
-    B_interface = np.array(self.B_interface)
+    A_interface = np.array(cls.A_interface)
+    B_interface = np.array(cls.B_interface)
     A = (A_interface[:-1] + A_interface[1:]) * 0.5
     B = (B_interface[:-1] + B_interface[1:]) * 0.5
     dA = (A_interface[:-1] - A_interface[1:])
