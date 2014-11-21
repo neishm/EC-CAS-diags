@@ -267,6 +267,13 @@ try:
 except Exception as e:
   failures.append(['totalmass air', e])
 
+# Horizontal slice movie
+from horz_slice_diff import horz_slice_movie
+try:
+  horz_slice_movie(models=[experiment,control], fieldname='CO2', level="0.997", units='ppm', outdir=outdir) 
+except Exception as e:
+  failures.append(['horz_slice_movie', e])
+
 #-------------------Jake's Diags------------------------
 
 from concentration_v_height import movie_CvH
