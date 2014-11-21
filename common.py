@@ -418,3 +418,92 @@ def have_gridded_data (varlist):
   return False
 
 
+# Command-line argument parsing - helper classes
+
+# Extend the argument parser to allow repeated groups of arguments
+from argparse import HelpFormatter
+class CustomHelpFormatter(HelpFormatter):
+  def _format_actions_usage (self, actions, groups):
+    import re
+    text = super(CustomHelpFormatter,self)._format_actions_usage(actions,groups)
+    superargs = []
+    for action in actions:
+      if hasattr(action,'_subargs'):
+        superargs.append(action.option_strings[0])
+    if len(superargs) == 0: return text
+    pattern = '('+'|'.join(superargs)+')'
+    text = re.sub(pattern,r'\1 {sub-arguments}',text)
+    return text
+del HelpFormatter
+
+from argparse import ArgumentParser
+class CustomArgumentParser(ArgumentParser):
+  def __init__ (self, *args, **kwargs):
+    kwargs['formatter_class'] = CustomHelpFormatter
+    super(CustomArgumentParser,self).__init__(*args,**kwargs)
+  # Add a nested argument group to this one?
+  def add_superargument (self, *args, **kwargs):
+    # Make it a boolean flag, so it can be parsed by the outer parser.
+    kwargs['action'] = 'store_true'
+    action = self.add_argument(*args,**kwargs)
+    action._subargs = CustomArgumentParser(add_help=False,prog=action.option_strings[0])
+    return action._subargs
+  def format_help(self):
+    from copy import copy
+    x = copy(self)
+    x._action_groups = list(x._action_groups)
+    for action in self._actions:
+      if hasattr(action,'_subargs'):
+        group = copy(action._subargs)
+        group.title = 'sub-arguments for %s'%action.option_strings[0]
+        group.description = None
+        group._group_actions = group._actions
+        x._action_groups.append(group)
+    return super(CustomArgumentParser,x).format_help()
+  # Parse this thing out.
+  def parse_args (self, args=None, namespace=None):
+    import sys
+    from argparse import Namespace
+
+    superself = super(CustomArgumentParser,self)
+
+    if args is None: args = sys.argv[1:]
+    args = list(args)
+    if namespace is None: namespace = Namespace()
+    global_namespace = namespace
+
+    # Try parsing all known args once, to trigger help menu, etc.
+    superself.parse_known_args(args)
+
+    split_indices = []
+    split_actions = []
+    for i,arg in enumerate(args):
+      for action in self._actions:
+        if not hasattr(action,'_subargs'): continue
+        for opt in action.option_strings:
+          if arg == opt or arg.startswith(opt+'='):
+            split_indices.append(i)
+            split_actions.append(action)
+    split_indices.append(len(args))
+
+    global_args = args[:split_indices[0]]
+    subargs = {}
+    for i,action in enumerate(split_actions):
+      action = split_actions[i]
+      namespaces = subargs.setdefault(action.dest,[])
+      current_args = args[split_indices[i]:split_indices[i+1]]
+      namespace, extra = action._subargs.parse_known_args(current_args)
+      namespaces.append(namespace)
+      global_args.append(current_args[0])
+      global_args.extend(extra)
+
+    # Consider anything that didn't parse yet to be part of the outer parser.
+    superself.parse_args(global_args,global_namespace)
+
+    # Attach the sub-arguments
+    for name, value in subargs.iteritems():
+      setattr(global_namespace,name,value)
+
+    return global_namespace
+del ArgumentParser
+
