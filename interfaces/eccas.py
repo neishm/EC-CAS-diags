@@ -94,8 +94,8 @@ class ECCAS_Data(GEM_Data):
     records['deet'][ind] = 0
 
 
-# Instantiate the interface
-interface = ECCAS_Data()
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = ECCAS_Data
 
 # Define the open method as a function, so it's picklable.
 def open_file (filename):

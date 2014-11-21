@@ -135,8 +135,8 @@ class GEOSCHEM_Data(ModelData):
     return []  # Don't have any good way of identifying GEOS-CHEM files.
 
 
-# Instantiate this interface
-interface = GEOSCHEM_Data()
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = GEOSCHEM_Data
 
 # Define the open method as a function, so it's picklable.
 def open_file (filename):

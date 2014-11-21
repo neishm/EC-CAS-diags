@@ -144,8 +144,8 @@ class CTCH4_Data(ModelData):
     from glob import glob
     return glob(dirname+"/????????.nc")
 
-# Instantiate this interface
-interface = CTCH4_Data()
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = CTCH4_Data
 
 # Define the open method as a function, so it's picklable.
 def open_file (filename):

@@ -346,8 +346,8 @@ class GEM_Data(ModelData):
 
 
 
-# Instantiate this interface
-interface = GEM_Data()
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = GEM_Data
 
 # Define the open method as a function, so it's picklable.
 def open_file (filename):
