@@ -76,8 +76,4 @@ class ECCAS_Flux_Data(ECCAS_Data):
 # Give this class a standard reference name, to make it easier to auto-discover.
 interface = ECCAS_Flux_Data
 
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
-
 

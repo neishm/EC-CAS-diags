@@ -161,10 +161,6 @@ class CT_Data(ModelData):
 # Give this class a standard reference name, to make it easier to auto-discover.
 interface = CT_Data
 
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
-
 
 
 # Define the data interface for CarbonTracker
@@ -193,7 +189,7 @@ class CarbonTracker_Data (object):
     molefractions = [m for m in molefractions if "2009-08-07" not in m]
 
     manifest = self.cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files (molefractions+fluxes, opener=open_file, manifest=manifest)
+    self.data = DataInterface.from_files (molefractions+fluxes, interface, manifest=manifest)
 
     self.data = DataInterface(map(interface.decode,self.data))
 

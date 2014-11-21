@@ -117,7 +117,6 @@ def read_model_data (model_name, files, manifest=None):
   from os.path import exists, isdir
   from glob import glob
   from data_interface import DataInterface
-  import importlib
   interface = get_model_interface(model_name)
   expanded_files = []
   for f in files:
@@ -130,9 +129,7 @@ def read_model_data (model_name, files, manifest=None):
   for f in expanded_files:
     if not exists(f):
       raise ValueError("File '%s' does not exist."%f)
-  #TODO: remove this call, once the manifest is changed to contain a simple model string instead of an opener function.
-  opener = importlib.import_module('interfaces.'+model_name.replace('-','_')).open_file
-  data = DataInterface.from_files(expanded_files, opener=opener, manifest=manifest)
+  data = DataInterface.from_files(expanded_files, interface, manifest=manifest)
 
   # Filter the data (get standard field names, etc.)
   data = data.filter(interface.decode)

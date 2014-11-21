@@ -142,10 +142,6 @@ class GEOSCHEM_Data(ModelData):
 # Give this class a standard reference name, to make it easier to auto-discover.
 interface = GEOSCHEM_Data
 
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
-
 
 # Wrapper class for interfacing with the diagnostics
 #TODO: remove this, once the model interface code is refactored.
@@ -166,7 +162,7 @@ class GEOSCHEM_Data_Wrapper (object):
     manifest = cache.full_path("manifest", writeable=True)
 
     # Get the data into the standard interface
-    data = DataInterface.from_files(files, opener=open_file, manifest=manifest)
+    data = DataInterface.from_files(files, interface, manifest=manifest)
     # Apply the conversions & transformations
     data = DataInterface(map(interface.decode,data))
 

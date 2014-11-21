@@ -147,10 +147,6 @@ class CTCH4_Data(ModelData):
 # Give this class a standard reference name, to make it easier to auto-discover.
 interface = CTCH4_Data
 
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
-
 
 
 
@@ -176,7 +172,7 @@ class CarbonTracker_CH4 (object):
     molefractions = glob("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc")
 
     manifest = self.cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files (molefractions, opener=open_file, manifest=manifest)
+    self.data = DataInterface.from_files (molefractions, interface, manifest=manifest)
 
     self.data = DataInterface(map(interface.decode,self.data))
 
