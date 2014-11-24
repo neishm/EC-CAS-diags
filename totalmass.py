@@ -52,12 +52,12 @@ def compute_totalflux (model, fieldname):
   # Check if we already have integrated flux (per grid cell)
   try:
     data = model.data.find_best(fieldname+'_flux', maximize=number_of_timesteps)
-    data = convert(data,'mol s-1',context=fieldname)
+    data = convert(data,'mol s-1')
   # Otherwise, we need to integrate over the grid cell area.
   except ValueError:
     data, area = model.data.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
     # Convert the units, using the specified tracer name for mass conversion
-    data = convert(data,'mol m-2 s-1',context=fieldname)
+    data = convert(data,'mol m-2 s-1')
     area = convert(area,'m2')
     data = data*area
 
@@ -127,6 +127,7 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
     try:
       totalflux = compute_totalflux(model,fieldname)
       flux_units = totalflux.atts['units']
+      flux_specie = totalflux.atts['specie']
       time = totalflux.time
 
       # Find the closest "start" time in the flux data that aligns with the model data
@@ -149,6 +150,9 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
       totalflux = Var([time], values=totalflux, name=fieldname)
       # Update the flux units to reflect the time integration
       totalflux.atts['units'] = flux_units + ' s'
+      # Identify the tracer specie (so the unit converter knows what to use for
+      # molar mass, etc.)
+      totalflux.atts['specie'] = flux_specie
       # Convert from moles to Pg
       totalflux = convert(totalflux, units)
       # Offset the flux mass

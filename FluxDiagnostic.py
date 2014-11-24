@@ -5,11 +5,11 @@ def get_flux (model, fieldname):
   # Check if we already have the right units
   try:
     data = model.data.find_best(fieldname+'_flux', maximize=number_of_timesteps)
-    data = convert(data,'mol m-2 s-1',context=fieldname)
+    data = convert(data,'mol m-2 s-1')
   # Otherwise, assume we have integrated flux, need to divide by area
   except ValueError:
     data, area = model.data.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
-    data = convert(data,'mol s-1',context=fieldname)
+    data = convert(data,'mol s-1')
     area = convert(area,'m2')
     data = data/area
 
