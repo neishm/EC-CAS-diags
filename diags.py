@@ -180,6 +180,11 @@ try:
   xcol_diff (models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCO2_diff', e])
+# XH2O
+try:
+  xcol (models=[experiment,control,None], fieldname='H2O', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XH2O', e])
 # Average column of stats
 try:
   xcol_enkf (model=experiment, fieldname='CO2', units='ppm', outdir=outdir)
@@ -272,6 +277,11 @@ try:
   totalmass (models=[experiment,None,control], fieldname='air', units='Pg', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass air', e])
+# Total mass H2O
+try:
+  totalmass (models=[experiment,None,control], fieldname='H2O', units='Pg', outdir=outdir)
+except Exception as e:
+  failures.append(['totalmass H2O', e])
 
 # Horizontal slice movie
 from horz_slice_diff import horz_slice_movie
