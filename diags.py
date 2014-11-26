@@ -249,6 +249,12 @@ try:
   totalmass (models=[experiment,None,control], fieldname='CO2', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass CO2', e])
+# Total mass CFF
+try:
+  totalmass (models=[experiment,carbontracker,control], fieldname='CO2_fossil', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
+  totalmass (models=[experiment,carbontracker,control], fieldname='CO2_fossil', units='Pg(C)', outdir=outdir)
+except Exception as e:
+  failures.append(['totalmass CO2_fossil', e])
 from totalmass_diff import totalmass_diff
 # Total mass CO2 difference
 try:
