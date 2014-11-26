@@ -270,7 +270,7 @@ except Exception as e:
 # Horizontal slice movie
 from horz_slice_diff import horz_slice_movie
 try:
-  horz_slice_movie(models=[experiment,control], fieldname='CO2', level="0.997", units='ppm', outdir=outdir) 
+  horz_slice_movie(models=[experiment,control], fieldname='CO2', level="1.0", units='ppm', outdir=outdir) 
 except Exception as e:
   failures.append(['horz_slice_movie', e])
 
