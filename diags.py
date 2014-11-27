@@ -231,8 +231,6 @@ from totalmass import totalmass
 try:
   totalmass (models=[experiment,carbontracker,control], fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
   totalmass (models=[experiment,carbontracker,control], fieldname='CO2', units='Pg(C)', outdir=outdir)
-  totalmass_diff (models=[experiment,control], fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
-  totalmass_diff (models=[experiment,control], fieldname='CO2', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass CO2', e])
 from totalmass_diff import totalmass_diff
