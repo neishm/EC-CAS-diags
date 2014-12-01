@@ -168,7 +168,11 @@ class GEM_Data(object):
         taxis = var.getaxis(Time)
         if not isinstance(taxis,StandardTime):
           logger.debug("Converting %s to standard calendar"%varname)
-          new_taxis = StandardTime(units=taxis.units, **taxis.auxarrays)
+          auxarrays = dict(**taxis.auxarrays)
+          if 'year' not in auxarrays:
+            logger.debug("Assigning arbitrary year to %s"%varname)
+            auxarrays['year'] = [1980]*len(taxis)
+          new_taxis = StandardTime(units=taxis.units, **auxarrays)
           data[varname] = var.replace_axes(time=new_taxis)
 
     # General cleanup stuff
