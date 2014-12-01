@@ -37,7 +37,7 @@ class Transcom3(object):
     lat = Lat(np.linspace(-89.75,89.75,360))
     landregion = NamedAxis(np.arange(1,12), name='landregion')
     oceanregion = NamedAxis(np.arange(1,12), name='oceanregion')
-    month = ModelTime365(month=np.arange(1,13))
+    month = ModelTime365(month=np.arange(1,13), units='days')
 
     ff90 = read_array(infile, (lat,lon), 'ff90')
     ff95 = read_array(infile, (lat,lon), 'ff95')
