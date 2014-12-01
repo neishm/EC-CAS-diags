@@ -141,7 +141,7 @@ class GEOSCHEM_Data(object):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+"/geoschem_*.nc")
+    return glob(dirname+"/*.nc")
 
 
 # Instantiate this interface
