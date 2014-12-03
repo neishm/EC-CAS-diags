@@ -233,7 +233,8 @@ def do_vertical_interpolation (input_data, grid_data, out_interface):
         dummy_target = grid_data.find_best(var.name)
       # If the variable is not in the grid file, use a default.
       except KeyError:
-        dummy_target = grid_data.find_best('air_pressure')
+#        dummy_target = grid_data.find_best('air_pressure')
+        dummy_target = grid_data.find_best('dp')
 
       # Compute the pressure for the target grid (forcing the source surface pressure)
       try:
