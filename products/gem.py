@@ -128,6 +128,7 @@ class GEM_Data(object):
     from common import convert
     from warnings import warn
     import logging
+    from pygeode.timeaxis import Time, StandardTime
     logger = logging.getLogger(__name__)
 
     # Convert to a dictionary (for referencing by variable name)
@@ -159,6 +160,20 @@ class GEM_Data(object):
     for varname in data.keys():
       if data[varname].dtype != 'float32':
         data[varname] = data[varname].as_type('float32')
+
+    # Convert climatological time axes to standard calendar.
+    for varname in data.keys():
+      var = data[varname]
+      if var.hasaxis(Time):
+        taxis = var.getaxis(Time)
+        if not isinstance(taxis,StandardTime):
+          logger.debug("Converting %s to standard calendar"%varname)
+          auxarrays = dict(**taxis.auxarrays)
+          if 'year' not in auxarrays:
+            logger.debug("Assigning arbitrary year to %s"%varname)
+            auxarrays['year'] = [1980]*len(taxis)
+          new_taxis = StandardTime(units=taxis.units, **auxarrays)
+          data[varname] = var.replace_axes(time=new_taxis)
 
     # General cleanup stuff
 

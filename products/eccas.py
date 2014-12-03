@@ -16,6 +16,7 @@ class ECCAS_Data(GEM_Data):
     ('CHOC', 'CH4_ocean', 'ug kg(air)-1'),
     ('CHNA', 'CH4_natural', 'ug kg(air)-1'),
     ('CHAG', 'CH4_agriculture', 'ug kg(air)-1'),
+    ('OH', 'OH', 'molecules m-3'),
   )
 
   # Method to decode an opened dataset (standardize variable names, and add any
