@@ -34,7 +34,7 @@ class CCCMA_Data(object):
 
     # Is time axis a climatology?
     #TODO: update pygeode to automatically recognize a climatology axis
-    if 'time' in dataset and 'climatology' in dataset.time:
+    if 'time' in dataset and 'climatology' in dataset.time.atts:
       new_taxis = modify(dataset.time, exclude='year')
       dataset = dataset.replace_axes(time=new_taxis)
 
