@@ -246,7 +246,7 @@ def do_vertical_interpolation (input_data, grid_data, out_interface):
 
       inx = convert(source_p,'Pa').log()
       outx = convert(target_p,'Pa').log()
-      var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx,outx=outx, interp_type='linear')
+      var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx,outx=outx, interp_type='linear', d_below=1.0, d_above=1.0)
       target_dataset.append(var)
 
     # Add some pressure information back in
