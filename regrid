@@ -149,7 +149,8 @@ try:
 
   # Apply a global adjustment to conserve mass
   from regrid_fix_mass import global_scale
-  data = global_scale (data, input_data, grid_data)
+  if args.conserve_mass:
+    data = global_scale (data, input_data, grid_data)
 
   # Write the data out.
   write_model_data(args.outtype, args.outdir, data)
