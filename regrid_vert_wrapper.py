@@ -198,3 +198,64 @@ def do_vertical_regridding (input_data, grid_data, out_interface):
 
   return DataInterface(target_datasets)
 
+# Alternative method - does a simple linear interpolation
+def do_vertical_interpolation (input_data, grid_data, out_interface):
+
+  from pygeode.interp import interpolate
+  from pygeode.axis import ZAxis
+  from data_interface import DataInterface
+  from common import convert
+  import logging
+  logger = logging.getLogger(__name__)
+
+  source_datasets = list(input_data.datasets)
+  target_datasets = []
+  for source_dataset in source_datasets:
+    target_dataset = []
+    target_p = None  # Generated further below
+    for var in source_dataset.vars:
+      # Don't interpolate 2D variables, just copy them.
+      if not var.hasaxis('zaxis'):
+        target_dataset.append(var)
+        continue
+
+      # Skip pressure-related variables (they will be re-generated)
+      if var.name in ('air_pressure', 'dp'): continue
+
+      if 'surface_pressure' not in source_dataset or 'air_pressure' not in source_dataset:
+        logger.debug('Dropping field "%s" - no pressure information available to do the vertical interpolation.', var.name)
+        continue
+      p0 = source_dataset['surface_pressure']
+      source_p = source_dataset['air_pressure']
+      # Find the appropriate target grid.
+      # If this variable is defined in the grid file, then use that specific grid.
+      try:
+        dummy_target = grid_data.find_best(var.name)
+      # If the variable is not in the grid file, use a default.
+      except KeyError:
+        dummy_target = grid_data.find_best('air_pressure')
+
+      # Compute the pressure for the target grid (forcing the source surface pressure)
+      try:
+        target_p = out_interface.compute_pressure(dummy_target.zaxis, p0)
+      except ValueError:
+        logger.debug("Skipping %s - unable to get pressure levels", var.name)
+        target_p = None
+        continue
+
+      inx = convert(source_p,'Pa').log()
+      outx = convert(target_p,'Pa').log()
+      var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx,outx=outx, interp_type='linear')
+      target_dataset.append(var)
+
+    # Add some pressure information back in
+    # (regenerated on appropriate grid).
+    if target_p is not None:
+      # Use the pressure info from the last converted variable
+      target_dataset.extend([target_p])
+
+    target_datasets.append(target_dataset)
+
+  return DataInterface(target_datasets)
+
+

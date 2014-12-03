@@ -91,10 +91,12 @@ parser.add_argument ("--outtype", help="The type of output data to write.", choi
 parser.add_argument ("--gridfiles", help="File(s) or directory that contains the target grid to convert the data to.  Should be in the same format as the output.", nargs='+', required=True, metavar="FILE")
 parser.add_argument ("--outdir", help="The directory to write the output files.", required=True)
 parser.add_argument ("--use-target-time", help="Treat the input data as being valid at the first time in the target grid file.  Useful for generating initial conditions with data that comes from a different time period.", action="store_true")
+group = parser.add_mutually_exclusive_group()
+group.add_argument ("--conserve-mass", help="Does a mass-conservative regridding. (default)", action="store_true", dest="conserve_mass")
+group.add_argument("--no-conserve-mass", help="Does a non-conservative interpolation of the fields.", action="store_false", dest="conserve_mass")
 parser.add_argument ("--debug", help="Print debugging messages.  Also, dump the full stack trace when there's an error.", action="store_true")
 
 args = parser.parse_args()
-
 
 # Try doing something
 # Fail gracefully if there's a problem
@@ -135,8 +137,11 @@ try:
   data = input_data
 
   # Vertical regridding (keeping source surface pressure)
-  from regrid_vert_wrapper import do_vertical_regridding
-  data = do_vertical_regridding (data, grid_data, out_interface)
+  from regrid_vert_wrapper import do_vertical_regridding, do_vertical_interpolation
+  if args.conserve_mass:
+    data = do_vertical_regridding (data, grid_data, out_interface)
+  else:
+    data = do_vertical_interpolation (data, grid_data, out_interface)
 
   # Horizontal regridding
   from regrid_horz_wrapper import do_horizontal_regridding
