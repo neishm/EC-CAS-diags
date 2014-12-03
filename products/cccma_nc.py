@@ -62,6 +62,12 @@ class CCCMA_Data(object):
       Ps = data['surface_pressure']
       data['cell_area'] = get_area(Ps.lat,Ps.lon)
 
+    # Remove variables with no lat/lon extent.
+    # (they break things in the regridding routines)
+    for varname, var in data.items():
+      if not var.hasaxis('lat') or not var.hasaxis('lon'):
+        del data[varname]
+
     # General cleanup stuff
 
     # Make sure the variables have the appropriate names
