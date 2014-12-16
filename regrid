@@ -92,8 +92,8 @@ parser.add_argument ("--gridfiles", help="File(s) or directory that contains the
 parser.add_argument ("--outdir", help="The directory to write the output files.", required=True)
 parser.add_argument ("--use-target-time", help="Treat the input data as being valid at the first time in the target grid file.  Useful for generating initial conditions with data that comes from a different time period.", action="store_true")
 group = parser.add_mutually_exclusive_group()
-group.add_argument ("--conserve-mass", help="Does a mass-conservative regridding. (default)", action="store_true", dest="conserve_mass")
-group.add_argument("--no-conserve-mass", help="Does a non-conservative interpolation of the fields.", action="store_false", dest="conserve_mass")
+group.add_argument ("--conserve-mass", help="Does a mass-conservative regridding. (default)", action="store_const", const=True, default=True, dest="conserve_mass")
+group.add_argument("--no-conserve-mass", help="Does a non-conservative interpolation of the fields.", action="store_const", const=False, dest="conserve_mass")
 parser.add_argument ("--debug", help="Print debugging messages.  Also, dump the full stack trace when there's an error.", action="store_true")
 
 args = parser.parse_args()
