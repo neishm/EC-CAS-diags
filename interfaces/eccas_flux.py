@@ -52,7 +52,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
         dataset[i] = var
 
     # Continue with the encoding
-    return ECCAS_DAta.encode.__func__(cls,dataset)
+    return ECCAS_Data.encode.__func__(cls,dataset)
 
   # Tell the parent GEM interface what filenames to use for writing data.
   @staticmethod
