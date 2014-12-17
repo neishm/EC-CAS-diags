@@ -4,10 +4,10 @@
 # Current version of the manifest file format.
 # If this version doesn't match the existing manifest file, then the manifest
 # is re-generated.
-MANIFEST_VERSION="1"
+MANIFEST_VERSION="2~alpha1"
 
 # Scan through all the given files, produce a manifest of all data available.
-def scan_files (files, opener, manifest=None):
+def scan_files (files, interface, manifest=None):
   from os.path import exists, getatime, getmtime, normpath
   from os import utime
   import gzip
@@ -40,7 +40,7 @@ def scan_files (files, opener, manifest=None):
 
   # Re-use axis objects wherever possible.
   axis_manager = AxisManager()
-  for filename, (_opener,entries) in table.iteritems():
+  for filename, (_interface,entries) in table.iteritems():
     for varname, axes, atts in entries:
       axis_manager.register_axes(axes)
 
@@ -68,8 +68,8 @@ def scan_files (files, opener, manifest=None):
 
     # Record all variables from the file.
     entries = []
-    table[f] = opener, entries
-    for var in opener(f):
+    table[f] = interface, entries
+    for var in interface.open_file(f):
 
       axes = axis_manager.lookup_axes(var.axes)
       entries.append((var.name, axes, var.atts))
@@ -451,7 +451,7 @@ class DataInterface (object):
 
     # Start by adding all domain pieces to the list
     domains = set()
-    for opener, entries in manifest.itervalues():
+    for interface, entries in manifest.itervalues():
       for var, axes, atts in entries:
         axes = axis_manager.lookup_axes([Varlist([var])]+list(axes))
         domains.add(cls.Domain(axes))
@@ -478,10 +478,10 @@ class DataInterface (object):
       datasets.append(dataset)
     return DataInterface(datasets)
 
-  # Create a dataset from a set of files and an opener
+  # Create a dataset from a set of files and an interface class
   @classmethod
-  def from_files (cls, filelist, opener, manifest=None):
-    manifest = scan_files (filelist, opener, manifest)
+  def from_files (cls, filelist, interface, manifest=None):
+    manifest = scan_files (filelist, interface, manifest)
     domains = cls._get_domains(manifest)
     datasets = [cls._domain_as_dataset(d,manifest) for d in domains]
     return cls(datasets)
@@ -588,11 +588,11 @@ class DataVar(Var):
     atts = []
     table = []
     # Scan through the manifest, collect a table of available axes.
-    for filename, (opener, entries) in manifest.iteritems():
+    for filename, (interface, entries) in manifest.iteritems():
       for _varname, _axes, _atts in entries:
         if _varname == varname:
           atts.append(_atts)
-          table.append((filename, opener, _axes))
+          table.append((filename, interface, _axes))
           for _axis in _axes:
             if id(_axis) not in axis_values:
               axis_values[id(_axis)] = frozenset(_axis.values)
@@ -617,7 +617,7 @@ class DataVar(Var):
     axis_values = [frozenset(a.values) for a in clipped_view.axes]
     lookup = {}  # Memoize the set intersections
     # Loop over all available files.
-    for filename, opener, axes in self._table:
+    for filename, interface, axes in self._table:
       # Check if there's any overlap between what we want and what's in the file
       overlap = True
       for a1, a2, v2 in zip(axes, clipped_view.axes, axis_values):
@@ -627,7 +627,7 @@ class DataVar(Var):
           lookup[v1] = len(v1 & v2)
         if lookup[v1] == 0: overlap = False
       if not overlap: continue
-      var = [v for v in opener(filename) if v.name == self._varname][0]
+      var = [v for v in interface.open_file(filename) if v.name == self._varname][0]
       v = view.map_to(axes)
       chunk = v.get(var)
       outsl = v.map_to(clipped_view).slices

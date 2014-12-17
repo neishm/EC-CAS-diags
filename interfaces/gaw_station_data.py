@@ -170,12 +170,18 @@ class GAW_Station_Data (object):
 
       # End of cache file creation
 
-    data = DataInterface.from_files([cachefile], opener=gaw_station_opener)
+    data = DataInterface.from_files([cachefile], interface_hack)
 
     # Rename CO2_mean to CO2
     data = data.filter(strip_mean)
 
     self.data = data
+
+# Hack in an interface (to get an 'open_file' method)
+class interface_hack(object):
+  @staticmethod
+  def open_file (filename):
+    return gaw_station_opener(filename)
 
 
 # Helper function - filter out '_mean' suffix from data

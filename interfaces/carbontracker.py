@@ -1,6 +1,7 @@
 # Interface for CarbonTracker data
 
-class CT_Data(object):
+from interfaces import ModelData
+class CT_Data(ModelData):
 
   # Invariant data
   import numpy as np
@@ -43,12 +44,10 @@ class CT_Data(object):
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
-  def decode (self, data):
+  @classmethod
+  def decode (cls, data):
     from pygeode.axis import ZAxis
-    from pygeode.dataset import asdataset
     from pygeode.timeaxis import StandardTime
-
-    data = asdataset(data)
 
     # Adjust the time axis for flux data.
     # The time is the mid-point of a 3-hour integration?
@@ -72,15 +71,11 @@ class CT_Data(object):
     # Force vertical axis to be a ZAxis
     data = data.replace_axes(level = ZAxis)
 
+    # Apply fieldname conversions
+    data = ModelData.decode.__func__(cls,data)
+
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in data)
-
-    # Do the conversions
-    for old_name, new_name, units in self.field_list:
-      if old_name in data:
-        var = data.pop(old_name)
-        var.atts['units'] = units
-        data[new_name] = var
 
     # Find the total CO2 (sum of components)
     if 'CO2_background' in data:
@@ -109,7 +104,7 @@ class CT_Data(object):
       # p1 = A1 + B1*Ps
       # pmid = (ps + A1 + B1*Ps) / 2 = Ps(1+B1)/2 + (0+A1)/2
       # Ps = (2*pmid - A1)/(1+B1)
-      P0 = (2*pmid - self.A_interface[1])/(self.B_interface[1]+1)
+      P0 = (2*pmid - cls.A_interface[1])/(cls.B_interface[1]+1)
       P0.atts['units'] = 'Pa'
       data['surface_pressure'] = P0
 
@@ -118,9 +113,9 @@ class CT_Data(object):
       #      3D pressure is used only to define the vertical levels.
       import numpy as np
       from pygeode.var import Var
-      dA = -np.diff(self.A_interface)
+      dA = -np.diff(cls.A_interface)
       dA = Var([data['air_pressure'].level], values=dA)
-      dB = -np.diff(self.B_interface)
+      dB = -np.diff(cls.B_interface)
       dB = Var([data['air_pressure'].level], values=dB)
       dp = dA + dB * data['surface_pressure']
       dp = dp.transpose('time','zaxis','lat','lon')
@@ -163,12 +158,8 @@ class CT_Data(object):
 
     return molefractions+fluxes
 
-# Instantiate this interface
-interface = CT_Data()
-
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = CT_Data
 
 
 
@@ -198,7 +189,7 @@ class CarbonTracker_Data (object):
     molefractions = [m for m in molefractions if "2009-08-07" not in m]
 
     manifest = self.cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files (molefractions+fluxes, opener=open_file, manifest=manifest)
+    self.data = DataInterface.from_files (molefractions+fluxes, interface, manifest=manifest)
 
     self.data = DataInterface(map(interface.decode,self.data))
 

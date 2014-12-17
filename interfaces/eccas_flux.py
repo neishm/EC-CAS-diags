@@ -19,8 +19,8 @@ class ECCAS_Flux_Data(ECCAS_Data):
     return glob(dirname+"/area_??????????")
 
   # Extra step to convert fluxes from mass / m2 / s to mass / g.
-  def encode (self, dataset):
-    from gem import GEM_Data
+  @classmethod
+  def encode (cls, dataset):
     from common import can_convert, convert, get_area
     from pygeode.var import copy_meta
     import logging
@@ -52,7 +52,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
         dataset[i] = var
 
     # Continue with the encoding
-    return GEM_Data.encode(self, dataset)
+    return ECCAS_DAta.encode.__func__(cls,dataset)
 
   # Tell the parent GEM interface what filenames to use for writing data.
   @staticmethod
@@ -73,11 +73,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
     records['deet'][ind] = 0
 
 
-# Instantiate the interface
-interface = ECCAS_Flux_Data()
-
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = ECCAS_Flux_Data
 
 

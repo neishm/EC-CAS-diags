@@ -89,7 +89,7 @@ del Var
 
 def global_scale (data, original_data, grid_data):
   from common import can_convert, convert, same_times, first_timestep, remove_repeated_longitude
-  from data_interface import DataInterface
+  from interfaces.data_interface import DataInterface
   import logging
   logger = logging.getLogger(__name__)
   input_datasets = list(data.datasets)

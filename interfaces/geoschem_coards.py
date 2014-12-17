@@ -2,7 +2,8 @@
 # netCDF COARDS convenction (compatible with GAMAP routine BPCH2COARDS).
 
 
-class GEOSCHEM_Data(object):
+from interfaces import ModelData
+class GEOSCHEM_Data(ModelData):
 
   # A and B interface values (for vertical coordinate)
 
@@ -46,14 +47,15 @@ class GEOSCHEM_Data(object):
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
-  def decode (self, dataset):
+  @classmethod
+  def decode (cls, dataset):
     import numpy as np
     from pygeode.axis import Hybrid
     from pygeode.var import Var
     from pygeode.dataset import asdataset
 
-    A_interface = np.array(self.A_interface)
-    B_interface = np.array(self.B_interface)
+    A_interface = np.array(cls.A_interface)
+    B_interface = np.array(cls.B_interface)
     A = (A_interface[:-1] + A_interface[1:]) * 0.5
     B = (B_interface[:-1] + B_interface[1:]) * 0.5
     dA = (A_interface[:-1] - A_interface[1:])
@@ -133,10 +135,6 @@ class GEOSCHEM_Data(object):
     return []  # Don't have any good way of identifying GEOS-CHEM files.
 
 
-# Instantiate this interface
-interface = GEOSCHEM_Data()
-
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = GEOSCHEM_Data
 

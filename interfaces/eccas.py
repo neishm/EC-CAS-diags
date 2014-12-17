@@ -21,12 +21,13 @@ class ECCAS_Data(GEM_Data):
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
-  def decode (self, dataset):
-    from pygeode.dataset import asdataset
+  @classmethod
+  def decode (cls,dataset):
     from common import conversion_factor
     from gem import GEM_Data
 
-    dataset = GEM_Data.decode(self, dataset)
+    # Do generic GEM field decoding
+    dataset = GEM_Data.decode.__func__(cls,dataset)
 
     # Determine if we have ensemble spread data from EC-CAS
     chmstd = False
@@ -64,11 +65,12 @@ class ECCAS_Data(GEM_Data):
 
   # Method to re-encode data into the source context
   # (e.g., rename fields to what would be originally in these kinds of files)
-  def encode (self, dataset):
-    from gem import GEM_Data
+  @classmethod
+  def encode (cls, dataset):
     from common import conversion_factor
+    from gem import GEM_Data
     # Call the generic GEM encoder to convert to the right units and field names
-    dataset = GEM_Data.encode(self, dataset)
+    dataset = GEM_Data.encode.__func__(cls,dataset)
     # Do some extra stuff to offset COC / CLA fields
     for i, var in enumerate(dataset):
       if var.name in ('COC','CLA'):
@@ -93,12 +95,8 @@ class ECCAS_Data(GEM_Data):
     records['deet'][ind] = 0
 
 
-# Instantiate the interface
-interface = ECCAS_Data()
-
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = ECCAS_Data
 
 
 # GEM data interface
@@ -142,25 +140,25 @@ class GEM_Data (object):
 
     # Ensemble mean data
     chmmean_files = [f for f in files if f.endswith('_chmmean')]
-    chmmean_data = DataInterface.from_files(chmmean_files, opener=open_file, manifest=manifest)
+    chmmean_data = DataInterface.from_files(chmmean_files, interface, manifest=manifest)
     # Apply the conversions & transformations
     chmmean_data = DataInterface(map(interface.decode,chmmean_data))
 
     # Ensemble spread data
     chmstd_files = [f for f in files if f.endswith('_chmstd')]
-    chmstd_data = DataInterface.from_files(chmstd_files, opener=open_file, manifest=manifest)
+    chmstd_data = DataInterface.from_files(chmstd_files, interface, manifest=manifest)
     # Apply the conversions & transformations
     chmstd_data = DataInterface(map(interface.decode,chmstd_data))
 
     # Area emissions
     flux_files = [f for f in files if '/area_' in f]
-    flux_data = DataInterface.from_files(flux_files, opener=open_file, manifest=manifest)
+    flux_data = DataInterface.from_files(flux_files, interface, manifest=manifest)
     # Apply the conversions & transformations
     flux_data = DataInterface(map(interface.decode,flux_data))
 
     # Forward model data
     forward_files = sorted(set(files)-set(chmmean_files)-set(chmstd_files)-set(flux_files))
-    forward_data = DataInterface.from_files(forward_files, opener=open_file, manifest=manifest)
+    forward_data = DataInterface.from_files(forward_files, interface, manifest=manifest)
     # Apply the conversions & transformations
     forward_data = DataInterface([interface.decode(fd) for fd in forward_data])
 

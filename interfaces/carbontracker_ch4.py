@@ -11,7 +11,8 @@ def ct_file2date(filename):
   return date
 
 
-class CTCH4_Data(object):
+from interfaces import ModelData
+class CTCH4_Data(ModelData):
 
   # Invariant data
   import numpy as np
@@ -58,7 +59,8 @@ class CTCH4_Data(object):
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
-  def decode (self, data):
+  @classmethod
+  def decode (cls,data):
     from pygeode.axis import ZAxis
 
     # Don't worry about non-CH4 variables.
@@ -68,15 +70,11 @@ class CTCH4_Data(object):
     # Force vertical axis to be a ZAxis
     data = data.replace_axes(lev = ZAxis)
 
+    # Apply fieldname conversions
+    data = ModelData.decode.__func__(cls,data)
+
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in data)
-
-    # Do the conversions
-    for old_name, new_name, units in self.field_list:
-      if old_name in data:
-        var = data.pop(old_name)
-        var.atts['units'] = units
-        data[new_name] = var
 
     # Find the total CH4 (sum of components)
     if 'CH4_background' in data:
@@ -101,7 +99,7 @@ class CTCH4_Data(object):
       # p1 = A1 + B1*Ps
       # pmid = (ps + A1 + B1*Ps) / 2 = Ps(1+B1)/2 + (0+A1)/2
       # Ps = (2*pmid - A1)/(1+B1)
-      P0 = (2*pmid - self.A_interface[1])/(self.B_interface[1]+1)
+      P0 = (2*pmid - cls.A_interface[1])/(cls.B_interface[1]+1)
       P0.atts['units'] = 'Pa'
       data['surface_pressure'] = P0
 
@@ -110,9 +108,9 @@ class CTCH4_Data(object):
       #      3D pressure is used only to define the vertical levels.
       import numpy as np
       from pygeode.var import Var
-      dA = -np.diff(self.A_interface)
+      dA = -np.diff(cls.A_interface)
       dA = Var([data['air_pressure'].lev], values=dA)
-      dB = -np.diff(self.B_interface)
+      dB = -np.diff(cls.B_interface)
       dB = Var([data['air_pressure'].lev], values=dB)
       dp = dA/ + dB * data['surface_pressure']
       dp = dp.transpose('time','zaxis','lat','lon')
@@ -146,12 +144,8 @@ class CTCH4_Data(object):
     from glob import glob
     return glob(dirname+"/????????.nc")
 
-# Instantiate this interface
-interface = CTCH4_Data()
-
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = CTCH4_Data
 
 
 
@@ -178,7 +172,7 @@ class CarbonTracker_CH4 (object):
     molefractions = glob("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc")
 
     manifest = self.cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files (molefractions, opener=open_file, manifest=manifest)
+    self.data = DataInterface.from_files (molefractions, interface, manifest=manifest)
 
     self.data = DataInterface(map(interface.decode,self.data))
 

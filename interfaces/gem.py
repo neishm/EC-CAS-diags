@@ -1,5 +1,6 @@
 
-class GEM_Data(object):
+from interfaces import ModelData
+class GEM_Data(ModelData):
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
@@ -20,24 +21,18 @@ class GEM_Data(object):
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
-  def decode (self, dataset):
+  @classmethod
+  def decode (cls, dataset):
     from pygeode.formats import fstd
     from pygeode.ufunc import exp, log
     from pygeode.var import concat, Var
     from pygeode.axis import ZAxis
-    from pygeode.dataset import asdataset
 
-    dataset = asdataset(dataset)
+    # Apply fieldname conversions
+    dataset = ModelData.decode.__func__(cls,dataset)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
-
-    # Do the conversions
-    for old_name, new_name, units in self.field_list:
-      if old_name in data:
-        var = data.pop(old_name)
-        var.atts['units'] = units
-        data[new_name] = var
 
     # Add a water tracer, if we have humidity
     if 'specific_humidity' in data:
@@ -52,8 +47,8 @@ class GEM_Data(object):
           zaxis = var.getaxis('zaxis')
           # We might not be able to do this, e.g. for Hybrid axes or GZ levels
           try:
-            data['air_pressure'] = self.compute_pressure(zaxis, Ps)
-            data['dp'] = self.compute_dp(zaxis, Ps)
+            data['air_pressure'] = cls.compute_pressure(zaxis, Ps)
+            data['dp'] = cls.compute_dp(zaxis, Ps)
           except (TypeError, ValueError): pass
           break
 
@@ -124,7 +119,8 @@ class GEM_Data(object):
 
   # Method to re-encode data into the source context
   # (e.g., rename fields to what would be originally in these kinds of files)
-  def encode (self, dataset):
+  @classmethod
+  def encode (cls, dataset):
     from common import convert
     from warnings import warn
     import logging
@@ -134,26 +130,9 @@ class GEM_Data(object):
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
 
-    # Convert to GEM-friendly field names and units
-    for gem_name, standard_name, units in self.field_list:
-      if standard_name in data:
-        var = data.pop(standard_name)
-        try:
-          var = convert(var, units)
-        except ValueError as e:
-          warn ("Unable to encode '%s' to '%s': %s"%(standard_name, gem_name, e))
-          continue
-        data[gem_name] = var
-
     # Remove generated fields
     data.pop('air_pressure',None)
     data.pop('dp',None)
-
-    # Check for any stragglers, remove them
-    for varname in data.keys():
-      if all(varname != name for name, n, u in self.field_list):
-        logger.debug("Dropping unrecognized field '%s'", varname)
-        data.pop(varname)
 
     # Make sure the variables are 32-bit precision.
     # (Otherwise, GEM may have problems reading them).
@@ -183,11 +162,15 @@ class GEM_Data(object):
     # Convert to a list
     data = list(data.values())
 
+    # Apply the conversions
+    data = ModelData.encode.__func__(cls,data)
+
     return data
 
 
   # Method to write data to file(s).
-  def write (self, datasets, dirname):
+  @classmethod
+  def write (cls, datasets, dirname):
     from pygeode.dataset import asdataset
     from pygeode.formats import fstd, fstd_core
     import numpy as np
@@ -232,11 +215,11 @@ class GEM_Data(object):
       dateo = int(fstd_core.stamp2date(r['dateo'])[0])
       date = cmc_start + timedelta(seconds=dateo)
       forecast = r['npas'] * r['deet'] / 3600
-      filename = dirname + "/" + self._fstd_date2filename(date,forecast)
+      filename = dirname + "/" + cls._fstd_date2filename(date,forecast)
       output.setdefault(filename,[]).append(i)
     for filename in output:
       output[filename] = records[coord_output + output[filename]]
-      self._fstd_tweak_records(output[filename])
+      cls._fstd_tweak_records(output[filename])
 
     # Write out the file(s)
     for filename in sorted(output.keys()):
@@ -385,10 +368,6 @@ class GEM_Data(object):
 
 
 
-# Instantiate this interface
-interface = GEM_Data()
-
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = GEM_Data
 
