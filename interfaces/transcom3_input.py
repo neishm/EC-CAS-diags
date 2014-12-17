@@ -74,11 +74,7 @@ class Transcom3(object):
 
     return Dataset(outdata)
 
-# Instantiate this interface
-interface = Transcom3()
-
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = Transcom3
 
 

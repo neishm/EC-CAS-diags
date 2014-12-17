@@ -9,10 +9,6 @@ class ECCAS_Bayesian_Flux(ECCAS_Flux_Data):
     field_list.append(('EO%02d'%i, 'CO2_oceanunit_%02d_flux'%i, 'g(C) s-1'))
   field_list = tuple(field_list)
 
-# Instantiate the interface
-interface = ECCAS_Bayesian_Flux()
-
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = ECCAS_Bayesian_Flux
 

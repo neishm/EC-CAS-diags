@@ -1,5 +1,6 @@
 
-class CCCMA_Data(object):
+from interfaces import ModelData
+class CCCMA_Data(ModelData):
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
@@ -17,7 +18,8 @@ class CCCMA_Data(object):
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
-  def decode (self, dataset):
+  @classmethod
+  def decode (cls, dataset):
     from pygeode.ufunc import exp, log
     from pygeode.axis import Hybrid
     from pygeode.dataset import asdataset
@@ -38,15 +40,11 @@ class CCCMA_Data(object):
       new_taxis = modify(dataset.time, exclude='year')
       dataset = dataset.replace_axes(time=new_taxis)
 
+    # Apply fieldname conversions
+    dataset = ModelData.decode.__func__(cls,dataset)
+
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
-
-    # Do the conversions
-    for old_name, new_name, units in self.field_list:
-      if old_name in data:
-        var = data.pop(old_name)
-        var.atts['units'] = units
-        data[new_name] = var
 
     # Compute a pressure field.
     if 'surface_pressure' in data and have_zaxis:
@@ -87,13 +85,6 @@ class CCCMA_Data(object):
     return glob(dirname+"/*.nc")
 
 
-
-
-
-# Instantiate this interface
-interface = CCCMA_Data()
-
-# Define the open method as a function, so it's picklable.
-def open_file (filename):
-  return interface.open_file(filename)
+# Give this class a standard reference name, to make it easier to auto-discover.
+interface = CCCMA_Data
 
