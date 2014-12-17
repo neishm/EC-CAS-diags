@@ -103,6 +103,31 @@ class ModelData (object):
   def compute_pressure (zaxis, p0):
     raise NotImplementedError
 
+  # Initialize a model interface.
+  # Scans the provided files, and constructs the datasets.
+  def __init__ (self, name, title, files, manifest=None):
+    from os.path import exists, isdir
+    from glob import glob
+    from data_interface import DataInterface
+    self.name = name
+    self.title = title
+    expanded_files = []
+    if isinstance(files,str): files = [files]
+    for f in files:
+      if isdir(f):
+        expanded_files.extend(self.find_files(f))
+      else:
+        expanded_files.extend(glob(f))
+    if len(expanded_files) == 0:
+        raise ValueError("No matches for '%s'."%files)
+    for f in expanded_files:
+      if not exists(f):
+        raise ValueError("File '%s' does not exist."%f)
+    data = DataInterface.from_files(expanded_files, type(self), manifest=manifest)
+    # Filter the data (get standard field names, etc.)
+    data = data.filter(self.decode)
+    self.data = data
+
 # Helper method - get a model interface
 def get_model_interface (model_name):
   import importlib
