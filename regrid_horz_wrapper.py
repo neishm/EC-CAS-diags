@@ -220,26 +220,12 @@ def do_horizontal_regridding (input_data, grid_data, out_interface):
       # Case 4: concentration
       ##################################################################
       elif can_convert(var, 'mol m-3'):
-        if 'cell_area' not in source_dataset:
-          logger.info('Dropping field "%s" - no grid area information available.', var.name)
-          continue
-        source_area = convert(source_dataset['cell_area'],'m2')
         try:
-          # Try to find a grid area that has the same domain as the variable
-          # (if the variable is defined in the target grid file).
-          dummy_target, target_area = grid_data.find_best([var.name,'cell_area'])
+          dummy_target = grid_data.find_best(var.name)
         except KeyError:
-          # Otherwise, look for any cell area information in the target grid.
-          target_area = grid_data.find_best('cell_area')
-          dummy_target = target_area
+          dummy_target = grid_data.find_best('dp')
 
-        target_area = convert(target_area, 'm2')
-        target_area = first_timestep(target_area)
-        orig = var
-        var = var / source_area
         var = horzregrid(var, dummy_target.lat, dummy_target.lon)
-        var = var * target_area
-        copy_meta (orig, var)
 
       ##################################################################
       # Unhandled case
