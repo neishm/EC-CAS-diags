@@ -148,32 +148,3 @@ class CTCH4_Data(ModelData):
 interface = CTCH4_Data
 
 
-
-
-# Define the data interface for CarbonTracker
-
-class CarbonTracker_CH4 (object):
-
-  def __init__ (self, tmpdir=None):
-
-    from cache import Cache
-    from data_interface import DataInterface
-    from glob import glob
-    from pygeode.formats import netcdf
-
-    # Higher-level information about the data
-    self.name = 'CTCH42010'
-    self.title = 'CarbonTracker'
-
-    cachedir = '/wrk6/eltonc/ct_ch4/molefractions/nc_cache'
-    fallback_dirs = [tmpdir] if tmpdir is not None else []
-    self.cache = Cache (dir=cachedir, fallback_dirs=fallback_dirs, global_prefix=self.name+'_')
-
-    molefractions = glob("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc")
-
-    manifest = self.cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files (molefractions, interface, manifest=manifest)
-
-    self.data = DataInterface(map(interface.decode,self.data))
-
-

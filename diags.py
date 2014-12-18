@@ -76,8 +76,8 @@ else:
 # CarbonTracker data
 from interfaces import carbontracker
 carbontracker = carbontracker.interface(["/wrk1/EC-CAS/CarbonTracker/molefractions","/wrk1/EC-CAS/CarbonTracker/fluxes"], name='CT2010', title='CarbonTracker', cache=Cache('/wrk1/EC-CAS/CarbonTracker/nc_cache', fallback_dirs=[args.tmpdir], global_prefix='CT2010_'))
-from interfaces.carbontracker_ch4 import CarbonTracker_CH4
-carbontracker_ch4 = CarbonTracker_CH4(tmpdir=args.tmpdir)
+from interfaces import carbontracker_ch4
+carbontracker_ch4 = carbontracker_ch4.interface("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc", name='CTCH42010', title='CarbonTracker', cache=Cache('/wrk6/eltonc/ct_ch4/molefractions/nc_cache', fallback_dirs=[args.tmpdir], global_prefix='CTCH42010_'))
 
 # Observation data
 from interfaces.ec_station_data import EC_Station_Data
