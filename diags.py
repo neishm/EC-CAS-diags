@@ -62,6 +62,9 @@ if control_dir is not None and exists(control_dir+"/model"):
   control_dir += "/model"
 
 # Get the data
+
+from cache import Cache
+
 from interfaces.eccas import GEM_Data
 flux_dir = args.emissions
 experiment = GEM_Data(experiment_dir, flux_dir=flux_dir, name=experiment_name, title=experiment_title, tmpdir=experiment_tmpdir)
@@ -71,9 +74,8 @@ else:
   control = None
 
 # CarbonTracker data
-#TODO: limit CT data to time range of experiment.
-from interfaces.carbontracker import CarbonTracker_Data
-carbontracker = CarbonTracker_Data(tmpdir=args.tmpdir)
+from interfaces import carbontracker
+carbontracker = carbontracker.interface(["/wrk1/EC-CAS/CarbonTracker/molefractions","/wrk1/EC-CAS/CarbonTracker/fluxes"], name='CT2010', title='CarbonTracker', cache=Cache('/wrk1/EC-CAS/CarbonTracker/nc_cache', fallback_dirs=[args.tmpdir], global_prefix='CT2010_'))
 from interfaces.carbontracker_ch4 import CarbonTracker_CH4
 carbontracker_ch4 = CarbonTracker_CH4(tmpdir=args.tmpdir)
 
