@@ -105,12 +105,18 @@ class ModelData (object):
 
   # Initialize a model interface.
   # Scans the provided files, and constructs the datasets.
-  def __init__ (self, name, title, files, manifest=None):
+  def __init__ (self, files, name=None, title=None, cache=None):
     from os.path import exists, isdir
     from glob import glob
     from data_interface import DataInterface
     self.name = name
     self.title = title
+    self.cache = cache
+    if cache is not None:
+      manifest = cache.full_path("manifest", writeable=True)
+    else:
+      manifest = None
+
     expanded_files = []
     if isinstance(files,str): files = [files]
     for f in files:
