@@ -65,11 +65,19 @@ if control_dir is not None and exists(control_dir+"/model"):
 
 from cache import Cache
 
-from interfaces.eccas import GEM_Data
-flux_dir = args.emissions
-experiment = GEM_Data(experiment_dir, flux_dir=flux_dir, name=experiment_name, title=experiment_title, tmpdir=experiment_tmpdir)
+from interfaces import eccas, eccas_flux
+experiment = eccas.interface(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir], global_prefix=experiment_name+"_", load_hooks=[eccas.interface.load_hook]))
+# Duct-tape the flux data to the experiment data
+#TODO: make the fluxes a separate product
+if args.emissions is not None:
+  flux = eccas_flux.interface(args.emissions, cache=experiment.cache)
+  # Fix the emissions lat/lon (not encoded exactly the same as the model output)
+  lat = experiment.data.datasets[0].lat
+  lon = experiment.data.datasets[0].lon
+  experiment.data.datasets += tuple(d.replace_axes(lat=lat,lon=lon) for d in flux.data.datasets)
+
 if control_dir is not None:
-  control = GEM_Data(control_dir, flux_dir=None, name=control_name, title=control_title, tmpdir=control_tmpdir)
+  control = eccas.interface(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir], global_prefix=control_name+"_", load_hooks=[eccas.interface.load_hook]))
 else:
   control = None
 
