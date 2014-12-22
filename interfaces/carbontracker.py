@@ -163,33 +163,3 @@ interface = CT_Data
 
 
 
-# Define the data interface for CarbonTracker
-
-class CarbonTracker_Data (object):
-
-  def __init__ (self, tmpdir=None):
-
-    from cache import Cache
-    from data_interface import DataInterface
-    from glob import glob
-    from pygeode.formats import netcdf
-
-    # Higher-level information about the data
-    self.name = 'CT2010'
-    self.title = 'CarbonTracker'
-
-    cachedir = '/wrk1/EC-CAS/CarbonTracker/nc_cache'
-    fallback_dirs = [tmpdir] if tmpdir is not None else []
-    self.cache = Cache (dir=cachedir, fallback_dirs=fallback_dirs, global_prefix=self.name+'_')
-
-    molefractions = glob("/wrk1/EC-CAS/CarbonTracker/molefractions/CT2010.molefrac_glb3x2_????-??-??.nc")
-    fluxes = glob("/wrk1/EC-CAS/CarbonTracker/fluxes/CT2010.flux1x1.????????.nc")
-
-    # Blacklist the 2009-08-07 molefractions file, which has bad data at 10:30
-    molefractions = [m for m in molefractions if "2009-08-07" not in m]
-
-    manifest = self.cache.full_path("manifest", writeable=True)
-    self.data = DataInterface.from_files (molefractions+fluxes, interface, manifest=manifest)
-
-    self.data = DataInterface(map(interface.decode,self.data))
-

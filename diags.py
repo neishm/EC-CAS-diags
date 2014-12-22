@@ -62,20 +62,30 @@ if control_dir is not None and exists(control_dir+"/model"):
   control_dir += "/model"
 
 # Get the data
-from interfaces.eccas import GEM_Data
-flux_dir = args.emissions
-experiment = GEM_Data(experiment_dir, flux_dir=flux_dir, name=experiment_name, title=experiment_title, tmpdir=experiment_tmpdir)
+
+from cache import Cache
+
+from interfaces import eccas, eccas_flux
+experiment = eccas.interface(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir], global_prefix=experiment_name+"_", load_hooks=[eccas.interface.load_hook]))
+# Duct-tape the flux data to the experiment data
+#TODO: make the fluxes a separate product
+if args.emissions is not None:
+  flux = eccas_flux.interface(args.emissions, cache=experiment.cache)
+  # Fix the emissions lat/lon (not encoded exactly the same as the model output)
+  lat = experiment.data.datasets[0].lat
+  lon = experiment.data.datasets[0].lon
+  experiment.data.datasets += tuple(d.replace_axes(lat=lat,lon=lon) for d in flux.data.datasets)
+
 if control_dir is not None:
-  control = GEM_Data(control_dir, flux_dir=None, name=control_name, title=control_title, tmpdir=control_tmpdir)
+  control = eccas.interface(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir], global_prefix=control_name+"_", load_hooks=[eccas.interface.load_hook]))
 else:
   control = None
 
 # CarbonTracker data
-#TODO: limit CT data to time range of experiment.
-from interfaces.carbontracker import CarbonTracker_Data
-carbontracker = CarbonTracker_Data(tmpdir=args.tmpdir)
-from interfaces.carbontracker_ch4 import CarbonTracker_CH4
-carbontracker_ch4 = CarbonTracker_CH4(tmpdir=args.tmpdir)
+from interfaces import carbontracker
+carbontracker = carbontracker.interface(["/wrk1/EC-CAS/CarbonTracker/molefractions","/wrk1/EC-CAS/CarbonTracker/fluxes"], name='CT2010', title='CarbonTracker', cache=Cache('/wrk1/EC-CAS/CarbonTracker/nc_cache', fallback_dirs=[args.tmpdir], global_prefix='CT2010_'))
+from interfaces import carbontracker_ch4
+carbontracker_ch4 = carbontracker_ch4.interface("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc", name='CTCH42010', title='CarbonTracker', cache=Cache('/wrk6/eltonc/ct_ch4/molefractions/nc_cache', fallback_dirs=[args.tmpdir], global_prefix='CTCH42010_'))
 
 # Observation data
 from interfaces.ec_station_data import EC_Station_Data
