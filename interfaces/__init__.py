@@ -142,30 +142,6 @@ def get_model_interface (model_name):
   model = importlib.import_module('interfaces.'+model_name.replace('-','_'))
   return model.interface
 
-# Helper method - open the specified file(s) through the given model interface,
-# and return a model data object.
-def read_model_data (model_name, files, manifest=None):
-  from os.path import exists, isdir
-  from glob import glob
-  from data_interface import DataInterface
-  interface = get_model_interface(model_name)
-  expanded_files = []
-  for f in files:
-    if isdir(f):
-      expanded_files.extend(interface.find_files(f))
-    else:
-      expanded_files.extend(glob(f))
-  if len(expanded_files) == 0:
-      raise ValueError("No matches for '%s'."%files)
-  for f in expanded_files:
-    if not exists(f):
-      raise ValueError("File '%s' does not exist."%f)
-  data = DataInterface.from_files(expanded_files, interface, manifest=manifest)
-
-  # Filter the data (get standard field names, etc.)
-  data = data.filter(interface.decode)
-
-  return data
 
 # Helper method - write some data into file(s), using the specified model
 # interface.
