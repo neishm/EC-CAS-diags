@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from interfaces import get_model_interface, write_model_data
+from interfaces import get_model_interface
 
 import argparse
 
@@ -93,7 +93,7 @@ try:
     data = global_scale (data, input_data, grid_data)
 
   # Write the data out.
-  write_model_data(args.outtype, args.outdir, data)
+  out_interface.write(data, args.outdir)
 
 except Exception as e:
   from sys import exit

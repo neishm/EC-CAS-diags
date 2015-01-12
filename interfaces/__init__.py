@@ -155,8 +155,6 @@ def write_model_data (model_name, dirname, datasets):
     if exists (dirname):
       raise ValueError ("'%s' is not a directory."%dirname)
     else: makedirs(dirname)
-  # Encode the data in a representation suitable for the given model type.
-  datasets = map(interface.encode, datasets)
 
   # Write it out
   interface.write (datasets, dirname)

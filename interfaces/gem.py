@@ -179,6 +179,9 @@ class GEM_Data(ModelData):
 
     cmc_start = datetime(year=1980, month=1, day=1)
 
+    # Encode the data to the appropriate units / fieldnames
+    datasets = [cls.encode(dataset) for dataset in datasets]
+
     # Rotate all longitudes to be in range (0,360)
     datasets = [[rotate_grid(d) for d in dataset] for dataset in datasets]
 
