@@ -142,20 +142,3 @@ def get_model_interface (model_name):
   model = importlib.import_module('interfaces.'+model_name.replace('-','_'))
   return model.interface
 
-
-# Helper method - write some data into file(s), using the specified model
-# interface.
-def write_model_data (model_name, dirname, datasets):
-  from os.path import exists, isdir
-  from os import makedirs
-  # Try to find a module with the given name
-  interface = get_model_interface(model_name)
-  # Make sure we have a directory to put this.
-  if not isdir(dirname):
-    if exists (dirname):
-      raise ValueError ("'%s' is not a directory."%dirname)
-    else: makedirs(dirname)
-
-  # Write it out
-  interface.write (datasets, dirname)
-
