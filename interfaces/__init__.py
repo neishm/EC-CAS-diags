@@ -68,7 +68,7 @@ class ModelData (object):
         try:
           var = convert(var, units)
         except ValueError as e:
-          warn ("Unable to encode '%s' to '%s': %s"%(standard_name, gem_name, e))
+          warn ("Unable to encode '%s' to '%s': %s"%(standard_name, local_name, e))
           continue
         data[local_name] = var
 
