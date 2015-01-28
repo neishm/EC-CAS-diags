@@ -275,6 +275,7 @@ except Exception as e:
 # Total mass air
 try:
   totalmass (models=[experiment,None,control], fieldname='air', units='Pg', outdir=outdir)
+  totalmass (models=[experiment,None,control], fieldname='dry_air', units='Pg', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass air', e])
 # Total mass H2O
