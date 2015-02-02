@@ -237,16 +237,3 @@ def conversion_factor (from_units, to_units, context=None):
     raise ValueError ("Units '%s' and '%s' are not compatible"%(from_units,to_units))
   return scale1 / scale2
 
-if __name__ == '__main__':
-  define_conversion ('g(C:CO2)', repr(44.01/12.)+' g(CO2)')
-  define_conversion ('mol(CO2)', '44.01 g(CO2)')
-  define_conversion ('mol(air)', '28.97 g(air)')
-  define_conversion ('molefraction', 'mol mol(air)-1')
-
-  print list(_reduce_units ('ppm(CO2)'))
-  print list(_reduce_units ('ppb(CO2)'))
-  print list(_reduce_units ('mol(CO2) m-2 s-1'))
-
-  print conversion_factor('ug(C:CO2) kg(air)-1', 'ppm(CO2)')
-  print conversion_factor('ppm(CO2)', 'ug(C:CO2) kg(air)-1')
-
