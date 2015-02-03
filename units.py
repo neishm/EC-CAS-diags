@@ -82,7 +82,7 @@ def define_conversion (unit, conversion):
     context.
 
     Example:
-      define_conversion ('mol(air)', '28.97 g(air)')
+      define_conversion ('mol(dry_air)', '28.97 g(dry_air)')
 
     Would tell the unit convertor how to convert from moles of air to grams
     of air.
@@ -124,7 +124,7 @@ def parse_units(s):
 
     parse_units('100 ppm') will yield (100.0,None,1), ('ppm',None,1)
 
-    parse_units('kg(H2O) kg(air)-1') will yield ('kg','H2O',1), ('kg','air',-1)
+    parse_units('kg(H2O) kg(dry_air)-1') will yield ('kg','H2O',1), ('kg','dry_air',-1)
 
   Note: You can omit the spaces between each term, if it does not create any
   ambiguity.
