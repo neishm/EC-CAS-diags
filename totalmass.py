@@ -123,7 +123,7 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
 
     # Get model air mass, if we are normalizing the tracer mass.
     if normalize_air_mass:
-      airmass = compute_totalmass(model,'air')(time=(t0,t1)).load()
+      airmass = compute_totalmass(model,'dry_air')(time=(t0,t1)).load()
       airmass0 = float(airmass.values[0])
 
     # Total mass
@@ -181,7 +181,7 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
       labels.append('integrated flux')
     except KeyError: pass  # No flux available
 
-  outfile = outdir + "/%s_totalmass_%s%s.png"%('_'.join(m.name for m in models if m is not None),fieldname,'_normalized' if normalize_air_mass else '')
+  outfile = outdir + "/%s_totalmass_%s%s.png"%('_'.join(m.name for m in models if m is not None),fieldname,'_normalized_by_dryair' if normalize_air_mass else '')
   if not exists(outfile):
     title = "Total mass %s in %s"%(fieldname,units)
     doplot (outfile, title, fields, colours, styles, labels)
