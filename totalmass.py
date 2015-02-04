@@ -1,6 +1,6 @@
 # Total mass (Pg)
 def compute_totalmass (model, fieldname):
-  from common import convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude
+  from common import can_convert, convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude
   # Do we have the pressure change in the vertical?
   if model.data.have('dp'):
 
@@ -13,7 +13,22 @@ def compute_totalmass (model, fieldname):
 
     # Total tracer mass?
     else:
-     c, dp, area = model.data.find_best([fieldname,'dp','cell_area'], maximize=(number_of_levels,number_of_timesteps))
+     # Grab some part of the tracer data, to check the units
+     c = model.data.find_best(fieldname)
+     # Already have moist air mixing ratio?
+     if can_convert (c, 'kg kg(air)-1'):
+       c, dp, area = model.data.find_best([fieldname,'dp','cell_area'], maximize=(number_of_levels,number_of_timesteps))
+     # Or do we have a dry air mixing ratio?
+     # (need to convert to moist air for computing mass)
+     elif can_convert (c, 'kg kg(dry_air)-1'):
+       c, q, dp, area = model.data.find_best([fieldname,'specific_humidity', 'dp','cell_area'], maximize=(number_of_levels,number_of_timesteps))
+       original_units = c.atts['units']
+       q = convert(q, 'kg(H2O) kg(air)-1')
+       c = c*(1-q)
+       c.atts['units'] = original_units + ' kg(dry_air) kg(air)-1'
+     else:
+       raise ValueError("Don't know how to compute mass from units of '%s'"%c.atts['units'])
+
      c = convert(c,'kg kg(air)-1')
      dp = convert(dp,'Pa')
 
