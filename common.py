@@ -6,7 +6,7 @@ from units import define_conversion, define_unit, conversion_factor
 # Define the molar masses
 define_conversion ('mol(CO2)', '44.01 g(CO2)')
 define_conversion ('mol(CH4)', '16.04 g(CH4)')
-define_conversion ('mol(air)', '28.97 g(air)')
+define_conversion ('mol(dry_air)', '28.97 g(dry_air)')
 define_conversion ('mol(H2O)', '18.01528 g(H2O)')
 
 # The following is a hack to get mass in terms of carbon atoms
@@ -18,7 +18,7 @@ define_conversion ('C_atoms_per_molecule(CH4)', '1')
 
 # For the purpose of these diagnostics, assume mole fractions are always with
 # respect to air.
-define_conversion ('molefraction', 'mol mol(air)-1')
+define_conversion ('molefraction', 'mol mol(dry_air)-1')
 
 
 # Convert a variable from one unit to another

@@ -82,7 +82,7 @@ def define_conversion (unit, conversion):
     context.
 
     Example:
-      define_conversion ('mol(air)', '28.97 g(air)')
+      define_conversion ('mol(dry_air)', '28.97 g(dry_air)')
 
     Would tell the unit convertor how to convert from moles of air to grams
     of air.
@@ -124,7 +124,7 @@ def parse_units(s):
 
     parse_units('100 ppm') will yield (100.0,None,1), ('ppm',None,1)
 
-    parse_units('kg(H2O) kg(air)-1') will yield ('kg','H2O',1), ('kg','air',-1)
+    parse_units('kg(H2O) kg(dry_air)-1') will yield ('kg','H2O',1), ('kg','dry_air',-1)
 
   Note: You can omit the spaces between each term, if it does not create any
   ambiguity.
@@ -236,17 +236,4 @@ def conversion_factor (from_units, to_units, context=None):
   if (terms1 != terms2):
     raise ValueError ("Units '%s' and '%s' are not compatible"%(from_units,to_units))
   return scale1 / scale2
-
-if __name__ == '__main__':
-  define_conversion ('g(C:CO2)', repr(44.01/12.)+' g(CO2)')
-  define_conversion ('mol(CO2)', '44.01 g(CO2)')
-  define_conversion ('mol(air)', '28.97 g(air)')
-  define_conversion ('molefraction', 'mol mol(air)-1')
-
-  print list(_reduce_units ('ppm(CO2)'))
-  print list(_reduce_units ('ppb(CO2)'))
-  print list(_reduce_units ('mol(CO2) m-2 s-1'))
-
-  print conversion_factor('ug(C:CO2) kg(air)-1', 'ppm(CO2)')
-  print conversion_factor('ppm(CO2)', 'ug(C:CO2) kg(air)-1')
 

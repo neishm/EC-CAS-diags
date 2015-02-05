@@ -3,19 +3,19 @@ from gem import GEM_Data
 class ECCAS_Data(GEM_Data):
 
   field_list = GEM_Data.field_list + (
-    ('CO2', 'CO2', 'ug(C) kg(air)-1'),
-    ('CBB', 'CO2_fire', 'ug(C) kg(air)-1'),
-    ('CFF', 'CO2_fossil', 'ug(C) kg(air)-1'),
-    ('COC', 'CO2_ocean', 'ug(C) kg(air)-1'),
-    ('CLA', 'CO2_bio', 'ug(C) kg(air)-1'),
-    ('CO2B', 'CO2_background', 'ug(C) kg(air)-1'),
-    ('CH4', 'CH4', 'ug kg(air)-1'),
-    ('CH4B', 'CH4_background', 'ug kg(air)-1'),
-    ('CHFF', 'CH4_fossil', 'ug kg(air)-1'),
-    ('CHBB', 'CH4_fire', 'ug kg(air)-1'),
-    ('CHOC', 'CH4_ocean', 'ug kg(air)-1'),
-    ('CHNA', 'CH4_natural', 'ug kg(air)-1'),
-    ('CHAG', 'CH4_agriculture', 'ug kg(air)-1'),
+    ('CO2', 'CO2', 'ug(C) kg(dry_air)-1'),
+    ('CBB', 'CO2_fire', 'ug(C) kg(dry_air)-1'),
+    ('CFF', 'CO2_fossil', 'ug(C) kg(dry_air)-1'),
+    ('COC', 'CO2_ocean', 'ug(C) kg(dry_air)-1'),
+    ('CLA', 'CO2_bio', 'ug(C) kg(dry_air)-1'),
+    ('CO2B', 'CO2_background', 'ug(C) kg(dry_air)-1'),
+    ('CH4', 'CH4', 'ug kg(dry_air)-1'),
+    ('CH4B', 'CH4_background', 'ug kg(dry_air)-1'),
+    ('CHFF', 'CH4_fossil', 'ug kg(dry_air)-1'),
+    ('CHBB', 'CH4_fire', 'ug kg(dry_air)-1'),
+    ('CHOC', 'CH4_ocean', 'ug kg(dry_air)-1'),
+    ('CHNA', 'CH4_natural', 'ug kg(dry_air)-1'),
+    ('CHAG', 'CH4_agriculture', 'ug kg(dry_air)-1'),
     ('OH', 'OH', 'molecules m-3'),
   )
 
@@ -45,9 +45,9 @@ class ECCAS_Data(GEM_Data):
 
     # Offset the ocean and land fields by 100ppm
     if 'CO2_ocean' in data:
-      data['CO2_ocean'] -= conversion_factor('100 ppm', 'ug(C) kg(air)-1', context='CO2')
+      data['CO2_ocean'] -= conversion_factor('100 ppm', 'ug(C) kg(dry_air)-1', context='CO2')
     if 'CO2_bio' in data:
-      data['CO2_bio'] -= conversion_factor('100 ppm', 'ug(C) kg(air)-1', context='CO2')
+      data['CO2_bio'] -= conversion_factor('100 ppm', 'ug(C) kg(dry_air)-1', context='CO2')
 
     # Add species name for all products (to assist in things like unit conversion)
     for varname in data:
@@ -74,7 +74,7 @@ class ECCAS_Data(GEM_Data):
     # Do some extra stuff to offset COC / CLA fields
     for i, var in enumerate(dataset):
       if var.name in ('COC','CLA'):
-        dataset[i] = (var + conversion_factor('100 ppm', 'ug(C) kg(air)-1', context='CO2')).as_type('float32')
+        dataset[i] = (var + conversion_factor('100 ppm', 'ug(C) kg(dry_air)-1', context='CO2')).as_type('float32')
     return dataset
 
   # For our forward cycles, we need to hard-code the ig1/ig2 of the tracers.

@@ -18,6 +18,10 @@ parser.add_argument('--desc', help="Short description of the experient.", defaul
 parser.add_argument('--control', help="Location of the control run (if desired).", default=None)
 parser.add_argument('--emissions', help="Location of the model emissions.")
 parser.add_argument('--tmpdir', help="where to put any intermediate files that get generated, if they can't be stored in their usual location.  THIS SHOULD NOT BE IN YOUR HOME DIRECTORY.")
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument ("--dry-air", help="Interprets the tracers as being w.r.t. dry air.", action="store_const", const=True, dest="dry_air")
+group.add_argument("--moist-air", help="Interprets the tracers as being w.r.t. moist air.", action="store_const", const=False, dest="dry_air")
+
 
 args = parser.parse_args()
 
@@ -65,7 +69,9 @@ if control_dir is not None and exists(control_dir+"/model"):
 
 from cache import Cache
 
-from interfaces import eccas, eccas_flux
+if args.dry_air: from interfaces import eccas, eccas_flux
+else: from interfaces import eccas_moist as eccas, eccas_flux
+
 experiment = eccas.interface(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir], global_prefix=experiment_name+"_", load_hooks=[eccas.interface.load_hook]))
 # Duct-tape the flux data to the experiment data
 #TODO: make the fluxes a separate product
@@ -174,6 +180,11 @@ try:
   xcol_diff (models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCO2_diff', e])
+# XH2O
+try:
+  xcol (models=[experiment,control,None], fieldname='H2O', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['XH2O', e])
 # Average column of stats
 try:
   xcol_enkf (model=experiment, fieldname='CO2', units='ppm', outdir=outdir)
@@ -239,10 +250,16 @@ except Exception as e:
 from totalmass import totalmass
 # Total mass CO2
 try:
-  totalmass (models=[experiment,carbontracker,control], fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
-  totalmass (models=[experiment,carbontracker,control], fieldname='CO2', units='Pg(C)', outdir=outdir)
+  totalmass (models=[experiment,None,control], fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
+  totalmass (models=[experiment,None,control], fieldname='CO2', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass CO2', e])
+# Total mass CFF
+try:
+  totalmass (models=[experiment,carbontracker,control], fieldname='CO2_fossil', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
+  totalmass (models=[experiment,carbontracker,control], fieldname='CO2_fossil', units='Pg(C)', outdir=outdir)
+except Exception as e:
+  failures.append(['totalmass CO2_fossil', e])
 from totalmass_diff import totalmass_diff
 # Total mass CO2 difference
 try:
@@ -258,8 +275,21 @@ except Exception as e:
 # Total mass air
 try:
   totalmass (models=[experiment,None,control], fieldname='air', units='Pg', outdir=outdir)
+  totalmass (models=[experiment,None,control], fieldname='dry_air', units='Pg', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass air', e])
+# Total mass H2O
+try:
+  totalmass (models=[experiment,None,control], fieldname='H2O', units='Pg', outdir=outdir)
+except Exception as e:
+  failures.append(['totalmass H2O', e])
+
+# Horizontal slice movie
+from horz_slice_diff import horz_slice_movie
+try:
+  horz_slice_movie(models=[experiment,control], fieldname='CO2', level="1.0", units='ppm', outdir=outdir) 
+except Exception as e:
+  failures.append(['horz_slice_movie', e])
 
 #-------------------Jake's Diags------------------------
 
