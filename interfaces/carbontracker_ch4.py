@@ -69,6 +69,9 @@ class CTCH4_Data(ModelData):
 
     # Force vertical axis to be a ZAxis
     data = data.replace_axes(lev = ZAxis)
+    # Indicate the direction of the vertical axis
+    if 'lev' in data:
+      data.lev.atts['positive'] = 'up'
 
     # Apply fieldname conversions
     data = ModelData.decode.__func__(cls,data)
