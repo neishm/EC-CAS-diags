@@ -106,7 +106,7 @@ class GEOSCHEM_Data(ModelData):
     else: zaxis = None
 
     if zaxis is not None:
-      zaxis.atts['positive'] = 'down'
+      zaxis.atts['positive'] = 'up'
 
     # Apply fieldname conversions
     data = ModelData.decode.__func__(cls,dataset)

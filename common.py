@@ -373,7 +373,7 @@ def select_surface (var):
   else:
     from warnings import warn
     warn ("Incomplete information on z-axis.  Hopefully, the surface is being selected!")
-    sfc_val = zaxis.values[{'up':-1, 'down':0}[zaxis.atts['positive']]]
+    sfc_val = zaxis.values[{'up':0, 'down':-1}[zaxis.atts['positive']]]
   selection = dict([(zaxis.name,sfc_val)])
   return var(**selection)
 
