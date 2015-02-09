@@ -4,7 +4,7 @@
 # Current version of the manifest file format.
 # If this version doesn't match the existing manifest file, then the manifest
 # is re-generated.
-MANIFEST_VERSION="2~alpha1"
+MANIFEST_VERSION="2"
 
 # Scan through all the given files, produce a manifest of all data available.
 def scan_files (files, interface, manifest=None):
