@@ -31,7 +31,7 @@ class FSTD_Timeseries(ModelData):
     vcoord_table = fstd_core.decode_loghybrid_table(raw[nomvar=='!!  ']['data_func'][0]())
     # Remove extra level at top of model (not saved in profiles), and extra
     # level at bottom for A/B (diagnostic level, not saved in profiles).
-    zeta = fstd.LogHybrid(zeta[1:], A=vcoord_table['a_t'][1:-1], B=vcoord_table['b_t'][1:-1])
+    zeta = fstd.LogHybrid(zeta[1:], A=vcoord_table['a_t'][1:-1], B=vcoord_table['b_t'][1:-1], atts=vcoord_table)
     # Hack the ip3 (station) value into ip1, so we can let FSTD_Var concatenate
     # records together.  Don't try this at home!
     raw['ip1'] = raw['ip3']
