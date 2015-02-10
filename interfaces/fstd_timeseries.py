@@ -25,8 +25,7 @@ class FSTD_Timeseries(ModelData):
     # Get vertical levels
     # NOTE: assuming thermodynamic levels - will not work for things defined
     # on momentum levels!
-    fstd.LogHybrid.plotatts['plotscale']='log'
-    fstd.LogHybrid.plotatts['plotorder']=-1
+    fstd.LogHybrid.plotatts = {'plotscale':'log', 'plotorder':-1}
     zeta = raw[nomvar=='SH  ']['data_func'][0]().flatten()
     vcoord_table = fstd_core.decode_loghybrid_table(raw[nomvar=='!!  ']['data_func'][0]())
     # Remove extra level at top of model (not saved in profiles), and extra
