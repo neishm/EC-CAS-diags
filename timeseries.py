@@ -92,7 +92,7 @@ def timeseries (obs, models, fieldname, units, outdir, plot_months=None):
 
   from os.path import exists
 
-  from common import convert
+  from common import convert, select_surface
 
   model_line_colours = ['blue', 'red']
   obs_line_colour = 'green'
@@ -113,6 +113,10 @@ def timeseries (obs, models, fieldname, units, outdir, plot_months=None):
       model_spread.append(None)
 
   obs_data = obs.data.find_best(fieldname)
+  obs_data = select_surface(obs_data)
+  # Cache the observation data, for faster subsequent access
+  obs_data = obs.cache.write(obs_data, prefix='sfc_%s'%fieldname, split_time=False)
+
   obs_data = convert(obs_data, units, context=fieldname)
   try:
     obs_stderr = obs.data.find_best(fieldname+'_std')
