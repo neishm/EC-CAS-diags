@@ -161,7 +161,6 @@ def timeseries (obs, models, fieldname, units, outdir, plot_months=None):
     station_info = data[0](station=location).getaxis("station")
     lat = station_info.lat[0]
     lon = station_info.lon[0]
-    country = station_info.country[0]
 
     # Construct a title for the plot
     title = location + ' - (%4.2f'%abs(lat)
@@ -170,7 +169,9 @@ def timeseries (obs, models, fieldname, units, outdir, plot_months=None):
     title += ',%5.2f'%abs(lon)
     if lon < 0: title += 'W'
     else: title += 'E'
-    title += ') - ' + country
+    title += ')'
+    if hasattr(station_info,'country'):
+      title += ' - ' + station_info.country[0]
 
     parts = []
     for i in range(len(data)):
