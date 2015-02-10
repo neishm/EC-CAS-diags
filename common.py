@@ -294,11 +294,21 @@ class SquashForecasts(Var):
     out = np.empty(view.shape, dtype=self.dtype)
     nt = len(self._var.time)
     nf = len(self._var.forecast)
-    t = self.whichaxis('time')
     v = view.map_to(self._var, strict=False)
-    for out_itime, in_itime in enumerate(view.integer_indices[t]):
-      out[out_itime,...] = v.modify_slice(0,[in_itime//nf]).modify_slice(1,[in_itime%nf]).get(self._var)
-      pbar.update(out_itime*100./len(view.integer_indices[t]))
+    tslice = list(view.integer_indices[0]//nf)
+    fslice = list(view.integer_indices[0]%nf)
+    # Collect forecasts from the same origin date together
+    # (can read them all at once)
+    tf_pairs = []
+    for i,(t,f) in enumerate(zip(tslice,fslice)):
+      if len(tf_pairs) > 0 and t == tf_pairs[-1][1]:
+        tf_pairs[-1][0].append(i)
+        tf_pairs[-1][2].append(f)
+      else: tf_pairs.append(([i],t,[f]))
+
+    for i,t,f in tf_pairs:
+      data = v.modify_slice(0,[t]).modify_slice(1,f).get(self._var)
+      out[i,...] = data.reshape(data.shape[1:])
     pbar.update(100)
     return out
 
