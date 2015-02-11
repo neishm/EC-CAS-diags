@@ -109,6 +109,7 @@ class ModelData (object):
     from os.path import exists, isdir
     from glob import glob
     from data_interface import DataInterface
+    from data_scanner import from_files
     self.name = name
     self.title = title
     self.cache = cache
@@ -129,7 +130,7 @@ class ModelData (object):
     for f in expanded_files:
       if not exists(f):
         raise ValueError("File '%s' does not exist."%f)
-    data = DataInterface.from_files(expanded_files, type(self), manifest=manifest)
+    data = DataInterface(from_files(expanded_files, type(self), manifest=manifest))
     # Filter the data (get standard field names, etc.)
     data = data.filter(self.decode)
     self.data = data

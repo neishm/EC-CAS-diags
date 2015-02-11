@@ -228,6 +228,7 @@ class EC_Station_Data (object):
     from pygeode.var import Var
     import numpy as np
     from data_interface import DataInterface
+    from data_scanner import from_files
 
     cachefile = './ec_obs.nc'
     if not exists(cachefile):
@@ -282,7 +283,7 @@ class EC_Station_Data (object):
 
       # End of cache file creation
 
-    self.data = DataInterface.from_files([cachefile], interface_hack)
+    self.data = DataInterface(from_files([cachefile], interface_hack))
 
     # Rename CO2_mean to CO2
     self.data = self.data.filter(strip_mean)

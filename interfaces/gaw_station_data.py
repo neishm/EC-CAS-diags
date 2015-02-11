@@ -104,6 +104,7 @@ class GAW_Station_Data (object):
     from common import common_taxis, fix_timeaxis
     from station_data import make_station_axis, station_axis_save_hook
     from data_interface import DataInterface
+    from data_scanner import from_files
 
     cachefile = './gaw_obs.nc'
 
@@ -170,7 +171,7 @@ class GAW_Station_Data (object):
 
       # End of cache file creation
 
-    data = DataInterface.from_files([cachefile], interface_hack)
+    data = DataInterface(from_files([cachefile], interface_hack))
 
     # Rename CO2_mean to CO2
     data = data.filter(strip_mean)
