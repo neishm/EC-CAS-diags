@@ -59,7 +59,9 @@ class GEM_Data(ModelData):
       # Pick some arbitrary (but deterministic) variable to get the lat/lon
       var = sorted(data.values())[0]
       from common import get_area
-      data['cell_area'] = get_area(var.lat,var.lon,flat=True).extend(0,var.time, var.forecast)
+      # Make sure this is gridded GEM data (not profile / timeseries data).
+      if var.hasaxis('lat') and var.hasaxis('lon'):
+        data['cell_area'] = get_area(var.lat,var.lon,flat=True).extend(0,var.time, var.forecast)
 
     # General cleanup stuff
 
@@ -324,9 +326,9 @@ class GEM_Data(ModelData):
       raise TypeError("Can't handle '%s' axis in this GEM interface."%zaxis.__class__.__name__)
 
     if dp.hasaxis('forecast'):
-      dp = dp.transpose('time','forecast','zaxis','lat','lon')
+      dp = dp.transpose('time','forecast','zaxis')
     else:
-      dp = dp.transpose('time','zaxis','lat','lon')
+      dp = dp.transpose('time','zaxis')
 
     dp.name = 'dp'
     dp.atts['units'] = 'Pa'
@@ -361,9 +363,9 @@ class GEM_Data(ModelData):
       raise TypeError("Can't handle '%s' axis in this GEM interface."%zaxis.__class__.__name__)
 
     if p.hasaxis('forecast'):
-      p = p.transpose('time','forecast','zaxis','lat','lon')
+      p = p.transpose('time','forecast','zaxis')
     else:
-      p = p.transpose('time','zaxis','lat','lon')
+      p = p.transpose('time','zaxis')
     p.name = 'air_pressure'
     p.atts['units'] = 'Pa'
     return p
