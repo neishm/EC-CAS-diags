@@ -130,10 +130,10 @@ class ModelData (object):
     for f in expanded_files:
       if not exists(f):
         raise ValueError("File '%s' does not exist."%f)
-    data = DataInterface(from_files(expanded_files, type(self), manifest=manifest))
-    # Filter the data (get standard field names, etc.)
-    data = data.filter(self.decode)
-    self.data = data
+    data = from_files(expanded_files, type(self), manifest=manifest)
+    # Decode the data (get standard field names, etc.)
+    data = map(self.decode, data)
+    self.data = DataInterface(data)
 
 # Helper method - get a model interface
 def get_model_interface (model_name):

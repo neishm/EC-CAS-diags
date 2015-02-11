@@ -10,16 +10,6 @@ class DataInterface (object):
     from pygeode.dataset import asdataset
     self.datasets = tuple(map(asdataset,datasets))
 
-  # Return a new DataInterface after pushing this one through a series
-  # of filters.
-  def filter (self, *filters):
-    datasets = []
-    for dataset in self.datasets:
-      for f in filters:
-        dataset = f(dataset)
-      datasets.append(dataset)
-    return DataInterface(datasets)
-
   # Allow the underlying datasets to be iterated over
   def __iter__ (self):
     return iter(self.datasets)

@@ -283,10 +283,11 @@ class EC_Station_Data (object):
 
       # End of cache file creation
 
-    self.data = DataInterface(from_files([cachefile], interface_hack))
+    data = from_files([cachefile], interface_hack)
 
     # Rename CO2_mean to CO2
-    self.data = self.data.filter(strip_mean)
+    data = map(strip_mean, data)
+    self.data = DataInterface(data)
 
 # Hack in an interface (to get an 'open_file' method)
 class interface_hack(object):
