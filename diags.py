@@ -113,6 +113,13 @@ if not exists(outdir) or not os.access (outdir, os.R_OK | os.W_OK | os.X_OK):
   assert args.tmpdir is not None, "Need --tmpdir to put diags in."
   outdir=args.tmpdir
 
+# Write basic information to a history file.
+from datetime import datetime
+from sys import argv
+history_file = open(outdir+"/history.txt","a")
+history_file.write("=== %s ===\n"%datetime.now())
+history_file.write(" ".join(argv)+"\n\n")
+
 # Some standard diagnostics
 failures = []
 
@@ -361,4 +368,7 @@ if len(failures) > 0:
   print "The following diagnostics failed to run:"
   for diag, e in failures:
     print "%s: %s"%(diag,e)
+
+history_file.write("Finished: %s\n\n"%datetime.now())
+history_file.close()
 
