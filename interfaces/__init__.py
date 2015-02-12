@@ -44,6 +44,26 @@ class ModelData (object):
   def find_files (dirname):
     raise NotImplementedError
 
+  # Method to find all relevant files for the given patterns.
+  # Evaluates globbing patterns, and searches directories.
+  def expand_files (self, files):
+    from os.path import exists, isdir
+    from glob import glob
+    expanded_files = []
+    if isinstance(files,str): files = [files]
+    for f in files:
+      if isdir(f):
+        expanded_files.extend(self.find_files(f))
+      else:
+        expanded_files.extend(glob(f))
+    if len(expanded_files) == 0:
+        raise ValueError("No matches for '%s'."%files)
+    for f in expanded_files:
+      if not exists(f):
+        raise ValueError("File '%s' does not exist."%f)
+    return expanded_files
+
+
   # Method to fully reconstruct a model dataset that had been cached in
   # an intermediate format.
   @staticmethod
@@ -106,8 +126,6 @@ class ModelData (object):
   # Initialize a model interface.
   # Scans the provided files, and constructs the datasets.
   def __init__ (self, files, name=None, title=None, cache=None):
-    from os.path import exists, isdir
-    from glob import glob
     from data_interface import DataInterface
     from data_scanner import from_files
     self.name = name
@@ -118,18 +136,7 @@ class ModelData (object):
     else:
       manifest = None
 
-    expanded_files = []
-    if isinstance(files,str): files = [files]
-    for f in files:
-      if isdir(f):
-        expanded_files.extend(self.find_files(f))
-      else:
-        expanded_files.extend(glob(f))
-    if len(expanded_files) == 0:
-        raise ValueError("No matches for '%s'."%files)
-    for f in expanded_files:
-      if not exists(f):
-        raise ValueError("File '%s' does not exist."%f)
+    expanded_files = self.expand_files(files)
     data = from_files(expanded_files, type(self), manifest=manifest)
     # Decode the data (get standard field names, etc.)
     data = map(self.decode, data)
