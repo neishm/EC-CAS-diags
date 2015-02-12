@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from interfaces import get_interface
+import interfaces
 
 import argparse
 
@@ -22,7 +22,7 @@ class append_dictvalue(argparse.Action):
 
 # Parse the command-line arguments
 
-valid_types = ["carbontracker","carbontracker-ch4","gem","eccas","eccas-flux","eccas-bayesian","eccas-bayesian-flux","geoschem-coards","geoschem-feng-nc","macc-nc","transcom3-input","cccma-nc"]
+valid_types = interfaces.table.keys()
 
 parser = argparse.ArgumentParser(description="Converts model data from one format to another.", epilog="TYPE can be: "+', '.join(valid_types))
 parser.add_argument ("--intype", help="The type of input data to read.", choices=valid_types, required=True, action=set_dictkey, metavar="TYPE", dest="input")
@@ -50,14 +50,14 @@ else:
 try:
 
   # Get the target grid
-  grid_data = get_interface(args.outtype)(args.gridfiles).data
+  grid_data = interfaces.table[args.outtype](args.gridfiles).data
 
   # Collect all the input data for various sources
   from interfaces.data_interface import DataInterface
   input_data = []
   for intype, infiles in args.input.iteritems():
     if intype is None: raise ValueError("No type specified for files %s"%infiles)
-    input_data.extend(get_interface(intype)(infiles).data)
+    input_data.extend(interfaces.table[intype](infiles).data)
 
   # Force the input data to be valid at the target grid time?
   if args.use_target_time:
@@ -72,7 +72,7 @@ try:
   input_data = DataInterface(input_data)
 
   # Get the output interface
-  out_interface = get_interface (args.outtype)
+  out_interface = interfaces.table[args.outtype]
 
   data = input_data
 

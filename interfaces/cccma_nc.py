@@ -85,6 +85,7 @@ class CCCMA_Data(DataProduct):
     return glob(dirname+"/*.nc")
 
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = CCCMA_Data
+# Add this interface to the table.
+from interfaces import table
+table['cccma-nc'] = CCCMA_Data
 

@@ -133,10 +133,13 @@ class DataProduct (object):
     data = map(self.decode, data)
     self.data = DataInterface(data)
 
-# Helper method - get a product interface
-def get_interface (name):
+# Find all available interfaces
+table = {}
+def _load_interfaces ():
+  import pkgutil
   import importlib
-  # Try to find a module with the given name
-  # Note: hyphens '-' are mangled to underscores '_' when looking for a module.
-  return importlib.import_module('interfaces.'+name.replace('-','_')).interface
+  for loader, name, ispkg in pkgutil.walk_packages(__path__):
+    if ispkg: continue
+    importlib.import_module(__name__+'.'+name)
+_load_interfaces()  # Allow the interfaces to add their entries to this table
 

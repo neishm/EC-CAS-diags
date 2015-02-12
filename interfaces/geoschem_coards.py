@@ -135,6 +135,7 @@ class GEOSCHEM_Data(DataProduct):
     return []  # Don't have any good way of identifying GEOS-CHEM files.
 
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = GEOSCHEM_Data
+# Add this interface to the table.
+from interfaces import table
+table['geoschem-coards'] = GEOSCHEM_Data
 

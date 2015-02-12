@@ -251,9 +251,7 @@ class GEM_Data(DataProduct):
 
 
 
-
-
-
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = GEM_Data
+# Add this interface to the table.
+from interfaces import table
+table['gem'] = GEM_Data
 

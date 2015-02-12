@@ -161,8 +161,9 @@ class CT_Data(DataProduct):
 
     return molefractions+fluxes
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = CT_Data
+# Add this interface to the table.
+from interfaces import table
+table['carbontracker'] = CT_Data
 
 
 

@@ -95,6 +95,7 @@ class ECCAS_Data(GEM_Data):
     records['deet'][ind] = 0
 
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = ECCAS_Data
+# Add this interface to the table.
+from interfaces import table
+table['eccas'] = ECCAS_Data
 

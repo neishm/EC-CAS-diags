@@ -160,6 +160,7 @@ class MACC_Data(DataProduct):
 
 
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = MACC_Data
+# Add this interface to the table.
+from interfaces import table
+table['macc-nc'] = MACC_Data
 
