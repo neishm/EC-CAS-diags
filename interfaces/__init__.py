@@ -114,6 +114,9 @@ class DataProduct (object):
     raise NotImplementedError
 
 
+  # Any axes that should be common among datasets.
+  _common_axes = ()
+
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
   def __init__ (self, files, name=None, title=None, cache=None):
@@ -128,10 +131,16 @@ class DataProduct (object):
       manifest = None
 
     expanded_files = self.expand_files(files)
-    data = from_files(expanded_files, type(self), manifest=manifest)
+    data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axes)
     # Decode the data (get standard field names, etc.)
     data = map(self.decode, data)
     self.data = DataInterface(data)
+
+
+# A sub-class to handle station obs data.
+class StationObsProduct(DataProduct):
+  _common_axes = ('time',)
+
 
 # Find all available interfaces
 table = {}

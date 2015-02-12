@@ -433,7 +433,7 @@ def _cleanup_subdomains (domains):
   return domains - junk_domains
 
 # Scan a file manifest, return all possible domains available.
-def _get_domains (manifest):
+def _get_domains (manifest, force_common_axis):
 
   axis_manager = AxisManager()  # For memoized axis operations
 
@@ -444,6 +444,14 @@ def _get_domains (manifest):
       axes = axis_manager.lookup_axes([Varlist([var])]+list(axes))
       domains.add(Domain(axes))
 
+  # For each common axis that's specified, build it from the pieces in the
+  # domains.
+  if len(force_common_axis) > 0:
+    common_axes = {}
+    for axis in force_common_axis:
+      common_axes[axis] = axis_manager.get_axis_union([a for d in domains for a in d if a.name == axis])
+    domains = set(Domain([common_axes.get(a.name,a) for a in d.axes]) for d in domains)
+
   # Reduce this to a minimal number of domains for data coverage
   domains = _get_prime_domains(domains, axis_manager)
   domains = _merge_all_domains(domains, axis_manager)
@@ -452,9 +460,9 @@ def _get_domains (manifest):
 
 
 # Create a dataset from a set of files and an interface class
-def from_files (filelist, interface, manifest=None):
+def from_files (filelist, interface, manifest=None, force_common_axis=()):
   manifest = scan_files (filelist, interface, manifest)
-  domains = _get_domains(manifest)
+  domains = _get_domains(manifest, force_common_axis=force_common_axis)
   datasets = [_domain_as_dataset(d,manifest) for d in domains]
   return datasets
 
