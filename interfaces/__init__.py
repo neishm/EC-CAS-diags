@@ -113,15 +113,6 @@ class ModelData (object):
   def write (datasets, dirname):
     raise NotImplementedError
 
-  # Helper method to compute the change in pressure within a vertical layer.
-  @staticmethod
-  def compute_dp (zaxis, p0):
-    raise NotImplementedError
-
-  # Helper method to compute pressure levels from the given z-axis and surface pressure
-  @staticmethod
-  def compute_pressure (zaxis, p0):
-    raise NotImplementedError
 
   # Initialize a model interface.
   # Scans the provided files, and constructs the datasets.

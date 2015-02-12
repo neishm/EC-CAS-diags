@@ -250,6 +250,114 @@ def get_area (latvar, lonvar, flat=False):
   return dxdy
 
 
+# Helper method to compute the change in pressure within a vertical layer.
+def compute_dp (zaxis, p0):
+  from pygeode.formats import fstd
+  from pygeode.var import Var
+  from pygeode.ufunc import exp, log
+  import math
+  import numpy as np
+
+  p0 = convert(p0, 'Pa')
+
+  # eta coordinates?
+  if isinstance(zaxis,fstd.Hybrid):
+    raise TypeError("Not enough information to compute pressure interfaces on hybrid levels.")
+
+  # zeta coordinates?
+  elif isinstance(zaxis,fstd.LogHybrid):
+    zeta = zaxis
+    # Get the full set of coefficients
+    a_m = zeta.atts['a_m']
+    b_m = zeta.atts['b_m']
+    a_t = zeta.atts['a_t']
+    b_t = zeta.atts['b_t']
+    # Add extra level at the lid
+    a_m = np.array([math.log(zeta.atts['ptop'])] + list(a_m))
+    b_m = np.array([0] + list(b_m))
+
+    # Figure out if we have thermodynamic or momentum levels, and use the
+    # other set of levels as the interfaces
+    if set(zeta.A) <= set(a_m) and set(zeta.B) <= set(b_m):
+      a_int = a_t
+      b_int = b_t
+    elif set(zeta.A) <= set(a_t) and set(zeta.B) <= set(b_t):
+      a_int = a_m
+      b_int = b_m
+    else:
+      raise ValueError ("Vertical axis must be entirely on model thermodynamic or momentum levels.")
+
+    # Find indices of interfaces
+    interface_ind = []
+    for a in zeta.A:
+      j = np.searchsorted(a_int, a) - 1
+      if a_int[j+1] == a: j+= 1  # Check for lower boundary?
+      interface_ind.append(j)
+    # Add the bottom interface
+    interface_ind.append(np.searchsorted(a_int, a))
+    # Double-check we have the right things
+    for a, j in zip(zeta.A, interface_ind[:-1]):
+      assert a_int[j] <= a
+    for a, j in zip(zeta.A, interface_ind[1:]):
+      assert a_int[j] >= a
+
+    # Define a dp operator
+    a_upper = Var([zeta], values=a_int[interface_ind[:-1]])
+    a_lower = Var([zeta], values=a_int[interface_ind[1:]])
+    b_upper = Var([zeta], values=b_int[interface_ind[:-1]])
+    b_lower = Var([zeta], values=b_int[interface_ind[1:]])
+    p_upper = exp(a_upper + b_upper*log(p0/zeta.atts['pref']))
+    p_lower = exp(a_lower + b_lower*log(p0/zeta.atts['pref']))
+    dp = p_lower - p_upper
+
+  else:
+    raise TypeError("Can't handle '%s' axis."%zaxis.__class__.__name__)
+
+  if dp.hasaxis('forecast'):
+    dp = dp.transpose('time','forecast','zaxis')
+  else:
+    dp = dp.transpose('time','zaxis')
+
+  dp.name = 'dp'
+  dp.atts['units'] = 'Pa'
+  return dp
+
+# Helper method to compute pressure levels from the given z-axis and surface pressure
+def compute_pressure (zaxis, p0):
+  from pygeode.formats import fstd
+  from pygeode.ufunc import exp, log
+
+  p0 = convert(p0, 'Pa')
+
+  # eta coordinates?
+  if isinstance(zaxis, fstd.Hybrid):
+    eta = zaxis
+    A = eta.auxasvar('A')
+    B = eta.auxasvar('B')
+    p = A + B * p0
+
+  # zeta coordinates?
+  elif isinstance(zaxis, fstd.LogHybrid):
+    zeta = zaxis
+    A = zeta.auxasvar('A')
+    B = zeta.auxasvar('B')
+    pref = zeta.atts['pref']
+    ptop = zeta.atts['ptop']
+    p = exp(A + B * log(p0/zeta.atts['pref']))
+
+  else:
+    raise TypeError("Can't handle '%s' axis in this interface."%zaxis.__class__.__name__)
+
+  if p.hasaxis('forecast'):
+    p = p.transpose('time','forecast','zaxis')
+  else:
+    p = p.transpose('time','zaxis')
+  p.name = 'air_pressure'
+  p.atts['units'] = 'Pa'
+  return p
+
+
+
 # Return a field of constant value over the given axes
 from pygeode.var import Var
 class Constant_Var (Var):
