@@ -1,7 +1,7 @@
 # Interface for CarbonTracker data
 
-from interfaces import ModelData
-class CT_Data(ModelData):
+from interfaces import DataProduct
+class CT_Data(DataProduct):
 
   # Invariant data
   import numpy as np
@@ -75,7 +75,7 @@ class CT_Data(ModelData):
       data.level.atts['positive'] = 'up'
 
     # Apply fieldname conversions
-    data = ModelData.decode.__func__(cls,data)
+    data = DataProduct.decode.__func__(cls,data)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in data)

@@ -1,6 +1,6 @@
 
-from interfaces import ModelData
-class GEM_Data(ModelData):
+from interfaces import DataProduct
+class GEM_Data(DataProduct):
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
@@ -30,7 +30,7 @@ class GEM_Data(ModelData):
     from common import compute_pressure, compute_dp
 
     # Apply fieldname conversions
-    dataset = ModelData.decode.__func__(cls,dataset)
+    dataset = DataProduct.decode.__func__(cls,dataset)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
@@ -168,7 +168,7 @@ class GEM_Data(ModelData):
     data = list(data.values())
 
     # Apply the conversions
-    data = ModelData.encode.__func__(cls,data)
+    data = DataProduct.encode.__func__(cls,data)
 
     return data
 

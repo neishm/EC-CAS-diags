@@ -2,8 +2,8 @@
 # from Feng Deng's scripts.
 
 
-from interfaces import ModelData
-class GEOSCHEM_Data(ModelData):
+from interfaces import DataProduct
+class GEOSCHEM_Data(DataProduct):
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
@@ -109,7 +109,7 @@ class GEOSCHEM_Data(ModelData):
       zaxis.atts['positive'] = 'up'
 
     # Apply fieldname conversions
-    data = ModelData.decode.__func__(cls,dataset)
+    data = DataProduct.decode.__func__(cls,dataset)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)

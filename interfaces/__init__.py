@@ -1,12 +1,12 @@
 
-# Generic interface for model data.
-# Each specific model would need to sub-class this, and implement the
+# Generic interface for a data product.
+# Each specific product would need to sub-class this, and implement the
 # needed interfaces.
-class ModelData (object):
+class DataProduct (object):
 
   # List of fields that can be autoconverted
   # (original_name, standard_name, units)
-  # To be filled out by the model interfaces that derive from this class.
+  # To be filled out by the products that derive from this class.
   field_list = ()
 
   # Method to open a single file
@@ -64,7 +64,7 @@ class ModelData (object):
     return expanded_files
 
 
-  # Method to fully reconstruct a model dataset that had been cached in
+  # Method to fully reconstruct a dataset that had been cached in
   # an intermediate format.
   @staticmethod
   def load_hook (dataset):
@@ -114,7 +114,7 @@ class ModelData (object):
     raise NotImplementedError
 
 
-  # Initialize a model interface.
+  # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
   def __init__ (self, files, name=None, title=None, cache=None):
     from data_interface import DataInterface
@@ -133,11 +133,10 @@ class ModelData (object):
     data = map(self.decode, data)
     self.data = DataInterface(data)
 
-# Helper method - get a model interface
-def get_model_interface (model_name):
+# Helper method - get a product interface
+def get_interface (name):
   import importlib
   # Try to find a module with the given name
   # Note: hyphens '-' are mangled to underscores '_' when looking for a module.
-  model = importlib.import_module('interfaces.'+model_name.replace('-','_'))
-  return model.interface
+  return importlib.import_module('interfaces.'+name.replace('-','_')).interface
 
