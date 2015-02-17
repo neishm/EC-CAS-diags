@@ -94,10 +94,9 @@ carbontracker = interfaces.table['carbontracker'](["/wrk1/EC-CAS/CarbonTracker/m
 carbontracker_ch4 = interfaces.table['carbontracker-ch4']("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc", name='CTCH42010', title='CarbonTracker', cache=Cache('/wrk6/eltonc/ct_ch4/molefractions/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CTCH42010_'))
 
 # Observation data
-from interfaces.ec_station_data import EC_Station_Data
-ec_obs = EC_Station_Data()
-from interfaces.gaw_station_data import GAW_Station_Data
-gaw_obs = GAW_Station_Data()
+from station_data import station_axis_load_hook, station_axis_save_hook
+ec_obs = interfaces.table['ec-station-obs']("/wrk1/EC-CAS/surface/EC-2013", name="EC", title="EC Station Obs", cache=Cache(args.tmpdir, load_hooks=[station_axis_load_hook], save_hooks=[station_axis_save_hook], global_prefix="ec-station-obs_", split_time=False))
+gaw_obs = interfaces.table['gaw-station-obs']("/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2009", name="GAW", title='GAW-2014 Station Obs', cache=Cache(args.tmpdir, load_hooks=[station_axis_load_hook], save_hooks=[station_axis_save_hook], global_prefix="gaw-station-obs_", split_time=False))
 
 
 # Dump the output files to a subdirectory of the experiment data
