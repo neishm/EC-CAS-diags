@@ -73,7 +73,8 @@ class ECCAS_Flux_Data(ECCAS_Data):
     records['deet'][ind] = 0
 
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = ECCAS_Flux_Data
+# Add this interface to the table.
+from interfaces import table
+table['eccas-flux'] = ECCAS_Flux_Data
 
 

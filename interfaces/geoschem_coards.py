@@ -2,8 +2,8 @@
 # netCDF COARDS convenction (compatible with GAMAP routine BPCH2COARDS).
 
 
-from interfaces import ModelData
-class GEOSCHEM_Data(ModelData):
+from interfaces import DataProduct
+class GEOSCHEM_Data(DataProduct):
 
   # A and B interface values (for vertical coordinate)
 
@@ -135,6 +135,7 @@ class GEOSCHEM_Data(ModelData):
     return []  # Don't have any good way of identifying GEOS-CHEM files.
 
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = GEOSCHEM_Data
+# Add this interface to the table.
+from interfaces import table
+table['geoschem-coards'] = GEOSCHEM_Data
 

@@ -11,8 +11,8 @@ def ct_file2date(filename):
   return date
 
 
-from interfaces import ModelData
-class CTCH4_Data(ModelData):
+from interfaces import DataProduct
+class CTCH4_Data(DataProduct):
 
   # Invariant data
   import numpy as np
@@ -74,7 +74,7 @@ class CTCH4_Data(ModelData):
       data.lev.atts['positive'] = 'up'
 
     # Apply fieldname conversions
-    data = ModelData.decode.__func__(cls,data)
+    data = DataProduct.decode.__func__(cls,data)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in data)
@@ -147,7 +147,8 @@ class CTCH4_Data(ModelData):
     from glob import glob
     return glob(dirname+"/????????.nc")
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = CTCH4_Data
+# Add this interface to the table.
+from interfaces import table
+table['carbontracker-ch4'] = CTCH4_Data
 
 

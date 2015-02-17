@@ -1,12 +1,12 @@
 
-# Generic interface for model data.
-# Each specific model would need to sub-class this, and implement the
+# Generic interface for a data product.
+# Each specific product would need to sub-class this, and implement the
 # needed interfaces.
-class ModelData (object):
+class DataProduct (object):
 
   # List of fields that can be autoconverted
   # (original_name, standard_name, units)
-  # To be filled out by the model interfaces that derive from this class.
+  # To be filled out by the products that derive from this class.
   field_list = ()
 
   # Method to open a single file
@@ -44,11 +44,25 @@ class ModelData (object):
   def find_files (dirname):
     raise NotImplementedError
 
-  # Method to fully reconstruct a model dataset that had been cached in
-  # an intermediate format.
-  @staticmethod
-  def load_hook (dataset):
-    return dataset
+  # Method to find all relevant files for the given patterns.
+  # Evaluates globbing patterns, and searches directories.
+  def expand_files (self, files):
+    from os.path import exists, isdir
+    from glob import glob
+    expanded_files = []
+    if isinstance(files,str): files = [files]
+    for f in files:
+      if isdir(f):
+        expanded_files.extend(self.find_files(f))
+      else:
+        expanded_files.extend(glob(f))
+    if len(expanded_files) == 0:
+        raise ValueError("No matches for '%s'."%files)
+    for f in expanded_files:
+      if not exists(f):
+        raise ValueError("File '%s' does not exist."%f)
+    return expanded_files
+
 
   # Method to re-encode data into the source context
   # (e.g., rename fields to what would be originally in these kinds of files)
@@ -93,22 +107,15 @@ class ModelData (object):
   def write (datasets, dirname):
     raise NotImplementedError
 
-  # Helper method to compute the change in pressure within a vertical layer.
-  @staticmethod
-  def compute_dp (zaxis, p0):
-    raise NotImplementedError
 
-  # Helper method to compute pressure levels from the given z-axis and surface pressure
-  @staticmethod
-  def compute_pressure (zaxis, p0):
-    raise NotImplementedError
+  # Any axes that should be common among datasets.
+  _common_axes = ()
 
-  # Initialize a model interface.
+  # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
   def __init__ (self, files, name=None, title=None, cache=None):
-    from os.path import exists, isdir
-    from glob import glob
     from data_interface import DataInterface
+    from data_scanner import from_files
     self.name = name
     self.title = title
     self.cache = cache
@@ -117,28 +124,25 @@ class ModelData (object):
     else:
       manifest = None
 
-    expanded_files = []
-    if isinstance(files,str): files = [files]
-    for f in files:
-      if isdir(f):
-        expanded_files.extend(self.find_files(f))
-      else:
-        expanded_files.extend(glob(f))
-    if len(expanded_files) == 0:
-        raise ValueError("No matches for '%s'."%files)
-    for f in expanded_files:
-      if not exists(f):
-        raise ValueError("File '%s' does not exist."%f)
-    data = DataInterface.from_files(expanded_files, type(self), manifest=manifest)
-    # Filter the data (get standard field names, etc.)
-    data = data.filter(self.decode)
-    self.data = data
+    expanded_files = self.expand_files(files)
+    data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axes)
+    # Decode the data (get standard field names, etc.)
+    data = map(self.decode, data)
+    self.data = DataInterface(data)
 
-# Helper method - get a model interface
-def get_model_interface (model_name):
+
+# A sub-class to handle station obs data.
+class StationObsProduct(DataProduct):
+  _common_axes = ('time',)
+
+
+# Find all available interfaces
+table = {}
+def _load_interfaces ():
+  import pkgutil
   import importlib
-  # Try to find a module with the given name
-  # Note: hyphens '-' are mangled to underscores '_' when looking for a module.
-  model = importlib.import_module('interfaces.'+model_name.replace('-','_'))
-  return model.interface
+  for loader, name, ispkg in pkgutil.walk_packages(__path__):
+    if ispkg: continue
+    importlib.import_module(__name__+'.'+name)
+_load_interfaces()  # Allow the interfaces to add their entries to this table
 

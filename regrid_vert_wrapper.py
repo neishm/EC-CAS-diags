@@ -137,10 +137,11 @@ del Var
 
 
 # Do the vertical regridding step
-def do_vertical_regridding (input_data, grid_data, out_interface):
+def do_vertical_regridding (input_data, grid_data):
 
   from pygeode.axis import ZAxis
   from interfaces.data_interface import DataInterface
+  from common import compute_pressure, compute_dp
   import logging
   logger = logging.getLogger(__name__)
 
@@ -177,8 +178,8 @@ def do_vertical_regridding (input_data, grid_data, out_interface):
 
       # Compute the dp for the target grid (forcing the source surface pressure)
       try:
-        target_p = out_interface.compute_pressure(dummy_target.zaxis, p0)
-        target_dp = out_interface.compute_dp(dummy_target.zaxis, p0)
+        target_p = compute_pressure(dummy_target.zaxis, p0)
+        target_dp = compute_dp(dummy_target.zaxis, p0)
         assert target_p.zaxis == target_dp.zaxis
       except ValueError:
         logger.debug("Skipping %s - unable to get pressure levels and/or dp", var.name)
@@ -199,12 +200,12 @@ def do_vertical_regridding (input_data, grid_data, out_interface):
   return DataInterface(target_datasets)
 
 # Alternative method - does a simple linear interpolation
-def do_vertical_interpolation (input_data, grid_data, out_interface):
+def do_vertical_interpolation (input_data, grid_data):
 
   from pygeode.interp import interpolate
   from pygeode.axis import ZAxis
   from data_interface import DataInterface
-  from common import convert
+  from common import convert, compute_pressure
   import logging
   logger = logging.getLogger(__name__)
 
@@ -238,7 +239,7 @@ def do_vertical_interpolation (input_data, grid_data, out_interface):
 
       # Compute the pressure for the target grid (forcing the source surface pressure)
       try:
-        target_p = out_interface.compute_pressure(dummy_target.zaxis, p0)
+        target_p = compute_pressure(dummy_target.zaxis, p0)
       except ValueError:
         logger.debug("Skipping %s - unable to get pressure levels", var.name)
         target_p = None

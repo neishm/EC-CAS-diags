@@ -16,6 +16,7 @@ class ECCAS_Timeseries(fstd_timeseries.FSTD_Timeseries, eccas.ECCAS_Data):
     return glob(dirname+"/time_series*.fst")
 
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = ECCAS_Timeseries
+# Add this interface to the table.
+from interfaces import table
+table['eccas-timeseries'] = ECCAS_Timeseries
 

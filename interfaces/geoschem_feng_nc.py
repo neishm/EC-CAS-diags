@@ -2,8 +2,8 @@
 # from Feng Deng's scripts.
 
 
-from interfaces import ModelData
-class GEOSCHEM_Data(ModelData):
+from interfaces import DataProduct
+class GEOSCHEM_Data(DataProduct):
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
@@ -109,7 +109,7 @@ class GEOSCHEM_Data(ModelData):
       zaxis.atts['positive'] = 'up'
 
     # Apply fieldname conversions
-    data = ModelData.decode.__func__(cls,dataset)
+    data = DataProduct.decode.__func__(cls,dataset)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
@@ -139,7 +139,8 @@ class GEOSCHEM_Data(ModelData):
     return glob(dirname+"/*.nc")
 
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = GEOSCHEM_Data
+# Add this interface to the table.
+from interfaces import table
+table['geoschem-feng-nc'] = GEOSCHEM_Data
 
 

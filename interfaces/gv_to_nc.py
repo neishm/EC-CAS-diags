@@ -1,3 +1,4 @@
+"""
 # Read globalview "extended record" data, convert to a single netcdf file
 
 from glob import glob
@@ -34,3 +35,4 @@ for filename in glob("/wrk1/neish/globalview/gv_co2/*0_ext.co2"):
   varlist.append (Var([times], values=values, name=varname, atts=atts))
 
 nc.save ("globalview.nc", varlist)
+"""

@@ -1,7 +1,7 @@
 # Interface for CarbonTracker data
 
-from interfaces import ModelData
-class CT_Data(ModelData):
+from interfaces import DataProduct
+class CT_Data(DataProduct):
 
   # Invariant data
   import numpy as np
@@ -75,7 +75,7 @@ class CT_Data(ModelData):
       data.level.atts['positive'] = 'up'
 
     # Apply fieldname conversions
-    data = ModelData.decode.__func__(cls,data)
+    data = DataProduct.decode.__func__(cls,data)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in data)
@@ -161,8 +161,9 @@ class CT_Data(ModelData):
 
     return molefractions+fluxes
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = CT_Data
+# Add this interface to the table.
+from interfaces import table
+table['carbontracker'] = CT_Data
 
 
 

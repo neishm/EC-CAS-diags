@@ -1,6 +1,6 @@
 
-from interfaces import ModelData
-class CCCMA_Data(ModelData):
+from interfaces import DataProduct
+class CCCMA_Data(DataProduct):
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
@@ -41,7 +41,7 @@ class CCCMA_Data(ModelData):
       dataset = dataset.replace_axes(time=new_taxis)
 
     # Apply fieldname conversions
-    dataset = ModelData.decode.__func__(cls,dataset)
+    dataset = DataProduct.decode.__func__(cls,dataset)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
@@ -85,6 +85,7 @@ class CCCMA_Data(ModelData):
     return glob(dirname+"/*.nc")
 
 
-# Give this class a standard reference name, to make it easier to auto-discover.
-interface = CCCMA_Data
+# Add this interface to the table.
+from interfaces import table
+table['cccma-nc'] = CCCMA_Data
 

@@ -69,35 +69,33 @@ if control_dir is not None and exists(control_dir+"/model"):
 
 from cache import Cache
 
-if args.dry_air: from interfaces import eccas, eccas_flux
-else: from interfaces import eccas_moist as eccas, eccas_flux
+import interfaces
+if args.dry_air: eccas = interfaces.table['eccas']
+else: eccas = interfaces.table['eccas-moist']
+eccas_flux = interfaces.table['eccas-flux']
 
-experiment = eccas.interface(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir], global_prefix=experiment_name+"_", load_hooks=[eccas.interface.load_hook]))
+experiment = eccas(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir], global_prefix=experiment_name+"_"))
 # Duct-tape the flux data to the experiment data
 #TODO: make the fluxes a separate product
 if args.emissions is not None:
-  flux = eccas_flux.interface(args.emissions, cache=experiment.cache)
+  flux = eccas_flux(args.emissions, cache=experiment.cache)
   # Fix the emissions lat/lon (not encoded exactly the same as the model output)
   lat = experiment.data.datasets[0].lat
   lon = experiment.data.datasets[0].lon
   experiment.data.datasets += tuple(d.replace_axes(lat=lat,lon=lon) for d in flux.data.datasets)
 
 if control_dir is not None:
-  control = eccas.interface(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir], global_prefix=control_name+"_", load_hooks=[eccas.interface.load_hook]))
+  control = eccas(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir], global_prefix=control_name+"_"))
 else:
   control = None
 
 # CarbonTracker data
-from interfaces import carbontracker
-carbontracker = carbontracker.interface(["/wrk1/EC-CAS/CarbonTracker/molefractions","/wrk1/EC-CAS/CarbonTracker/fluxes"], name='CT2010', title='CarbonTracker', cache=Cache('/wrk1/EC-CAS/CarbonTracker/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CT2010_'))
-from interfaces import carbontracker_ch4
-carbontracker_ch4 = carbontracker_ch4.interface("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc", name='CTCH42010', title='CarbonTracker', cache=Cache('/wrk6/eltonc/ct_ch4/molefractions/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CTCH42010_'))
+carbontracker = interfaces.table['carbontracker'](["/wrk1/EC-CAS/CarbonTracker/molefractions","/wrk1/EC-CAS/CarbonTracker/fluxes"], name='CT2010', title='CarbonTracker', cache=Cache('/wrk1/EC-CAS/CarbonTracker/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CT2010_'))
+carbontracker_ch4 = interfaces.table['carbontracker-ch4']("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc", name='CTCH42010', title='CarbonTracker', cache=Cache('/wrk6/eltonc/ct_ch4/molefractions/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CTCH42010_'))
 
 # Observation data
-from interfaces.ec_station_data import EC_Station_Data
-ec_obs = EC_Station_Data()
-from interfaces.gaw_station_data import GAW_Station_Data
-gaw_obs = GAW_Station_Data()
+ec_obs = interfaces.table['ec-station-obs']("/wrk1/EC-CAS/surface/EC-2013", name="EC", title="EC Station Obs", cache=Cache(args.tmpdir, global_prefix="ec-station-obs_", split_time=False))
+gaw_obs = interfaces.table['gaw-station-obs']("/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2009", name="GAW", title='GAW-2014 Station Obs', cache=Cache(args.tmpdir, global_prefix="gaw-station-obs_", split_time=False))
 
 
 # Dump the output files to a subdirectory of the experiment data

@@ -1,8 +1,8 @@
 # Generic interface for FSTD timeseries files.
 
-from interfaces import ModelData
+from interfaces import DataProduct
 
-class FSTD_Timeseries(ModelData):
+class FSTD_Timeseries(DataProduct):
 
   # Method to open a single file
   @staticmethod
