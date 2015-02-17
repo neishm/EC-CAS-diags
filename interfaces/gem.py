@@ -112,15 +112,6 @@ class GEM_Data(DataProduct):
     return files
 
 
-  # Wrapper for getting GEM data back out of a cached netcdf file
-  # (This will hook into the cache, to preserve FSTD axes after save/reloading)
-  @staticmethod
-  def load_hook (dataset):
-    from pygeode.formats.fstd import detect_fstd_axes
-    data = list(dataset.vars)
-    detect_fstd_axes(data)
-    return data
-
 
   # Method to re-encode data into the source context
   # (e.g., rename fields to what would be originally in these kinds of files)

@@ -74,7 +74,7 @@ if args.dry_air: eccas = interfaces.table['eccas']
 else: eccas = interfaces.table['eccas-moist']
 eccas_flux = interfaces.table['eccas-flux']
 
-experiment = eccas(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir], global_prefix=experiment_name+"_", load_hooks=[eccas.load_hook]))
+experiment = eccas(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir], global_prefix=experiment_name+"_"))
 # Duct-tape the flux data to the experiment data
 #TODO: make the fluxes a separate product
 if args.emissions is not None:
@@ -85,7 +85,7 @@ if args.emissions is not None:
   experiment.data.datasets += tuple(d.replace_axes(lat=lat,lon=lon) for d in flux.data.datasets)
 
 if control_dir is not None:
-  control = eccas(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir], global_prefix=control_name+"_", load_hooks=[eccas.load_hook]))
+  control = eccas(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir], global_prefix=control_name+"_"))
 else:
   control = None
 
@@ -94,9 +94,8 @@ carbontracker = interfaces.table['carbontracker'](["/wrk1/EC-CAS/CarbonTracker/m
 carbontracker_ch4 = interfaces.table['carbontracker-ch4']("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc", name='CTCH42010', title='CarbonTracker', cache=Cache('/wrk6/eltonc/ct_ch4/molefractions/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CTCH42010_'))
 
 # Observation data
-from station_data import station_axis_load_hook, station_axis_save_hook
-ec_obs = interfaces.table['ec-station-obs']("/wrk1/EC-CAS/surface/EC-2013", name="EC", title="EC Station Obs", cache=Cache(args.tmpdir, load_hooks=[station_axis_load_hook], save_hooks=[station_axis_save_hook], global_prefix="ec-station-obs_", split_time=False))
-gaw_obs = interfaces.table['gaw-station-obs']("/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2009", name="GAW", title='GAW-2014 Station Obs', cache=Cache(args.tmpdir, load_hooks=[station_axis_load_hook], save_hooks=[station_axis_save_hook], global_prefix="gaw-station-obs_", split_time=False))
+ec_obs = interfaces.table['ec-station-obs']("/wrk1/EC-CAS/surface/EC-2013", name="EC", title="EC Station Obs", cache=Cache(args.tmpdir, global_prefix="ec-station-obs_", split_time=False))
+gaw_obs = interfaces.table['gaw-station-obs']("/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2009", name="GAW", title='GAW-2014 Station Obs', cache=Cache(args.tmpdir, global_prefix="gaw-station-obs_", split_time=False))
 
 
 # Dump the output files to a subdirectory of the experiment data

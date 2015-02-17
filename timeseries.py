@@ -66,7 +66,6 @@ del Var
 #TODO: interpolate to the station height.
 def sample_model_at_obs (model, obs, fieldname):
   from common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
-  from station_data import station_axis_save_hook, station_axis_load_hook
   field = model.data.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
   field = select_surface(field)
 
@@ -78,7 +77,7 @@ def sample_model_at_obs (model, obs, fieldname):
   # Cache the data for faster subsequent access.
   # Disable time splitting for the cache file, since open_multi doesn't work
   # very well with the encoded station data.
-  field = model.cache.write(field, prefix='at_%s_%s'%(obs.name,fieldname), save_hooks=[station_axis_save_hook], load_hooks=[station_axis_load_hook], split_time=False)
+  field = model.cache.write(field, prefix='at_%s_%s'%(obs.name,fieldname), split_time=False)
   return field
 
 

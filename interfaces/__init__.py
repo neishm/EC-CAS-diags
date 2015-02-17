@@ -64,12 +64,6 @@ class DataProduct (object):
     return expanded_files
 
 
-  # Method to fully reconstruct a dataset that had been cached in
-  # an intermediate format.
-  @staticmethod
-  def load_hook (dataset):
-    return dataset
-
   # Method to re-encode data into the source context
   # (e.g., rename fields to what would be originally in these kinds of files)
   @classmethod

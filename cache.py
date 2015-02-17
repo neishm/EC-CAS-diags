@@ -40,12 +40,20 @@ class CacheWriteError (IOError): pass
 # The Cache object:
 
 class Cache (object):
-  def __init__ (self, dir, fallback_dirs=[], global_prefix='', save_hooks=[], load_hooks=[], split_time=True):
+  def __init__ (self, dir, fallback_dirs=[], global_prefix='', split_time=True):
     from os.path import exists, isdir
     from os import mkdir, remove
 
-    self.save_hooks = save_hooks
-    self.load_hooks = load_hooks
+    # Set up the save/load hooks.
+    from station_data import station_axis_save_hook, station_axis_load_hook
+    def fstd_load_hook (dataset):
+      from pygeode.formats.fstd import detect_fstd_axes
+      data = list(dataset.vars)
+      detect_fstd_axes(data)
+      return data
+    self.save_hooks = [station_axis_save_hook]
+    self.load_hooks = [station_axis_load_hook, fstd_load_hook]
+
     self.global_prefix = global_prefix
     self.split_time = split_time
 
@@ -81,7 +89,7 @@ class Cache (object):
 
 
   # Write out the data
-  def write (self, var, prefix, save_hooks=[], load_hooks=[], **kwargs):
+  def write (self, var, prefix, **kwargs):
     from os.path import exists
     from os import remove
     from pygeode.formats import netcdf
@@ -112,7 +120,7 @@ class Cache (object):
       if not exists(filename):
         filename = self.full_path(prefix + ".nc", writeable=True)
         dataset = asdataset([var])
-        for save_hook in save_hooks + self.save_hooks:
+        for save_hook in self.save_hooks:
           dataset = asdataset(save_hook(dataset))
         try:
           netcdf.save(filename, dataset)
@@ -120,7 +128,7 @@ class Cache (object):
           remove(filename)
           raise
       dataset = netcdf.open(filename)
-      for load_hook in self.load_hooks + load_hooks:
+      for load_hook in self.load_hooks:
         dataset = asdataset(load_hook(dataset))
       var = dataset.vars[0]
       return var
@@ -188,7 +196,7 @@ class Cache (object):
 
           # Save the data
           data = asdataset([var(i_time=i)])
-          for save_hook in save_hooks + self.save_hooks:
+          for save_hook in self.save_hooks:
             data = asdataset(save_hook(data))
           try:
             netcdf.save(filename, data)
@@ -208,7 +216,7 @@ class Cache (object):
         var = fix_timeaxis(var)
 
         dataset = asdataset([var])
-        for load_hook in self.load_hooks + load_hooks:
+        for load_hook in self.load_hooks:
           dataset = asdataset(load_hook(dataset))
         var = dataset.vars[0]
 
@@ -231,7 +239,7 @@ class Cache (object):
 
       # Apply any hooks for saving the var (extra metadata encoding?)
       dataset = asdataset([var])
-      for save_hook in save_hooks + self.save_hooks:
+      for save_hook in self.save_hooks:
         dataset = asdataset(save_hook(dataset))
       # Re-save back to a big file
       try:
@@ -246,7 +254,7 @@ class Cache (object):
     dataset = netcdf.open(bigfile)
 
     # Apply any hooks for loading the var (extra metadata decoding?)
-    for load_hook in self.load_hooks + load_hooks:
+    for load_hook in self.load_hooks:
       dataset = asdataset(load_hook(dataset))
     var = dataset.vars[0]
 
