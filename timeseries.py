@@ -115,12 +115,14 @@ def timeseries (obs, models, fieldname, units, outdir, plot_months=None):
   obs_data = obs.data.find_best(fieldname)
   obs_data = select_surface(obs_data)
   # Cache the observation data, for faster subsequent access
-  if hasattr(obs,'cache'):
-    obs_data = obs.cache.write(obs_data, prefix='sfc_%s'%fieldname, split_time=False)
+  obs_data = obs.cache.write(obs_data, prefix='sfc_%s'%fieldname, split_time=False)
 
   obs_data = convert(obs_data, units, context=fieldname)
   try:
     obs_stderr = obs.data.find_best(fieldname+'_std')
+    obs_stderr = select_surface(obs_stderr)
+    # Cache the observation data, for faster subsequent access
+    obs_stderr = obs.cache.write(obs_stderr, prefix='sfc_%s_std'%fieldname, split_time=False)
     obs_stderr = convert(obs_stderr, units, context=fieldname)
   except KeyError:
     obs_stderr = None
