@@ -490,11 +490,9 @@ from pygeode.var import Var
 class DataVar(Var):
   @classmethod
   def construct (cls, varname, axes, manifest):
-    import numpy as np
 
-    # For all axes in the manifest, get their values as sets
-    # (for faster checking of regions in getview)
-    axis_values = {}
+    # Use an axis manager for accelerating axis operations.
+    axis_manager = AxisManager()
 
     atts = []
     table = []
@@ -504,44 +502,43 @@ class DataVar(Var):
         if _varname == varname:
           atts.append(_atts)
           table.append((filename, interface, _axes))
-          for _axis in _axes:
-            if id(_axis) not in axis_values:
-              axis_values[id(_axis)] = frozenset(_axis.values)
+          axis_manager.register_axes(_axes)
     # Get subset of attributes that are consistent among all sources of data
     atts = common_dict(atts)
     # Reduce the axes to only those that the variable actually has
     axis_types = set(type(a) for f,o,_axes in table for a in _axes)
     axes = [a for a in axes if type(a) in axis_types]
+    axis_manager.register_axes(axes)
 
     obj = cls(axes, name=varname, dtype=float, atts=atts)
     obj._table = table
-    obj._axis_values = axis_values
+    obj._axis_manager = axis_manager
     obj._varname = varname  # In case the object gets renamed.
+
+    #TODO: handle unsorted axes, using an extra argsort step?
+    import numpy as np
+    for a in obj.axes:
+      assert np.all(a.values == np.sort(a.values)), "Unhandled case"
+
     return obj
 
   def getview (self, view, pbar):
     import numpy as np
-    from pygeode.view import View
+    from pygeode.view import View, simplify
     out = np.zeros(view.shape, dtype=self.dtype)
     out[()] = float('nan')
-    clipped_view = view.clip()
-    axis_values = [frozenset(a.values) for a in clipped_view.axes]
-    lookup = {}  # Memoize the set intersections
+    out_axes = view.clip().axes
     # Loop over all available files.
     for filename, interface, axes in self._table:
-      # Check if there's any overlap between what we want and what's in the file
-      overlap = True
-      for a1, a2, v2 in zip(axes, clipped_view.axes, axis_values):
-        assert type(a1) == type(a2), "Internal error"
-        v1 = self._axis_values[id(a1)]
-        if v1 not in lookup:
-          lookup[v1] = len(v1 & v2)
-        if lookup[v1] == 0: overlap = False
-      if not overlap: continue
+      subaxes = [self._axis_manager.get_axis_intersection([a1,a2]) for a1,a2 in zip(out_axes,axes)]
+      outsl = [slice(None)]*len(subaxes)
+      if any(len(a)==0 for a in subaxes): continue
+      for i,(a1,a2) in enumerate(zip(out_axes,subaxes)):
+        if len(a2) < len(a1):
+          outsl[i] = simplify(np.searchsorted(a1.values, a2.values))
       var = [v for v in interface.open_file(filename) if v.name == self._varname][0]
-      v = view.map_to(axes)
+      v = View(subaxes)
       chunk = v.get(var)
-      outsl = v.map_to(clipped_view).slices
       # Note: this may break if there is more than one axis with integer indices.
       assert len([sl for sl in outsl if isinstance(sl,tuple)]) <= 1, "Unhandled advanced indexing case."
       out[outsl] = chunk
