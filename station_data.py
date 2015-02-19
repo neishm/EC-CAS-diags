@@ -121,6 +121,9 @@ def station_axis_save_hook (dataset):
       # Construct a 2D character array to hold station names
       station_name = encode_string_var(var.station)
 
+    # Fix possible bug in netcdf - can't encode an empty string??
+    # Or, maybe it's a problem with ncview
+    if len(coordinate_names) == 0: coordinate_names = ' '
     var.atts['coordinates'] = coordinate_names
 
     # Replace the station axis in the var (with the simple one created here)
