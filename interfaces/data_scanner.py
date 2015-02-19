@@ -178,7 +178,9 @@ class AxisManager (object):
     assert all(len(aux) == len(axis.values) for aux in auxarrays)
     flat = tuple(zip(axis.values, *auxarrays))
     self._flattened_axes[axis_id] = flat
-    self._unflattened_axes.setdefault(type(axis),dict())[flat] = axis
+# disabled this - otherwise we get the original (unsorted) axis where we may
+# expect a sorted axis. (e.g. in DataVar)
+#    self._unflattened_axes.setdefault(type(axis),dict())[flat] = axis
     return flat
 
   # Convert an axis to unordered set of tuples
@@ -190,7 +192,9 @@ class AxisManager (object):
 
     out = frozenset(self.flatten_axis (axis))
     self._settified_axes[axis_id] = out
-    self._unsettified_axes.setdefault(type(axis),dict())[out] = axis
+# disabled this - otherwise we get the original (unsorted) axis where we may
+# expect a sorted axis. (e.g. in DataVar)
+#    self._unsettified_axes.setdefault(type(axis),dict())[out] = axis
     return out
 
 
@@ -494,6 +498,9 @@ class DataVar(Var):
     # Use an axis manager for accelerating axis operations.
     axis_manager = AxisManager()
 
+    # Make sure the axes are sorted (so searchsorted can work later on)
+    axes = [axis_manager.unflatten_axis(a,axis_manager.flatten_axis(a)) for a in axes]
+
     atts = []
     table = []
     # Scan through the manifest, collect a table of available axes.
@@ -518,11 +525,12 @@ class DataVar(Var):
     #TODO: handle unsorted axes, using an extra argsort step?
     import numpy as np
     for a in obj.axes:
-      assert np.all(a.values == np.sort(a.values)), "Unhandled case"
+      assert np.all(a.values == np.sort(a.values)), "Unhandled case: unsorted axis %s"%a
 
     return obj
 
   def getview (self, view, pbar):
+
     import numpy as np
     from pygeode.view import View, simplify
     out = np.zeros(view.shape, dtype=self.dtype)
@@ -531,17 +539,24 @@ class DataVar(Var):
     # Loop over all available files.
     for filename, interface, axes in self._table:
       subaxes = [self._axis_manager.get_axis_intersection([a1,a2]) for a1,a2 in zip(out_axes,axes)]
-      outsl = [slice(None)]*len(subaxes)
+      reorder = []
+      mask = []
       if any(len(a)==0 for a in subaxes): continue
-      for i,(a1,a2) in enumerate(zip(out_axes,subaxes)):
-        if len(a2) < len(a1):
-          outsl[i] = simplify(np.searchsorted(a1.values, a2.values))
+      for a1,a2 in zip(out_axes,subaxes):
+        # Figure out where the input chunk fits into the output
+        re = np.searchsorted(a2.values, a1.values)
+        # Mask out elements that we don't actually have in the chunk
+        m = [r<len(a2.values) and a2.values[r]==v for r,v in zip(re,a1.values)]
+        m = np.array(m)
+        re = re[m]
+        reorder.append(re)
+        mask.append(m)
       var = [v for v in interface.open_file(filename) if v.name == self._varname][0]
       v = View(subaxes)
       chunk = v.get(var)
       # Note: this may break if there is more than one axis with integer indices.
-      assert len([sl for sl in outsl if isinstance(sl,tuple)]) <= 1, "Unhandled advanced indexing case."
-      out[outsl] = chunk
+      assert len([r for r in reorder if isinstance(r,tuple)]) <= 1, "Unhandled advanced indexing case."
+      out[mask] = chunk[reorder]
 
     return out
 
