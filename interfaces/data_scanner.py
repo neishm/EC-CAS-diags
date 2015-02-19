@@ -548,14 +548,22 @@ class DataVar(Var):
         # Mask out elements that we don't actually have in the chunk
         m = [r<len(a2.values) and a2.values[r]==v for r,v in zip(re,a1.values)]
         m = np.array(m)
+        # Convert mask to integer indices
+        m = np.arange(len(m))[m]
+        # and then to a slice (where possible)
+        m = simplify(m)
         re = re[m]
+        # Try to simplify the re-ordering array
+        if np.all(re == np.sort(re)):
+          re = simplify(re)
         reorder.append(re)
         mask.append(m)
       var = [v for v in interface.open_file(filename) if v.name == self._varname][0]
       v = View(subaxes)
       chunk = v.get(var)
       # Note: this may break if there is more than one axis with integer indices.
-      assert len([r for r in reorder if isinstance(r,tuple)]) <= 1, "Unhandled advanced indexing case."
+      assert len([r for r in reorder if isinstance(r,(tuple,np.ndarray))]) <= 1, "Unhandled advanced indexing case."
+      assert len([m for m in mask if isinstance(m,(tuple,np.ndarray))]) <= 1, "Unhandled advanced indexing case."
       out[mask] = chunk[reorder]
 
     return out
