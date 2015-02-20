@@ -20,7 +20,12 @@ class Station (Axis):
     from pygeode.axis import Axis
     import numpy as np
     for key in kwargs.iterkeys():
-      if not self.has_alias(key): continue
+      if key.startswith('i_'):
+        indices = kwargs.pop(key)
+        key = key[2:]
+        if not self.has_alias(key): continue
+        return indices
+        continue
       station = kwargs.pop(key)
       if station not in self.values:
         raise IndexError("station '%s' not found in Station axis."%station)
