@@ -10,6 +10,7 @@ class GEM_Data(DataProduct):
     ('TT', 'air_temperature', 'K'),
     ('HU', 'specific_humidity', 'kg(H2O) kg(air)-1'),
     ('DX', 'cell_area', 'm2'),
+    ('H', 'PBL_height', 'm'),
   )
 
   # Method to open a single file

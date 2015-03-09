@@ -1,3 +1,10 @@
+def extract_timeseries (model, fieldname, units, lat, lon, location):
+  from common import number_of_levels, number_of_timesteps, convert
+  field = model.data.find_best(fieldname, maximize=(number_of_levels, number_of_timesteps))
+  field = field(lat=lat,lon=lon)
+  field = model.cache.write(field, prefix=fieldname+'_'+location)
+  field = convert(field,units)
+  return field
 
 def shortexper_diffcheck(models, obs, location, outdir):
   from pygeode.axis import Height
@@ -6,12 +13,21 @@ def shortexper_diffcheck(models, obs, location, outdir):
   from contouring import get_range, get_contours
   from matplotlib import pyplot as pl
   import numpy as np
+  from common import select_surface
 
-  lat, lon, country = obs.obs_locations[location]
-  lon += 360
-  co2_obs = obs.get_data(location,'CO2')
+  co2_obs = obs.data.find_best('CO2')
+  co2_obs = select_surface(co2_obs)
+
+  # Cache the observation data, for faster subsequent access
+  # (uses same cache as timeseries diagnostics)
+  co2_obs = obs.cache.write(co2_obs, prefix='sfc_CO2', split_time=False)
+
+  co2_obs = co2_obs(station=location)
+
+  lat = co2_obs.station.lat[0]
+  lon = co2_obs.station.lon[0] % 360
   # Limit to the length of the experiment
-  test_field = models[0].get_data(location,'CO2')
+  test_field = extract_timeseries(models[0], 'CO2', 'ppm', lat, lon, location)
   time = test_field.time.values
   del test_field
   co2_obs = co2_obs(time=(min(time),max(time)))
@@ -40,12 +56,12 @@ def shortexper_diffcheck(models, obs, location, outdir):
 
     if dataset is None: continue
 
-    ktn = dataset.get_data(location,'eddy_diffusivity')
+    ktn = extract_timeseries(dataset,'eddy_diffusivity','m2 s-1',lat,lon,location)
     mn, mx = get_range(ktn)
     ktn_min = min(ktn_min, mn)
     ktn_max = max(ktn_max, mx)
 
-    co2 = dataset.get_data(location,'CO2')
+    co2 = extract_timeseries(dataset,'CO2','ppm',lat,lon,location)
     mn, mx = get_range(co2)
     co2_min = min(co2_min, mn)
     co2_max = max(co2_max, mx)
@@ -60,13 +76,13 @@ def shortexper_diffcheck(models, obs, location, outdir):
 
     if dataset is None: continue
 
-    ktn = dataset.get_data(location,'eddy_diffusivity')
-    co2 = dataset.get_data(location,'CO2')
+    ktn = extract_timeseries(dataset,'eddy_diffusivity','m2 s-1',lat,lon,location)
+    co2 = extract_timeseries(dataset,'CO2','ppm',lat,lon,location)
     co2.name = 'CO2'
 
     # Put the variables on a height coordinate
     # TODO: proper vertical interpolation
-    gz = dataset.get_data(location,'geopotential_height')(i_time=0).squeeze()
+    gz = extract_timeseries(dataset,'geopotential_height','m',lat,lon,location)(i_time=0).squeeze()
     # Match GZ to the tracer levels (in GEM4, GZ has both thermo/momentum levs)
     co2_iz = np.searchsorted(gz.zaxis.values, co2.zaxis.values)
     ktn_iz = np.searchsorted(gz.zaxis.values, ktn.zaxis.values)
@@ -74,7 +90,7 @@ def shortexper_diffcheck(models, obs, location, outdir):
     ktn_height = Height(gz.get(i_zaxis=ktn_iz))
     ktn = ktn.replace_axes(zaxis=ktn_height)
     co2 = co2.replace_axes(zaxis=co2_height)
-    pbl = dataset.get_data(location,'PBL_height')
+    pbl = extract_timeseries(dataset,'PBL_height','m',lat,lon,location)
     # Adjust pbl to use the same height units for plotting.
     pbl *= Height.plotatts.get('scalefactor',1)
 
