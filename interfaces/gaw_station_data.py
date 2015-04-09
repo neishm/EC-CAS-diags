@@ -20,6 +20,7 @@ class GAW_Station_Data(StationObsProduct):
     from common import best_type
     from station_data import Station
     import numpy as np
+    from re import search
     f = open(filename,'ro')
     comments = []
     year = []
@@ -33,6 +34,13 @@ class GAW_Station_Data(StationObsProduct):
 
       for line in f:
         line = line.rstrip('\n')
+
+        # Get time zone info
+        if line.startswith('C24 TIME ZONE: '):
+          fudge = search("UTC(.*)",line).group(1)
+          if fudge == "": fudge = "0"
+          fudge = timedelta(hours=-int(fudge))
+
         if line.startswith('C'):
           comments.append(line)
         else:
@@ -41,9 +49,7 @@ class GAW_Station_Data(StationObsProduct):
           # In what universe does 24-hour time go from 1:00 to 24:00????
           if time1 == '24:00':
             time1 = '23:00'
-            fudge = timedelta(hours=1)
-          else:
-            fudge = timedelta(hours=0)
+            fudge = fudge + timedelta(hours=1)
 
           time = datetime.strptime(date1+' '+time1, "%Y-%m-%d %H:%M") + fudge
           year.append(time.year)
