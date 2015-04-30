@@ -1,5 +1,5 @@
 
-from interfaces import DataProduct
+from . import DataProduct
 class GEM_Data(DataProduct):
 
   # Define all the possible variables we might have in this dataset.
@@ -28,7 +28,7 @@ class GEM_Data(DataProduct):
     from pygeode.ufunc import exp, log
     from pygeode.var import concat, Var
     from pygeode.axis import ZAxis
-    from common import compute_pressure, compute_dp
+    from ..common import compute_pressure, compute_dp
 
     # Apply fieldname conversions
     dataset = DataProduct.decode.__func__(cls,dataset)
@@ -60,7 +60,7 @@ class GEM_Data(DataProduct):
     if 'cell_area' not in data:
       # Pick some arbitrary (but deterministic) variable to get the lat/lon
       var = sorted(data.values())[0]
-      from common import get_area
+      from ..common import get_area
       # Make sure this is gridded GEM data (not profile / timeseries data).
       if var.hasaxis('lat') and var.hasaxis('lon'):
         data['cell_area'] = get_area(var.lat,var.lon,flat=True).extend(0,var.time, var.forecast)
@@ -75,7 +75,7 @@ class GEM_Data(DataProduct):
 
     # Remove the forecast axis before returning the data
     # (not needed for any current diagnostics).
-    from common import squash_forecasts
+    from ..common import squash_forecasts
     data = map(squash_forecasts,data)
 
     return data
@@ -118,7 +118,7 @@ class GEM_Data(DataProduct):
   # (e.g., rename fields to what would be originally in these kinds of files)
   @classmethod
   def encode (cls, dataset):
-    from common import convert
+    from ..common import convert
     from warnings import warn
     import logging
     from pygeode.timeaxis import Time, StandardTime
@@ -172,7 +172,7 @@ class GEM_Data(DataProduct):
     from pygeode.formats import fstd, fstd_core
     import numpy as np
     from datetime import datetime, timedelta
-    from common import rotate_grid, add_repeated_longitude, increasing_latitudes
+    from ..common import rotate_grid, add_repeated_longitude, increasing_latitudes
 
     cmc_start = datetime(year=1980, month=1, day=1)
 
@@ -244,6 +244,6 @@ class GEM_Data(DataProduct):
 
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['gem'] = GEM_Data
 

@@ -10,6 +10,6 @@ class ECCAS_Bayesian_Flux(ECCAS_Flux_Data):
   field_list = tuple(field_list)
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['eccas-bayesian-flux'] = ECCAS_Bayesian_Flux
 

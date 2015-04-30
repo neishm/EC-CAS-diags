@@ -1,4 +1,4 @@
-from eccas import ECCAS_Data
+from .eccas import ECCAS_Data
 
 class ECCAS_Bayesian(ECCAS_Data):
 
@@ -10,6 +10,6 @@ class ECCAS_Bayesian(ECCAS_Data):
   field_list = tuple(field_list)
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['eccas-bayesian'] = ECCAS_Bayesian
 

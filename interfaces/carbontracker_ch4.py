@@ -11,7 +11,7 @@ def ct_file2date(filename):
   return date
 
 
-from interfaces import DataProduct
+from . import DataProduct
 class CTCH4_Data(DataProduct):
 
   # Invariant data
@@ -122,7 +122,7 @@ class CTCH4_Data(DataProduct):
 
 
     # Compute grid cell area
-    from common import get_area
+    from ..common import get_area
     if 'CH4' in data:
       x = data['CH4'].squeeze(lev=1)
     else:
@@ -148,7 +148,7 @@ class CTCH4_Data(DataProduct):
     return glob(dirname+"/????????.nc")
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['carbontracker-ch4'] = CTCH4_Data
 
 

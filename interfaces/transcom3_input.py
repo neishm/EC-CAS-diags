@@ -75,7 +75,7 @@ class Transcom3(object):
     return Dataset(outdata)
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['transcom3-input'] = Transcom3
 
 

@@ -1,5 +1,5 @@
 
-from interfaces import DataProduct
+from . import DataProduct
 class CCCMA_Data(DataProduct):
 
   # Define all the possible variables we might have in this dataset.
@@ -55,7 +55,7 @@ class CCCMA_Data(DataProduct):
       data['air_pressure'] = P
 
     # Grid cell areas
-    from common import get_area
+    from ..common import get_area
     if 'surface_pressure' in data:
       Ps = data['surface_pressure']
       data['cell_area'] = get_area(Ps.lat,Ps.lon)
@@ -86,6 +86,6 @@ class CCCMA_Data(DataProduct):
 
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['cccma-nc'] = CCCMA_Data
 

@@ -23,7 +23,7 @@ obs_locations = dict(
   Turkey_Point    = (42.681047,-80.332289, 'Canada'),
 )
 
-from interfaces import StationObsProduct
+from . import StationObsProduct
 class EC_Station_Data(StationObsProduct):
 
   # Define all the possible variables we might have in this dataset.
@@ -45,7 +45,7 @@ class EC_Station_Data(StationObsProduct):
     from pygeode import Var
     from pygeode.dataset import asdataset
     from os.path import basename
-    from station_data import Station
+    from ..station_data import Station
 
     station, tracer, period = basename(filename).rstrip('.DAT').split('-')
     lat, lon, country = obs_locations[station]
@@ -88,6 +88,6 @@ class EC_Station_Data(StationObsProduct):
     return glob(dirname+'/*-*-Hourly.DAT')
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['ec-station-obs'] = EC_Station_Data
 

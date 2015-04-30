@@ -1,6 +1,6 @@
 # Generic interface for FSTD timeseries files.
 
-from interfaces import DataProduct
+from . import DataProduct
 
 class FSTD_Timeseries(DataProduct):
 
@@ -8,7 +8,7 @@ class FSTD_Timeseries(DataProduct):
   @staticmethod
   def open_file (filename):
     from pygeode.formats import fstd, fstd_core
-    from station_data import Station
+    from ..station_data import Station
     from pygeode.dataset import Dataset
     # Read the raw records from the fstd file (no decoding done yet)
     raw = fstd_core.read_records(filename)

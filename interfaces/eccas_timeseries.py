@@ -1,7 +1,7 @@
 # Interface for EC-CAS timeseries data.
 # Use the EC-CAS fieldnames / units, and the FSTD timeseries file format.
 
-from interfaces import eccas, fstd_timeseries
+from . import eccas, fstd_timeseries
 
 class ECCAS_Timeseries(fstd_timeseries.FSTD_Timeseries, eccas.ECCAS_Data):
 
@@ -17,6 +17,6 @@ class ECCAS_Timeseries(fstd_timeseries.FSTD_Timeseries, eccas.ECCAS_Data):
 
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['eccas-timeseries'] = ECCAS_Timeseries
 

@@ -1,4 +1,4 @@
-from eccas import ECCAS_Data
+from .eccas import ECCAS_Data
 
 class ECCAS_Moist(ECCAS_Data):
 
@@ -6,6 +6,6 @@ class ECCAS_Moist(ECCAS_Data):
   field_list = tuple((gem_name,long_name,units.replace('(dry_air)','(air)')) for gem_name,long_name,units in ECCAS_Data.field_list)
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['eccas-moist'] = ECCAS_Moist
 

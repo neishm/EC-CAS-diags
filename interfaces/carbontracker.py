@@ -1,6 +1,6 @@
 # Interface for CarbonTracker data
 
-from interfaces import DataProduct
+from . import DataProduct
 class CT_Data(DataProduct):
 
   # Invariant data
@@ -128,7 +128,7 @@ class CT_Data(DataProduct):
 
     # Compute grid cell area
     # NOTE: will be different for fluxes and 3D mole fractions
-    from common import get_area
+    from ..common import get_area
     if 'CO2' in data:
       x = data['CO2'].squeeze(level=1)
     else:
@@ -162,7 +162,7 @@ class CT_Data(DataProduct):
     return molefractions+fluxes
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['carbontracker'] = CT_Data
 
 

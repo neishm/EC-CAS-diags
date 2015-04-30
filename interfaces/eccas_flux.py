@@ -1,4 +1,4 @@
-from eccas import ECCAS_Data
+from .eccas import ECCAS_Data
 
 class ECCAS_Flux_Data(ECCAS_Data):
 
@@ -21,7 +21,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
   # Extra step to convert fluxes from mass / m2 / s to mass / g.
   @classmethod
   def encode (cls, dataset):
-    from common import can_convert, convert, get_area
+    from ..common import can_convert, convert, get_area
     from pygeode.var import copy_meta
     import logging
     logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
 
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['eccas-flux'] = ECCAS_Flux_Data
 
 

@@ -1,4 +1,4 @@
-from gem import GEM_Data
+from .gem import GEM_Data
 
 class ECCAS_Data(GEM_Data):
 
@@ -24,8 +24,8 @@ class ECCAS_Data(GEM_Data):
   # extra info needed (pressure values, cell area, etc.)
   @classmethod
   def decode (cls,dataset):
-    from common import conversion_factor
-    from gem import GEM_Data
+    from ..common import conversion_factor
+    from .gem import GEM_Data
 
     # Do generic GEM field decoding
     dataset = GEM_Data.decode.__func__(cls,dataset)
@@ -68,8 +68,8 @@ class ECCAS_Data(GEM_Data):
   # (e.g., rename fields to what would be originally in these kinds of files)
   @classmethod
   def encode (cls, dataset):
-    from common import conversion_factor
-    from gem import GEM_Data
+    from ..common import conversion_factor
+    from .gem import GEM_Data
     # Call the generic GEM encoder to convert to the right units and field names
     dataset = GEM_Data.encode.__func__(cls,dataset)
     # Do some extra stuff to offset COC / CLA fields
@@ -97,6 +97,6 @@ class ECCAS_Data(GEM_Data):
 
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['eccas'] = ECCAS_Data
 

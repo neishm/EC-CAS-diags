@@ -1,5 +1,5 @@
 
-from interfaces import DataProduct
+from . import DataProduct
 class MACC_Data(DataProduct):
 
   # Define all the possible variables we might have in this dataset.
@@ -137,7 +137,7 @@ class MACC_Data(DataProduct):
     # Grid cell areas
     # Pick some arbitrary (but deterministic) variable to get the lat/lon
     var = sorted(data.values())[0]
-    from common import get_area
+    from ..common import get_area
     data['cell_area'] = get_area(var.lat,var.lon,flat=True)
 
     # General cleanup stuff
@@ -161,6 +161,6 @@ class MACC_Data(DataProduct):
 
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['macc-nc'] = MACC_Data
 

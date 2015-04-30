@@ -1,6 +1,6 @@
 # GAW station data
 
-from interfaces import StationObsProduct
+from . import StationObsProduct
 class GAW_Station_Data(StationObsProduct):
 
   # Define all the possible variables we might have in this dataset.
@@ -17,8 +17,8 @@ class GAW_Station_Data(StationObsProduct):
     from pygeode.var import Var
     from pygeode.timeaxis import StandardTime
     from pygeode.dataset import Dataset
-    from common import best_type
-    from station_data import Station
+    from ..common import best_type
+    from ..station_data import Station
     import numpy as np
     from re import search
     f = open(filename,'ro')
@@ -122,6 +122,6 @@ class GAW_Station_Data(StationObsProduct):
     return glob(dirname+'/*.dat')
 
 # Add this interface to the table.
-from interfaces import table
+from . import table
 table['gaw-station-obs'] = GAW_Station_Data
 

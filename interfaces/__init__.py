@@ -69,7 +69,7 @@ class DataProduct (object):
   @classmethod
   def encode (cls, dataset):
     from pygeode.dataset import asdataset
-    from common import convert
+    from ..common import convert
     from warnings import warn
 
     # Convert to a dictionary (for referencing by variable name)
@@ -114,8 +114,8 @@ class DataProduct (object):
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
   def __init__ (self, files, name=None, title=None, cache=None):
-    from data_interface import DataInterface
-    from data_scanner import from_files
+    from .data_interface import DataInterface
+    from .data_scanner import from_files
     self.name = name
     self.title = title
     self.cache = cache
