@@ -7,6 +7,14 @@ from pygeode.axis import Axis
 class Station (Axis):
   name = 'station'
   formatstr = "%s"
+  # Workaround a bug with the Axis class.  It tries to find a relative
+  # tolerance, but the code for finding nonzeros axis values breaks on
+  # string arrays (at least for the numpy in Ubuntu 10.04)
+  #TODO: remove this once Ubuntu 10.04 is no longer supported.
+  def __init__ (self, values, *args, **kwargs):
+    if 'rtol' not in kwargs: kwargs['rtol']=1e-5
+    from pygeode.axis import Axis
+    Axis.__init__(self, values, *args, **kwargs)
   # Override the __eq__ method for this axis, since there are currently
   # some assumptions in PyGeode about axes having numerical values.
   def __eq__ (self, other):
