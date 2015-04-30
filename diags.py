@@ -67,9 +67,9 @@ if control_dir is not None and exists(control_dir+"/model"):
 
 # Get the data
 
-from cache import Cache
+from eccas_diags.cache import Cache
 
-import interfaces
+from eccas_diags import interfaces
 if args.dry_air: eccas = interfaces.table['eccas']
 else: eccas = interfaces.table['eccas-moist']
 eccas_flux = interfaces.table['eccas-flux']
@@ -121,7 +121,7 @@ history_file.write(" ".join(argv)+"\n\n")
 # Some standard diagnostics
 failures = []
 
-from timeseries import timeseries
+from eccas_diags.timeseries import timeseries
 # CO2 Timeseries
 try:
   timeseries (models=[experiment,control], obs=ec_obs, fieldname='CO2', units='ppm', outdir=outdir)
@@ -134,7 +134,7 @@ try:
 except Exception as e:
   failures.append(['CH4 timeseries', e])
 
-from movie_zonal import movie_zonal
+from eccas_diags.movie_zonal import movie_zonal
 # CO2 Zonal mean movies
 try:
   movie_zonal(models=[experiment,control,carbontracker], fieldname='CO2', units='ppm', outdir=outdir)
@@ -150,7 +150,7 @@ try:
   movie_zonal(models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['CH4 movie_zonal', e])
-from movie_zonal_diff import movie_zonal_diff
+from eccas_diags.movie_zonal_diff import movie_zonal_diff
 # CO2 Zonal mean movies
 try:
   if control is not None:
@@ -160,21 +160,21 @@ except Exception as e:
 
 # Count of CO2 'holes'
 try:
-  from where_holes import where_holes
+  from eccas_diags.where_holes import where_holes
   where_holes (experiment=experiment, outdir=outdir)
 except Exception as e:
   failures.append(['where_holes', e])
 
 # KT sensitivity check
 try:
-  from shortexper_diffcheck import shortexper_diffcheck
+  from eccas_diags.shortexper_diffcheck import shortexper_diffcheck
   shortexper_diffcheck (models=[experiment,control], obs=ec_obs, location="Toronto", outdir=outdir)
 except Exception as e:
   failures.append(['diffcheck', e])
 
-from xcol import xcol
-from xcol_enkf import xcol_enkf
-from xcol_diff import xcol_diff
+from eccas_diags.xcol import xcol
+from eccas_diags.xcol_enkf import xcol_enkf
+from eccas_diags.xcol_diff import xcol_diff
 # XCO2
 try:
   xcol (models=[experiment,control,carbontracker], fieldname='CO2', units='ppm', outdir=outdir)
@@ -252,7 +252,7 @@ try:
 except Exception as e:
   failures.append(['XCH4', e])
 
-from totalmass import totalmass
+from eccas_diags.totalmass import totalmass
 # Total mass CO2
 try:
   totalmass (models=[experiment,None,control], fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
@@ -265,7 +265,7 @@ try:
   totalmass (models=[experiment,carbontracker,control], fieldname='CO2_fossil', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass CO2_fossil', e])
-from totalmass_diff import totalmass_diff
+from eccas_diags.totalmass_diff import totalmass_diff
 # Total mass CO2 difference
 try:
   totalmass_diff (models=[experiment,control], fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
@@ -290,7 +290,7 @@ except Exception as e:
   failures.append(['totalmass H2O', e])
 
 # Horizontal slice movie
-from horz_slice_diff import horz_slice_movie
+from eccas_diags.horz_slice_diff import horz_slice_movie
 try:
   horz_slice_movie(models=[experiment,control], fieldname='CO2', level="1.0", units='ppm', outdir=outdir) 
 except Exception as e:
@@ -298,13 +298,13 @@ except Exception as e:
 
 #-------------------Jake's Diags------------------------
 
-from concentration_v_height import movie_CvH
+from eccas_diags.concentration_v_height import movie_CvH
 try:
   movie_CvH(models=[experiment,control],fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['concentration vs. height', e])
 
-from FluxDiagnostic import movie_flux
+from eccas_diags.FluxDiagnostic import movie_flux
 try:
   movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='BG')
 except Exception as e:
@@ -331,25 +331,25 @@ except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 
 
-import TimeSeriesHist as TSH
+from eccas_diags import TimeSeriesHist as TSH
 try:
   TSH.timeseries(models=[experiment],obs=ec_obs,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['timeseries histogram', e])
 
-import TimeSeriesAlternate as TSA
+from eccas_diags import TimeSeriesAlternate as TSA
 try:
   TSA.timeseries(models=[experiment],obs=ec_obs,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['time series alternate', e])
 
-from TimeSeriesRBP import Barplot
+from eccas_diags.TimeSeriesRBP import Barplot
 try:
   Barplot(models=[experiment,control], obs=gaw_obs,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['time series rbp', e])
 
-from ZonalMeanBG import movie_bargraph
+from eccas_diags.ZonalMeanBG import movie_bargraph
 try:
   movie_bargraph(models=[experiment,control], height=0,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:

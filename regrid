@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import interfaces
+from eccas_diags import interfaces
 
 import argparse
 
@@ -53,7 +53,7 @@ try:
   grid_data = interfaces.table[args.outtype](args.gridfiles).data
 
   # Collect all the input data for various sources
-  from interfaces.data_interface import DataInterface
+  from eccas_diags.interfaces.data_interface import DataInterface
   input_data = []
   for intype, infiles in args.input.iteritems():
     if intype is None: raise ValueError("No type specified for files %s"%infiles)
@@ -77,18 +77,18 @@ try:
   data = input_data
 
   # Vertical regridding (keeping source surface pressure)
-  from regrid_vert_wrapper import do_vertical_regridding, do_vertical_interpolation
+  from eccas_diags.regrid_vert_wrapper import do_vertical_regridding, do_vertical_interpolation
   if args.conserve_mass:
     data = do_vertical_regridding (data, grid_data)
   else:
     data = do_vertical_interpolation (data, grid_data)
 
   # Horizontal regridding
-  from regrid_horz_wrapper import do_horizontal_regridding
+  from eccas_diags.regrid_horz_wrapper import do_horizontal_regridding
   data = do_horizontal_regridding (data, grid_data)
 
   # Apply a global adjustment to conserve mass
-  from regrid_fix_mass import global_scale
+  from eccas_diags.regrid_fix_mass import global_scale
   if args.conserve_mass:
     data = global_scale (data, input_data, grid_data)
 
