@@ -1,26 +1,30 @@
 # EC station data
 
-# Hard-code the observation locations, since this information isn't provided
-# in the data!
+# Obs locations provided by Doug Chan (2015/05/06)
 obs_locations = dict(
-  East_Trout_Lake = (54.3500, -104.9833, 'Canada'),
-  Chibougamau     = (49.6833,  -74.3333, 'Canada'),
-  Alert           = (82.4500,  -62.5167, 'Canada'),
-  Esther          = (51.6825, -110.2603, 'Canada'),
-  Bratts_Lake     = (51.2,    -104.7   , 'Canada'),
-  Egbert          = (44.2167,  -79.7833, 'Canada'),
-  Candle_Lake     = (53.9833, -105.1167, 'Canada'),
-  Toronto         = (43.7833,  -79.4667, 'Canada'),
-  Fraserdale      = (49.8833,  -81.5667, 'Canada'),
-  Estevan_Point   = (49.5833, -126.8667, 'Canada'),
-  Sable_Island    = (43.9333,  -60.0167, 'Canada'),
-  Lac_Labiche     = (54.95,   -112.45, 'Canada'),
-  Behchoko        = (62.8025, -116.0464, 'Canada'),
-  Cambridge_Bay   = (69.1172, -105.0531, 'Canada'),
-  Chapais         = (49.7833, -74.85, 'Canada'),
-  Churchill       = (58.7692, -94.16917, 'Canada'),
-  Inuvik          = (68.3617, -133.7306, 'Canada'),
-  Turkey_Point    = (42.681047,-80.332289, 'Canada'),
+  Alert           = (82.451065,  -62.506771, 'Canada'),
+  Candle_Lake     = (53.987108, -105.117939, 'Canada'),
+  Egbert          = (44.231006,  -79.783839, 'Canada'),
+  Chibougamau     = (49.69251,   -74.342296, 'Canada'),
+  Estevan_Point   = (49.382935, -126.544097, 'Canada'),
+  Fraserdale      = (49.875168,  -81.569774, 'Canada'),
+  Lac_Labiche     = (54.953809, -112.466649, 'Canada'),
+  Sable_Island    = (43.93227,   -60.01256,  'Canada'),
+  Bratts_Lake     = (50.201631, -104.711259, 'Canada'),
+  Esther          = (51.669987, -110.206175, 'Canada'),
+  Toronto         = (43.780491,  -79.46801,  'Canada'),
+  East_Trout_Lake = (54.353743, -104.986864, 'Canada'),
+  Behchoko        = (62.797934, -115.918255, 'Canada'),
+  Churchill       = (58.737902,  -93.820581, 'Canada'),
+  Cambridge_Bay   = (69.128401, -105.057707, 'Canada'),
+  Abbotsford      = (49.011313, -122.335505, 'Canada'),
+  Inuvik          = (68.317817, -133.534232, 'Canada'),
+  Turkey_Point    = (42.636451,  -80.554695, 'Canada'),
+  Chapais         = (49.822317,  -74.975274, 'Canada'),
+  Baker_Lake      = (64.331665,  -96.010433, 'Canada'),
+  Fort_McKay      = (57.187925, -111.642723, 'Canada'),
+  AMS13           = (57.149167, -111.6425,   'Canada'),
+  UofT            = (43.660465,  -79.398274, 'Canada'),
 )
 
 from . import StationObsProduct
