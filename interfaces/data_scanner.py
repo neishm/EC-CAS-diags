@@ -446,6 +446,9 @@ def _get_domains (manifest, force_common_axis):
   for interface, entries in manifest.itervalues():
     for var, axes, atts in entries:
       axes = axis_manager.lookup_axes([Varlist([var])]+list(axes))
+      # Make sure the axes are sorted (some optimizations assume this, such
+      # as the use of sets to compare axes).
+      axes = [axis_manager.unflatten_axis(a,axis_manager.flatten_axis(a)) for a in axes]
       domains.add(Domain(axes))
 
   # For each common axis that's specified, build it from the pieces in the
@@ -497,9 +500,6 @@ class DataVar(Var):
 
     # Use an axis manager for accelerating axis operations.
     axis_manager = AxisManager()
-
-    # Make sure the axes are sorted (so searchsorted can work later on)
-    axes = [axis_manager.unflatten_axis(a,axis_manager.flatten_axis(a)) for a in axes]
 
     atts = []
     table = []
