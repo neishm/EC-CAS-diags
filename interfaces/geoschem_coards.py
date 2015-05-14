@@ -61,14 +61,6 @@ class GEOSCHEM_Data(DataProduct):
     dA = (A_interface[:-1] - A_interface[1:])
     dB = (B_interface[:-1] - B_interface[1:])
 
-    # Fudge the longitude axis
-    # (it's non-monotonic!)
-    dataset = asdataset(dataset)
-    lon = np.array(dataset.lon.values)
-    lon[lon>=180] -= 360
-    lon = dataset.lon.withnewvalues(lon)
-    dataset = dataset.replace_axes(lon=lon)
-
     # Use some 'standardized' names, and locate a z-axis.
     zaxis = None
     dataset = list(dataset)
