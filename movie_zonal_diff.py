@@ -1,15 +1,18 @@
-def movie_zonal_diff (models, fieldname, units, outdir):
+def movie_zonal_diff (models, fieldname, units, outdir, zaxis='gph'):
 
   from common import convert, same_times
-  from movie_zonal import zonalmean_gph, ZonalMovie
+  from movie_zonal import zonalmean_gph, zonalmean_pres, ZonalMovie
 
   models = [m for m in models if m is not None]
-  prefix = '_'.join(m.name for m in models) + '_zonal_diff'+fieldname
+  prefix = '_'.join(m.name for m in models) + '_zonal_diff'+fieldname+'_on_'+zaxis
   title = 'Zonal mean %s (in %s)'%(fieldname,units)
   aspect_ratio = 1.0
   shape = (1,len(models)+1)
 
-  fields = [zonalmean_gph(m,fieldname) for m in models]
+  if zaxis == 'gph':
+    fields = [zonalmean_gph(m,fieldname) for m in models]
+  else:
+    fields = [zonalmean_pres(m,fieldname) for m in models]
 
   # Unit conversion
   fields = [convert(f,units) for f in fields]
