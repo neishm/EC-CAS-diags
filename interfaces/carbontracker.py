@@ -22,6 +22,7 @@ class CT_Data(DataProduct):
     ('ocean', 'CO2_ocean', 'ppm'),
     ('fires', 'CO2_fire', 'ppm'),
     ('fossil_imp', 'CO2_fossil_flux', 'mol m-2 s-1'),
+    ('fossil_flux_imp', 'CO2_fossil_flux', 'mol m-2 s-1'),
     ('bio_flux_opt', 'CO2_bio_flux', 'mol m-2 s-1'),
     ('ocn_flux_opt', 'CO2_ocean_flux', 'mol m-2 s-1'),
     ('fire_flux_imp', 'CO2_fire_flux', 'mol m-2 s-1'),
