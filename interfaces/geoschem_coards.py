@@ -68,10 +68,13 @@ class GEOSCHEM_Data(DataProduct):
       if var.name.endswith('_CO2'):
         var.name = 'CO2'
         var.atts['units'] = 'ppb'
-      if var.name.endswith('_PSURF'):
+      if var.name.endswith('_PSURF') or var.name.endswith('_PS'):
         var.name = 'surface_pressure'
-        var.atts['units'] = 'mbar'
-      if var.hasaxis('lev'):
+      if var.name.endswith('_QV'):
+        var.name = 'specific_humidity'
+        var.atts['units'] = 'kg(H2O) kg(air)-1'
+      # Special case: vertical levels that we know the parameters for
+      if var.hasaxis('lev') and len(var.lev) == 47:
         zaxis = var.getaxis('lev')
       dataset[i] = var
 
