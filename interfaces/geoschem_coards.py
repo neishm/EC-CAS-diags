@@ -124,7 +124,8 @@ class GEOSCHEM_Data(DataProduct):
   # through this interface.
   @staticmethod
   def find_files (dirname):
-    return []  # Don't have any good way of identifying GEOS-CHEM files.
+    from glob import glob
+    return glob(dirname+"/*.nc")  # Match any netcdf files in this directory.
 
 
 # Add this interface to the table.
