@@ -46,13 +46,14 @@ if args.configfile is None:
 parser = argparse.ArgumentParser (description=description, add_help=True)
 # Add this config file as an option
 parser.add_argument(args.configfile.name, help='The current configuration being used.')
-configoptions = parser.add_argument_group('options specific to %s'%args.configfile.name)
+parser.add_argument('--tmpdir', help="where to put any intermediate files that get generated, if they can't be stored in their usual location.  THIS SHOULD NOT BE IN YOUR HOME DIRECTORY.")
 
 # Read the configuration file.
 configparser = ConfigParser.SafeConfigParser()
 configparser.readfp(args.configfile)
 
 # Scan for special markup for command-line arguments
+configoptions = parser.add_argument_group('options specific to %s'%args.configfile.name)
 handled_params = []
 for section in configparser.sections():
   for name, value in configparser.items(section):
