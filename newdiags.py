@@ -10,6 +10,8 @@ import ConfigParser
 from os.path import exists
 import os
 
+from eccas_diags.cache import Cache
+from eccas_diags import interfaces
 
 # Helper method - check if a value is a special marker for a command-line
 # argument
@@ -81,6 +83,38 @@ for section in configparser.sections():
           configparser.remove_section(section)
           break
         configparser.set(section, name, value)
+
+
+# Prep all the datasets.
+datasets = []
+for section in configparser.sections():
+  print "Prepping [%s]"%section
+  data_dir = configparser.get(section,'dir')
+  if not exists(data_dir):
+    raise IOError ("Directory '%s' doesn't exist"%data_dir)
+  data_type = configparser.get(section,'type')
+  data_interface = interfaces.table.get(data_type)
+  if data_interface is None:
+    raise ValueError ("Unknown interface type '%s'"%data_type)
+  data_name = data_interface.get_dataname(data_dir)
+  if data_name is None:
+    raise ValueError ("Unable to determine a name to use for '%s' data in directory %s"%(data_type,data_dir))
+
+quit()
+
+experiment_dir = args.experiment
+if not exists(experiment_dir):
+  raise IOError ("experiment directory '%s' doesn't exist"%experiment_dir)
+if experiment_dir == ".":
+  experiment_name = "unnamed_exp"
+else:
+  experiment_name = experiment_dir.rstrip('/').split('/')[-1]
+experiment_title = "%s (%s)"%(args.desc, experiment_name)
+experiment_tmpdir = None
+if not os.access(experiment_dir, os.R_OK | os.W_OK | os.X_OK):
+  print "Can't write into experiment directory - redirecting any generated intermediate files to --tmpdir"
+  assert args.tmpdir is not None, "Need --tmpdir to put intermediate files in."
+  experiment_tmpdir = args.tmpdir
 
 #TODO
 

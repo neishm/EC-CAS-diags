@@ -153,14 +153,26 @@ class CT_Data(DataProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    molefractions = glob(dirname+"/CT????.molefrac_glb3x2_????-??-??.nc")
-    fluxes = glob(dirname+"/CT????.flux1x1.????????.nc")
+    molefractions = glob(dirname+"/molefractions/CT????.molefrac_glb3x2_????-??-??.nc")
+    fluxes = glob(dirname+"/fluxes/CT????.flux1x1.????????.nc")
 
     # Blacklist the 2009-08-07 molefractions file, which has bad data at 10:30
     # (For CT2010 dataset)
     molefractions = [m for m in molefractions if "2009-08-07" not in m]
 
     return molefractions+fluxes
+
+  # Method to find a unique identifying string for this dataset, from the
+  # given directory name.
+  @staticmethod
+  def get_dataname (dirname):
+    from os import path
+    dirname = path.normpath(dirname)
+    if path.basename(dirname) in ('molefractions', 'fluxes'):
+      dirname = path.dirname(dirname)
+    name = path.basename(dirname)
+    if name.startswith('CT'): return name
+    return None
 
 # Add this interface to the table.
 from . import table

@@ -44,6 +44,12 @@ class DataProduct (object):
   def find_files (dirname):
     raise NotImplementedError
 
+  # Method to find a unique identifying string for this dataset, from the
+  # given directory name.
+  @staticmethod
+  def get_dataname (dirname):
+    return None  # This will have to be implemented for each interface.
+
   # Method to find all relevant files for the given patterns.
   # Evaluates globbing patterns, and searches directories.
   def expand_files (self, files):
