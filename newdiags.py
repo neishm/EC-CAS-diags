@@ -10,6 +10,23 @@ import ConfigParser
 from os.path import exists
 import os
 
+
+# Helper method - check if a value is a special marker for a command-line
+# argument
+def is_cmdline_arg (value):
+  return value.startswith('{') and value.endswith('}')
+
+# Helper method - split a command-line argument in a name, description, default
+def split_cmdline_arg (value):
+  param = value[1:-1]
+  default = None
+  desc = None
+  if ':' in param:
+    param, desc = param.split(':',1)
+    if ':' in desc: desc, default = desc.split(':',1)
+  return param, desc, default
+
+
 # Extract command-line arguments
 
 description = 'Produce various diagnostics (figures and animations).'
@@ -29,6 +46,7 @@ if args.configfile is None:
 parser = argparse.ArgumentParser (description=description, add_help=True)
 # Add this config file as an option
 parser.add_argument(args.configfile.name, help='The current configuration being used.')
+configoptions = parser.add_argument_group('options specific to %s'%args.configfile.name)
 
 # Read the configuration file.
 configparser = ConfigParser.SafeConfigParser()
@@ -38,26 +56,40 @@ configparser.readfp(args.configfile)
 handled_params = []
 for section in configparser.sections():
   for name, value in configparser.items(section):
-    if value.startswith('{') and value.endswith('}'):
-      param = value[1:-1]
-      default = None
-      desc = None
-      if ':' in param:
-        param, desc = param.split(':',1)
-        if ':' in desc: desc, default = desc.split(':',1)
+    if is_cmdline_arg(value):
+      param, desc, default = split_cmdline_arg(value)
       if param not in handled_params:
-        parser.add_argument(param, default=default, help=desc)
+        configoptions.add_argument(param, default=default, help=desc)
         handled_params.append(param)
 
 # Pass 2: Get all the parameters needed.
 args = parser.parse_args()
-quit()
 
 # Re-scan the configuration parameters, filling in anything from the
 # command-line.
 # Remove sections that are unresolved (user did not provide a parameter).
+for section in configparser.sections():
+  for name, value in configparser.items(section):
+    if is_cmdline_arg(value):
+      param, desc, default = split_cmdline_arg(value)
+      argname = param.lstrip('-').replace('-','_')
+      if hasattr(args, argname):
+        value = getattr(args,argname)
+        if value is None:
+          print "Omitting [%s] due to missing command-line parameter %s."%(section,param)
+          configparser.remove_section(section)
+          break
+        configparser.set(section, name, value)
 
 #TODO
+
+for section in configparser.sections():
+  print "[%s]"%section
+  for name, value in configparser.items(section):
+    print "%s = %s"%(name,value)
+  print
+
+quit()
 
 
 # Old code
