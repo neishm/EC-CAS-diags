@@ -27,12 +27,12 @@ class CTCH4_Data(DataProduct):
   # List of all possible fields we expect from the data
   # (original_name, standard_name, units)
   field_list = (
-    ('bgrnd', 'CH4_background', 'ppb'),
-    ('fossil', 'CH4_fossil', 'ppb'),
-    ('agwaste', 'CH4_agwaste', 'ppb'),
-    ('ocean', 'CH4_ocean', 'ppb'),
-    ('bioburn', 'CH4_bioburn', 'ppb'),
-    ('natural', 'CH4_natural', 'ppb'),
+    ('bgrnd', 'CH4_background', 'ppb(semidry_air)'),
+    ('fossil', 'CH4_fossil', 'ppb(semidry_air)'),
+    ('agwaste', 'CH4_agwaste', 'ppb(semidry_air)'),
+    ('ocean', 'CH4_ocean', 'ppb(semidry_air)'),
+    ('bioburn', 'CH4_bioburn', 'ppb(semidry_air)'),
+    ('natural', 'CH4_natural', 'ppb(semidry_air)'),
     ('pressure', 'air_pressure', 'hPa'),
   )
 
