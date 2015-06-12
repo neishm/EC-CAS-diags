@@ -23,9 +23,12 @@ def compute_totalmass (model, fieldname):
      elif can_convert (c, 'kg kg(dry_air)-1'):
        c, q, dp, area = model.data.find_best([fieldname,'specific_humidity', 'dp','cell_area'], maximize=(number_of_levels,number_of_timesteps))
        original_units = c.atts['units']
+       specie = c.atts['specie']
        q = convert(q, 'kg(H2O) kg(air)-1')
        c = c*(1-q)
        c.atts['units'] = original_units + ' kg(dry_air) kg(air)-1'
+       c.atts['specie'] = specie # Need to restore the species name
+                                 # (lost after multiplying by (1-q)).
      else:
        raise ValueError("Don't know how to compute mass from units of '%s'"%c.atts['units'])
 
