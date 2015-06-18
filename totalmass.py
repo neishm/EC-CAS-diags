@@ -1,6 +1,7 @@
 # Total mass (Pg)
 def compute_totalmass (model, fieldname):
   from common import can_convert, convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude
+  specie = None
   # Do we have the pressure change in the vertical?
   if model.data.have('dp'):
 
@@ -18,6 +19,7 @@ def compute_totalmass (model, fieldname):
      # Already have moist air mixing ratio?
      if can_convert (c, 'kg kg(air)-1'):
        c, dp, area = model.data.find_best([fieldname,'dp','cell_area'], maximize=(number_of_levels,number_of_timesteps))
+       specie = c.atts['specie']
      # Or do we have a dry air mixing ratio?
      # (need to convert to moist air for computing mass)
      elif can_convert (c, 'kg kg(dry_air)-1'):
@@ -59,6 +61,8 @@ def compute_totalmass (model, fieldname):
   data = mass
   data.name = fieldname
   data.atts['units'] = 'Pg'
+  if specie is not None:
+    data.atts['specie'] = specie
 
   # Cache the data
   return model.cache.write(data,prefix="totalmass_"+fieldname)
