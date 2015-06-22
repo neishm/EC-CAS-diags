@@ -174,8 +174,10 @@ def parse_units(s,table=units):
 # (Used internally only)
 def _reduce_units (term, global_context=None, table=units):
 
-  if isinstance(term,str):
-    terms = parse_units(term, table)
+  if isinstance(term,(str,list)):
+    if isinstance(term,str):
+      terms = parse_units(term, table)
+    else: terms = term
     for term in terms:
       for o in _reduce_units (term, global_context, table):
         yield o
