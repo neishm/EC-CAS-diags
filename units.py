@@ -121,7 +121,7 @@ def copy_default_table():
     table[n] = u
   return table
 
-def parse_units(s,table=units):
+def parse_units(s,table=None):
   '''
   Iterates over a unit string, parsing each term into a tuple of:
     1) name of the unit
@@ -143,6 +143,8 @@ def parse_units(s,table=units):
   ambiguity.
   '''
   from re import match
+
+  if table is None: table = units
 
   # From Python regular expression documentation
   scale_pattern = r'[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?'
@@ -172,7 +174,9 @@ def parse_units(s,table=units):
 
 # Recursively apply conversions to the given unit.
 # (Used internally only)
-def _reduce_units (term, global_context=None, table=units):
+def _reduce_units (term, global_context=None, table=None):
+
+  if table is None: table = units
 
   if isinstance(term,(str,list)):
     if isinstance(term,str):
@@ -225,7 +229,7 @@ def _reduce_units (term, global_context=None, table=units):
 # This is used as a common ground when trying to convert one unit to another.
 # Returns: scale, [terms]
 # Note: only used internally
-def _canonical_form (unit, global_context=None, table=units):
+def _canonical_form (unit, global_context=None, table=None):
   # Get all terms (fully evaluated to their reduced form)
   terms = list(_reduce_units(unit,global_context,table))
   # Separate out the scale factor and the unit terms.
@@ -242,7 +246,7 @@ def _canonical_form (unit, global_context=None, table=units):
   return scale, terms
 
 
-def conversion_factor (from_units, to_units, context=None, table=units):
+def conversion_factor (from_units, to_units, context=None, table=None):
   '''
     Return the scale factor to convert from one set of units to another.
   '''
