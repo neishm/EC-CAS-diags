@@ -9,7 +9,7 @@ class GEOSCHEM_Data(DataProduct):
   # (original_name, standard_name, units)
   field_list = (
     ('Center_pressure', 'air_pressure', 'hPa'),
-    ('CO2_mixing_ratio', 'CO2', 'ppm(semidry_air)'),
+    ('CO2_mixing_ratio', 'CO2', '10E-6 mol mol(semidry_air)-1'),
   )
 
 
