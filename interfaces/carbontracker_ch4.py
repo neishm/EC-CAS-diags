@@ -27,12 +27,12 @@ class CTCH4_Data(DataProduct):
   # List of all possible fields we expect from the data
   # (original_name, standard_name, units)
   field_list = (
-    ('bgrnd', 'CH4_background', '10E-9 mol mol(semidry_air)-1'),
-    ('fossil', 'CH4_fossil', '10E-9 mol mol(semidry_air)-1'),
-    ('agwaste', 'CH4_agwaste', '10E-9 mol mol(semidry_air)-1'),
-    ('ocean', 'CH4_ocean', '10E-9 mol mol(semidry_air)-1'),
-    ('bioburn', 'CH4_bioburn', '10E-9 mol mol(semidry_air)-1'),
-    ('natural', 'CH4_natural', '10E-9 mol mol(semidry_air)-1'),
+    ('bgrnd', 'CH4_background', '1E-9 mol mol(semidry_air)-1'),
+    ('fossil', 'CH4_fossil', '1E-9 mol mol(semidry_air)-1'),
+    ('agwaste', 'CH4_agwaste', '1E-9 mol mol(semidry_air)-1'),
+    ('ocean', 'CH4_ocean', '1E-9 mol mol(semidry_air)-1'),
+    ('bioburn', 'CH4_bioburn', '1E-9 mol mol(semidry_air)-1'),
+    ('natural', 'CH4_natural', '1E-9 mol mol(semidry_air)-1'),
     ('pressure', 'air_pressure', 'hPa'),
   )
 

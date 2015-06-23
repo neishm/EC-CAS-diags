@@ -105,7 +105,7 @@ class GEOSCHEM_Data(DataProduct):
     for i, var in enumerate(dataset):
       if var.name.endswith('_CO2'):
         var.name = 'CO2'
-        var.atts['units'] = '10E-9 mol mol(semidry_air)-1'
+        var.atts['units'] = '1E-9 mol mol(semidry_air)-1'
       if var.name.endswith('_PSURF') or var.name.endswith('_PS'):
         var.name = 'surface_pressure'
       if var.name.endswith('_QV'):
