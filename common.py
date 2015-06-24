@@ -21,14 +21,18 @@ define_conversion ('C_atoms_per_molecule(CH4)', '1')
 define_conversion ('molefraction', 'mol mol(dry_air)-1')
 
 
+# Helper method - get unit conversion context
+def get_conversion_context (var, context=None):
+  return context or var.atts.get('specie') or var.name
+
 # Convert a variable from one unit to another
-def convert (var, units, context=None):
+def convert (var, units, context=None, table=None):
   if 'units' not in var.atts:
     raise ValueError ("Variable '%s' has no units defined, can't do unit conversion!"%var.name)
   if var.atts['units'] == units: return var  # No conversion necessary
   name = var.name
-  if context is None:  context = var.atts.get('specie') or var.name
-  scale = conversion_factor (var.atts['units'], units, context)
+  context = get_conversion_context(var, context)
+  scale = conversion_factor (var.atts['units'], units, context, table=table)
   var = var * scale
   var.atts['units'] = units
   var.name = name
@@ -38,23 +42,79 @@ def convert (var, units, context=None):
   return var
 
 # Helper methods to determine if something is of a particular kind of unit.
-def can_convert (var, units):
+def can_convert (var, units, context=None, table=None):
   try:
-    convert (var, units)
+    convert (var, units, context=context, table=table)
     return True
   except ValueError: return False
 
-def is_mixing_ratio (var):
-  return can_convert (var, 'molefraction')
+# Helper method - find the field in the dataset, and apply some unit conversion.
+# Handle some extra logic, such as going between dry and moist air.
+def find_and_convert (product, fieldname, units, context=None, **conditions):
+  from units import _canonical_form, copy_default_table, define_conversion
+  from copy import copy
+  var = product.data.find_best(fieldname, **conditions)
+  # Make a copy of the var, and its attributes
+  # (so we don't clobber the units in the original version).
+  var = copy(var)
+  var.atts = copy(var.atts)
+  context = get_conversion_context(var, context)
 
-def is_concentration (var):
-  return can_convert (var, 'mol m-3')
+  if can_convert(var, units, context):
+    return convert(var, units, context)
 
-def is_mass_flux (var):
-  return can_convert (var, 'mol m-2 s-1')
+  var_scale, var_terms = _canonical_form (var.atts['units'], context)
+  print "var_terms:", var_terms
 
-def is_integrated_mass_flux (var):
-  return can_convert (var, 'mol s-1')
+  # Evaluate output units to some semi-canonical form (but not reducing
+  # units with dry_air context).
+  table = copy_default_table()
+  del table['mol'].conversions['dry_air']
+  out_scale, out_terms = _canonical_form(units, context, table=table)
+  print "out_terms in a semi-canonical form:", out_terms
+  table = copy_default_table()
+
+  # Convert semi-dry air based on the type of output units
+  if ('mol', 'dry_air', -1) in out_terms:
+    define_conversion ('mol(semidry_air)', 'mol(dry_air)', table=table)
+  elif ('g', 'air', -1) in out_terms:
+    define_conversion ('mol(semidry_air)', 'mol(dry_air) g(dry_air)-1 g(air)', table=table)
+
+  missing_factor = list(out_terms)
+  for (n,c,e) in var_terms:
+    missing_factor.append((n,c,-e))
+  scale, missing_factor = _canonical_form(missing_factor, context, table=table)
+
+  if can_convert(var, units, context, table):
+    return convert (var, units, context, table)
+
+  print "missing factor:", missing_factor
+
+  if set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]) or set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]):
+    name = var.name
+    specie = var.atts.get('specie',None)
+    var_units = var.atts['units']
+    try:
+      var, q = product.data.find_best([fieldname,'specific_humidity'], **conditions)
+      q = convert(q,'kg(H2O) kg(air)-1')
+    except ValueError:
+      raise ValueError ("Can't find specific humidity field for %s, needed to convert between dry and moist air"%(product.name))
+
+    if set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]):
+      var *= (1-q)
+      var.atts['units'] = var_units + ' kg(dry_air) kg(air)-1'
+    elif set(missing_factor) == set([('g','air',1),('g','dry_air',-1)]):
+      var /= (1-q)
+      var.atts['units'] = var_units + ' kg(air) kg(dry_air)-1'
+
+    var.name = name
+    if specie is not None:
+      var.atts['specie'] = specie
+
+    return convert(var, units, context=context, table=table)
+
+  raise ValueError ("Don't know how to get factor of %s"%missing_factor)
+
 
 
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
