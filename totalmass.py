@@ -2,6 +2,8 @@
 def compute_totalmass (model, fieldname):
   from common import can_convert, convert, find_and_convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude
 
+  specie = None
+
   # Do we have the pressure change in the vertical?
   if model.data.have('dp'):
 
@@ -50,6 +52,8 @@ def compute_totalmass (model, fieldname):
   data = mass
   data.name = fieldname
   data.atts['units'] = 'Pg'
+  if specie is not None:
+    data.atts['specie'] = specie
 
   # Cache the data
   return model.cache.write(data,prefix="totalmass_"+fieldname)
