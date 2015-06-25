@@ -68,7 +68,6 @@ def find_and_convert (product, fieldnames, units, **conditions):
   if isinstance(units,str): units = [units]*len(fieldnames)
 
   # Simple case - we can do a trivial conversion of all fields
-  print '?? finding %s for %s'%(fieldnames, product.name)
   vars = product.data.find_best(fieldnames, **conditions)
   if all(can_convert(v, unit) for v,unit in zip(vars,units)):
     out = [convert(v, unit) for v,unit in zip(vars,units)]
@@ -82,7 +81,6 @@ def find_and_convert (product, fieldnames, units, **conditions):
   contexts = [get_conversion_context(v) for v in vars]
 
   var_terms = [_canonical_form (v.atts['units'], context)[1] for v,context in zip(vars,contexts)]
-  print "var_terms:", var_terms
 
   # Evaluate output units to some semi-canonical form (but not reducing
   # units with dry_air context).
@@ -90,7 +88,6 @@ def find_and_convert (product, fieldnames, units, **conditions):
   del table['mol'].conversions['dry_air']
   out_terms = [_canonical_form(unit, context, table=table)[1] for unit,context in zip(units,contexts)]
   del table
-  print "out_terms in a semi-canonical form:", out_terms
 
   # Create a separate unit table for each variable, to handle things like
   # semi-dry air uniquely.
@@ -118,8 +115,6 @@ def find_and_convert (product, fieldnames, units, **conditions):
       missing_factor.append((n,c,-e))
     scale, missing_factor = _canonical_form(missing_factor, context, table=table)
 
-    print "missing factor:", missing_factor
-
     if set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]) or set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]):
       need_q = True
 
@@ -135,12 +130,10 @@ def find_and_convert (product, fieldnames, units, **conditions):
     var_units = var.atts['units']
 
     test_units = var_units + ' kg(dry_air) kg(air)-1'
-    print '?? 1:', _canonical_form(test_units,context,table)[1], _canonical_form(out_units,context)[1]
     if _canonical_form(test_units,context,table)[1] == _canonical_form(out_units,context)[1]:
       var *= (1-q)
       var.atts['units'] = test_units
     test_units = var_units + ' kg(air) kg(dry_air)-1'
-    print '?? 2:', _canonical_form(test_units,context,table)[1], _canonical_form(out_units,context)[1]
     if _canonical_form(test_units,context,table)[1] == _canonical_form(out_units,context)[1]:
       var /= (1-q)
       var.atts['units'] = test_units
