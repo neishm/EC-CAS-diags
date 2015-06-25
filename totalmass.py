@@ -18,15 +18,13 @@ def compute_totalmass (model, fieldname):
     else:
      try:
        #TODO: extract all 3 fields at once through the same interface.
-       c = find_and_convert(model, fieldname, 'kg kg(air)-1', maximize=(number_of_levels,number_of_timesteps))
-       dp, area = model.data.find_best(['dp','cell_area'], maximize=(number_of_levels,number_of_timesteps))
+       c, dp, area = find_and_convert(model, [fieldname,'dp','cell_area'], ['kg kg(air)-1', 'Pa', 'm2'], maximize=(number_of_levels,number_of_timesteps))
        specie = c.atts.get('specie',None)
      except ValueError:
        #raise ValueError("Don't know how to compute mass from units of '%s'"%c.atts['units'])
        raise
 
      assert dp.axes == c.axes
-     dp = convert(dp,'Pa')
 
      # Integrate to get total column
      tc = (c*dp).sum('zaxis') / g

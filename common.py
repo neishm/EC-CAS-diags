@@ -48,72 +48,117 @@ def can_convert (var, units, context=None, table=None):
     return True
   except ValueError: return False
 
-# Helper method - find the field in the dataset, and apply some unit conversion.
-# Handle some extra logic, such as going between dry and moist air.
-def find_and_convert (product, fieldname, units, context=None, **conditions):
-  from units import _canonical_form, copy_default_table, define_conversion
+# Helper method - make a copy of a variable.
+def copy_var (var):
   from copy import copy
-  var = product.data.find_best(fieldname, **conditions)
-  # Make a copy of the var, and its attributes
-  # (so we don't clobber the units in the original version).
   var = copy(var)
   var.atts = copy(var.atts)
-  context = get_conversion_context(var, context)
+  return var
 
-  if can_convert(var, units, context):
-    return convert(var, units, context)
+# Helper method - find the field in the dataset, and apply some unit conversion.
+# Handle some extra logic, such as going between dry and moist air.
+def find_and_convert (product, fieldnames, units, **conditions):
+  from units import _canonical_form, copy_default_table, define_conversion
 
-  var_scale, var_terms = _canonical_form (var.atts['units'], context)
+  return_list = True
+
+  if isinstance(fieldnames,str):
+    fieldnames = [fieldnames]
+    return_list = False
+  if isinstance(units,str): units = [units]*len(fieldnames)
+
+  # Simple case - we can do a trivial conversion of all fields
+  print '?? finding %s for %s'%(fieldnames, product.name)
+  vars = product.data.find_best(fieldnames, **conditions)
+  if all(can_convert(v, unit) for v,unit in zip(vars,units)):
+    out = [convert(v, unit) for v,unit in zip(vars,units)]
+    if return_list: return out
+    else: return out[0]
+
+  # Make a copy of the var, and its attributes
+  # (so we don't clobber the units in the original version).
+  vars = [copy_var(v) for v in vars]
+
+  contexts = [get_conversion_context(v) for v in vars]
+
+  var_terms = [_canonical_form (v.atts['units'], context)[1] for v,context in zip(vars,contexts)]
   print "var_terms:", var_terms
 
   # Evaluate output units to some semi-canonical form (but not reducing
   # units with dry_air context).
   table = copy_default_table()
   del table['mol'].conversions['dry_air']
-  out_scale, out_terms = _canonical_form(units, context, table=table)
+  out_terms = [_canonical_form(unit, context, table=table)[1] for unit,context in zip(units,contexts)]
+  del table
   print "out_terms in a semi-canonical form:", out_terms
-  table = copy_default_table()
+
+  # Create a separate unit table for each variable, to handle things like
+  # semi-dry air uniquely.
+  tables = [copy_default_table() for v in vars]
 
   # Convert semi-dry air based on the type of output units
-  if ('mol', 'dry_air', -1) in out_terms:
-    define_conversion ('mol(semidry_air)', 'mol(dry_air)', table=table)
-  elif ('g', 'air', -1) in out_terms:
-    define_conversion ('mol(semidry_air)', 'mol(dry_air) g(dry_air)-1 g(air)', table=table)
+  for terms, table in zip(out_terms, tables):
+    if ('mol', 'dry_air', -1) in terms:
+      define_conversion ('mol(semidry_air)', 'mol(dry_air)', table=table)
+    elif ('g', 'air', -1) in terms:
+      define_conversion ('mol(semidry_air)', 'mol(dry_air) g(dry_air)-1 g(air)', table=table)
 
-  missing_factor = list(out_terms)
-  for (n,c,e) in var_terms:
-    missing_factor.append((n,c,-e))
-  scale, missing_factor = _canonical_form(missing_factor, context, table=table)
+  # See if this is enough to resolve the unit conversions
+  if all(can_convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)):
+    out = [convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)]
+    if return_list: return out
+    else: return out[0]
 
-  if can_convert(var, units, context, table):
-    return convert (var, units, context, table)
+  # Do we need to extract specific humidity as well?
+  need_q = False
+  for var_term, out_term, context, table in zip(var_terms,out_terms,contexts,tables):
 
-  print "missing factor:", missing_factor
+    missing_factor = list(out_term)
+    for (n,c,e) in var_term:
+      missing_factor.append((n,c,-e))
+    scale, missing_factor = _canonical_form(missing_factor, context, table=table)
 
-  if set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]) or set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]):
+    print "missing factor:", missing_factor
+
+    if set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]) or set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]):
+      need_q = True
+
+  if need_q:
+
+    new_vars = product.data.find_best(fieldnames+['specific_humidity'], **conditions)
+    vars = [copy_var(v) for v in new_vars[:-1]]
+    q = convert(new_vars[-1],'kg(H2O) kg(air)-1')
+
+  for i,(var,out_units,context,table) in enumerate(zip(vars,units,contexts,tables)):
     name = var.name
     specie = var.atts.get('specie',None)
     var_units = var.atts['units']
-    try:
-      var, q = product.data.find_best([fieldname,'specific_humidity'], **conditions)
-      q = convert(q,'kg(H2O) kg(air)-1')
-    except ValueError:
-      raise ValueError ("Can't find specific humidity field for %s, needed to convert between dry and moist air"%(product.name))
 
-    if set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]):
+    test_units = var_units + ' kg(dry_air) kg(air)-1'
+    print '?? 1:', _canonical_form(test_units,context,table)[1], _canonical_form(out_units,context)[1]
+    if _canonical_form(test_units,context,table)[1] == _canonical_form(out_units,context)[1]:
       var *= (1-q)
-      var.atts['units'] = var_units + ' kg(dry_air) kg(air)-1'
-    elif set(missing_factor) == set([('g','air',1),('g','dry_air',-1)]):
+      var.atts['units'] = test_units
+    test_units = var_units + ' kg(air) kg(dry_air)-1'
+    print '?? 2:', _canonical_form(test_units,context,table)[1], _canonical_form(out_units,context)[1]
+    if _canonical_form(test_units,context,table)[1] == _canonical_form(out_units,context)[1]:
       var /= (1-q)
-      var.atts['units'] = var_units + ' kg(air) kg(dry_air)-1'
+      var.atts['units'] = test_units
 
     var.name = name
     if specie is not None:
       var.atts['specie'] = specie
 
-    return convert(var, units, context=context, table=table)
+    vars[i] = var
 
-  raise ValueError ("Don't know how to get factor of %s"%missing_factor)
+  # NOW is this enough?!
+  if all(can_convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)):
+    out = [convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)]
+    if return_list: return out
+    else: return out[0]
+
+
+  raise ValueError ("Don't know how to convert one or more of %s to units of %s, in '%s'"%(fieldnames,units,product.name))
 
 
 
