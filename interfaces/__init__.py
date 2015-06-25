@@ -136,6 +136,18 @@ class StationObsProduct(DataProduct):
   _common_axes = ('time',)
 
 
+# A special class to represent derived data as a "product"
+class DerivedProduct (DataProduct):
+  # Override the __init__ to take a list of variables, not filenames.
+  def __init__ (self, vars, name=None, title=None, cache=None):
+    from .data_interface import DataInterface
+    from pygeode.dataset import asdataset
+    self.name = name
+    self.title = title
+    self.cache = cache
+    self.data = DataInterface([asdataset(vars)])
+
+
 # Find all available interfaces
 table = {}
 def _load_interfaces ():
