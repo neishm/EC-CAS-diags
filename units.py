@@ -57,26 +57,26 @@ class Unit(object):
 # Fast lookup table for unit names
 units = {}
 
-def define_unit (name, longname, conversion=None):
+def define_unit (name, longname, conversion=None, table=units):
   '''
     Register a unit with this module.
   '''
   # Interpret a blank conversion as no conversion specified
   if conversion == '': conversion = None
 
-  units[name] = Unit(longname,conversion)
+  table[name] = Unit(longname,conversion)
 
-def define_prefixable_unit (name, longname, conversion=''):
+def define_prefixable_unit (name, longname, conversion='', table=units):
   '''
     Register a new prefixable unit with this module.
     All combinations of standard prefixes will be registered at the same time.
   '''
-  define_unit (name, longname, conversion)
+  define_unit (name, longname, conversion, table)
   for prefix, longprefix, scale in standard_prefixes:
-    define_unit(prefix+name, longprefix+longname, repr(scale)+' '+name)
+    define_unit(prefix+name, longprefix+longname, repr(scale)+' '+name, table)
 
 
-def define_conversion (unit, conversion):
+def define_conversion (unit, conversion, table=units):
   '''
     Define a conversion from one unit to another, valid under a particular
     context.
@@ -88,7 +88,7 @@ def define_conversion (unit, conversion):
     of air.
   '''
   # Extract the input information (unit name and context)
-  unit = list(parse_units(unit))
+  unit = list(parse_units(unit,table))
   if len(unit) > 1:
     raise ValueError ("Expected a single unit to be provided, got %s."%unit)
   unit = unit[0]
@@ -97,10 +97,10 @@ def define_conversion (unit, conversion):
   name, context, exponent = unit
   if exponent != 1:
     raise ValueError ("Unexpected exponent on input unit.")
-  if name not in units:
+  if name not in table:
     raise ValueError ("Unrecognized unit '%s'"%name)
 
-  units[name].conversions[context] = conversion
+  table[name].conversions[context] = conversion
 
 
 # Initialize the units
@@ -108,7 +108,20 @@ map (define_prefixable_unit, *zip(*_prefixable_units))
 map (define_unit, *zip(*_unprefixable_units))
 del _prefixable_units, _unprefixable_units
 
-def parse_units(s):
+def copy_default_table():
+  '''
+    Return a copy of the default lookup table of units.
+    Useful if you want to change certain conversions manually.
+  '''
+  from copy import copy
+  table = dict()
+  for n, u in units.iteritems():
+    u = copy(u)
+    u.conversions = u.conversions.copy()
+    table[n] = u
+  return table
+
+def parse_units(s,table=None):
   '''
   Iterates over a unit string, parsing each term into a tuple of:
     1) name of the unit
@@ -131,6 +144,8 @@ def parse_units(s):
   '''
   from re import match
 
+  if table is None: table = units
+
   # From Python regular expression documentation
   scale_pattern = r'[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?'
 
@@ -143,7 +158,7 @@ def parse_units(s):
   # Match a unit with an optional context and exponent
   # E.g. "m", "m2", "kg(CO2)"
   # First, get a list of all valid unit names (preferencing long names over short names)
-  unit_names = sorted(units.iterkeys(), key=len, reverse=True)
+  unit_names = sorted(table.iterkeys(), key=len, reverse=True)
   unit_pattern = r'(?P<name>%s)(\((?P<context>[^()]*)\))?(?P<exponent>-?[0-9]+)? *'%('|'.join(unit_names))
   while len(s) > 0:
     m = match(unit_pattern, s)
@@ -159,12 +174,16 @@ def parse_units(s):
 
 # Recursively apply conversions to the given unit.
 # (Used internally only)
-def _reduce_units (term, global_context=None):
+def _reduce_units (term, global_context=None, table=None):
 
-  if isinstance(term,str):
-    terms = parse_units(term)
+  if table is None: table = units
+
+  if isinstance(term,(str,list)):
+    if isinstance(term,str):
+      terms = parse_units(term, table)
+    else: terms = term
     for term in terms:
-      for o in _reduce_units (term, global_context):
+      for o in _reduce_units (term, global_context, table):
         yield o
     return
 
@@ -173,29 +192,29 @@ def _reduce_units (term, global_context=None):
     yield name, context, exponent
     return
 
-  if name not in units:
+  if name not in table:
     raise ValueError ("Unrecognized unit: %s"%name)
 
-  if context in units[name].conversions:
-    conversion = units[name].conversions[context]
+  if context in table[name].conversions:
+    conversion = table[name].conversions[context]
     # Swallow up the local context (to allow the conversion to specify any new context it wants to apply)
     context = None
   else:
     # Fall back to default conversion if this context is unapplicable
-    conversion = units[name].conversions[None]
+    conversion = table[name].conversions[None]
 
   # Convert the unit, applying the local context
   if conversion is None:
     output = [(name, context, exponent)]
   else:
     # Apply the reduction (using the local context)
-    output = _reduce_units(conversion,context)
+    output = _reduce_units(conversion,context,table)
     # Update the exponents
     output = [(n,c,e*exponent) for n,c,e in output]
 
   # Further convert the unit, applying the global context
   if global_context is not None:
-    output = [list(_reduce_units((n,(c or global_context),e))) for n,c,e in output]
+    output = [list(_reduce_units((n,(c or global_context),e),table=table)) for n,c,e in output]
     # Flatten it out
     output = sum(output,[])
 
@@ -210,9 +229,9 @@ def _reduce_units (term, global_context=None):
 # This is used as a common ground when trying to convert one unit to another.
 # Returns: scale, [terms]
 # Note: only used internally
-def _canonical_form (unit, global_context=None):
+def _canonical_form (unit, global_context=None, table=None):
   # Get all terms (fully evaluated to their reduced form)
-  terms = list(_reduce_units(unit,global_context))
+  terms = list(_reduce_units(unit,global_context,table))
   # Separate out the scale factor and the unit terms.
   # Gather all exponents for each type of unit
   scale = 1.0
@@ -227,12 +246,12 @@ def _canonical_form (unit, global_context=None):
   return scale, terms
 
 
-def conversion_factor (from_units, to_units, context=None):
+def conversion_factor (from_units, to_units, context=None, table=None):
   '''
     Return the scale factor to convert from one set of units to another.
   '''
-  scale1, terms1 = _canonical_form(from_units,context)
-  scale2, terms2 = _canonical_form(to_units,context)
+  scale1, terms1 = _canonical_form(from_units,context,table)
+  scale2, terms2 = _canonical_form(to_units,context,table)
   if (terms1 != terms2):
     raise ValueError ("Units '%s' and '%s' are not compatible"%(from_units,to_units))
   return scale1 / scale2

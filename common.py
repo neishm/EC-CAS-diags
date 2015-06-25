@@ -21,14 +21,18 @@ define_conversion ('C_atoms_per_molecule(CH4)', '1')
 define_conversion ('molefraction', 'mol mol(dry_air)-1')
 
 
+# Helper method - get unit conversion context
+def get_conversion_context (var, context=None):
+  return context or var.atts.get('specie') or var.name
+
 # Convert a variable from one unit to another
-def convert (var, units, context=None):
+def convert (var, units, context=None, table=None):
   if 'units' not in var.atts:
     raise ValueError ("Variable '%s' has no units defined, can't do unit conversion!"%var.name)
   if var.atts['units'] == units: return var  # No conversion necessary
   name = var.name
-  if context is None:  context = var.atts.get('specie') or var.name
-  scale = conversion_factor (var.atts['units'], units, context)
+  context = get_conversion_context(var, context)
+  scale = conversion_factor (var.atts['units'], units, context, table=table)
   var = var * scale
   var.atts['units'] = units
   var.name = name
@@ -38,23 +42,117 @@ def convert (var, units, context=None):
   return var
 
 # Helper methods to determine if something is of a particular kind of unit.
-def can_convert (var, units):
+def can_convert (var, units, context=None, table=None):
   try:
-    convert (var, units)
+    convert (var, units, context=context, table=table)
     return True
   except ValueError: return False
 
-def is_mixing_ratio (var):
-  return can_convert (var, 'molefraction')
+# Helper method - make a copy of a variable.
+def copy_var (var):
+  from copy import copy
+  var = copy(var)
+  var.atts = copy(var.atts)
+  return var
 
-def is_concentration (var):
-  return can_convert (var, 'mol m-3')
+# Helper method - find the field in the dataset, and apply some unit conversion.
+# Handle some extra logic, such as going between dry and moist air.
+def find_and_convert (product, fieldnames, units, **conditions):
+  from units import _canonical_form, copy_default_table, define_conversion
 
-def is_mass_flux (var):
-  return can_convert (var, 'mol m-2 s-1')
+  return_list = True
 
-def is_integrated_mass_flux (var):
-  return can_convert (var, 'mol s-1')
+  if isinstance(fieldnames,str):
+    fieldnames = [fieldnames]
+    return_list = False
+  if isinstance(units,str): units = [units]*len(fieldnames)
+
+  # Simple case - we can do a trivial conversion of all fields
+  vars = product.data.find_best(fieldnames, **conditions)
+  if all(can_convert(v, unit) for v,unit in zip(vars,units)):
+    out = [convert(v, unit) for v,unit in zip(vars,units)]
+    if return_list: return out
+    else: return out[0]
+
+  # Make a copy of the var, and its attributes
+  # (so we don't clobber the units in the original version).
+  vars = [copy_var(v) for v in vars]
+
+  contexts = [get_conversion_context(v) for v in vars]
+
+  var_terms = [_canonical_form (v.atts['units'], context)[1] for v,context in zip(vars,contexts)]
+
+  # Evaluate output units to some semi-canonical form (but not reducing
+  # units with dry_air context).
+  table = copy_default_table()
+  del table['mol'].conversions['dry_air']
+  out_terms = [_canonical_form(unit, context, table=table)[1] for unit,context in zip(units,contexts)]
+  del table
+
+  # Create a separate unit table for each variable, to handle things like
+  # semi-dry air uniquely.
+  tables = [copy_default_table() for v in vars]
+
+  # Convert semi-dry air based on the type of output units
+  for terms, table in zip(out_terms, tables):
+    if ('mol', 'dry_air', -1) in terms:
+      define_conversion ('mol(semidry_air)', 'mol(dry_air)', table=table)
+    elif ('g', 'air', -1) in terms:
+      define_conversion ('mol(semidry_air)', 'mol(dry_air) g(dry_air)-1 g(air)', table=table)
+
+  # See if this is enough to resolve the unit conversions
+  if all(can_convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)):
+    out = [convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)]
+    if return_list: return out
+    else: return out[0]
+
+  # Do we need to extract specific humidity as well?
+  need_q = False
+  for var_term, out_term, context, table in zip(var_terms,out_terms,contexts,tables):
+
+    missing_factor = list(out_term)
+    for (n,c,e) in var_term:
+      missing_factor.append((n,c,-e))
+    scale, missing_factor = _canonical_form(missing_factor, context, table=table)
+
+    if set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]) or set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]):
+      need_q = True
+
+  if need_q:
+
+    new_vars = product.data.find_best(fieldnames+['specific_humidity'], **conditions)
+    vars = [copy_var(v) for v in new_vars[:-1]]
+    q = convert(new_vars[-1],'kg(H2O) kg(air)-1')
+
+  for i,(var,out_units,context,table) in enumerate(zip(vars,units,contexts,tables)):
+    name = var.name
+    specie = var.atts.get('specie',None)
+    var_units = var.atts['units']
+
+    test_units = var_units + ' kg(dry_air) kg(air)-1'
+    if _canonical_form(test_units,context,table)[1] == _canonical_form(out_units,context)[1]:
+      var *= (1-q)
+      var.atts['units'] = test_units
+    test_units = var_units + ' kg(air) kg(dry_air)-1'
+    if _canonical_form(test_units,context,table)[1] == _canonical_form(out_units,context)[1]:
+      var /= (1-q)
+      var.atts['units'] = test_units
+
+    var.name = name
+    if specie is not None:
+      var.atts['specie'] = specie
+
+    vars[i] = var
+
+  # NOW is this enough?!
+  if all(can_convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)):
+    out = [convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)]
+    if return_list: return out
+    else: return out[0]
+
+
+  raise ValueError ("Don't know how to convert one or more of %s to units of %s, in '%s'"%(fieldnames,units,product.name))
+
 
 
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90

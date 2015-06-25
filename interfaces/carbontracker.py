@@ -16,11 +16,11 @@ class CT_Data(DataProduct):
   # List of all possible fields we expect from the data
   # (original_name, standard_name, units)
   field_list = (
-    ('bg', 'CO2_background', 'ppm'),
-    ('ff', 'CO2_fossil', 'ppm'),
-    ('bio', 'CO2_bio', 'ppm'),
-    ('ocean', 'CO2_ocean', 'ppm'),
-    ('fires', 'CO2_fire', 'ppm'),
+    ('bg', 'CO2_background', '1E-6 mol mol(semidry_air)-1'),
+    ('ff', 'CO2_fossil', '1E-6 mol mol(semidry_air)-1'),
+    ('bio', 'CO2_bio', '1E-6 mol mol(semidry_air)-1'),
+    ('ocean', 'CO2_ocean', '1E-6 mol mol(semidry_air)-1'),
+    ('fires', 'CO2_fire', '1E-6 mol mol(semidry_air)-1'),
     ('fossil_imp', 'CO2_fossil_flux', 'mol m-2 s-1'),
     ('fossil_flux_imp', 'CO2_fossil_flux', 'mol m-2 s-1'),
     ('bio_flux_opt', 'CO2_bio_flux', 'mol m-2 s-1'),
