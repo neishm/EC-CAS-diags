@@ -98,5 +98,5 @@ class ECCAS_Data(GEM_Data):
 
 # Add this interface to the table.
 from . import table
-table['eccas'] = ECCAS_Data
+table['eccas-dry'] = ECCAS_Data
 
