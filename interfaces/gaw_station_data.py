@@ -121,6 +121,16 @@ class GAW_Station_Data(StationObsProduct):
     from glob import glob
     return glob(dirname+'/*.dat')
 
+  # Method to find a unique identifying string for this dataset, from the
+  # given directory name.
+  @staticmethod
+  def get_dataname (dirname):
+    import os
+    for d in reversed(dirname.split(os.sep)):
+      if d.startswith('GAW-'): return d
+    return None
+
+
 # Add this interface to the table.
 from . import table
 table['gaw-station-obs'] = GAW_Station_Data

@@ -91,6 +91,17 @@ class EC_Station_Data(StationObsProduct):
     from glob import glob
     return glob(dirname+'/*-*-Hourly.DAT')
 
+  # Method to find a unique identifying string for this dataset, from the
+  # given directory name.
+  @staticmethod
+  def get_dataname (dirname):
+    import os
+    for d in reversed(dirname.split(os.sep)):
+      if d.startswith('EC-'): return d
+    return None
+
+
+
 # Add this interface to the table.
 from . import table
 table['ec-station-obs'] = EC_Station_Data

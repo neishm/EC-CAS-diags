@@ -99,6 +99,7 @@ for section in configparser.sections():
   data_name = data_interface.get_dataname(data_dir)
   if data_name is None:
     raise ValueError ("Unable to determine a name to use for '%s' data in directory %s"%(data_type,data_dir))
+  print "Found dataset:", data_name
 
 quit()
 

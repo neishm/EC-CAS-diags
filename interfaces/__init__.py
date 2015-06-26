@@ -48,7 +48,11 @@ class DataProduct (object):
   # given directory name.
   @staticmethod
   def get_dataname (dirname):
-    return None  # This will have to be implemented for each interface.
+    import os
+    dirs = dirname.split(os.sep)
+    # Default behaviour - return the lowest directory name
+    return dirs[-1]
+
 
   # Method to find all relevant files for the given patterns.
   # Evaluates globbing patterns, and searches directories.
