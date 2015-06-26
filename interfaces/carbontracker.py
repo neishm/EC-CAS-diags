@@ -28,6 +28,7 @@ class CT_Data(DataProduct):
     ('fire_flux_imp', 'CO2_fire_flux', 'mol m-2 s-1'),
     ('press', 'air_pressure', 'Pa'),
     ('gph', 'geopotential_height', 'm'),
+    ('co2', 'CO2', '1E-6 mol mol(semidry_air)-1'),
   )
   # Helper methods
 
@@ -153,8 +154,8 @@ class CT_Data(DataProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    molefractions = glob(dirname+"/CT????.molefrac_glb3x2_????-??-??.nc")
-    fluxes = glob(dirname+"/CT????.flux1x1.????????.nc")
+    molefractions = glob(dirname+"/CT*.molefrac_glb3x2_????-??-??.nc")
+    fluxes = glob(dirname+"/CT*.flux1x1.????????.nc")
 
     # Blacklist the 2009-08-07 molefractions file, which has bad data at 10:30
     # (For CT2010 dataset)
