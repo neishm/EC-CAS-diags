@@ -112,112 +112,14 @@ for section in configparser.sections():
   cache = Cache(dir=data_dir+"/nc_cache", fallback_dirs=fallback_dirs, global_prefix=data_name+"_")
 
   experiment = data_interface(data_dir, name=data_name, title='%s (%s)'%(desc,data_name), color=color, cache=cache)
-  print "title:", experiment.title
 
-quit()
-
-experiment_dir = args.experiment
-if not exists(experiment_dir):
-  raise IOError ("experiment directory '%s' doesn't exist"%experiment_dir)
-if experiment_dir == ".":
-  experiment_name = "unnamed_exp"
-else:
-  experiment_name = experiment_dir.rstrip('/').split('/')[-1]
-experiment_title = "%s (%s)"%(args.desc, experiment_name)
-experiment_tmpdir = None
-if not os.access(experiment_dir, os.R_OK | os.W_OK | os.X_OK):
-  print "Can't write into experiment directory - redirecting any generated intermediate files to --tmpdir"
-  assert args.tmpdir is not None, "Need --tmpdir to put intermediate files in."
-  experiment_tmpdir = args.tmpdir
-
-#TODO
-
-for section in configparser.sections():
-  print "[%s]"%section
-  for name, value in configparser.items(section):
-    print "%s = %s"%(name,value)
-  print
-
-quit()
-
-
-# Old code
-experiment_dir = args.experiment
-if not exists(experiment_dir):
-  raise IOError ("experiment directory '%s' doesn't exist"%experiment_dir)
-if experiment_dir == ".":
-  experiment_name = "unnamed_exp"
-else:
-  experiment_name = experiment_dir.rstrip('/').split('/')[-1]
-experiment_title = "%s (%s)"%(args.desc, experiment_name)
-experiment_tmpdir = None
-if not os.access(experiment_dir, os.R_OK | os.W_OK | os.X_OK):
-  print "Can't write into experiment directory - redirecting any generated intermediate files to --tmpdir"
-  assert args.tmpdir is not None, "Need --tmpdir to put intermediate files in."
-  experiment_tmpdir = args.tmpdir
-
-control_dir = args.control
-if control_dir is not None:
-  if not exists(control_dir):
-    raise IOError ("control directory '%s' doesn't exist"%control_dir)
-  if control_dir == ".":
-    control_name = "control"
-    control_title = "Control"
-  else:
-    control_name = control_dir.rstrip('/').split('/')[-1]
-    control_title = "Control (%s)"%control_name
-  control_tmpdir = None
-  if not os.access(control_dir, os.R_OK | os.W_OK | os.X_OK):
-    print "Can't write into control directory - redirecting any generated intermediate files to --tmpdir"
-    assert args.tmpdir is not None, "Need --tmpdir to put intermediate files in."
-    control_tmpdir = args.tmpdir
-else:
-  control_name = None
-  control_title = None
-
-# Check for 'model' subdirectory for experiment
-rootdir = experiment_dir
-if exists(experiment_dir+"/model"):
-  experiment_dir += "/model"
-if control_dir is not None and exists(control_dir+"/model"):
-  control_dir += "/model"
-
-# Get the data
-
-from eccas_diags.cache import Cache
-
-from eccas_diags import interfaces
-if args.dry_air: eccas = interfaces.table['eccas']
-else: eccas = interfaces.table['eccas-moist']
-eccas_flux = interfaces.table['eccas-flux']
-
-experiment = eccas(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir], global_prefix=experiment_name+"_"))
-# Duct-tape the flux data to the experiment data
-#TODO: make the fluxes a separate product
-if args.emissions is not None:
-  flux = eccas_flux(args.emissions, cache=experiment.cache)
-  # Fix the emissions lat/lon (not encoded exactly the same as the model output)
-  lat = experiment.data.datasets[0].lat
-  lon = experiment.data.datasets[0].lon
-  experiment.data.datasets += tuple(d.replace_axes(lat=lat,lon=lon) for d in flux.data.datasets)
-
-if control_dir is not None:
-  control = eccas(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir], global_prefix=control_name+"_"))
-else:
-  control = None
-
-# CarbonTracker data
-carbontracker = interfaces.table['carbontracker'](["/wrk1/EC-CAS/CarbonTracker/molefractions","/wrk1/EC-CAS/CarbonTracker/fluxes"], name='CT2010', title='CarbonTracker', cache=Cache('/wrk1/EC-CAS/CarbonTracker/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CT2010_'))
-carbontracker_ch4 = interfaces.table['carbontracker-ch4']("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc", name='CTCH42010', title='CarbonTracker', cache=Cache('/wrk6/eltonc/ct_ch4/molefractions/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CTCH42010_'))
-
-# Observation data
-ec_obs = interfaces.table['ec-station-obs']("/wrk1/EC-CAS/surface/EC-2013", name="EC", title="EC Station Obs", cache=Cache(args.tmpdir, global_prefix="ec-station-obs_", split_time=False))
-gaw_obs = interfaces.table['gaw-station-obs']("/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2009", name="GAW", title='GAW-2014 Station Obs', cache=Cache(args.tmpdir, global_prefix="gaw-station-obs_", split_time=False))
-
+  datasets.append(experiment)
 
 # Dump the output files to a subdirectory of the experiment data
 from os import mkdir
-outdir = rootdir+"/diags"
+expsection = configparser.sections()[0]
+expdir = configparser.get(expsection,'dir')
+outdir = expdir+"/diags"
 try:
   mkdir(outdir)
 except OSError:
@@ -234,6 +136,9 @@ from sys import argv
 history_file = open(outdir+"/history.txt","a")
 history_file.write("=== %s ===\n"%datetime.now())
 history_file.write(" ".join(argv)+"\n\n")
+
+quit()
+#TODO
 
 # Some standard diagnostics
 failures = []
