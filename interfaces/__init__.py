@@ -123,7 +123,7 @@ class DataProduct (object):
 
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
-  def __init__ (self, files, name=None, title=None, cache=None):
+  def __init__ (self, files, name=None, title=None, color=None, cache=None):
     from .data_interface import DataInterface
     from .data_scanner import from_files
     self.name = name

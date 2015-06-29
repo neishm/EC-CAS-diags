@@ -100,6 +100,19 @@ for section in configparser.sections():
   if data_name is None:
     raise ValueError ("Unable to determine a name to use for '%s' data in directory %s"%(data_type,data_dir))
   print "Found dataset:", data_name
+  if configparser.has_option(section,'desc'):
+    desc = configparser.get(section,'desc')
+  else:
+    desc = section
+  color = configparser.get(section,'color')
+
+  if args.tmpdir is not None:
+    fallback_dirs = [args.tmpdir]
+  else: fallback_dirs = []
+  cache = Cache(dir=data_dir+"/nc_cache", fallback_dirs=fallback_dirs, global_prefix=data_name+"_")
+
+  experiment = data_interface(data_dir, name=data_name, title='%s (%s)'%(desc,data_name), color=color, cache=cache)
+  print "title:", experiment.title
 
 quit()
 
