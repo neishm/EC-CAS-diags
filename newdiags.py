@@ -137,6 +137,26 @@ history_file = open(outdir+"/history.txt","a")
 history_file.write("=== %s ===\n"%datetime.now())
 history_file.write(" ".join(argv)+"\n\n")
 
+# Separate out the data into model and obs datasets
+from common import have_gridded_data, have_station_data
+model_datasets = []
+obs_datasets = []
+for dataset in datasets:
+  #                                    VVV No, this isn't confusing at all...
+  if any(have_gridded_data(d) for d in dataset.data.datasets):
+    model_datasets.append(dataset)
+  elif any(have_station_data(d) for d in dataset.data.datasets):
+    obs_datasets.append(dataset)
+  else:
+    print "Don't know what to do about %s"%dataset.name
+
+print "model datasets:"
+for dataset in model_datasets:
+  print dataset.name
+print "obs datasets:"
+for dataset in obs_datasets:
+  print dataset.name
+
 quit()
 #TODO
 

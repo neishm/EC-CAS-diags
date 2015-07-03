@@ -535,6 +535,13 @@ def have_gridded_data (varlist):
     if var.hasaxis(Lat) and var.hasaxis(Lon): return True
   return False
 
+# Check if we have station data.
+def have_station_data (varlist):
+  from eccas_diags.station_data import Station
+  for var in varlist:
+    if var.hasaxis(Station): return True
+  return False
+
 
 # Command-line argument parsing - helper classes
 
