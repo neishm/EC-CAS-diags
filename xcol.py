@@ -6,11 +6,9 @@
 # Compute total column of a tracer
 # (in kg/m2)
 def totalcolumn (model, fieldname):
-  from common import convert, grav as g, number_of_levels, number_of_timesteps
+  from common import find_and_convert, grav as g, number_of_levels, number_of_timesteps
 
-  c, dp = model.data.find_best([fieldname,'dp'], maximize=(number_of_levels,number_of_timesteps))
-  c = convert(c, 'kg kg(air)-1')
-  dp = convert(dp, 'Pa')
+  c, dp = find_and_convert (model, [fieldname,'dp'], ['kg kg(air)-1', 'Pa'], maximize=(number_of_levels,number_of_timesteps))
 
   # Integrate
   data = (c*dp).sum('zaxis') / g
@@ -22,9 +20,10 @@ def totalcolumn (model, fieldname):
 
 
 # Compute average column of a tracer
-def avgcolumn (model, fieldname):
-  from common import number_of_levels, number_of_timesteps
-  c, dp = model.data.find_best([fieldname,'dp'], maximize=(number_of_levels,number_of_timesteps))
+def avgcolumn (model, fieldname, units):
+  from common import find_and_convert, number_of_levels, number_of_timesteps
+  c, dp = find_and_convert(model, [fieldname,'dp'], [units,'Pa'], maximize=(number_of_levels,number_of_timesteps))
+
   data = (c*dp).sum('zaxis') / dp.sum('zaxis')
   data.name = fieldname
   if 'units' in c.atts:
@@ -40,7 +39,7 @@ def avgcolumn (model, fieldname):
 def get_xcol (experiment, fieldname, units):
   from common import rotate_grid, convert
 
-  xcol = avgcolumn(experiment, fieldname)
+  xcol = avgcolumn(experiment, fieldname, units)
 
   # Rotate the longitudes to 0,360
   if xcol.lon[1] < 0:

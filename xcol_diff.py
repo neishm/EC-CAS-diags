@@ -6,7 +6,7 @@
 # Compute total column of a tracer
 # (in kg/m2)
 
-from xcol import totalcolumn, avgcolumn, get_xcol
+from xcol import get_xcol
 
 def xcol_diff (models, fieldname, units, outdir):
   from movie import ContourMovie

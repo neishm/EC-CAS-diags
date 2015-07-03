@@ -10,9 +10,9 @@ def movie_zonal_diff (models, fieldname, units, outdir, zaxis='gph'):
   shape = (1,len(models)+1)
 
   if zaxis == 'gph':
-    fields = [zonalmean_gph(m,fieldname) for m in models]
+    fields = [zonalmean_gph(m,fieldname,units) for m in models]
   else:
-    fields = [zonalmean_pres(m,fieldname) for m in models]
+    fields = [zonalmean_pres(m,fieldname,units) for m in models]
 
   # Unit conversion
   fields = [convert(f,units) for f in fields]

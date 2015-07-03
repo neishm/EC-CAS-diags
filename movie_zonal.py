@@ -1,12 +1,11 @@
 # Convert zonal mean data (on height)
-def zonalmean_gph (model, fieldname):
+def zonalmean_gph (model, fieldname, units):
   from pygeode.interp import interpolate
   from pygeode.axis import Height
-  from common import convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
+  from common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
   import numpy as np
 
-  var, z = model.data.find_best([fieldname,'geopotential_height'], maximize=(number_of_levels,number_of_timesteps))
-  z = convert(z,'m')
+  var, z = find_and_convert(model, [fieldname,'geopotential_height'], [units,'m'], maximize=(number_of_levels,number_of_timesteps))
 
   height = Height(range(68), name='height')
 
@@ -34,14 +33,13 @@ def zonalmean_gph (model, fieldname):
 
 
 # Convert zonal mean data (on pressure levels)
-def zonalmean_pres (model, fieldname):
+def zonalmean_pres (model, fieldname, units):
   from pygeode.interp import interpolate
   from pygeode.axis import Pres
-  from common import convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
+  from common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
   import numpy as np
 
-  var, p = model.data.find_best([fieldname,'air_pressure'], maximize=(number_of_levels,number_of_timesteps))
-  p = convert(p,'hPa')
+  var, p = find_and_convert(model, [fieldname,'air_pressure'], [units,'hPa'], maximize=(number_of_levels,number_of_timesteps))
 
   pres = Pres(np.exp(np.linspace(np.log(1000),np.log(.1),100)), name='pressure')
 
@@ -87,8 +85,6 @@ del ContourMovie
 
 def movie_zonal (models, fieldname, units, outdir, zaxis='gph'):
 
-  from common import convert
-
   assert zaxis in ('gph','plev')
 
   models = [m for m in models if m is not None]
@@ -98,12 +94,9 @@ def movie_zonal (models, fieldname, units, outdir, zaxis='gph'):
   shape = (1,len(models))
 
   if zaxis == 'gph':
-    fields = [zonalmean_gph(m,fieldname) for m in models]
+    fields = [zonalmean_gph(m,fieldname,units) for m in models]
   else:
-    fields = [zonalmean_pres(m,fieldname) for m in models]
-
-  # Unit conversion
-  fields = [convert(f,units) for f in fields]
+    fields = [zonalmean_pres(m,fieldname,units) for m in models]
 
   subtitles = [m.title for m in models]
 
