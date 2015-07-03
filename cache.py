@@ -93,7 +93,7 @@ class Cache (object):
 
 
   # Write out the data
-  def write (self, var, prefix, **kwargs):
+  def write (self, var, prefix, split_time=None):
     from os.path import exists
     from os import remove
     from pygeode.formats import netcdf
@@ -102,7 +102,7 @@ class Cache (object):
     from common import fix_timeaxis
     import numpy as np
 
-    split_time = kwargs.get('split_time',self.split_time)
+    if split_time is None: split_time = self.split_time
 
     # Make sure the data is saved with a consistent start date
     # (makes it easier to plot timeseries data from multiple sources)
