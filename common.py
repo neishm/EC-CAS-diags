@@ -115,7 +115,7 @@ def find_and_convert (product, fieldnames, units, **conditions):
       missing_factor.append((n,c,-e))
     scale, missing_factor = _canonical_form(missing_factor, context, table=table)
 
-    if set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]) or set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]):
+    if set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]) or set(missing_factor) == set([('g','dry_air',-1),('g','air',1)]):
       need_q = True
 
   if need_q:
