@@ -95,7 +95,7 @@ class Cache (object):
   # Write out the data
   def write (self, var, prefix, split_time=None):
     from os.path import exists
-    from os import remove
+    from os import remove, mkdir
     from pygeode.formats import netcdf
     from pygeode.formats.multifile import open_multi
     from pygeode.dataset import asdataset
@@ -194,9 +194,9 @@ class Cache (object):
         for i, datestring in enumerate(datestrings):
           pbar.update(i*100./len(datestrings))
 
-          filename = self.full_path(prefix+"_"+datestring+".nc")
+          filename = self.full_path(prefix+"_split/"+prefix+"_"+datestring+".nc")
           if exists(filename): continue
-          filename = self.full_path(prefix+"_"+datestring+".nc", writeable=True)
+          filename = self.full_path(prefix+"_split/"+prefix+"_"+datestring+".nc", writeable=True)
 
           # Save the data
           data = asdataset([var(i_time=i)])
@@ -212,7 +212,7 @@ class Cache (object):
         pbar.update(100)
 
         # Re-query for the files
-        filenames = [self.full_path(prefix+"_"+datestring+".nc", existing=True) for datestring in datestrings]
+        filenames = [self.full_path(prefix+"_split/"+prefix+"_"+datestring+".nc", existing=True) for datestring in datestrings]
 
         # Open the many small files
         var = open_multi(filenames, format=netcdf, pattern="_"+pattern+"\.nc")[var.name]
@@ -272,7 +272,8 @@ class Cache (object):
   def full_path (self, name, existing=False, writeable=False):
     filename = self.global_prefix + name
 
-    from os.path import exists
+    from os.path import exists, dirname
+    from os import mkdir
 
     dirs=[]
     # Look at the writeable directory first (if it exists)
@@ -293,6 +294,10 @@ class Cache (object):
     # Otherwise, we need somewhere to write a new file.
     if self.write_dir is None:
       raise CacheWriteError ("Nowhere to write '%s'"%filename)
+
+    # Do we need to make a subdirectory?
+    if not exists(dirname(self.write_dir+filename)):
+      mkdir(dirname(self.write_dir+filename))
 
     return self.write_dir+filename
 
