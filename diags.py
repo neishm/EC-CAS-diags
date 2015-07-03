@@ -255,20 +255,17 @@ except Exception as e:
 from eccas_diags.totalmass import totalmass
 # Total mass CO2
 try:
-  totalmass (models=[experiment,None,control], fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
   totalmass (models=[experiment,None,control], fieldname='CO2', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass CO2', e])
 # Total mass CFF
 try:
-  totalmass (models=[experiment,carbontracker,control], fieldname='CO2_fossil', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
   totalmass (models=[experiment,carbontracker,control], fieldname='CO2_fossil', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass CO2_fossil', e])
 from eccas_diags.totalmass_diff import totalmass_diff
 # Total mass CO2 difference
 try:
-  totalmass_diff (models=[experiment,control], fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
   totalmass_diff (models=[experiment,control], fieldname='CO2', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass_diff CO2', e])
