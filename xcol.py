@@ -15,6 +15,9 @@ def totalcolumn (model, fieldname):
   data.name = fieldname
   data.atts['units'] = 'kg m-2'
 
+  if 'specie' in c.atts:
+    data.atts['specie'] = c.atts['specie']
+
   # Cache the data
   return model.cache.write(data,prefix="totalcolumn_"+fieldname)
 
@@ -28,6 +31,8 @@ def avgcolumn (model, fieldname, units):
   data.name = fieldname
   if 'units' in c.atts:
     data.atts['units'] = c.atts['units']
+  if 'specie' in c.atts:
+    data.atts['specie'] = c.atts['specie']
 
   # Cache the data
   return model.cache.write(data,prefix="avgcolumn_"+fieldname)

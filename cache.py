@@ -16,6 +16,10 @@ def domain_hash (var):
   if 'units' in var.atts:
     data.append(var.atts['units'])
 
+  # Append specie name (if applicable).
+  if 'specie' in var.atts:
+    data.append(var.atts['specie'])
+
   # Convert to a bytestream
   data = pickle.dumps(data)
 
