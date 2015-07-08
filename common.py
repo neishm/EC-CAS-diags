@@ -537,9 +537,8 @@ def have_gridded_data (varlist):
 
 # Check if we have station data.
 def have_station_data (varlist):
-  from eccas_diags.station_data import Station
   for var in varlist:
-    if var.hasaxis(Station): return True
+    if var.hasaxis("station"): return True
   return False
 
 
