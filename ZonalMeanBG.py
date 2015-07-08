@@ -66,7 +66,7 @@ def movie_bargraph (models, height, fieldname, units, outdir):
 
   prefix = "ZonalMeanBG-images_%s_%s"%('_'.join(m.name for m in models), fieldname)
 
-  fields = [zonalmean_gph(m,fieldname) for m in models]
+  fields = [zonalmean_gph(m,fieldname,units) for m in models]
   fields = [f(height=height) for f in fields]
 
   # Unit conversion

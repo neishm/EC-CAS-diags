@@ -55,7 +55,7 @@ def movie_CvH (models, fieldname, units, outdir):
   #Names of each model - For plot titles later
   subtitles = ['Average CO$_{2}$ Concentration - %s'%(m.name) for m in models]
 
-  fields = [zonalmean_gph(m,fieldname) for m in models]
+  fields = [zonalmean_gph(m,fieldname,units) for m in models]
 
   # Unit conversion
   fields = [convert(f,units) for f in fields]
