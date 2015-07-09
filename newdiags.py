@@ -137,61 +137,39 @@ history_file = open(outdir+"/history.txt","a")
 history_file.write("=== %s ===\n"%datetime.now())
 history_file.write(" ".join(argv)+"\n\n")
 
-# Separate out the data into model and obs datasets
-from common import have_gridded_data, have_station_data
-model_datasets = []
-obs_datasets = []
-for dataset in datasets:
-  #                                    VVV No, this isn't confusing at all...
-  if any(have_gridded_data(d) for d in dataset.data.datasets):
-    model_datasets.append(dataset)
-  elif any(have_station_data(d) for d in dataset.data.datasets):
-    obs_datasets.append(dataset)
-  else:
-    print "Don't know what to do about %s"%dataset.name
-
-print "model datasets:"
-for dataset in model_datasets:
-  print dataset.name
-print "obs datasets:"
-for dataset in obs_datasets:
-  print dataset.name
-
-quit()
-#TODO
-
 # Some standard diagnostics
 failures = []
 
-from eccas_diags.timeseries import timeseries
+from eccas_diags import timeseries
 # CO2 Timeseries
 try:
-  timeseries (models=[experiment,control], obs=ec_obs, fieldname='CO2', units='ppm', outdir=outdir)
-  timeseries (models=[experiment,control], obs=gaw_obs, fieldname='CO2', units='ppm', outdir=outdir)
+  timeseries.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['CO2 timeseries', e])
 # CH4 Timeseries
 try:
-  timeseries (models=[experiment,control], obs=ec_obs, fieldname='CH4', units='ppb', outdir=outdir)
+  timeseries.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['CH4 timeseries', e])
-
-from eccas_diags.movie_zonal import movie_zonal
+"""
+from eccas_diags import movie_zonal
 # CO2 Zonal mean movies
 try:
-  movie_zonal(models=[experiment,control,carbontracker], fieldname='CO2', units='ppm', outdir=outdir)
+  movie_zonal.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['CO2 movie_zonal', e])
 # CO2 Zonal mean of spread
 try:
-  movie_zonal(models=[experiment,control], fieldname='CO2_ensemblespread', units='ppm', outdir=outdir)
+  movie_zonal.do_all(datasets, fieldname='CO2_ensemblespread', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['CO2 movie_zonal spread', e])
 # CH4 Zonal mean movies
 try:
-  movie_zonal(models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)
+  movie_zonal.do_all(datasets, fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['CH4 movie_zonal', e])
+#"""
+"""
 from eccas_diags.movie_zonal_diff import movie_zonal_diff
 # CO2 Zonal mean movies
 try:
@@ -401,7 +379,7 @@ except Exception as e:
 
 #----------------End of Jake's Diags--------------------
 
-
+#"""
 # Report any diagnostics that failed to run
 if len(failures) > 0:
   print "WARNING:"

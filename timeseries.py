@@ -1,5 +1,18 @@
 # Timeseries diagnostic
 
+def do_all (inputs, fieldname, units, outdir):
+  from common import have_gridded_data, have_station_data
+  model_inputs = []
+  obs_inputs = []
+  for x in inputs:
+    if any(fieldname in d and have_gridded_data(d) for d in x.data.datasets):
+      model_inputs.append(x)
+    elif any(fieldname in d and have_station_data(d) for d in x.data.datasets):
+      obs_inputs.append(x)
+  for obs in obs_inputs:
+    timeseries (obs, model_inputs, fieldname, units, outdir)
+
+
 # This method computes the surface values of a model dataset
 def get_sfc_data (model, fieldname):
   from common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps

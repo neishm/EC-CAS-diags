@@ -1,3 +1,13 @@
+def do_all (inputs, fieldname, units, outdir):
+  from common import have_gridded_data
+  models = []
+  for x in inputs:
+    if any (fieldname in d and have_gridded_data(d) for d in x.data.datasets):
+      models.append(x)
+  if len(models) == 0:
+    raise ValueError("No inputs match the criteria.")
+  movie_zonal(models, fieldname, units, outdir)
+
 # Convert zonal mean data (on height)
 def zonalmean_gph (model, fieldname):
   from pygeode.interp import interpolate
