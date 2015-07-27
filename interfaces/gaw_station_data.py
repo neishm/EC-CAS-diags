@@ -39,7 +39,7 @@ class GAW_Station_Data(StationObsProduct):
         if line.startswith('C24 TIME ZONE: '):
           fudge = search("UTC(.*)",line).group(1)
           if fudge == "": fudge = "0"
-          fudge = timedelta(hours=-int(fudge))
+          tz_fudge = timedelta(hours=-int(fudge))
 
         if line.startswith('C'):
           comments.append(line)
@@ -47,6 +47,7 @@ class GAW_Station_Data(StationObsProduct):
           date1, time1, date2, time2, co2, nd, sd, f, cs, rem = line.split()
 
           # In what universe does 24-hour time go from 1:00 to 24:00????
+          fudge = tz_fudge
           if time1 == '24:00':
             time1 = '23:00'
             fudge = fudge + timedelta(hours=1)
