@@ -1,4 +1,4 @@
-def do_all (inputs, fieldname, units, outdir):
+def find_applicable_models (inputs, fieldname):
   from common import have_gridded_data
   models = []
   for x in inputs:
@@ -6,7 +6,11 @@ def do_all (inputs, fieldname, units, outdir):
       models.append(x)
   if len(models) == 0:
     raise ValueError("No inputs match the criteria.")
-  movie_zonal(models, fieldname, units, outdir)
+  return models
+
+def do_all (inputs, fieldname, units, outdir, **kwargs):
+  models = find_applicable_models(inputs, fieldname)
+  movie_zonal(models, fieldname, units, outdir, **kwargs)
 
 # Convert zonal mean data (on height)
 def zonalmean_gph (model, fieldname):

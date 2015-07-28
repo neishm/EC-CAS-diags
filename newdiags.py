@@ -151,7 +151,7 @@ try:
   timeseries.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['CH4 timeseries', e])
-"""
+
 from eccas_diags import movie_zonal
 # CO2 Zonal mean movies
 try:
