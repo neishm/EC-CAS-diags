@@ -1,3 +1,20 @@
+def get_lats (model):
+  if len(model.data.datasets) == 0:
+    raise ValueError("No data in %s"%model.name)
+  lats = set(tuple(v.lat.values) for d in model.data.datasets for v in d if v.hasaxis('lat'))
+  if len(lats) == 0: raise ValueError("No gridded data in %s"%model.name)
+  if len(lats) > 1: raise ValueError("Multiple grids found in %s"%model.name)
+  return lats.pop()
+
+def do_all (datasets, fieldname, units, outdir, **kwargs):
+  from movie_zonal import find_applicable_models
+  models = find_applicable_models(datasets, fieldname)
+  n = len(models)
+  for i in range(n):
+    for j in range(i+1,n):
+      if get_lats(models[i]) == get_lats(models[j]):
+        movie_zonal_diff([models[i],models[j]], fieldname, units, outdir, **kwargs)
+
 def movie_zonal_diff (models, fieldname, units, outdir, zaxis='gph'):
 
   from common import convert, same_times
