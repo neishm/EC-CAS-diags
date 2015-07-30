@@ -7,6 +7,25 @@
 # (in kg/m2)
 
 from xcol import totalcolumn, avgcolumn, get_xcol
+from movie_zonal_diff import get_lats
+
+def get_lons (model):
+  if len(model.data.datasets) == 0:
+    raise ValueError("No data in %s"%model.name)
+  lons = set(tuple(v.lon.values) for d in model.data.datasets for v in d if v.hasaxis('lon'))
+  if len(lons) == 0: raise ValueError("No gridded data in %s"%model.name)
+  if len(lons) > 1: raise ValueError("Multiple grids found in %s"%model.name)
+  return lons.pop()
+
+def do_all (datasets, fieldname, units, outdir, **kwargs):
+  from xcol import find_applicable_models
+  models = find_applicable_models(datasets, fieldname)
+  n = len(models)
+  for i in range(n):
+    for j in range(i+1,n):
+      if get_lats(models[i]) == get_lats(models[j]) and get_lons(models[i]) == get_lons(models[j]):
+        xcol_diff([models[i],models[j]], fieldname, units, outdir, **kwargs)
+
 
 def xcol_diff (models, fieldname, units, outdir):
   from movie import ContourMovie

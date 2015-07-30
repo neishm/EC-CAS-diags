@@ -190,86 +190,88 @@ try:
   shortexper_diffcheck (models=[experiment,control], obs=ec_obs, location="Toronto", outdir=outdir)
 except Exception as e:
   failures.append(['diffcheck', e])
+"""
 
-from eccas_diags.xcol import xcol
-from eccas_diags.xcol_enkf import xcol_enkf
-from eccas_diags.xcol_diff import xcol_diff
+from eccas_diags import xcol
+from eccas_diags import xcol_enkf
+from eccas_diags import xcol_diff
 # XCO2
 try:
-  xcol (models=[experiment,control,carbontracker], fieldname='CO2', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCO2', e])
 # XCO2 diff movies
 try:
-  xcol_diff (models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir)
+  xcol_diff.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCO2_diff', e])
 # XH2O
 try:
-  xcol (models=[experiment,control,None], fieldname='H2O', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='H2O', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XH2O', e])
 # Average column of stats
 try:
-  xcol_enkf (model=experiment, fieldname='CO2', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCO2 enkf', e])
 # XCO2B
 try:
-  xcol (models=[experiment,control,carbontracker], fieldname='CO2_background', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2_background', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCO2B', e])
 # Average column of stats
 try:
-  xcol_enkf (model=experiment, fieldname='CO2_background', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2_background', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCO2B enkf', e])
 # XCLA
 try:
-  xcol (models=[experiment,control,carbontracker], fieldname='CO2_bio', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2_bio', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCLA', e])
 # Average column of stats
 try:
-  xcol_enkf (model=experiment, fieldname='CO2_bio', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2_bio', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCLA enkf', e])
 # XCOC
 try:
-  xcol (models=[experiment,control,carbontracker], fieldname='CO2_ocean', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2_ocean', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCOC', e])
 # Average column of stats
 try:
-  xcol_enkf (model=experiment, fieldname='CO2_ocean', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2_ocean', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCOC enkf', e])
 # XCFF
 try:
-  xcol (models=[experiment,control,carbontracker], fieldname='CO2_fossil', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2_fossil', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCFF', e])
 # Average column of stats
 try:
-  xcol_enkf (model=experiment, fieldname='CO2_fossil', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2_fossil', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCFF enkf', e])
 # XCBB
 try:
-  xcol (models=[experiment,control,carbontracker], fieldname='CO2_fire', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2_fire', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCBB', e])
 # Average column of stats
 try:
-  xcol_enkf (model=experiment, fieldname='CO2_fire', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2_fire', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['XCBB enkf', e])
 
 # XCH4
 try:
-  xcol (models=[experiment,control,None], fieldname='CH4', units='ppb', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['XCH4', e])
+"""
 
 from eccas_diags.totalmass import totalmass
 # Total mass CO2

@@ -535,6 +535,14 @@ def have_gridded_data (varlist):
     if var.hasaxis(Lat) and var.hasaxis(Lon): return True
   return False
 
+# Check if we have 3D data available (lat/lon/zaxis)
+# To be used in the find_best() method.
+def have_gridded_3d_data (varlist):
+  from pygeode.axis import Lat, Lon, ZAxis
+  for var in varlist:
+    if var.hasaxis(Lat) and var.hasaxis(Lon) and var.hasaxis(ZAxis): return True
+  return False
+
 # Check if we have station data.
 def have_station_data (varlist):
   for var in varlist:
