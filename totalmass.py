@@ -1,3 +1,11 @@
+
+from xcol import find_applicable_models
+
+def do_all (datasets, fieldname, units, outdir, **kwargs):
+  models = find_applicable_models(datasets, fieldname)
+  totalmass (models, fieldname, units, outdir, **kwargs)
+
+
 # Total mass (Pg)
 def compute_totalmass (model, fieldname):
   from common import can_convert, convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude

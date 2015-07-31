@@ -1,5 +1,14 @@
 from totalmass import compute_totalmass
 
+def do_all (datasets, fieldname, units, outdir, **kwargs):
+  from totalmass import find_applicable_models
+  models = find_applicable_models(datasets, fieldname)
+  n = len(models)
+  for i in range(n):
+    for j in range(i+1,n):
+      totalmass_diff([models[i],models[j]], fieldname, units, outdir, **kwargs)
+
+
 def totalmass_diff (models, fieldname, units, outdir, normalize_air_mass=False):
   from os.path import exists
   from common import convert, same_times

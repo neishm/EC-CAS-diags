@@ -271,45 +271,43 @@ try:
   xcol.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['XCH4', e])
-"""
 
-from eccas_diags.totalmass import totalmass
+from eccas_diags import totalmass
 # Total mass CO2
 try:
-  totalmass (models=[experiment,None,control], fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
-  totalmass (models=[experiment,None,control], fieldname='CO2', units='Pg(C)', outdir=outdir)
+  totalmass.do_all (datasets, fieldname='CO2', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass CO2', e])
 # Total mass CFF
 try:
-  totalmass (models=[experiment,carbontracker,control], fieldname='CO2_fossil', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
-  totalmass (models=[experiment,carbontracker,control], fieldname='CO2_fossil', units='Pg(C)', outdir=outdir)
+  totalmass.do_all (datasets, fieldname='CO2_fossil', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass CO2_fossil', e])
-from eccas_diags.totalmass_diff import totalmass_diff
+from eccas_diags import totalmass_diff
 # Total mass CO2 difference
 try:
-  totalmass_diff (models=[experiment,control], fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
-  totalmass_diff (models=[experiment,control], fieldname='CO2', units='Pg(C)', outdir=outdir)
+  totalmass_diff.do_all (datasets, fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
+  totalmass_diff.do_all (datasets, fieldname='CO2', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass_diff CO2', e])
 # Total mass CH4
 try:
-  totalmass (models=[experiment,None,control], fieldname='CH4', units='Pg', outdir=outdir)
+  totalmass.do_all (datasets, fieldname='CH4', units='Pg', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass CH4', e])
 # Total mass air
 try:
-  totalmass (models=[experiment,None,control], fieldname='air', units='Pg', outdir=outdir)
-  totalmass (models=[experiment,None,control], fieldname='dry_air', units='Pg', outdir=outdir)
+  totalmass.do_all (datasets, fieldname='air', units='Pg', outdir=outdir)
+  totalmass.do_all (datasets, fieldname='dry_air', units='Pg', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass air', e])
 # Total mass H2O
 try:
-  totalmass (models=[experiment,None,control], fieldname='H2O', units='Pg', outdir=outdir)
+  totalmass.do_all (datasets, fieldname='H2O', units='Pg', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass H2O', e])
 
+"""
 # Horizontal slice movie
 from eccas_diags.horz_slice_diff import horz_slice_movie
 try:
