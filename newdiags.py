@@ -307,14 +307,14 @@ try:
 except Exception as e:
   failures.append(['totalmass H2O', e])
 
-"""
 # Horizontal slice movie
-from eccas_diags.horz_slice_diff import horz_slice_movie
+from eccas_diags import horz_slice_diff
 try:
-  horz_slice_movie(models=[experiment,control], fieldname='CO2', level="1.0", units='ppm', outdir=outdir) 
+  horz_slice_diff.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, level="1.0")
 except Exception as e:
   failures.append(['horz_slice_movie', e])
 
+"""
 #-------------------Jake's Diags------------------------
 
 from eccas_diags.concentration_v_height import movie_CvH

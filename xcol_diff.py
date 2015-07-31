@@ -17,8 +17,9 @@ def get_lons (model):
   if len(lons) > 1: raise ValueError("Multiple grids found in %s"%model.name)
   return lons.pop()
 
+from xcol import find_applicable_models
+
 def do_all (datasets, fieldname, units, outdir, **kwargs):
-  from xcol import find_applicable_models
   models = find_applicable_models(datasets, fieldname)
   n = len(models)
   for i in range(n):
