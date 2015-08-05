@@ -314,63 +314,63 @@ try:
 except Exception as e:
   failures.append(['horz_slice_movie', e])
 
-"""
 #-------------------Jake's Diags------------------------
 
-from eccas_diags.concentration_v_height import movie_CvH
+from eccas_diags import concentration_v_height
 try:
-  movie_CvH(models=[experiment,control],fieldname='CO2', units='ppm', outdir=outdir)
+  concentration_v_height.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['concentration vs. height', e])
 
-from eccas_diags.FluxDiagnostic import movie_flux
+from eccas_diags import FluxDiagnostic
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='BG')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='BG')
 except Exception as e:
   failures.append(['Flux Diagnostic - Bar Graph', e])
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='BG')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='BG')
 except Exception as e:
   failures.append(['Flux Diagnostic - Bar Graph', e])
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='Map')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='Map')
 except Exception as e:
   failures.append(['Flux Diagnostic - Map', e])
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='Map')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='Map')
 except Exception as e:
   failures.append(['Flux Diagnostic - Map', e])
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='MeanMap')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='MeanMap')
 except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 try:
-  movie_flux(models=[experiment], fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='MeanMap')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='MeanMap')
 except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 
 
 from eccas_diags import TimeSeriesHist as TSH
 try:
-  TSH.timeseries(models=[experiment],obs=ec_obs,fieldname='CO2', units='ppm', outdir=outdir)
+  TSH.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['timeseries histogram', e])
 
 from eccas_diags import TimeSeriesAlternate as TSA
 try:
-  TSA.timeseries(models=[experiment],obs=ec_obs,fieldname='CO2', units='ppm', outdir=outdir)
+  TSA.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['time series alternate', e])
 
-from eccas_diags.TimeSeriesRBP import Barplot
+from eccas_diags import TimeSeriesRBP
 try:
-  Barplot(models=[experiment,control], obs=gaw_obs,fieldname='CO2', units='ppm', outdir=outdir)
+  TimeSeriesRBP.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['time series rbp', e])
+  raise
 
-from eccas_diags.ZonalMeanBG import movie_bargraph
+from eccas_diags import ZonalMeanBG
 try:
-  movie_bargraph(models=[experiment,control], height=0,fieldname='CO2', units='ppm', outdir=outdir)
+  ZonalMeanBG.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir, height=0)
 except Exception as e:
   failures.append(['zonal mean bargraph', e])
 
@@ -378,7 +378,6 @@ except Exception as e:
 
 #----------------End of Jake's Diags--------------------
 
-#"""
 # Report any diagnostics that failed to run
 if len(failures) > 0:
   print "WARNING:"

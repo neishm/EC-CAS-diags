@@ -1,6 +1,22 @@
-# CO2 timeseries
+# regional bar plots
 
-def Barplot (models, obs, fieldname, units, outdir, plot_months=None,ymin=350,ymax=420):
+from timeseries import find_applicable_models
+
+def find_applicable_obs (inputs, fieldname):
+  from common import have_station_data
+  obs_inputs = []
+  for x in inputs:
+    if x.name == 'GAW-2014':
+      obs_inputs.append(x)
+  return obs_inputs
+
+def do_all (inputs, fieldname, units, outdir, **kwargs):
+  model_inputs = find_applicable_models(inputs, fieldname)
+  obs_inputs = find_applicable_obs(inputs, fieldname)
+  for obs in obs_inputs:
+    Barplot (obs, model_inputs, fieldname, units, outdir, **kwargs)
+
+def Barplot (obs, models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=420):
 
   from plot_shortcuts import plot, plot_stdfill
   from plot_wrapper import Multiplot, Legend, Overlay, Text

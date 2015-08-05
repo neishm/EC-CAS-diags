@@ -1,3 +1,18 @@
+
+def find_applicable_models (inputs, fieldname):
+  from common import have_gridded_data
+  models = []
+  for x in inputs:
+    if any (fieldname+'_flux' in d and have_gridded_data(d) for d in x.data.datasets):
+      models.append(x)
+  if len(models) == 0:
+    raise ValueError("No inputs match the criteria.")
+  return models
+
+def do_all (datasets, fieldname, units, outdir, **kwargs):
+  models = find_applicable_models(datasets, fieldname)
+  movie_flux (models, fieldname, units, outdir, **kwargs)
+
 # Get a flux product for the given experiment and tracer name.
 def get_flux (model, fieldname):
   from common import convert, number_of_timesteps, remove_repeated_longitude
