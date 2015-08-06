@@ -44,6 +44,16 @@ class DataProduct (object):
   def find_files (dirname):
     raise NotImplementedError
 
+  # Method to find a unique identifying string for this dataset, from the
+  # given directory name.
+  @staticmethod
+  def get_dataname (dirname):
+    import os
+    dirs = dirname.split(os.sep)
+    # Default behaviour - return the lowest directory name
+    return dirs[-1]
+
+
   # Method to find all relevant files for the given patterns.
   # Evaluates globbing patterns, and searches directories.
   def expand_files (self, files):
@@ -113,11 +123,12 @@ class DataProduct (object):
 
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
-  def __init__ (self, files, name=None, title=None, cache=None):
+  def __init__ (self, files, name=None, title=None, color=None, cache=None):
     from .data_interface import DataInterface
     from .data_scanner import from_files
     self.name = name
     self.title = title
+    self.color = color
     self.cache = cache
     if cache is not None:
       manifest = cache.full_path("manifest", writeable=True)

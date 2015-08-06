@@ -1,4 +1,4 @@
-from .eccas import ECCAS_Data
+from .eccas_dry import ECCAS_Data
 
 class ECCAS_Flux_Data(ECCAS_Data):
 

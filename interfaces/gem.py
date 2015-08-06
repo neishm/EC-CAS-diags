@@ -164,6 +164,16 @@ class GEM_Data(DataProduct):
 
     return data
 
+  # Method to find a unique identifying string for this dataset, from the
+  # given directory name.
+  @staticmethod
+  def get_dataname (dirname):
+    import os
+    dirs = dirname.split(os.sep)
+    if dirs[-1] in ('model','pressure','timeseries'):
+      dirs = dirs[:-1]
+    return dirs[-1]
+
 
   # Method to write data to file(s).
   @classmethod

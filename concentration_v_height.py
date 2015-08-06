@@ -1,4 +1,10 @@
 
+from movie_zonal import find_applicable_models
+
+def do_all (inputs, fieldname, units, outdir, **kwargs):
+  models = find_applicable_models(inputs, fieldname)
+  movie_CvH(models, fieldname, units, outdir, **kwargs)
+
 from movie import TiledMovie
 class CvH_Movie(TiledMovie):
   def render_panel (self, ax, data, n):

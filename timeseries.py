@@ -1,5 +1,28 @@
 # Timeseries diagnostic
 
+def find_applicable_obs (inputs, fieldname):
+  from common import have_station_data
+  obs_inputs = []
+  for x in inputs:
+    if any(fieldname in d and have_station_data(d) for d in x.data.datasets):
+      obs_inputs.append(x)
+  return obs_inputs
+
+def find_applicable_models (inputs, fieldname):
+  from common import have_gridded_data
+  model_inputs = []
+  for x in inputs:
+    if any(fieldname in d and have_gridded_data(d) for d in x.data.datasets):
+      model_inputs.append(x)
+  return model_inputs
+
+def do_all (inputs, fieldname, units, outdir, **kwargs):
+  model_inputs = find_applicable_models(inputs, fieldname)
+  obs_inputs = find_applicable_obs(inputs, fieldname)
+  for obs in obs_inputs:
+    timeseries (obs, model_inputs, fieldname, units, outdir, **kwargs)
+
+
 # This method computes the surface values of a model dataset
 def get_sfc_data (model, fieldname):
   from common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
@@ -93,10 +116,14 @@ def timeseries (obs, models, fieldname, units, outdir, plot_months=None):
 
   from common import convert, select_surface
 
-  model_line_colours = ['blue', 'red']
-  obs_line_colour = 'green'
-
   models = [m for m in models if m is not None]
+
+  if obs.color is not None:
+    model_line_colours = [m.color for m in models]
+    obs_line_colour = obs.color
+  else:
+    model_line_colours = ['blue', 'red']
+    obs_line_colour = 'green'
 
   model_data = []
   model_spread = []

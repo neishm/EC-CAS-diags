@@ -176,6 +176,16 @@ class GEOSCHEM_Data(DataProduct):
     from glob import glob
     return glob(dirname+"/*.nc")  # Match any netcdf files in this directory.
 
+  # Method to find a unique identifying string for this dataset, from the
+  # given directory name.
+  @staticmethod
+  def get_dataname (dirname):
+    import os
+    dirs = dirname.split(os.sep)
+    if dirs[-1] == 'timeseries':
+      dirs = dirs[:-1]
+    return dirs[-1]
+
 
 # Add this interface to the table.
 from . import table

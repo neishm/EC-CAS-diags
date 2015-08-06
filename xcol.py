@@ -3,6 +3,20 @@
 # Note: we aren't using any averaging kernal for this, so it's not directly
 # comparable to satellite observations.
 
+def find_applicable_models (inputs, fieldname):
+  from common import have_gridded_3d_data
+  models = []
+  for x in inputs:
+    if any (fieldname in d and have_gridded_3d_data(d) for d in x.data.datasets):
+      models.append(x)
+  if len(models) == 0:
+    raise ValueError("No inputs match the criteria.")
+  return models
+
+def do_all (datasets, fieldname, units, outdir, **kwargs):
+  models = find_applicable_models(datasets, fieldname)
+  xcol (models, fieldname, units, outdir, **kwargs)
+
 # Compute total column of a tracer
 # (in kg/m2)
 def totalcolumn (model, fieldname):

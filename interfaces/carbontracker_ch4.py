@@ -147,6 +147,19 @@ class CTCH4_Data(DataProduct):
     from glob import glob
     return glob(dirname+"/????????.nc")
 
+  # Method to find a unique identifying string for this dataset, from the
+  # given directory name.
+  @staticmethod
+  def get_dataname (dirname):
+    from os import path
+    dirname = path.normpath(dirname)
+    if path.basename(dirname) in ('molefractions', 'fluxes'):
+      dirname = path.dirname(dirname)
+    name = path.basename(dirname)
+    if name.upper().startswith('CT'): return name
+    return None
+
+
 # Add this interface to the table.
 from . import table
 table['carbontracker-ch4'] = CTCH4_Data

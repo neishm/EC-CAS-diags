@@ -5,8 +5,14 @@ It is important to note that the model histogram will consist of a full year's d
 Whereas the observations may only exist for one season, causing them to look much different.
 """
 
-def timeseries (models, obs, fieldname, units, outdir, plot_months=None,timefilter=None):
+from timeseries import find_applicable_obs, find_applicable_models
+def do_all (inputs, fieldname, units, outdir, **kwargs):
+  model_inputs = find_applicable_models(inputs, fieldname)
+  obs_inputs = find_applicable_obs(inputs, fieldname)
+  for obs in obs_inputs:
+    timeseries (obs, model_inputs, fieldname, units, outdir, **kwargs)
 
+def timeseries (obs, models, fieldname, units, outdir, plot_months=None,timefilter=None):
   from plot_wrapper import Multiplot, Legend, Overlay, Text,Histogram
   import matplotlib.pyplot as pl
   import matplotlib as mpl
@@ -139,7 +145,7 @@ def timeseries (models, obs, fieldname, units, outdir, plot_months=None,timefilt
     Means.append(LocalMeans)
     MaxMins.append(LocalMaxMin)
 
-    theplot = Overlay (*parts, title=title.decode('latin-1'),xlabel='CO2 (ppm)', ylabel='Occurrences')
+    theplot = Overlay (*parts, title=title.decode('latin-1'),xlabel='%s (%s)'%(fieldname,units), ylabel='Occurrences')
     plots.append (theplot)
 
   outdir = outdir + '/TimeSeriesHist-images_%s_%s'%('_'.join(d.name for d in models+[obs]),fieldname)

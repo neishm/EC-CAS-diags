@@ -1,6 +1,13 @@
-# CO2 timeseries
+# timeseries with difference plot
 
-def timeseries (models, obs, fieldname, units, outdir, plot_months=None,timefilter=None):
+from timeseries import find_applicable_obs, find_applicable_models
+def do_all (inputs, fieldname, units, outdir, **kwargs):
+  model_inputs = find_applicable_models(inputs, fieldname)
+  obs_inputs = find_applicable_obs(inputs, fieldname)
+  for obs in obs_inputs:
+    timeseries (obs, model_inputs, fieldname, units, outdir, **kwargs)
+
+def timeseries (obs, models, fieldname, units, outdir, plot_months=None,timefilter=None):
 
   from plot_shortcuts import plot, plot_stdfill
   from plot_wrapper import Multiplot, Legend, Overlay, Text, TwinX
@@ -16,10 +23,14 @@ def timeseries (models, obs, fieldname, units, outdir, plot_months=None,timefilt
 
   from timeseries import sample_model_at_obs
 
-  model_line_colours = ['blue', 'red']
-  obs_line_colour = 'green'
-
   models = [m for m in models if m is not None]
+
+  if obs.color is not None:
+    model_line_colours = [m.color for m in models]
+    obs_line_colour = obs.color
+  else:
+    model_line_colours = ['blue', 'red']
+    obs_line_colour = 'green'
 
   model_data = []
   model_spread = []

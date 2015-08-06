@@ -70,7 +70,7 @@ if control_dir is not None and exists(control_dir+"/model"):
 from eccas_diags.cache import Cache
 
 from eccas_diags import interfaces
-if args.dry_air: eccas = interfaces.table['eccas']
+if args.dry_air: eccas = interfaces.table['eccas-dry']
 else: eccas = interfaces.table['eccas-moist']
 eccas_flux = interfaces.table['eccas-flux']
 
@@ -90,7 +90,7 @@ else:
   control = None
 
 # CarbonTracker data
-carbontracker = interfaces.table['carbontracker'](["/wrk1/EC-CAS/CarbonTracker/molefractions","/wrk1/EC-CAS/CarbonTracker/fluxes"], name='CT2010', title='CarbonTracker', cache=Cache('/wrk1/EC-CAS/CarbonTracker/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CT2010_'))
+carbontracker = interfaces.table['carbontracker'](["/wrk1/EC-CAS/CarbonTracker"], name='CT2010', title='CarbonTracker', cache=Cache('/wrk1/EC-CAS/CarbonTracker/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CT2010_'))
 carbontracker_ch4 = interfaces.table['carbontracker-ch4']("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc", name='CTCH42010', title='CarbonTracker', cache=Cache('/wrk6/eltonc/ct_ch4/molefractions/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CTCH42010_'))
 
 # Observation data

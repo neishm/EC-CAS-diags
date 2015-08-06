@@ -1,7 +1,23 @@
+
+def find_applicable_models (inputs, fieldname):
+  from common import have_gridded_3d_data
+  models = []
+  for x in inputs:
+    if any ((fieldname in d and have_gridded_3d_data(d)) or fieldname+'_flux' in d for d in x.data.datasets):
+      models.append(x)
+  if len(models) == 0:
+    raise ValueError("No inputs match the criteria.")
+  return models
+
+
+def do_all (datasets, fieldname, units, outdir, **kwargs):
+  models = find_applicable_models(datasets, fieldname)
+  totalmass (models, fieldname, units, outdir, **kwargs)
+
+
 # Total mass (Pg)
 def compute_totalmass (model, fieldname):
   from common import can_convert, convert, find_and_convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude
-
   specie = None
 
   # Do we have the pressure change in the vertical?
@@ -66,9 +82,12 @@ def compute_totalflux (model, fieldname):
   except ValueError:
     data, area = model.data.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
     # Convert the units, using the specified tracer name for mass conversion
+    specie = data.atts['specie']
     data = convert(data,'mol m-2 s-1')
     area = convert(area,'m2')
     data = data*area
+    data.atts['units'] = 'mol s-1'
+    data.atts['specie'] = specie
 
   # Sum, skipping the last (repeated) longitude
   data = remove_repeated_longitude(data)
@@ -103,8 +122,19 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
 
   # Find common time period
   #TODO:  a method to query the time axis from the model without needing to grab an actual diagnostic field.
-  t0 = max(compute_totalmass(m,fieldname).time.values[0] for m in models if m is not None)
-  t1 = min(compute_totalmass(m,fieldname).time.values[-1] for m in models if m is not None)
+  t0 = []
+  t1 = []
+  for m in models:
+    try:
+      t0.append(compute_totalmass(m,fieldname).time.values[0])
+      t1.append(compute_totalmass(m,fieldname).time.values[-1])
+    except Exception: pass
+    try:
+      t0.append(compute_totalflux(m,fieldname).time.values[0])
+      t1.append(compute_totalflux(m,fieldname).time.values[-1])
+    except Exception: pass
+  t0 = max(t0)
+  t1 = min(t1)
 
   # Set up whatever plots we can do
   fields = []
@@ -115,22 +145,28 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
   for i,model in enumerate(models):
     if model is None: continue
 
-    # Get model air mass, if we are normalizing the tracer mass.
-    if normalize_air_mass:
-      airmass = compute_totalmass(model,'dry_air')(time=(t0,t1)).load()
-      airmass0 = float(airmass.values[0])
+    # Check for 3D fields, compute total mass.
+    try:
+      # Get model air mass, if we are normalizing the tracer mass.
+      if normalize_air_mass:
+        airmass = compute_totalmass(model,'dry_air')(time=(t0,t1)).load()
+        airmass0 = float(airmass.values[0])
 
-    # Total mass
-    # Possibly change plot units (e.g. Pg CO2 -> Pg C)
-    mass = compute_totalmass(model,fieldname)
-    mass = convert(mass, units)
-    mass = mass(time=(t0,t1))   # Limit time period to plot
-    if normalize_air_mass:
-      mass = mass / airmass * airmass0
-    fields.append(mass)
-    colours.append(totalmass_colours[i])
-    styles.append('-')
-    labels.append(model.title)
+      # Total mass
+      # Possibly change plot units (e.g. Pg CO2 -> Pg C)
+      mass = compute_totalmass(model,fieldname)
+      mass = convert(mass, units)
+      mass = mass(time=(t0,t1))   # Limit time period to plot
+      if normalize_air_mass:
+        mass = mass / airmass * airmass0
+      fields.append(mass)
+      if model.color is not None:
+        colours.append(model.color)
+      else:
+        colours.append(totalmass_colours[i])
+      styles.append('-')
+      labels.append(model.title)
+    except KeyError: pass  # No 3D field available.
 
     # Total flux, integrated in time
     try:
@@ -139,7 +175,8 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
       flux_specie = totalflux.atts['specie']
       time = totalflux.time
 
-      # Find the closest "start" time in the flux data that aligns with the model data
+      # Find the closest "start" time in the flux data that aligns with the last model data
+      mass = fields[-1]
       try:
         tx = float(min(set(time.values) & set(mass.time.values)))
       except ValueError:   # No common timesteps between fluxes and model data?
@@ -170,7 +207,10 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
       # Limit the time period to plot
       totalflux = totalflux(time=(t0,t1))
       fields.append(totalflux)
-      colours.append(totalflux_colours[i])
+      if model.color is not None:
+        colours.append(model.color)
+      else:
+        colours.append(totalflux_colours[i])
       styles.append('-')
       labels.append('integrated flux')
     except KeyError: pass  # No flux available
