@@ -23,10 +23,14 @@ def timeseries (obs, models, fieldname, units, outdir, plot_months=None,timefilt
 
   from timeseries import sample_model_at_obs
 
-  model_line_colours = ['blue', 'red']
-  obs_line_colour = 'green'
-
   models = [m for m in models if m is not None]
+
+  if obs.color is not None:
+    model_line_colours = [m.color for m in models]
+    obs_line_colour = obs.color
+  else:
+    model_line_colours = ['blue', 'red']
+    obs_line_colour = 'green'
 
   model_data = []
   model_spread = []

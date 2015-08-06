@@ -128,6 +128,7 @@ class DataProduct (object):
     from .data_scanner import from_files
     self.name = name
     self.title = title
+    self.color = color
     self.cache = cache
     if cache is not None:
       manifest = cache.full_path("manifest", writeable=True)

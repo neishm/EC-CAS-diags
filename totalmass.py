@@ -145,7 +145,10 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
     if normalize_air_mass:
       mass = mass / airmass * airmass0
     fields.append(mass)
-    colours.append(totalmass_colours[i])
+    if model.color is not None:
+      colours.append(model.color)
+    else:
+      colours.append(totalmass_colours[i])
     styles.append('-')
     labels.append(model.title)
 
@@ -187,7 +190,10 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
       # Limit the time period to plot
       totalflux = totalflux(time=(t0,t1))
       fields.append(totalflux)
-      colours.append(totalflux_colours[i])
+      if model.color is not None:
+        colours.append(model.color)
+      else:
+        colours.append(totalflux_colours[i])
       styles.append('-')
       labels.append('integrated flux')
     except KeyError: pass  # No flux available
