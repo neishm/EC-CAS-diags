@@ -125,6 +125,7 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
   t0 = []
   t1 = []
   for m in models:
+    if m is None: continue
     try:
       t0.append(compute_totalmass(m,fieldname).time.values[0])
       t1.append(compute_totalmass(m,fieldname).time.values[-1])
@@ -133,6 +134,8 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
       t0.append(compute_totalflux(m,fieldname).time.values[0])
       t1.append(compute_totalflux(m,fieldname).time.values[-1])
     except Exception: pass
+  if len(t0) == 0 or len(t1) == 0:
+    raise ValueError("Unable to find any '%s' data in %s."%(fieldname,[m.name for m in models if m is not None]))
   t0 = max(t0)
   t1 = min(t1)
 
@@ -213,7 +216,7 @@ def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
         colours.append(totalflux_colours[i])
       styles.append('-')
       labels.append('integrated flux')
-    except KeyError: pass  # No flux available
+    except (KeyError, IndexError): pass  # No flux and/or mass field available
 
   outfile = outdir + "/%s_totalmass_%s%s.png"%('_'.join(m.name for m in models if m is not None),fieldname,'_normalized_by_dryair' if normalize_air_mass else '')
   if not exists(outfile):
