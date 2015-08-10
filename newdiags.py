@@ -92,7 +92,7 @@ for section in configparser.sections():
   data_dir = configparser.get(section,'dir')
   if not exists(data_dir):
     raise IOError ("Directory '%s' doesn't exist"%data_dir)
-  data_type = configparser.get(section,'type')
+  data_type = configparser.get(section,'interface')
   data_interface = interfaces.table.get(data_type)
   if data_interface is None:
     raise ValueError ("Unknown interface type '%s'"%data_type)
