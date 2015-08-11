@@ -1,8 +1,11 @@
 
 from .movie_zonal import find_applicable_models
-def do_all (inputs, fieldname, units, outdir, **kwargs):
-  models = find_applicable_models(inputs, fieldname)
-  movie_bargraph(models, fieldname, units, outdir, **kwargs)
+
+if True:
+
+  def do_all (inputs, fieldname, units, outdir, **kwargs):
+    models = find_applicable_models(inputs, fieldname)
+    movie_bargraph(models, fieldname, units, outdir, **kwargs)
 
 
 from .movie import TiledMovie
@@ -62,28 +65,30 @@ class BG_Movie (TiledMovie):
     ax.text(1.25,(max(N,S,Tr)+min(N,S,Tr))/2.0,round(max(N,S,Tr)-min(N,S,Tr),2),rotation='vertical')
 
 
+if True:
 
-def movie_bargraph (models, fieldname, units, outdir, height):
 
-  from ..common import convert
-  from .movie_zonal import zonalmean_gph
+  def movie_bargraph (models, fieldname, units, outdir, height):
 
-  models = [m for m in models if m is not None]
+    from ..common import convert
+    from .movie_zonal import zonalmean_gph
 
-  prefix = "ZonalMeanBG-images_%s_%s"%('_'.join(m.name for m in models), fieldname)
+    models = [m for m in models if m is not None]
 
-  fields = [zonalmean_gph(m,fieldname,units) for m in models]
-  fields = [f(height=height) for f in fields]
+    prefix = "ZonalMeanBG-images_%s_%s"%('_'.join(m.name for m in models), fieldname)
 
-  # Unit conversion
-  fields = [convert(f,units) for f in fields]
+    fields = [zonalmean_gph(m,fieldname,units) for m in models]
+    fields = [f(height=height) for f in fields]
 
-  title = '%s Concentration at %skm'%(fieldname,height)
-  subtitles = [m.title for m in models]
+    # Unit conversion
+    fields = [convert(f,units) for f in fields]
 
-  shape = (1,len(fields))
+    title = '%s Concentration at %skm'%(fieldname,height)
+    subtitles = [m.title for m in models]
 
-  movie = BG_Movie (fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=1.4)
+    shape = (1,len(fields))
 
-  movie.save (outdir=outdir, prefix=prefix)
+    movie = BG_Movie (fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=1.4)
+
+    movie.save (outdir=outdir, prefix=prefix)
 

@@ -1,9 +1,11 @@
 
 from .movie_zonal import find_applicable_models
 
-def do_all (inputs, fieldname, units, outdir, **kwargs):
-  models = find_applicable_models(inputs, fieldname)
-  movie_CvH(models, fieldname, units, outdir, **kwargs)
+if True:
+
+  def do_all (inputs, fieldname, units, outdir, **kwargs):
+    models = find_applicable_models(inputs, fieldname)
+    movie_CvH(models, fieldname, units, outdir, **kwargs)
 
 from .movie import TiledMovie
 class CvH_Movie(TiledMovie):
@@ -49,25 +51,27 @@ class CvH_Movie(TiledMovie):
     ax.legend([NL,SL,TrL], ['North Extratropics','South Extratropics','Tropics'],prop={'size':11})
 
 
-def movie_CvH (models, fieldname, units, outdir):
+if True:
 
-  from ..common import convert
-  from .movie_zonal import zonalmean_gph
+  def movie_CvH (models, fieldname, units, outdir):
 
-  models = [m for m in models if m is not None]
+    from ..common import convert
+    from .movie_zonal import zonalmean_gph
 
-  prefix = '%s_CvH%s'%('_'.join(m.name for m in models), fieldname)
+    models = [m for m in models if m is not None]
 
-  #Names of each model - For plot titles later
-  subtitles = ['Average CO$_{2}$ Concentration - %s'%(m.name) for m in models]
+    prefix = '%s_CvH%s'%('_'.join(m.name for m in models), fieldname)
 
-  fields = [zonalmean_gph(m,fieldname,units) for m in models]
+    #Names of each model - For plot titles later
+    subtitles = ['Average CO$_{2}$ Concentration - %s'%(m.name) for m in models]
 
-  # Unit conversion
-  fields = [convert(f,units) for f in fields]
+    fields = [zonalmean_gph(m,fieldname,units) for m in models]
 
-  shape = (1,len(fields))
+    # Unit conversion
+    fields = [convert(f,units) for f in fields]
 
-  movie = CvH_Movie(fields, title='CvH', subtitles=subtitles, shape=shape, aspect_ratio=1.5)
+    shape = (1,len(fields))
 
-  movie.save(outdir=outdir, prefix=prefix)
+    movie = CvH_Movie(fields, title='CvH', subtitles=subtitles, shape=shape, aspect_ratio=1.5)
+
+    movie.save(outdir=outdir, prefix=prefix)

@@ -1,83 +1,85 @@
-def find_applicable_models (inputs, fieldname):
-  from ..common import have_gridded_data
-  models = []
-  for x in inputs:
-    if any (fieldname in d and have_gridded_data(d) for d in x.data.datasets):
-      models.append(x)
-  if len(models) == 0:
-    raise ValueError("No inputs match the criteria.")
-  return models
+if True:
 
-def do_all (inputs, fieldname, units, outdir, **kwargs):
-  models = find_applicable_models(inputs, fieldname)
-  movie_zonal(models, fieldname, units, outdir, **kwargs)
+  def find_applicable_models (inputs, fieldname):
+    from ..common import have_gridded_data
+    models = []
+    for x in inputs:
+      if any (fieldname in d and have_gridded_data(d) for d in x.data.datasets):
+        models.append(x)
+    if len(models) == 0:
+      raise ValueError("No inputs match the criteria.")
+    return models
 
-# Convert zonal mean data (on height)
-def zonalmean_gph (model, fieldname, units):
-  from pygeode.interp import interpolate
-  from pygeode.axis import Height
-  from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
-  import numpy as np
+  def do_all (inputs, fieldname, units, outdir, **kwargs):
+    models = find_applicable_models(inputs, fieldname)
+    movie_zonal(models, fieldname, units, outdir, **kwargs)
 
-  var, z = find_and_convert(model, [fieldname,'geopotential_height'], [units,'m'], maximize=(number_of_levels,number_of_timesteps))
+  # Convert zonal mean data (on height)
+  def zonalmean_gph (model, fieldname, units):
+    from pygeode.interp import interpolate
+    from pygeode.axis import Height
+    from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
+    import numpy as np
 
-  height = Height(range(68), name='height')
+    var, z = find_and_convert(model, [fieldname,'geopotential_height'], [units,'m'], maximize=(number_of_levels,number_of_timesteps))
 
-  # Define the final expected order of axes
-  # (since 'interpolate' moves the interpolated axis)
-  axes = [a.name for a in var.axes]
-  axes[var.whichaxis('zaxis')] = 'height'
+    height = Height(range(68), name='height')
 
-  # Do the interpolation
-  var = interpolate(var, inaxis='zaxis', outaxis=height, inx=z/1000.)
+    # Define the final expected order of axes
+    # (since 'interpolate' moves the interpolated axis)
+    axes = [a.name for a in var.axes]
+    axes[var.whichaxis('zaxis')] = 'height'
 
-  # Recover the expected order of axes
-  var = var.transpose(*axes)
+    # Do the interpolation
+    var = interpolate(var, inaxis='zaxis', outaxis=height, inx=z/1000.)
 
-  # Remove any repeated longtiude (for global data)
-  var = remove_repeated_longitude(var)
+    # Recover the expected order of axes
+    var = var.transpose(*axes)
 
-  # Do the zonal mean
-  var = var.nanmean('lon')
+    # Remove any repeated longtiude (for global data)
+    var = remove_repeated_longitude(var)
 
-  # Cache the zonalmean data
-  var = model.cache.write(var, prefix='zonalmean_gph_'+fieldname)
+    # Do the zonal mean
+    var = var.nanmean('lon')
 
-  return var
+    # Cache the zonalmean data
+    var = model.cache.write(var, prefix='zonalmean_gph_'+fieldname)
+
+    return var
 
 
-# Convert zonal mean data (on pressure levels)
-def zonalmean_pres (model, fieldname, units):
-  from pygeode.interp import interpolate
-  from pygeode.axis import Pres
-  from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
-  import numpy as np
+  # Convert zonal mean data (on pressure levels)
+  def zonalmean_pres (model, fieldname, units):
+    from pygeode.interp import interpolate
+    from pygeode.axis import Pres
+    from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
+    import numpy as np
 
-  var, p = find_and_convert(model, [fieldname,'air_pressure'], [units,'hPa'], maximize=(number_of_levels,number_of_timesteps))
+    var, p = find_and_convert(model, [fieldname,'air_pressure'], [units,'hPa'], maximize=(number_of_levels,number_of_timesteps))
 
-  pres = Pres(np.exp(np.linspace(np.log(1000),np.log(.1),100)), name='pressure')
+    pres = Pres(np.exp(np.linspace(np.log(1000),np.log(.1),100)), name='pressure')
 
-  # Define the final expected order of axes
-  # (since 'interpolate' moves the interpolated axis)
-  axes = [a.name for a in var.axes]
-  axes[var.whichaxis('zaxis')] = 'pressure'
+    # Define the final expected order of axes
+    # (since 'interpolate' moves the interpolated axis)
+    axes = [a.name for a in var.axes]
+    axes[var.whichaxis('zaxis')] = 'pressure'
 
-  # Do the interpolation
-  var = interpolate(var, inaxis='zaxis', outaxis=pres, inx=p.log(), outx=pres.log())
+    # Do the interpolation
+    var = interpolate(var, inaxis='zaxis', outaxis=pres, inx=p.log(), outx=pres.log())
 
-  # Recover the expected order of axes
-  var = var.transpose(*axes)
+    # Recover the expected order of axes
+    var = var.transpose(*axes)
 
-  # Remove any repeated longtiude (for global data)
-  var = remove_repeated_longitude(var)
+    # Remove any repeated longtiude (for global data)
+    var = remove_repeated_longitude(var)
 
-  # Do the zonal mean
-  var = var.nanmean('lon')
+    # Do the zonal mean
+    var = var.nanmean('lon')
 
-  # Cache the zonalmean data
-  var = model.cache.write(var, prefix='zonalmean_pres_'+fieldname)
+    # Cache the zonalmean data
+    var = model.cache.write(var, prefix='zonalmean_pres_'+fieldname)
 
-  return var
+    return var
 
 
 # Modify ContourMovie to hack in the "height" label
@@ -97,24 +99,27 @@ class ZonalMovie (ContourMovie):
       axis.set_xticklabels(['90S','','','EQ','','','90N'])
 del ContourMovie
 
-def movie_zonal (models, fieldname, units, outdir, zaxis='gph'):
 
-  assert zaxis in ('gph','plev')
+if True:
 
-  models = [m for m in models if m is not None]
-  prefix = '_'.join(m.name for m in models) + '_zonal'+fieldname+'_on_'+zaxis
-  title = 'Zonal mean %s (in %s)'%(fieldname,units)
-  aspect_ratio = 1.0
-  shape = (1,len(models))
+  def movie_zonal (models, fieldname, units, outdir, zaxis='gph'):
 
-  if zaxis == 'gph':
-    fields = [zonalmean_gph(m,fieldname,units) for m in models]
-  else:
-    fields = [zonalmean_pres(m,fieldname,units) for m in models]
+    assert zaxis in ('gph','plev')
 
-  subtitles = [m.title for m in models]
+    models = [m for m in models if m is not None]
+    prefix = '_'.join(m.name for m in models) + '_zonal'+fieldname+'_on_'+zaxis
+    title = 'Zonal mean %s (in %s)'%(fieldname,units)
+    aspect_ratio = 1.0
+    shape = (1,len(models))
 
-  movie = ZonalMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=aspect_ratio)
+    if zaxis == 'gph':
+      fields = [zonalmean_gph(m,fieldname,units) for m in models]
+    else:
+      fields = [zonalmean_pres(m,fieldname,units) for m in models]
 
-  movie.save (outdir=outdir, prefix=prefix)
+    subtitles = [m.title for m in models]
+
+    movie = ZonalMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=aspect_ratio)
+
+    movie.save (outdir=outdir, prefix=prefix)
 
