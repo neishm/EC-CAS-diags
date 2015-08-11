@@ -1,8 +1,85 @@
+# A generic data interface.
+# Essentially, a collection of datasets, with some convenience methods.
+class DataInterface (object):
+
+  # Generic initializer - takes a list of Datasets, stores it.
+  def __init__ (self, datasets):
+    from pygeode.dataset import asdataset
+    self.datasets = tuple(map(asdataset,datasets))
+
+  # Allow the underlying datasets to be iterated over
+  def __iter__ (self):
+    return iter(self.datasets)
+
+
+  # Get the requested variable(s).
+  # The possible matches are returned one at a time, and the calling method
+  # will have to figure out which one is the best.
+  def find (self, *vars):
+
+    for dataset in self.datasets:
+      if all(v in dataset for v in vars):
+        varlist = [dataset[v] for v in vars]
+        if len(varlist) == 1: yield varlist[0]
+        else: yield varlist
+
+  # Determine if a given variable is in the data somewhere
+  def have (self, var):
+    for dataset in self.datasets:
+      if var in dataset: return True
+    return False
+
+  # Helper function - find the best field matches that fit some criteria
+  def find_best (self, fields, requirement=None, maximize=None, minimize=None):
+
+    # If we are given a single field name (not in a list), then return a
+    # single field (also not in a list structure).
+    collapse_result = False
+    if isinstance(fields,str):
+      fields = [fields]
+      collapse_result = True
+
+    if len(fields) == 1:
+      candidates = zip(self.find(*fields))
+    else:
+      candidates = list(self.find(*fields))
+
+    if requirement is not None:
+      candidates = filter(requirement, candidates)
+
+    # At the very least, order by domain shapes
+    # (so we never have an arbitrary order of matches)
+    def domain_size (varlist):
+      return sorted((v.name,v.shape) for v in varlist)
+    candidates = sorted(candidates, key=domain_size, reverse=True)
+
+    if isinstance(maximize,tuple):
+      maximize = lambda x,F=maximize: [f(x) for f in F]
+
+    if isinstance(minimize,tuple):
+      minimize = lambda x,F=minimize: [f(x) for f in F]
+
+    # Sort by the criteria (higher value is better)
+    if maximize is not None:
+      candidates = sorted(candidates, key=maximize, reverse=True)
+    elif minimize is not None:
+      candidates = sorted(candidates, key=minimize, reverse=False)
+
+    if len(candidates) == 0:
+      raise KeyError("Unable to find any matches for fields=%s, requirement=%s, maximize=%s, minimize=%s"%(fields, requirement, maximize, minimize))
+
+    # Use the best result
+    result = candidates[0]
+
+    if collapse_result: result = result[0]
+    return result
+
+
 
 # Generic interface for a data product.
 # Each specific product would need to sub-class this, and implement the
 # needed interfaces.
-class DataProduct (object):
+class DataProduct (DataInterface):
 
   # List of fields that can be autoconverted
   # (original_name, standard_name, units)
@@ -124,7 +201,6 @@ class DataProduct (object):
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
   def __init__ (self, files, name=None, title=None, color=None, cache=None):
-    from .data_interface import DataInterface
     from .data_scanner import from_files
     self.name = name
     self.title = title
@@ -139,7 +215,8 @@ class DataProduct (object):
     data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axes)
     # Decode the data (get standard field names, etc.)
     data = map(self.decode, data)
-    self.data = DataInterface(data)
+    # Store the data in this object.
+    DataInterface.__init__(self,data)
 
 
 # A sub-class to handle station obs data.
@@ -151,13 +228,12 @@ class StationObsProduct(DataProduct):
 class DerivedProduct (DataProduct):
   # Override the __init__ to take a list of variables, not filenames.
   def __init__ (self, vars, name=None, title=None, color=None, cache=None):
-    from .data_interface import DataInterface
-    from pygeode.dataset import asdataset
     self.name = name
     self.title = title
     self.color = color
     self.cache = cache
-    self.data = DataInterface([asdataset(vars)])
+    # Store the data in this object.
+    DataInterface.__init__(self,[vars])
 
 
 # Find all available interfaces

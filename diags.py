@@ -80,9 +80,9 @@ experiment = eccas(experiment_dir, name=experiment_name, title=experiment_title,
 if args.emissions is not None:
   flux = eccas_flux(args.emissions, cache=experiment.cache)
   # Fix the emissions lat/lon (not encoded exactly the same as the model output)
-  lat = experiment.data.datasets[0].lat
-  lon = experiment.data.datasets[0].lon
-  experiment.data.datasets += tuple(d.replace_axes(lat=lat,lon=lon) for d in flux.data.datasets)
+  lat = experiment.datasets[0].lat
+  lon = experiment.datasets[0].lon
+  experiment.datasets += tuple(d.replace_axes(lat=lat,lon=lon) for d in flux.datasets)
 
 if control_dir is not None:
   control = eccas(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir], global_prefix=control_name+"_"))

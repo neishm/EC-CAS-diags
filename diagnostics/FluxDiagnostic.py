@@ -4,7 +4,7 @@ if True:
     from ..common import have_gridded_data
     models = []
     for x in inputs:
-      if any (fieldname+'_flux' in d and have_gridded_data(d) for d in x.data.datasets):
+      if any (fieldname+'_flux' in d and have_gridded_data(d) for d in x.datasets):
         models.append(x)
     if len(models) == 0:
       raise ValueError("No inputs match the criteria.")
@@ -20,11 +20,11 @@ if True:
 
     # Check if we already have the right units
     try:
-      data = model.data.find_best(fieldname+'_flux', maximize=number_of_timesteps)
+      data = model.find_best(fieldname+'_flux', maximize=number_of_timesteps)
       data = convert(data,'mol m-2 s-1')
     # Otherwise, assume we have integrated flux, need to divide by area
     except ValueError:
-      data, area = model.data.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
+      data, area = model.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
       data = convert(data,'mol s-1')
       area = convert(area,'m2')
       data = data/area

@@ -12,9 +12,9 @@ from .movie_zonal_diff import get_lats
 if True:
 
   def get_lons (model):
-    if len(model.data.datasets) == 0:
+    if len(model.datasets) == 0:
       raise ValueError("No data in %s"%model.name)
-    lons = set(tuple(v.lon.values) for d in model.data.datasets for v in d if v.hasaxis('lon'))
+    lons = set(tuple(v.lon.values) for d in model.datasets for v in d if v.hasaxis('lon'))
     if len(lons) == 0: raise ValueError("No gridded data in %s"%model.name)
     if len(lons) > 1: raise ValueError("Multiple grids found in %s"%model.name)
     return lons.pop()

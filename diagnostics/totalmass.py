@@ -6,7 +6,7 @@ if True:
     from ..common import have_gridded_3d_data
     models = []
     for x in inputs:
-      if any ((fieldname in d and have_gridded_3d_data(d)) or fieldname+'_flux' in d for d in x.data.datasets):
+      if any ((fieldname in d and have_gridded_3d_data(d)) or fieldname+'_flux' in d for d in x.datasets):
         models.append(x)
     if len(models) == 0:
       raise ValueError("No inputs match the criteria.")
@@ -24,11 +24,11 @@ if True:
     specie = None
 
     # Do we have the pressure change in the vertical?
-    if model.data.have('dp'):
+    if model.have('dp'):
 
       # Total air mass?
       if fieldname == 'air':
-       dp, area = model.data.find_best(['dp','cell_area'], maximize=(number_of_levels,number_of_timesteps))
+       dp, area = model.find_best(['dp','cell_area'], maximize=(number_of_levels,number_of_timesteps))
        # Integrate to get total column
        dp = convert(dp,'Pa')
        tc = dp.sum('zaxis') / g
@@ -51,7 +51,7 @@ if True:
     elif fieldname == 'air':
        from warnings import warn
        warn ("No 'dp' data found in '%s'.  Approximating total air mass from surface pressure"%model.name)
-       p0, area = model.data.find_best(['surface_pressure','cell_area'], maximize=number_of_timesteps)
+       p0, area = model.find_best(['surface_pressure','cell_area'], maximize=number_of_timesteps)
        p0 = convert(p0,'Pa')
        tc = p0 / g
     else:
@@ -79,11 +79,11 @@ if True:
 
     # Check if we already have integrated flux (per grid cell)
     try:
-      data = model.data.find_best(fieldname+'_flux', maximize=number_of_timesteps)
+      data = model.find_best(fieldname+'_flux', maximize=number_of_timesteps)
       data = convert(data,'mol s-1')
     # Otherwise, we need to integrate over the grid cell area.
     except ValueError:
-      data, area = model.data.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
+      data, area = model.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
       # Convert the units, using the specified tracer name for mass conversion
       specie = data.atts['specie']
       data = convert(data,'mol m-2 s-1')

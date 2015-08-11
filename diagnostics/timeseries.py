@@ -6,7 +6,7 @@ if True:
     from ..common import have_station_data
     obs_inputs = []
     for x in inputs:
-      if any(fieldname in d and have_station_data(d) for d in x.data.datasets):
+      if any(fieldname in d and have_station_data(d) for d in x.datasets):
         obs_inputs.append(x)
     return obs_inputs
 
@@ -14,7 +14,7 @@ if True:
     from ..common import have_gridded_data
     model_inputs = []
     for x in inputs:
-      if any(fieldname in d and have_gridded_data(d) for d in x.data.datasets):
+      if any(fieldname in d and have_gridded_data(d) for d in x.datasets):
         model_inputs.append(x)
     return model_inputs
 
@@ -28,7 +28,7 @@ if True:
   # This method computes the surface values of a model dataset
   def get_sfc_data (model, fieldname):
     from ..common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
-    field = model.data.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
+    field = model.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
     field = select_surface(field)
     # Cache the data for faster subsequent access
     field = model.cache.write(field, prefix='sfc_'+fieldname)
@@ -91,10 +91,10 @@ if True:
   #TODO: interpolate to the station height.
   def sample_model_at_obs (model, obs, fieldname):
     from ..common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
-    field = model.data.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
+    field = model.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
     field = select_surface(field)
 
-    series = obs.data.find_best(fieldname)
+    series = obs.find_best(fieldname)
 
     # Sample at the station locations
     field = StationSample(field, series.getaxis('station'))
@@ -140,14 +140,14 @@ if True:
       except KeyError:  # No ensemble spread for this model data
         model_spread.append(None)
 
-    obs_data = obs.data.find_best(fieldname)
+    obs_data = obs.find_best(fieldname)
     obs_data = select_surface(obs_data)
     # Cache the observation data, for faster subsequent access
     obs_data = obs.cache.write(obs_data, prefix='sfc_%s'%fieldname, split_time=False)
 
     obs_data = convert(obs_data, units, context=fieldname)
     try:
-      obs_stderr = obs.data.find_best(fieldname+'_std')
+      obs_stderr = obs.find_best(fieldname+'_std')
       obs_stderr = select_surface(obs_stderr)
       # Cache the observation data, for faster subsequent access
       obs_stderr = obs.cache.write(obs_stderr, prefix='sfc_%s_std'%fieldname, split_time=False)

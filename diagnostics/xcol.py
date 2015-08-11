@@ -10,7 +10,7 @@ if True:
     from ..common import have_gridded_3d_data
     models = []
     for x in inputs:
-      if any (fieldname in d and have_gridded_3d_data(d) for d in x.data.datasets):
+      if any (fieldname in d and have_gridded_3d_data(d) for d in x.datasets):
         models.append(x)
     if len(models) == 0:
       raise ValueError("No inputs match the criteria.")

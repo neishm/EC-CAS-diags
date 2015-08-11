@@ -68,7 +68,7 @@ def find_and_convert (product, fieldnames, units, **conditions):
   if isinstance(units,str): units = [units]*len(fieldnames)
 
   # Simple case - we can do a trivial conversion of all fields
-  vars = product.data.find_best(fieldnames, **conditions)
+  vars = product.find_best(fieldnames, **conditions)
   if all(can_convert(v, unit) for v,unit in zip(vars,units)):
     out = [convert(v, unit) for v,unit in zip(vars,units)]
     if return_list: return out
@@ -120,7 +120,7 @@ def find_and_convert (product, fieldnames, units, **conditions):
 
   if need_q:
 
-    new_vars = product.data.find_best(fieldnames+['specific_humidity'], **conditions)
+    new_vars = product.find_best(fieldnames+['specific_humidity'], **conditions)
     vars = [copy_var(v) for v in new_vars[:-1]]
     q = convert(new_vars[-1],'kg(H2O) kg(air)-1')
 

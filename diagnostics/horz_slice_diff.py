@@ -25,7 +25,7 @@ if True:
   def horz_slice (model, fieldname, level):
     from ..common import number_of_levels, number_of_timesteps
 
-    c = model.data.find_best(fieldname, maximize=(number_of_levels,number_of_timesteps))
+    c = model.find_best(fieldname, maximize=(number_of_levels,number_of_timesteps))
 
     # Apply the slice
     c = c(zaxis=float(level))
