@@ -175,37 +175,6 @@ def best_type (x):
   except ValueError:pass
   return x
 
-# Put all variables on a common (and regularly spaced) time axis
-# Also, filter out bad values
-def common_taxis (*invars):
-  import numpy as np
-  from pygeode.timeaxis import StandardTime
-  from pygeode.timeutils import reltime
-  from pygeode import Var
-  newvars = []
-  startdate=dict(year=1950)  # arbitrary (but consistent) start date
-  oldtimes = [reltime(var.time,units='hours',startdate=startdate) for var in invars]
-  firsttime = min(times[0] for times in oldtimes)
-  lasttime = max(times[-1] for times in oldtimes)
-  newtimes = np.arange(firsttime, lasttime+1)
-  taxis = StandardTime (values = newtimes, units='hours', startdate=startdate)
-  # Adjust to a better start date
-  taxis = StandardTime (units='hours', **taxis.auxarrays)
-  for i in range(len(invars)):
-    newvals = np.zeros(len(newtimes), dtype=invars[i].dtype)
-    if newvals.dtype.name.startswith('float'):
-      blank = float('nan')
-    else:
-      blank = 0
-    newvals[:] = blank
-    ind = np.searchsorted(newtimes, oldtimes[i])
-    newvals[ind] = invars[i].get()
-    newvals[np.where(newvals > 1e8)] = blank
-    newvars.append(Var([taxis], values=newvals, name=invars[i].name, atts=invars[i].atts))
-
-  return newvars
-
-
 # Find overlapping time axis between two variables
 def same_times (*varlist):
   # Use the same start date (so relative values are comparable)
@@ -456,25 +425,6 @@ def compute_pressure (zaxis, p0):
 
 
 
-# Return a field of constant value over the given axes
-from pygeode.var import Var
-class Constant_Var (Var):
-  def __init__ (self, value, *args, **kwargs):
-    from pygeode.var import Var
-    import numpy as np
-    kwargs['dtype'] = np.array(value).dtype
-    Var.__init__ (self, *args, **kwargs)
-    self.value = value
-
-  def getview (self, view, pbar):
-    import numpy as np
-    out = np.empty(view.shape, dtype=self.dtype)
-    out[()] = self.value
-    pbar.update(100)
-    return out
-del Var
-
-
 
 # Flatten out a variable that has both a date-of-origin axis and a forecast
 # axis.  Combine into a date-of-validity axis.
@@ -528,46 +478,6 @@ def squash_forecasts(var):
   assert isinstance(var,Var), "Unhandled case '%s'"%type(var)
   return SquashForecasts(var)
 
-# Force a variable to take on a superset of axis coordinates.
-# E.g., extend a variable to a longer time period, putting missing values (NaN)
-# where the variable is not defined.
-# NOTE: assumes the coordinate values are in ascending order.
-from pygeode.var import Var
-class EmbiggenAxis (Var):
-  def __init__ (self, var, iaxis, new_axis):
-    from pygeode.var import Var, copy_meta
-    axes = list(var.axes)
-    axes[iaxis] = new_axis
-    Var.__init__ (self, axes, dtype=var.dtype)
-    copy_meta (var, self)
-    self._var = var
-    if var.dtype.name.startswith('float'):
-      self._blank = float('nan')
-    else:
-      self._blank = 0
-    self._iaxis = iaxis
-    self._valid_axis_values = set(var.axes[iaxis].values)
-  def getview (self, view, pbar):
-    import numpy as np
-    out = np.empty(view.shape, dtype=self.dtype)
-    out[()] = self._blank
-    # Find where we have actual data we can fill in.
-    iaxis = self._iaxis
-    requested_indices = view.integer_indices[iaxis]
-    requested_values = view.subaxis(iaxis).values
-    cromulent_values = sorted(self._valid_axis_values & set(requested_values))
-    cromulent_axis = view.axes[iaxis].withnewvalues(cromulent_values)
-    view = view.replace_axis(iaxis, cromulent_axis)
-    outsl = [slice(None)]*self.naxes
-    outsl[iaxis] = np.searchsorted(requested_values, cromulent_values)
-    out[outsl] = view.get(self._var)
-
-    return out
-del Var
-
-def embiggen_axis (var, old_axis, new_axis):
-  iaxis = var.whichaxis(old_axis)
-  return EmbiggenAxis(var, iaxis, new_axis)
 
 
 # Get a keyword / value that can be used to select a surface level for the
@@ -647,93 +557,4 @@ def have_station_data (varlist):
     if var.hasaxis("station"): return True
   return False
 
-
-# Command-line argument parsing - helper classes
-
-# Extend the argument parser to allow repeated groups of arguments
-from argparse import HelpFormatter
-class CustomHelpFormatter(HelpFormatter):
-  def _format_actions_usage (self, actions, groups):
-    import re
-    text = super(CustomHelpFormatter,self)._format_actions_usage(actions,groups)
-    superargs = []
-    for action in actions:
-      if hasattr(action,'_subargs'):
-        superargs.append(action.option_strings[0])
-    if len(superargs) == 0: return text
-    pattern = '('+'|'.join(superargs)+')'
-    text = re.sub(pattern,r'\1 {sub-arguments}',text)
-    return text
-del HelpFormatter
-
-from argparse import ArgumentParser
-class CustomArgumentParser(ArgumentParser):
-  def __init__ (self, *args, **kwargs):
-    kwargs['formatter_class'] = CustomHelpFormatter
-    super(CustomArgumentParser,self).__init__(*args,**kwargs)
-  # Add a nested argument group to this one?
-  def add_superargument (self, *args, **kwargs):
-    # Make it a boolean flag, so it can be parsed by the outer parser.
-    kwargs['action'] = 'store_true'
-    action = self.add_argument(*args,**kwargs)
-    action._subargs = CustomArgumentParser(add_help=False,prog=action.option_strings[0])
-    return action._subargs
-  def format_help(self):
-    from copy import copy
-    x = copy(self)
-    x._action_groups = list(x._action_groups)
-    for action in self._actions:
-      if hasattr(action,'_subargs'):
-        group = copy(action._subargs)
-        group.title = 'sub-arguments for %s'%action.option_strings[0]
-        group.description = None
-        group._group_actions = group._actions
-        x._action_groups.append(group)
-    return super(CustomArgumentParser,x).format_help()
-  # Parse this thing out.
-  def parse_args (self, args=None, namespace=None):
-    import sys
-    from argparse import Namespace
-
-    superself = super(CustomArgumentParser,self)
-
-    if args is None: args = sys.argv[1:]
-    args = list(args)
-    if namespace is None: namespace = Namespace()
-    global_namespace = namespace
-
-    # Try parsing all known args once, to trigger help menu, etc.
-    superself.parse_known_args(args)
-
-    split_indices = []
-    split_actions = []
-    for i,arg in enumerate(args):
-      for action in self._actions:
-        if not hasattr(action,'_subargs'): continue
-        for opt in action.option_strings:
-          if arg == opt or arg.startswith(opt+'='):
-            split_indices.append(i)
-            split_actions.append(action)
-    split_indices.append(len(args))
-
-    global_args = args[:split_indices[0]]
-    subargs = {}
-    for i,action in enumerate(split_actions):
-      action = split_actions[i]
-      namespaces = subargs.setdefault(action.dest,[])
-      current_args = args[split_indices[i]:split_indices[i+1]]
-      namespace, extra = action._subargs.parse_known_args(current_args)
-      namespaces.append(namespace)
-      global_args.append(current_args[0])
-      global_args.extend(extra)
-
-    # Consider anything that didn't parse yet to be part of the outer parser.
-    superself.parse_args(global_args,global_namespace)
-
-    # Attach the sub-arguments
-    for name, value in subargs.iteritems():
-      setattr(global_namespace,name,value)
-
-    return global_namespace
-del ArgumentParser
 
