@@ -150,11 +150,12 @@ class StationObsProduct(DataProduct):
 # A special class to represent derived data as a "product"
 class DerivedProduct (DataProduct):
   # Override the __init__ to take a list of variables, not filenames.
-  def __init__ (self, vars, name=None, title=None, cache=None):
+  def __init__ (self, vars, name=None, title=None, color=None, cache=None):
     from .data_interface import DataInterface
     from pygeode.dataset import asdataset
     self.name = name
     self.title = title
+    self.color = color
     self.cache = cache
     self.data = DataInterface([asdataset(vars)])
 
