@@ -4,7 +4,7 @@
 # comparable to satellite observations.
 
 def find_applicable_models (inputs, fieldname):
-  from common import have_gridded_3d_data
+  from ..common import have_gridded_3d_data
   models = []
   for x in inputs:
     if any (fieldname in d and have_gridded_3d_data(d) for d in x.data.datasets):
@@ -20,7 +20,7 @@ def do_all (datasets, fieldname, units, outdir, **kwargs):
 # Compute total column of a tracer
 # (in kg/m2)
 def totalcolumn (model, fieldname):
-  from common import find_and_convert, grav as g, number_of_levels, number_of_timesteps
+  from ..common import find_and_convert, grav as g, number_of_levels, number_of_timesteps
 
   c, dp = find_and_convert (model, [fieldname,'dp'], ['kg kg(air)-1', 'Pa'], maximize=(number_of_levels,number_of_timesteps))
 
@@ -38,7 +38,7 @@ def totalcolumn (model, fieldname):
 
 # Compute average column of a tracer
 def avgcolumn (model, fieldname, units):
-  from common import find_and_convert, number_of_levels, number_of_timesteps
+  from ..common import find_and_convert, number_of_levels, number_of_timesteps
   c, dp = find_and_convert(model, [fieldname,'dp'], [units,'Pa'], maximize=(number_of_levels,number_of_timesteps))
 
   data = (c*dp).sum('zaxis') / dp.sum('zaxis')
@@ -56,7 +56,7 @@ def avgcolumn (model, fieldname, units):
 
 # Get column average
 def get_xcol (experiment, fieldname, units):
-  from common import rotate_grid, convert
+  from ..common import rotate_grid, convert
 
   xcol = avgcolumn(experiment, fieldname, units)
 
@@ -71,7 +71,7 @@ def get_xcol (experiment, fieldname, units):
 
 
 def xcol (models, fieldname, units, outdir):
-  from movie import ContourMovie
+  from .movie import ContourMovie
 
   plotname = 'X'+fieldname
   models = [m for m in models if m is not None]

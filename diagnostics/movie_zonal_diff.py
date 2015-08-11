@@ -7,7 +7,7 @@ def get_lats (model):
   return lats.pop()
 
 def do_all (datasets, fieldname, units, outdir, **kwargs):
-  from movie_zonal import find_applicable_models
+  from .movie_zonal import find_applicable_models
   models = find_applicable_models(datasets, fieldname)
   n = len(models)
   for i in range(n):
@@ -17,8 +17,8 @@ def do_all (datasets, fieldname, units, outdir, **kwargs):
 
 def movie_zonal_diff (models, fieldname, units, outdir, zaxis='gph'):
 
-  from common import convert, same_times
-  from movie_zonal import zonalmean_gph, zonalmean_pres, ZonalMovie
+  from ..common import convert, same_times
+  from .movie_zonal import zonalmean_gph, zonalmean_pres, ZonalMovie
 
   models = [m for m in models if m is not None]
   prefix = '_'.join(m.name for m in models) + '_zonal_diff'+fieldname+'_on_'+zaxis

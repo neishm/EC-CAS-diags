@@ -5,7 +5,7 @@ It is important to note that the model histogram will consist of a full year's d
 Whereas the observations may only exist for one season, causing them to look much different.
 """
 
-from timeseries import find_applicable_obs, find_applicable_models
+from .timeseries import find_applicable_obs, find_applicable_models
 def do_all (inputs, fieldname, units, outdir, **kwargs):
   model_inputs = find_applicable_models(inputs, fieldname)
   obs_inputs = find_applicable_obs(inputs, fieldname)
@@ -13,7 +13,7 @@ def do_all (inputs, fieldname, units, outdir, **kwargs):
     timeseries (obs, model_inputs, fieldname, units, outdir, **kwargs)
 
 def timeseries (obs, models, fieldname, units, outdir, plot_months=None,timefilter=None):
-  from plot_wrapper import Multiplot, Legend, Overlay, Text,Histogram
+  from .plot_wrapper import Multiplot, Legend, Overlay, Text,Histogram
   import matplotlib.pyplot as pl
   import matplotlib as mpl
   from pygeode.timeaxis import months
@@ -23,9 +23,9 @@ def timeseries (obs, models, fieldname, units, outdir, plot_months=None,timefilt
   import math
   from os import makedirs
 
-  from common import convert, select_surface
+  from ..common import convert, select_surface
 
-  from timeseries import sample_model_at_obs
+  from .timeseries import sample_model_at_obs
 
   models = [m for m in models if m is not None]
 

@@ -1,5 +1,5 @@
-from totalmass import compute_totalmass
-from xcol import find_applicable_models
+from .totalmass import compute_totalmass
+from .xcol import find_applicable_models
 
 def do_all (datasets, fieldname, units, outdir, **kwargs):
   models = find_applicable_models(datasets, fieldname)
@@ -11,7 +11,7 @@ def do_all (datasets, fieldname, units, outdir, **kwargs):
 
 def totalmass_diff (models, fieldname, units, outdir, normalize_air_mass=False):
   from os.path import exists
-  from common import convert, same_times
+  from ..common import convert, same_times
   from matplotlib import pyplot as pl
   from pygeode.plot import plotvar
 

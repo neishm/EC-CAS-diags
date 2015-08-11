@@ -1,6 +1,6 @@
 # timeseries with difference plot
 
-from timeseries import find_applicable_obs, find_applicable_models
+from .timeseries import find_applicable_obs, find_applicable_models
 def do_all (inputs, fieldname, units, outdir, **kwargs):
   model_inputs = find_applicable_models(inputs, fieldname)
   obs_inputs = find_applicable_obs(inputs, fieldname)
@@ -9,8 +9,8 @@ def do_all (inputs, fieldname, units, outdir, **kwargs):
 
 def timeseries (obs, models, fieldname, units, outdir, plot_months=None,timefilter=None):
 
-  from plot_shortcuts import plot, plot_stdfill
-  from plot_wrapper import Multiplot, Legend, Overlay, Text, TwinX
+  from .plot_shortcuts import plot, plot_stdfill
+  from .plot_wrapper import Multiplot, Legend, Overlay, Text, TwinX
   import matplotlib.pyplot as pl
   from pygeode.timeaxis import months
   import pygeode as pyg
@@ -19,9 +19,9 @@ def timeseries (obs, models, fieldname, units, outdir, plot_months=None,timefilt
   import math
   from os import makedirs
 
-  from common import convert, select_surface
+  from ..common import convert, select_surface
 
-  from timeseries import sample_model_at_obs
+  from .timeseries import sample_model_at_obs
 
   models = [m for m in models if m is not None]
 

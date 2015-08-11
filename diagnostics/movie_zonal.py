@@ -1,5 +1,5 @@
 def find_applicable_models (inputs, fieldname):
-  from common import have_gridded_data
+  from ..common import have_gridded_data
   models = []
   for x in inputs:
     if any (fieldname in d and have_gridded_data(d) for d in x.data.datasets):
@@ -16,7 +16,7 @@ def do_all (inputs, fieldname, units, outdir, **kwargs):
 def zonalmean_gph (model, fieldname, units):
   from pygeode.interp import interpolate
   from pygeode.axis import Height
-  from common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
+  from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
   import numpy as np
 
   var, z = find_and_convert(model, [fieldname,'geopotential_height'], [units,'m'], maximize=(number_of_levels,number_of_timesteps))
@@ -50,7 +50,7 @@ def zonalmean_gph (model, fieldname, units):
 def zonalmean_pres (model, fieldname, units):
   from pygeode.interp import interpolate
   from pygeode.axis import Pres
-  from common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
+  from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
   import numpy as np
 
   var, p = find_and_convert(model, [fieldname,'air_pressure'], [units,'hPa'], maximize=(number_of_levels,number_of_timesteps))
@@ -81,12 +81,12 @@ def zonalmean_pres (model, fieldname, units):
 
 
 # Modify ContourMovie to hack in the "height" label
-from movie import ContourMovie
+from .movie import ContourMovie
 class ZonalMovie (ContourMovie):
   # Modify the panel rendering to show the y-axis on the first panel,
   # and override the latitude labels
   def render_panel (self, axis, field, n):
-    from movie import ContourMovie
+    from .movie import ContourMovie
     ContourMovie.render_panel (self, axis, field, n)
     if n == 0:
       axis.set_ylabel(field.zaxis.name)

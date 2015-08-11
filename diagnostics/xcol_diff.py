@@ -6,8 +6,8 @@
 # Compute total column of a tracer
 # (in kg/m2)
 
-from xcol import get_xcol
-from movie_zonal_diff import get_lats
+from .xcol import get_xcol
+from .movie_zonal_diff import get_lats
 
 def get_lons (model):
   if len(model.data.datasets) == 0:
@@ -17,7 +17,7 @@ def get_lons (model):
   if len(lons) > 1: raise ValueError("Multiple grids found in %s"%model.name)
   return lons.pop()
 
-from xcol import find_applicable_models
+from .xcol import find_applicable_models
 
 def do_all (datasets, fieldname, units, outdir, **kwargs):
   models = find_applicable_models(datasets, fieldname)
@@ -29,8 +29,8 @@ def do_all (datasets, fieldname, units, outdir, **kwargs):
 
 
 def xcol_diff (models, fieldname, units, outdir):
-  from movie import ContourMovie
-  from common import same_times
+  from .movie import ContourMovie
+  from ..common import same_times
 
   plotname = 'X'+fieldname
   models = [m for m in models if m is not None]

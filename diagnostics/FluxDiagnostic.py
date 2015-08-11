@@ -1,6 +1,6 @@
 
 def find_applicable_models (inputs, fieldname):
-  from common import have_gridded_data
+  from ..common import have_gridded_data
   models = []
   for x in inputs:
     if any (fieldname+'_flux' in d and have_gridded_data(d) for d in x.data.datasets):
@@ -15,7 +15,7 @@ def do_all (datasets, fieldname, units, outdir, **kwargs):
 
 # Get a flux product for the given experiment and tracer name.
 def get_flux (model, fieldname):
-  from common import convert, number_of_timesteps, remove_repeated_longitude
+  from ..common import convert, number_of_timesteps, remove_repeated_longitude
 
   # Check if we already have the right units
   try:
@@ -235,8 +235,8 @@ def FluxPlot(data1,data2,data3,plottype='BG',names=['','','']):
 def plotOrganize(flux1,flux2=None, flux3=None, names=['','',''], palette=None, norm=None, preview=False, outdir='images',timefilter=None,plottype='BG'):
 
   import matplotlib.pyplot as plt
-  from plot_wrapper import Colorbar, Plot, Overlay, Multiplot
-  from plot_shortcuts import pcolor, contour, contourf, Map
+  from .plot_wrapper import Colorbar, Plot, Overlay, Multiplot
+  from .plot_shortcuts import pcolor, contour, contourf, Map
   from os import makedirs
 
   from pygeode.progress import PBar

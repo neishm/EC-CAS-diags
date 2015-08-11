@@ -1,11 +1,11 @@
 
-from movie_zonal import find_applicable_models
+from .movie_zonal import find_applicable_models
 def do_all (inputs, fieldname, units, outdir, **kwargs):
   models = find_applicable_models(inputs, fieldname)
   movie_bargraph(models, fieldname, units, outdir, **kwargs)
 
 
-from movie import TiledMovie
+from .movie import TiledMovie
 class BG_Movie (TiledMovie):
   def render_panel (self, ax, data, n):
 
@@ -65,8 +65,8 @@ class BG_Movie (TiledMovie):
 
 def movie_bargraph (models, fieldname, units, outdir, height):
 
-  from common import convert
-  from movie_zonal import zonalmean_gph
+  from ..common import convert
+  from .movie_zonal import zonalmean_gph
 
   models = [m for m in models if m is not None]
 

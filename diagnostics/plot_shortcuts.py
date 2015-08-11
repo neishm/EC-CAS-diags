@@ -105,21 +105,21 @@ def plot_maker (f):
 # Do a contour plot
 @plot_maker
 def contour (var, *args, **kwargs):
-  from plot_wrapper import Contour
+  from .plot_wrapper import Contour
   X, Y, C = get_XYC(var)
   return Contour(X, Y, C, *args, **kwargs)
 
 # Do a filled contour plot
 @plot_maker
 def contourf (var, *args, **kwargs):
-  from plot_wrapper import Contourf
+  from .plot_wrapper import Contourf
   X, Y, C = get_XYC(var)
   return Contourf(X, Y, C, *args, **kwargs)
 
 # Do a pseudocolor plot
 @plot_maker
 def pcolor (var, **kwargs):
-  from plot_wrapper import Pcolor
+  from .plot_wrapper import Pcolor
   X, Y, C = get_XYC(var)
 
   # Note: X and Y are the coordinates of the grid CENTRES.  We need the grid edges!
@@ -161,7 +161,7 @@ def transpose_axes (axes_args):
 # Do a 1D line plot
 # Assumes the X coordinate is provided by the Var, not in the parameter list
 def plot (*args, **kwargs):
-  from plot_wrapper import Plot
+  from .plot_wrapper import Plot
 
   outargs = []
   i = 0
@@ -199,7 +199,7 @@ def plot (*args, **kwargs):
 
 # Do a filled std plot (single value)
 def plot_stdfill (y, std, **kwargs):
-  from plot_wrapper import Plot, FillBetween, Overlay
+  from .plot_wrapper import Plot, FillBetween, Overlay
   import numpy as np
 
   x = y.squeeze().axes[0]
@@ -252,7 +252,7 @@ def spaghetti (var, data_axis, **kwargs):
 
 # Do a quiver plot
 def quiver (u, v, **kwargs):
-  from plot_wrapper import Quiver
+  from .plot_wrapper import Quiver
   import numpy as np
   # Get a proper title
   dummy = u.rename(u.name+','+v.name)
@@ -281,7 +281,7 @@ def quiver (u, v, **kwargs):
 # This is just a convenient shortcut for automatically drawing certain map
 # features (coastlines, meridians, etc.).
 def Map (plot, **kwargs):
-  from plot_wrapper import Map
+  from .plot_wrapper import Map
   # Set some default kwargs - update the region of interest
 
   # Some default args for things not overridden in kwargs

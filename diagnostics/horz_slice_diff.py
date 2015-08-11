@@ -3,9 +3,9 @@
 # and produces a movie.
 # This is/was used for checking the effects of adding convection to tracers.
 
-from xcol import find_applicable_models
-from movie_zonal_diff import get_lats
-from xcol_diff import get_lons
+from .xcol import find_applicable_models
+from .movie_zonal_diff import get_lats
+from .xcol_diff import get_lons
 
 def do_all (datasets, fieldname, units, outdir, **kwargs):
   models = find_applicable_models(datasets, fieldname)
@@ -19,7 +19,7 @@ def do_all (datasets, fieldname, units, outdir, **kwargs):
 
 # Cache the slice for faster reading on subsequent diagnostic calls.
 def horz_slice (model, fieldname, level):
-  from common import number_of_levels, number_of_timesteps
+  from ..common import number_of_levels, number_of_timesteps
 
   c = model.data.find_best(fieldname, maximize=(number_of_levels,number_of_timesteps))
 
@@ -32,7 +32,7 @@ def horz_slice (model, fieldname, level):
 
 # Get the horizontal slice (and prep it for plotting)
 def get_horz_slice (experiment, fieldname, level, units):
-  from common import rotate_grid, convert
+  from ..common import rotate_grid, convert
 
   data = horz_slice(experiment, fieldname, level)
 
@@ -46,8 +46,8 @@ def get_horz_slice (experiment, fieldname, level, units):
 
 
 def horz_slice_movie (models, fieldname, units, outdir, level):
-  from movie import ContourMovie
-  from common import same_times
+  from .movie import ContourMovie
+  from ..common import same_times
 
   plotname = fieldname+"_level"+level
   models = [m for m in models if m is not None]

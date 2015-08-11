@@ -1,5 +1,5 @@
 def extract_timeseries (model, fieldname, units, lat, lon, location):
-  from common import number_of_levels, number_of_timesteps, convert
+  from ..common import number_of_levels, number_of_timesteps, convert
   field = model.data.find_best(fieldname, maximize=(number_of_levels, number_of_timesteps))
   field = field(lat=lat,lon=lon)
   field = model.cache.write(field, prefix=fieldname+'_'+location)
@@ -10,10 +10,10 @@ def shortexper_diffcheck(models, obs, location, outdir):
   from pygeode.axis import Height
   from os.path import exists
   from pygeode.plot import plotvar
-  from contouring import get_range, get_contours
+  from .contouring import get_range, get_contours
   from matplotlib import pyplot as pl
   import numpy as np
-  from common import select_surface
+  from ..common import select_surface
 
   co2_obs = obs.data.find_best('CO2')
   co2_obs = select_surface(co2_obs)

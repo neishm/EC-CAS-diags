@@ -1,6 +1,6 @@
 
 def find_applicable_models (inputs, fieldname):
-  from common import have_gridded_3d_data
+  from ..common import have_gridded_3d_data
   models = []
   for x in inputs:
     if any ((fieldname in d and have_gridded_3d_data(d)) or fieldname+'_flux' in d for d in x.data.datasets):
@@ -17,7 +17,7 @@ def do_all (datasets, fieldname, units, outdir, **kwargs):
 
 # Total mass (Pg)
 def compute_totalmass (model, fieldname):
-  from common import can_convert, convert, find_and_convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude
+  from ..common import can_convert, convert, find_and_convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude
   specie = None
 
   # Do we have the pressure change in the vertical?
@@ -72,7 +72,7 @@ def compute_totalmass (model, fieldname):
 
 # Integrated flux (moles per second)
 def compute_totalflux (model, fieldname):
-  from common import convert, number_of_timesteps, remove_repeated_longitude
+  from ..common import convert, number_of_timesteps, remove_repeated_longitude
 
   # Check if we already have integrated flux (per grid cell)
   try:
@@ -114,7 +114,7 @@ def doplot (outfile, title, fields, colours, styles, labels):
 def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
   from os.path import exists
   from pygeode.var import Var
-  from common import convert
+  from ..common import convert
   from pygeode import timeutils
 
   totalmass_colours = 'blue', 'green', 'red', 'black'

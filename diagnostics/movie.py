@@ -140,7 +140,7 @@ class TiledMovie(Movie):
 # A movie with filled contour plots.
 class ContourMovie(TiledMovie):
   def __init__ (self, *args, **kwargs):
-    from contouring import get_contours
+    from .contouring import get_contours
     TiledMovie.__init__(self, *args, **kwargs)
     # Determine the best contour intervals to use for the plots.
     self.clevs = {}

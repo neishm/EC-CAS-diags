@@ -1,7 +1,7 @@
 # Timeseries diagnostic
 
 def find_applicable_obs (inputs, fieldname):
-  from common import have_station_data
+  from ..common import have_station_data
   obs_inputs = []
   for x in inputs:
     if any(fieldname in d and have_station_data(d) for d in x.data.datasets):
@@ -9,7 +9,7 @@ def find_applicable_obs (inputs, fieldname):
   return obs_inputs
 
 def find_applicable_models (inputs, fieldname):
-  from common import have_gridded_data
+  from ..common import have_gridded_data
   model_inputs = []
   for x in inputs:
     if any(fieldname in d and have_gridded_data(d) for d in x.data.datasets):
@@ -25,7 +25,7 @@ def do_all (inputs, fieldname, units, outdir, **kwargs):
 
 # This method computes the surface values of a model dataset
 def get_sfc_data (model, fieldname):
-  from common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
+  from ..common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
   field = model.data.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
   field = select_surface(field)
   # Cache the data for faster subsequent access
@@ -88,7 +88,7 @@ del Var
 # Interpolate model data directly to station locations
 #TODO: interpolate to the station height.
 def sample_model_at_obs (model, obs, fieldname):
-  from common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
+  from ..common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
   field = model.data.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
   field = select_surface(field)
 
@@ -107,14 +107,14 @@ def sample_model_at_obs (model, obs, fieldname):
 
 def timeseries (obs, models, fieldname, units, outdir, plot_months=None):
 
-  from plot_shortcuts import plot, plot_stdfill
-  from plot_wrapper import Multiplot, Legend, Overlay
+  from .plot_shortcuts import plot, plot_stdfill
+  from .plot_wrapper import Multiplot, Legend, Overlay
   import matplotlib.pyplot as pl
   from pygeode.timeaxis import months
 
   from os.path import exists
 
-  from common import convert, select_surface
+  from ..common import convert, select_surface
 
   models = [m for m in models if m is not None]
 

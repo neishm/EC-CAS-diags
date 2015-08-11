@@ -4,7 +4,7 @@
 # comparable to satellite observations.
 
 def find_applicable_models (inputs, fieldname):
-  from common import have_gridded_3d_data
+  from ..common import have_gridded_3d_data
   models = []
   for x in inputs:
     if any (fieldname in d and fieldname+'_ensemblespread' in d and have_gridded_3d_data(d) for d in x.data.datasets):
@@ -20,8 +20,8 @@ def do_all (datasets, fieldname, units, outdir, **kwargs):
 
 
 def xcol_enkf (model, fieldname, units, outdir):
-  from movie import ContourMovie
-  from xcol import get_xcol
+  from .movie import ContourMovie
+  from .xcol import get_xcol
 
   prefix = model.name + '_' + 'X'+fieldname+'_stats'
 
