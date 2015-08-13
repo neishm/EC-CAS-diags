@@ -122,7 +122,6 @@ if True:
       station_info = data[0](station=location).getaxis("station")
       lat = station_info.lat[0]
       lon = station_info.lon[0]
-      country = station_info.country[0]
 
       #-----Record Data------
       for i,d in enumerate(data):
