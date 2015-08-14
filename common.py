@@ -198,6 +198,14 @@ def first_timestep (var):
     var = var.squeeze('forecast')
   return var
 
+# Convert a time axis to a list of datetime objects.
+def to_datetimes(taxis):
+  from datetime import datetime,timedelta
+  ref = datetime(**taxis.startdate)
+  units = taxis.units
+  values = taxis.values
+  return [ref+timedelta(**{units:v}) for v in values]
+
 # Adjust a lat/lon grid from -180,180 to 0,360
 def rotate_grid (data):
   from pygeode.axis import Lon

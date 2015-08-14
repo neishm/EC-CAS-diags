@@ -109,14 +109,10 @@ if True:
 
   def timeseries (obs, models, fieldname, units, outdir, plot_months=None):
 
-    from .plot_shortcuts import plot, plot_stdfill
-    from .plot_wrapper import Multiplot, Legend, Overlay
+    import numpy as np
     import matplotlib.pyplot as pl
-    from pygeode.timeaxis import months
-
     from os.path import exists
-
-    from ..common import convert, select_surface
+    from ..common import convert, select_surface, to_datetimes
 
     models = [m for m in models if m is not None]
 
@@ -173,26 +169,12 @@ if True:
     spread = [None if s is None else s(time=(time1,time2)) for s in spread]
 
     # Create plots of each location
-    xticks = []
-    xticklabels = []
-
-    # Determine the frequency of day ticks, based on the number of months of data
-    nmonths = len(set(timeaxis.month))
-    if nmonths == 1:
-      daylist = range(1,32)
-    else:
-      daylist = (1,15)
-
-    # Set the ticks
-    for month in sorted(list(set(timeaxis.month))):
-      for day in daylist:
-        val = timeaxis(month=month,day=day,hour=0).get()
-        if len(val) == 0: continue
-        xticks.append(float(val[0]))
-        xticklabels.append("%s %d"%(months[month], day))
-
-    plots = []
-    for location in data[0].station:
+    # Plot 4 timeseries per figure
+    n = 4
+    for i,location in enumerate(data[0].station):
+      if i%n == 0:
+        fig = pl.figure(figsize=(15,12))
+      pl.subplot(4,1,i%4+1)
       station_info = data[0](station=location).getaxis("station")
       lat = station_info.lat[0]
       lon = station_info.lon[0]
@@ -208,34 +190,35 @@ if True:
       if hasattr(station_info,'country'):
         title += ' - ' + station_info.country[0]
 
-      parts = []
-      for i in range(len(data)):
-        if spread[i] is not None:
-          parts.append(plot_stdfill(data[i](station=location),2*spread[i](station=location),color=line_colours[i]))
-        else:
-          parts.append(plot(data[i](station=location),color=line_colours[i]))
+      # Fix issue with certain characters in station names
+      title = title.decode('latin-1')
 
-      theplot = Overlay (*parts, title=title.decode('latin-1'),
-             xlabel='', ylabel='%s %s'%(fieldname,units), xticks=xticks, xticklabels=xticklabels)
-      plots.append (theplot)
+      for j in range(len(data)):
+        dates = to_datetimes(data[j].time)
+        values = data[j].get(station=location).squeeze()
 
+        # Draw standard deviation?
+        if spread[j] is not None:
+          std = spread[j].get(station=location).squeeze()
+          fill_min = values - 2*std
+          fill_max = values + 2*std
+          fill_mask = np.isfinite(fill_max)
+          pl.fill_between(dates, fill_min, fill_max, where=fill_mask, color=line_colours[j], linewidth=0, alpha=0.5)
+        pl.plot(dates, values, color=line_colours[j])
 
-    # Plot 4 timeseries per figure
-    n = 4
-    for i in range(0,len(plots),4):
-      fig = pl.figure(figsize=(15,12))
+      pl.title(title)
+      pl.ylabel('%s %s'%(fieldname,units))
 
-      theplots = plots[i:i+4]
-      # Put a legend on the last plot
-      labels = [d.title for d in models+[obs]]
-      theplots[-1] = Legend(theplots[-1], labels)
+      # Things to do one the last plot of the figure
+      if i%4 == 3:
+        # Put a legend on the last plot
+        labels = [d.title for d in models+[obs]]
+        pl.legend(labels)
 
-      theplots = Multiplot([[p] for p in theplots])
-      theplots.render(figure=fig)
+        # Save as an image file.
+        outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1)
+        if not exists(outfile):
+          fig.savefig(outfile)
 
-      outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1)
-      if not exists(outfile):
-        fig.savefig(outfile)
-
-      pl.close(fig)
+        pl.close(fig)
 
