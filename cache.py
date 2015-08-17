@@ -247,7 +247,7 @@ class Cache (object):
         dataset = asdataset(save_hook(dataset))
       # Re-save back to a big file
       try:
-        netcdf.save (bigfile, dataset)
+        netcdf.save (bigfile, dataset, version=4)
       except (KeyboardInterrupt, Exception):
         remove(bigfile)
         raise
