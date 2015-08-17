@@ -107,6 +107,8 @@ class GEOSCHEM_Data(DataProduct):
         var.name = 'CO2'
         var.atts['units'] = '1E-9 mol mol(semidry_air)-1'
       if var.name.endswith('_PSURF') or var.name.endswith('_PS'):
+        if var.name.startswith('GMAO_'):
+           var.atts['units'] = 'hPa'
         var.name = 'surface_pressure'
       if var.name.endswith('_QV'):
         var.name = 'specific_humidity'
