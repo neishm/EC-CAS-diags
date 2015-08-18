@@ -67,7 +67,7 @@ class GAW_Station_Data(StationObsProduct):
           if sd < 0: sd = float('nan')
           std.append(sd)
 
-    except ValueError:
+    except (ValueError,AttributeError):
       print 'skipping %s - bad formatting'%filename
       return Dataset([])
 

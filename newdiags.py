@@ -8,6 +8,7 @@ matplotlib.use('Agg')
 import argparse
 import ConfigParser
 from os.path import exists
+from glob import glob
 import os
 
 from eccas_diags.cache import Cache
@@ -89,16 +90,18 @@ for section in configparser.sections():
 datasets = []
 for section in configparser.sections():
   print "Prepping [%s]"%section
-  data_dir = configparser.get(section,'dir')
-  if not exists(data_dir):
-    raise IOError ("Directory '%s' doesn't exist"%data_dir)
+  data_dirs = configparser.get(section,'dir').split()
+  for data_dir in data_dirs:
+    if len(glob(data_dir)) == 0:
+      raise ValueError ("Directory '%s' doesn't exist"%data_dir)
+  data_dirs = [f for fn in data_dirs for f in glob(fn)]
   data_type = configparser.get(section,'interface')
   data_interface = interfaces.table.get(data_type)
   if data_interface is None:
     raise ValueError ("Unknown interface type '%s'"%data_type)
-  data_name = data_interface.get_dataname(data_dir)
+  data_name = data_interface.get_dataname(data_dirs[0])
   if data_name is None:
-    raise ValueError ("Unable to determine a name to use for '%s' data in directory %s"%(data_type,data_dir))
+    raise ValueError ("Unable to determine a name to use for '%s' data in directory %s"%(data_type,data_dirs[0]))
   print "Found dataset:", data_name
   if configparser.has_option(section,'desc'):
     desc = configparser.get(section,'desc')
@@ -109,9 +112,10 @@ for section in configparser.sections():
   if args.tmpdir is not None:
     fallback_dirs = [args.tmpdir]
   else: fallback_dirs = []
-  cache = Cache(dir=data_dir+"/nc_cache", fallback_dirs=fallback_dirs, global_prefix=data_name+"_")
+  
+  cache = Cache(dir=data_dirs[0]+"/nc_cache", fallback_dirs=fallback_dirs, global_prefix=data_name+"_")
 
-  experiment = data_interface(data_dir, name=data_name, title='%s (%s)'%(desc,data_name), color=color, cache=cache)
+  experiment = data_interface(data_dirs, name=data_name, title='%s (%s)'%(desc,data_name), color=color, cache=cache)
 
   datasets.append(experiment)
 
