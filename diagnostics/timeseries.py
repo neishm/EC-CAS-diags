@@ -114,6 +114,8 @@ if True:
     from os.path import exists
     from ..common import convert, select_surface, to_datetimes
 
+    figwidth = 15
+
     models = [m for m in models if m is not None]
 
     if obs.color is not None:
@@ -155,6 +157,8 @@ if True:
     data = model_data + [obs_data]
     spread = model_spread + [obs_stderr]
     line_colours = model_line_colours[:len(model_data)] + [obs_line_colour]
+    line_styles = ['-']*len(model_data) + ['None']
+    markers = ['None']*len(model_data) + ['o']
 
     # Use the first model data as a basis for the time axis.
     timeaxis = (d.getaxis('time') for d in data).next()
@@ -165,6 +169,14 @@ if True:
     time1 = min(times)
     time2 = max(times)
 
+    # Determine marker size based on the density of observations
+    obs_dt = min(filter(None,np.diff(obs_data.time.values)))
+    count = (time2-time1) / obs_dt
+    # Size of marker (in points) for roughly no overlap
+    markersize = figwidth * 72.0 / count
+    markersize = max(markersize,1.0)
+    markersize = min(markersize,10.0)
+
     data = [d(time=(time1,time2)) for d in data]
     spread = [None if s is None else s(time=(time1,time2)) for s in spread]
 
@@ -173,7 +185,7 @@ if True:
     n = 4
     for i,location in enumerate(data[0].station):
       if i%n == 0:
-        fig = pl.figure(figsize=(15,12))
+        fig = pl.figure(figsize=(figwidth,12))
       pl.subplot(4,1,i%4+1)
       station_info = data[0](station=location).getaxis("station")
       lat = station_info.lat[0]
@@ -195,16 +207,16 @@ if True:
 
       for j in range(len(data)):
         dates = to_datetimes(data[j].time)
-        values = data[j].get(station=location).squeeze()
+        values = data[j].get(station=location).flatten()
 
         # Draw standard deviation?
         if spread[j] is not None:
-          std = spread[j].get(station=location).squeeze()
+          std = spread[j].get(station=location).flatten()
           fill_min = values - 2*std
           fill_max = values + 2*std
           fill_mask = np.isfinite(fill_max)
           pl.fill_between(dates, fill_min, fill_max, where=fill_mask, color=line_colours[j], linewidth=0, alpha=0.5)
-        pl.plot(dates, values, color=line_colours[j])
+        pl.plot(dates, values, color=line_colours[j], linestyle=line_styles[j], marker=markers[j], markersize=markersize)
 
       pl.title(title)
       pl.ylabel('%s %s'%(fieldname,units))
