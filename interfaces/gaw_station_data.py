@@ -8,6 +8,8 @@ class GAW_Station_Data(StationObsProduct):
   field_list = (
     ('CO2_mean', 'CO2',     'ppm'),
     ('CO2_std',  'CO2_std', 'ppm'),
+    ('CH4_mean', 'CH4',     'ppb'),
+    ('CH4_std',  'CH4_std', 'ppb'),
   )
 
   # Method to open a single file
@@ -22,6 +24,7 @@ class GAW_Station_Data(StationObsProduct):
     import numpy as np
     from re import search
     f = open(filename,'ro')
+    specie = 'Unknown'
     comments = []
     year = []
     month = []
@@ -40,11 +43,14 @@ class GAW_Station_Data(StationObsProduct):
           fudge = search("UTC(.*)",line).group(1)
           if fudge == "": fudge = "0"
           tz_fudge = timedelta(hours=-int(fudge))
+        # Get specie info
+        if line.startswith('C18 PARAMETER: '):
+          specie = line.split(':')[1].strip()
 
         if line.startswith('C'):
           comments.append(line)
         else:
-          date1, time1, date2, time2, co2, nd, sd, f, cs, rem = line.split()
+          date1, time1, date2, time2, val, nd, sd, f, cs, rem = line.split()
 
           # In what universe does 24-hour time go from 1:00 to 24:00????
           fudge = tz_fudge
@@ -59,16 +65,17 @@ class GAW_Station_Data(StationObsProduct):
           hour.append(time.hour)
           minute.append(time.minute)
 
-          co2 = float(co2)
-          if co2 < 0: co2 = float('nan')
-          values.append(co2)
+          val = float(val)
+          if val < 0: val = float('nan')
+          values.append(val)
 
           sd = float(sd)
           if sd < 0: sd = float('nan')
           std.append(sd)
 
-    except (ValueError,AttributeError):
+    except (ValueError,AttributeError) as e:
       print 'skipping %s - bad formatting'%filename
+      print 'message:', e.message
       return Dataset([])
 
     # Get station name
@@ -109,8 +116,8 @@ class GAW_Station_Data(StationObsProduct):
     station = Station([station_name], lat=[lat], lon=[lon], country=[country])
 
     # Wrap in PyGeode Vars
-    mean = Var([time,station], values=np.asarray(values).reshape(-1,1), name='CO2_mean', atts=atts)
-    std = Var([time,station], values=np.asarray(std).reshape(-1,1), name='CO2_std', atts=atts)
+    mean = Var([time,station], values=np.asarray(values).reshape(-1,1), name=specie+'_mean', atts=atts)
+    std = Var([time,station], values=np.asarray(std).reshape(-1,1), name=specie+'_std', atts=atts)
 
     return Dataset([mean,std])
 
@@ -126,9 +133,14 @@ class GAW_Station_Data(StationObsProduct):
   # given directory name.
   @staticmethod
   def get_dataname (dirname):
+    type = 'unknown'
     import os
     for d in reversed(dirname.split(os.sep)):
-      if d.startswith('GAW-'): return d
+      if d in ('hourly','event'):
+        type = d
+      if d.startswith('GAW-'): return d+'-'+type
+      # Special case - Doug's directory (no version info available?)
+      if d == 'gaw_ch4_obs': return d+'-'+type
     return None
 
 

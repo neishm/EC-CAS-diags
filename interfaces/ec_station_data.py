@@ -89,7 +89,10 @@ class EC_Station_Data(StationObsProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+'/*-*-Hourly.DAT')
+    files = glob(dirname+'/*-*-Hourly.DAT')
+    # Exclude extra files in methane directory (e.g. Lac_Labiche2-CH4-Hourly.DAT)
+    files = [f for f in files if '2-CH4' not in f]
+    return files
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.

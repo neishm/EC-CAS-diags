@@ -94,8 +94,8 @@ carbontracker = interfaces.table['carbontracker'](["/wrk1/EC-CAS/CarbonTracker"]
 carbontracker_ch4 = interfaces.table['carbontracker-ch4']("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc", name='CTCH42010', title='CarbonTracker', cache=Cache('/wrk6/eltonc/ct_ch4/molefractions/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CTCH42010_'))
 
 # Observation data
-ec_obs = interfaces.table['ec-station-obs']("/wrk1/EC-CAS/surface/EC-2013", name="EC", title="EC Station Obs", cache=Cache(args.tmpdir, global_prefix="ec-station-obs_", split_time=False))
-gaw_obs = interfaces.table['gaw-station-obs'](["/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2009","/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2010"], name="GAW", title='GAW-2014 Station Obs', cache=Cache(args.tmpdir, global_prefix="gaw-station-obs_", split_time=False))
+ec_obs = interfaces.table['ec-station-obs'](["/wrk1/EC-CAS/surface/EC-2013","/wrk1/EC-CAS/surface_ch4/EC-2013"], name="EC", title="EC Station Obs", cache=Cache(args.tmpdir, global_prefix="ec-station-obs_", split_time=False))
+gaw_obs = interfaces.table['gaw-station-obs'](["/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2009","/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2010","/wrk6/chan/gaw_ch4_obs/hourly/y2009"], name="GAW", title='GAW-2014 Station Obs', cache=Cache(args.tmpdir, global_prefix="gaw-station-obs_", split_time=False))
 
 
 # Dump the output files to a subdirectory of the experiment data
@@ -131,6 +131,7 @@ except Exception as e:
 # CH4 Timeseries
 try:
   timeseries (models=[experiment,control], obs=ec_obs, fieldname='CH4', units='ppb', outdir=outdir)
+  timeseries (models=[experiment,control], obs=gaw_obs, fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['CH4 timeseries', e])
 
