@@ -140,7 +140,7 @@ del Var
 def do_vertical_regridding (input_data, grid_data):
 
   from pygeode.axis import ZAxis
-  from interfaces.data_interface import DataInterface
+  from interfaces import DataInterface
   from common import compute_pressure, compute_dp
   import logging
   logger = logging.getLogger(__name__)
@@ -204,7 +204,7 @@ def do_vertical_interpolation (input_data, grid_data):
 
   from pygeode.interp import interpolate
   from pygeode.axis import ZAxis
-  from data_interface import DataInterface
+  from interfaces import DataInterface
   from common import convert, compute_pressure
   import logging
   logger = logging.getLogger(__name__)
