@@ -109,7 +109,7 @@ class MACC_Data(DataProduct):
           dataset[i] = var.replace_axes(level=zaxis)
 
     # Apply fieldname conversions
-    dataset = DataProduct.decode.__func__(dataset)
+    dataset = DataProduct.decode.__func__(cls,dataset)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
