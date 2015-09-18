@@ -38,27 +38,25 @@ class TM5_Data(DataProduct):
     dataset = list(dataset)
     zaxis = None
     for var in dataset:
-      if var.hasaxis('level'):
-        zaxis = var.getaxis('level')
+      if var.hasaxis('LEVEL'):
+        zaxis = var.getaxis('LEVEL')
 
     # Create a proper z-axis
     if zaxis is not None:
       zaxis = Hybrid(zaxis.values, A=A, B=B)
       for i, var in enumerate(dataset):
-        if var.hasaxis('level'):
-          dataset[i] = var.replace_axes(level=zaxis)
+        if var.hasaxis('LEVEL'):
+          dataset[i] = var.replace_axes(LEVEL=zaxis)
 
     # Apply fieldname conversions
-    dataset = DataProduct.decode.__func__(dataset)
+    dataset = DataProduct.decode.__func__(cls,dataset)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
 
     # Add pressure info
-    if 'logarithm_of_surface_pressure' in data and zaxis is not None:
-      Ps = exp(data['logarithm_of_surface_pressure'])
-      Ps.atts['units'] = 'Pa'
-      data['surface_pressure'] = Ps
+    if 'surface_pressure' in data and zaxis is not None:
+      Ps = data['surface_pressure']
       A = zaxis.auxasvar('A')
       B = zaxis.auxasvar('B')
       P = A + B*Ps
@@ -76,9 +74,9 @@ class TM5_Data(DataProduct):
 
     # Grid cell areas
     # Pick some arbitrary (but deterministic) variable to get the lat/lon
-    var = sorted(data.values())[0]
+    var = (v for v in sorted(data.values()) if v.hasaxis('lat') and v.hasaxis('lon')).next()
     from ..common import get_area
-    data['cell_area'] = get_area(var.lat,var.lon,flat=True)
+    data['cell_area'] = get_area(var.lat,var.lon)
 
     # General cleanup stuff
 
@@ -96,11 +94,11 @@ class TM5_Data(DataProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+"/macc_lnsp_*.nc")+glob(dirname+"/macc_ml_*.nc")
+    return glob(dirname+"/ohfield_mcfcal.nc")
 
 
 
 # Add this interface to the table.
 from . import table
-table['macc-nc'] = MACC_Data
+table['tm5'] = TM5_Data
 
