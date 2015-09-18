@@ -1,0 +1,63 @@
+#!/usr/bin/env python
+
+from eccas_diags import interfaces
+
+import argparse
+
+# Custom action for collecting input arguments
+class set_dictkey(argparse.Action):
+  def __init__ (self, option_strings, dest, nargs=None, const=None, default={}, type=None, choices=None, required=False, help=None, metavar=None):
+    super(set_dictkey, self).__init__ (option_strings, dest, nargs, const, default, type, choices, required, help, metavar)
+  def __call__ (self, parser, namespace, values, option_string=None):
+    setattr(namespace, self.dest+'_last_key', values)
+class append_dictvalue(argparse.Action):
+  def __call__ (self, parser, namespace, values, option_string=None):
+    key = getattr(namespace, self.dest+'_last_key',None)
+    d = getattr(namespace, self.dest)
+    d.setdefault(key,[])
+    if isinstance(values,list):
+      d[key].extend(values)
+    else:
+      d[key].append(values)
+
+# Parse the command-line arguments
+
+valid_types = interfaces.table.keys()
+
+parser = argparse.ArgumentParser(description="Tries opening a sample file with a particular interface, and displays the result.", epilog="TYPE can be: "+', '.join(valid_types))
+parser.add_argument ("--intype", help="The type of input data to read.", choices=valid_types, required=True, action=set_dictkey, metavar="TYPE", dest="input")
+parser.add_argument ("--infiles", help="The input file(s), or an input directory.", nargs='+', required=True, action=append_dictvalue, metavar="FILE", dest="input")
+parser.add_argument ("--debug", help="Print debugging messages.  Also, dump the full stack trace when there's an error.", action="store_true")
+
+args = parser.parse_args()
+
+# Try doing something
+# Fail gracefully if there's a problem
+
+import logging
+if args.debug:
+  logging.basicConfig(level=logging.DEBUG)
+else:
+  logging.basicConfig(level=logging.INFO)
+
+try:
+
+  # Collect all the input data for various sources
+  from eccas_diags.interfaces import DataInterface
+  input_data = []
+  for intype, infiles in args.input.iteritems():
+    if intype is None: raise ValueError("No type specified for files %s"%infiles)
+    input_data.extend(interfaces.table[intype](infiles))
+
+  input_data = DataInterface(input_data)
+
+  for i, d in enumerate(input_data):
+    print 'Dataset %d:'%(i+1)
+    print d
+
+except Exception as e:
+  from sys import exit
+  if args.debug: raise
+  print "Error: %s"%e
+  exit(1)
+
