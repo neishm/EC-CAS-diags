@@ -34,6 +34,7 @@ _prefixable_units = [
   ('Pa', 'pascals', 'N m-2'),
   ('bar', 'bars', '1000 hPa'),
   ('J', 'joules', 'kg m2 s-2'),
+  ('knots', 'knots', '0.5147 m s-1'),
 ]
 
 # Other built-in units (that don't work with the standard prefixes)

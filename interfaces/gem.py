@@ -8,6 +8,8 @@ class GEM_Data(DataProduct):
     ('GZ', 'geopotential_height', 'dam'),
     ('P0', 'surface_pressure', 'hPa'),
     ('TT', 'air_temperature', 'K'),
+    ('UU', 'zonal_wind', 'knots'),
+    ('VV', 'meridional_wind', 'knots'),
     ('HU', 'specific_humidity', 'kg(H2O) kg(air)-1'),
     ('DX', 'cell_area', 'm2'),
     ('H', 'PBL_height', 'm'),
