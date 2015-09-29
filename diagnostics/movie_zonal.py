@@ -15,7 +15,7 @@ if True:
     movie_zonal(models, fieldname, units, outdir, **kwargs)
 
   # Convert zonal mean data (on height)
-  def zonalmean_gph (model, fieldname, units):
+  def zonalmean_gph (model, fieldname, units, typestat):
     from pygeode.interp import interpolate
     from pygeode.axis import Height
     from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
@@ -40,16 +40,23 @@ if True:
     var = remove_repeated_longitude(var)
 
     # Do the zonal mean
-    var = var.nanmean('lon')
+    var_mean = var.nanmean('lon')
+
+    # Do a zonal standard deviation
+    var_stdev = (var-var_mean).nanstdev('lon')
+    var_stdev.name = fieldname
+  
+    if typestat == "stdev" : var=var_stdev   
+    if typestat == "mean" : var=var_mean
 
     # Cache the zonalmean data
-    var = model.cache.write(var, prefix='zonalmean_gph_'+fieldname)
+    var = model.cache.write(var, prefix='zonal'+typestat+'_gph_'+fieldname)
 
     return var
 
 
   # Convert zonal mean data (on pressure levels)
-  def zonalmean_pres (model, fieldname, units):
+  def zonalmean_pres (model, fieldname, units, typestat):
     from pygeode.interp import interpolate
     from pygeode.axis import Pres
     from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
@@ -74,10 +81,17 @@ if True:
     var = remove_repeated_longitude(var)
 
     # Do the zonal mean
-    var = var.nanmean('lon')
+    var_mean = var.nanmean('lon')
+
+    # Do a zonal standard deviation
+    var_stdev = (var-var_mean).nanstdev('lon')
+    var_stdev.name = fieldname
+  
+    if typestat == "stdev" : var=var_stdev   
+    if typestat == "mean" : var=var_mean
 
     # Cache the zonalmean data
-    var = model.cache.write(var, prefix='zonalmean_pres_'+fieldname)
+    var = model.cache.write(var, prefix='zonal'+typestat+'_pres_'+fieldname)
 
     return var
 
@@ -102,20 +116,20 @@ del ContourMovie
 
 if True:
 
-  def movie_zonal (models, fieldname, units, outdir, zaxis='gph'):
+  def movie_zonal (models, fieldname, units, outdir, zaxis='gph', typestat='mean'):
 
     assert zaxis in ('gph','plev')
 
     models = [m for m in models if m is not None]
-    prefix = '_'.join(m.name for m in models) + '_zonal'+fieldname+'_on_'+zaxis
-    title = 'Zonal mean %s (in %s)'%(fieldname,units)
+    prefix = '_'.join(m.name for m in models) + '_zonal'+typestat+'_'+fieldname+'_on_'+zaxis
+    title = 'Zonal %s %s (in %s)'%(typestat,fieldname,units)
     aspect_ratio = 1.0
     shape = (1,len(models))
 
     if zaxis == 'gph':
-      fields = [zonalmean_gph(m,fieldname,units) for m in models]
+      fields = [zonalmean_gph(m,fieldname,units,typestat) for m in models]
     else:
-      fields = [zonalmean_pres(m,fieldname,units) for m in models]
+      fields = [zonalmean_pres(m,fieldname,units,typestat) for m in models]
 
     subtitles = [m.title for m in models]
 

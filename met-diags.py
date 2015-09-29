@@ -148,6 +148,36 @@ try:
 except Exception as e:
   failures.append(['HU  movie_zonal_diff', e])
 
+# CO2 Zonal standard deviation movies
+try:
+  if control is not None:
+    movie_zonal_diff(models=[experiment,control], fieldname='CO2', units='ppm', outdir=outdir, typestat='stdev' )
+except Exception as e:
+  failures.append(['CO2 movie_zonal_stdev', e])
+# TT  Zonal standard deviation movies
+try:
+  if control is not None:
+    movie_zonal_diff(models=[experiment,control], fieldname='air_temperature', units='K', outdir=outdir, typestat='stdev')
+except Exception as e:
+  failures.append(['TT  movie_zonal_stdev', e])
+# UU  Zonal standard deviation movies
+try:
+  if control is not None:
+    movie_zonal_diff(models=[experiment,control], fieldname='zonal_wind', units='m s-1', outdir=outdir, typestat='stdev')
+except Exception as e:
+  failures.append(['UU  movie_zonal_stdev', e])
+# VV  Zonal standard deviation movies
+try:
+  if control is not None:
+    movie_zonal_diff(models=[experiment,control], fieldname='meridional_wind', units='m s-1', outdir=outdir, typestat='stdev')
+except Exception as e:
+  failures.append(['VV  movie_zonal_stdev', e])
+# HU  Zonal standard deviation movies
+try:
+  if control is not None:
+    movie_zonal_diff(models=[experiment,control], fieldname='H2O', units='ppm', outdir=outdir, typestat='stdev')
+except Exception as e:
+  failures.append(['HU  movie_zonal_stdev', e])
 
 
 from eccas_diags.diagnostics.xcol_diff import xcol_diff
