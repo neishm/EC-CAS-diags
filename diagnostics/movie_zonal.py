@@ -40,7 +40,13 @@ if True:
     var = remove_repeated_longitude(var)
 
     # Do the zonal mean
-    var_mean = var.nanmean('lon')
+    if typestat == "mean":
+      var_mean = var.nanmean('lon')
+    else:
+      # Make sure the zonal mean gets cached before use in subsequent
+      # calculations.
+      # Otherwise, it could cause an O(n^2) slowdown of the diagnostics.
+      var_mean = zonalmean_gph (model, fieldname, units, typestat="mean")
 
     # Do a zonal standard deviation
     var_stdev = (var-var_mean).nanstdev('lon')
@@ -81,7 +87,13 @@ if True:
     var = remove_repeated_longitude(var)
 
     # Do the zonal mean
-    var_mean = var.nanmean('lon')
+    if typestat == "mean":
+      var_mean = var.nanmean('lon')
+    else:
+      # Make sure the zonal mean gets cached before use in subsequent
+      # calculations.
+      # Otherwise, it could cause an O(n^2) slowdown of the diagnostics.
+      var_mean = zonalmean_gph (model, fieldname, units, typestat="mean")
 
     # Do a zonal standard deviation
     var_stdev = (var-var_mean).nanstdev('lon')
