@@ -87,8 +87,15 @@ class GEOSCHEM_Data(DataProduct):
   @staticmethod
   def open_file (filename):
     from pygeode.formats import netcdf
-    return netcdf.open(filename)
-
+    from pygeode.dataset import Dataset
+    dataset = netcdf.open(filename)
+    # Hack for the grid cell areas - remove time axis.
+    dataset = list(dataset)
+    for i, var in enumerate(dataset):
+      if var.name.startswith('DXYP'):
+        var = var.squeeze('time')
+        dataset[i] = var
+    return Dataset(dataset)
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
@@ -106,13 +113,18 @@ class GEOSCHEM_Data(DataProduct):
       if var.name.endswith('_CO2'):
         var.name = 'CO2'
         var.atts['units'] = '1E-9 mol mol(semidry_air)-1'
-      if var.name.endswith('_PSURF') or var.name.endswith('_PS'):
+      if var.name.endswith('_PSURF') or var.name.endswith('_PS') or var.name.startswith('PEDGE_S'):
         if var.name.startswith('GMAO_'):
            var.atts['units'] = 'hPa'
         var.name = 'surface_pressure'
       if var.name.endswith('_QV'):
         var.name = 'specific_humidity'
         var.atts['units'] = 'kg(H2O) kg(air)-1'
+      if var.name.endswith('_SPHU'):
+        var.name = 'specific_humidity'
+        var.atts['units'] = 'g(H2O) kg(air)-1'
+      if var.name.startswith('DXYP'):
+        var.name = 'cell_area'
       # Special case: vertical levels that we know the parameters for
       if var.hasaxis('lev'):
         zaxis = var.getaxis('lev')
@@ -156,9 +168,10 @@ class GEOSCHEM_Data(DataProduct):
 
     # Grid cell areas
     # Pick some arbitrary (but deterministic) variable to get the lat/lon
-    var = sorted(data.values())[0]
-    from ..common import get_area
-    data['cell_area'] = get_area(var.lat,var.lon)
+#    if 'cell_area' not in data:
+#      var = sorted(data.values())[0]
+#      from ..common import get_area
+#      data['cell_area'] = get_area(var.lat,var.lon)
 
     # General cleanup stuff
 
