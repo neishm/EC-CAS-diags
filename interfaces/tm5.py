@@ -18,8 +18,8 @@ class TM5_Data(DataProduct):
     # Put the dA / dB in here.
     A_interface = dataset.A.get()
     B_interface = dataset.B.get()
-    dA = (A_interface[1:] - A_interface[:-1])
-    dB = (B_interface[1:] - B_interface[:-1])
+    dA = (A_interface[:-1] - A_interface[1:])
+    dB = (B_interface[:-1] - B_interface[1:])
     dA = Var(name='dA', axes=[dataset.LEVEL], values=dA)
     dB = Var(name='dB', axes=[dataset.LEVEL], values=dB)
     # Put the A and B coefficients for staggered levels in here.
