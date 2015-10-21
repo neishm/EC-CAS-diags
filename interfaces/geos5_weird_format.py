@@ -47,7 +47,7 @@ class GEOS5_Weird_Format(DataProduct):
 
     # Generate the expected vertical axis
     if sigma is not None:
-      zaxis = Hybrid(values=B, A=A, B=B)
+      zaxis = Hybrid(values=(A+B*1000)/1000, A=A, B=B)
       A = Var(name='A', axes=[zaxis], values=A)
       B = Var(name='B', axes=[zaxis], values=B)
       dA = Var(name='dA', axes=[zaxis], values=dA)
