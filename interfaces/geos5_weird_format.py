@@ -59,18 +59,41 @@ class GEOS5_Weird_Format(DataProduct):
 
     dataset = list(dataset)
 
-    # Generate the expected vertical axis
+    # Generate the expected vertical axis and time axis.
+    # Also, transpose the axes into the expected order.
     for i, var in enumerate(dataset):
       if var.hasaxis('sigma'):
         var = var.replace_axes(sigma=zaxis)
       if var.hasaxis('tau0'):
         var = var.replace_axes(tau0=taxis)
+      if var.hasaxis('time') and var.hasaxis('zaxis'):
+        var = var.transpose('time','zaxis','lat','lon')
       dataset[i] = var
 
-    dataset = asdataset(dataset)
+    # Apply fieldname conversions
+    dataset = DataProduct.decode.__func__(cls,dataset)
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
+
+    # Fake pressure field
+    # (we don't have a real surface pressure?)
+    if sigma is not None and tau0 is not None and lat is not None:
+      P = (taxis*zaxis*lat*lon)*0 + A + B * 1000
+      P.atts['units'] = 'hPa'
+      data['air_pressure'] = P
+#      print 'P ??', P[0,:,0,0]
+
+      dP = (taxis*zaxis*lat*lon)*0 + dA + dB * 1000
+      dP.atts['units'] = 'hPa'
+      data['dp'] = dP
+#      print 'dP ??', dP[0,:,0,0]
+
+    if lat is not None and lon is not None:
+      Ps = (taxis*lat*lon)*0 + 1000
+      Ps.atts['units'] = 'hPa'
+      data['surface_pressure'] = Ps
+#      print 'mean Ps ??', Ps.mean()
 
     # Grid cell areas
     # Pick some arbitrary (but deterministic) variable to get the lat/lon
