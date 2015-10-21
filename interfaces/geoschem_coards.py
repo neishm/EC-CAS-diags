@@ -137,8 +137,8 @@ class GEOSCHEM_Data(DataProduct):
       B_interface = np.array(cls.B_interface[nlev])
       A = (A_interface[:-1] + A_interface[1:]) * 0.5
       B = (B_interface[:-1] + B_interface[1:]) * 0.5
-      dA = abs(A_interface[:-1] - A_interface[1:])
-      dB = abs(B_interface[:-1] - B_interface[1:])
+      dA = -(A_interface[:-1] - A_interface[1:])
+      dB = -(B_interface[:-1] - B_interface[1:])
 
       zaxis = Hybrid(zaxis.values, A=A, B=B)
       for i, var in enumerate(dataset):

@@ -42,8 +42,8 @@ class GEOS5_Weird_Format(DataProduct):
     B_m = np.array(GEOSCHEM_Data.B_interface[72][::-1])
     A = (A_m[:-1] + A_m[1:]) * 0.5
     B = (B_m[:-1] + B_m[1:]) * 0.5
-    dA = abs(A_m[:-1] - A_m[1:])
-    dB = abs(B_m[:-1] - B_m[1:])
+    dA = (A_m[:-1] - A_m[1:])
+    dB = (B_m[:-1] - B_m[1:])
 
     # Generate the expected vertical axis
     if sigma is not None:
