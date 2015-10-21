@@ -483,20 +483,13 @@ def _domain_as_dataset (domain, manifest):
   return Dataset([DataVar.construct(name, axes, manifest) for name in varlist])
 
 
-# Override Pygeode's common_dict implementation with our own
-# (more optimized)
-def common_dict (dicts):
-  from collections import Counter
-  items= set.union(*[set(d.iteritems()) for d in dicts])
-  count = Counter(k for k,v in items)
-  return dict([k,v] for k,v in items if count[k] == 1)
-
 
 # Wrap a variable from a domain into a Var object
 from pygeode.var import Var
 class DataVar(Var):
   @classmethod
   def construct (cls, varname, axes, manifest):
+    from pygeode.tools import common_dict
 
     # Use an axis manager for accelerating axis operations.
     axis_manager = AxisManager()
