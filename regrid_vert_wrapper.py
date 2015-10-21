@@ -186,8 +186,11 @@ def do_vertical_regridding (input_data, grid_data):
         target_p = target_dp = None
         continue
 
-      var = VertRegrid(p0, source_p, source_dp, target_p, target_dp, var)
-      target_dataset.append(var)
+      if var.hasaxis('lat') and var.hasaxis('lon'):
+        var = VertRegrid(p0, source_p, source_dp, target_p, target_dp, var)
+        target_dataset.append(var)
+      else:
+        logger.debug("Skipping %s - no spatial dimensions.", var.name)
 
     # Add some pressure information back in
     # (regenerated on appropriate grid).
