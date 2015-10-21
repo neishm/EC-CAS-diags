@@ -126,6 +126,9 @@ class GEM_Data(DataProduct):
     from pygeode.timeaxis import Time, StandardTime
     logger = logging.getLogger(__name__)
 
+    # Apply the conversions
+    dataset = DataProduct.encode.__func__(cls,dataset)
+
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
 
@@ -160,9 +163,6 @@ class GEM_Data(DataProduct):
 
     # Convert to a list
     data = list(data.values())
-
-    # Apply the conversions
-    data = DataProduct.encode.__func__(cls,data)
 
     return data
 
