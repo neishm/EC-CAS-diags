@@ -513,8 +513,8 @@ class DataVar(Var):
     # Get subset of attributes that are consistent among all sources of data
     atts = common_dict(atts)
     # Reduce the axes to only those that the variable actually has
-    axis_types = set(type(a) for f,o,_axes in table for a in _axes)
-    axes = [a for a in axes if type(a) in axis_types]
+    axis_names = set(a.name for f,o,_axes in table for a in _axes)
+    axes = [a for a in axes if a.name in axis_names]
     axis_manager.register_axes(axes)
 
     obj = cls(axes, name=varname, dtype=float, atts=atts)
