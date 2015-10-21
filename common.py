@@ -390,7 +390,7 @@ def compute_dp (zaxis, p0):
 
   if dp.hasaxis('forecast'):
     dp = dp.transpose('time','forecast','zaxis')
-  else:
+  elif dp.hasaxis('time'):
     dp = dp.transpose('time','zaxis')
 
   dp.name = 'dp'
@@ -425,7 +425,7 @@ def compute_pressure (zaxis, p0):
 
   if p.hasaxis('forecast'):
     p = p.transpose('time','forecast','zaxis')
-  else:
+  elif p.hasaxis('time'):
     p = p.transpose('time','zaxis')
   p.name = 'air_pressure'
   p.atts['units'] = 'Pa'
