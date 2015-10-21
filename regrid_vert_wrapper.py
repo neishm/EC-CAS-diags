@@ -250,8 +250,12 @@ def do_vertical_interpolation (input_data, grid_data):
 
       inx = convert(source_p,'Pa').log()
       outx = convert(target_p,'Pa').log()
-      var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx,outx=outx, interp_type='linear', d_below=1.0, d_above=1.0)
-      target_dataset.append(var)
+      if var.hasaxis('lat') and var.hasaxis('lon'):
+        var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx,outx=outx, interp_type='linear', d_below=1.0, d_above=1.0)
+        target_dataset.append(var)
+      else:
+        logger.debug("Skipping %s - no spatial dimensions.", var.name)
+        continue
 
     # Add some pressure information back in
     # (regenerated on appropriate grid).
