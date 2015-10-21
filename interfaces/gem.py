@@ -147,14 +147,17 @@ class GEM_Data(DataProduct):
       var = data[varname]
       if var.hasaxis(Time):
         taxis = var.getaxis(Time)
+        auxarrays = dict(**taxis.auxarrays)
         if not isinstance(taxis,StandardTime):
           logger.debug("Converting %s to standard calendar"%varname)
-          auxarrays = dict(**taxis.auxarrays)
-          if 'year' not in auxarrays:
-            logger.debug("Assigning arbitrary year to %s"%varname)
-            auxarrays['year'] = [1980]*len(taxis)
-          new_taxis = StandardTime(units=taxis.units, **auxarrays)
-          data[varname] = var.replace_axes(time=new_taxis)
+          taxis = StandardTime(units=taxis.units, **auxarrays)
+          var = var.replace_axes(time=taxis)
+        if 'year' not in auxarrays:
+          logger.debug("Assigning arbitrary year to %s"%varname)
+          auxarrays['year'] = [1980]*len(taxis)
+          taxis = StandardTime(units=taxis.units, **auxarrays)
+          var = var.replace_axes(time=taxis)
+        data[varname] = var
 
     # General cleanup stuff
 
