@@ -99,7 +99,7 @@ for section in configparser.sections():
   data_interface = interfaces.table.get(data_type)
   if data_interface is None:
     raise ValueError ("Unknown interface type '%s'"%data_type)
-  data_name = data_interface.get_dataname(data_dirs[0])
+  data_name = data_interface.get_dataname(data_dirs[0].rstrip('/'))
   if data_name is None:
     raise ValueError ("Unable to determine a name to use for '%s' data in directory %s"%(data_type,data_dirs[0]))
   print "Found dataset:", data_name
