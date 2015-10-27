@@ -413,6 +413,7 @@ def _merge_all_domains (domains, axis_manager):
     new_merged_domains = set()
     for d1 in domains:
       for d2 in merged_domains:
+        if d1 is d2: continue
         new_merged_domains.update(_merge_domains(d1,d2,axis_manager))
     new_merged_domains -= merged_domains
     if len(new_merged_domains) == 0: break  # Nothing new added
