@@ -55,7 +55,10 @@ class GEOS5_Weird_Format(DataProduct):
 
     # Generate the expected time axis
     if tau0 is not None:
-      taxis = StandardTime(month=tau0.values)
+      if len(tau0) == 12:
+        taxis = StandardTime(month=tau0.values)
+      elif len(tau0) == 576:
+        taxis = StandardTime(tau0.values, units='hours', startdate=dict(year=1985,month=1,day=1))
 
     dataset = list(dataset)
 
