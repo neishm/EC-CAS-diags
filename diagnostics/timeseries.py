@@ -89,9 +89,9 @@ if True:
 
   # Interpolate model data directly to station locations
   #TODO: interpolate to the station height.
-  def sample_model_at_obs (model, obs, fieldname):
-    from ..common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
-    field = model.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
+  def sample_model_at_obs (model, obs, fieldname, units):
+    from ..common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps, find_and_convert
+    field = find_and_convert(model, fieldname, units, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
     field = select_surface(field)
 
     series = obs.find_best(fieldname)
@@ -128,12 +128,10 @@ if True:
     model_data = []
     model_spread = []
     for m in models:
-      field = sample_model_at_obs(m,obs,fieldname)
-      field = convert(field, units, context=fieldname)
+      field = sample_model_at_obs(m,obs,fieldname,units)
       model_data.append(field)
       try:
-        field = sample_model_at_obs(m,obs,fieldname+'_ensemblespread')
-        field = convert(field, units, context=fieldname)
+        field = sample_model_at_obs(m,obs,fieldname+'_ensemblespread',units)
         model_spread.append(field)
       except KeyError:  # No ensemble spread for this model data
         model_spread.append(None)
