@@ -93,7 +93,7 @@ class Cache (object):
 
 
   # Write out the data
-  def write (self, var, prefix, split_time=None):
+  def write (self, var, prefix, split_time=None, force_single_precision=True):
     from os.path import exists
     from os import remove, mkdir
     from pygeode.formats import netcdf
@@ -113,7 +113,7 @@ class Cache (object):
 
     # Make sure the data is in 32-bit precision
     # (sometimes diagnostics cause a 64-bit output - waste of space)
-    if var.dtype.name != 'float32':
+    if force_single_precision and (var.dtype.name != 'float32'):
       var = var.as_type('float32')
 
     # Special case - no time axis
