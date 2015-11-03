@@ -438,7 +438,7 @@ def _cleanup_subdomains (domains):
   return domains - junk_domains
 
 # Scan a file manifest, return all possible domains available.
-def _get_domains (manifest, force_common_axis):
+def _get_domains (manifest, force_common_axis=[]):
 
   axis_manager = AxisManager()  # For memoized axis operations
 
