@@ -95,6 +95,9 @@ class GEOSCHEM_Data(DataProduct):
       if var.name.startswith('DXYP'):
         var = var.squeeze('time')
         dataset[i] = var
+
+    # Make sure the longitudes are monotonic!
+    dataset = [d.sorted('lon') for d in dataset]
     return Dataset(dataset)
 
   # Method to decode an opened dataset (standardize variable names, and add any
