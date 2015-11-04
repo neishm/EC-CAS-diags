@@ -14,12 +14,15 @@ class GEOSCHEM_Data(DataProduct):
     ('ocn', 'CO2_ocean_flux', 'molecules cm-2 s-1'),
     ('bb', 'CO2_fire_flux', 'g m-2'),
     ('shp', 'CO2_shipping_flux', 'molecules cm-2 s-1'),
+    ('DXYP__DXYP', 'cell_area', 'm2'),
   )
 
   # Method to open a single file
   @staticmethod
   def open_file (filename):
     from pygeode.formats import netcdf
+    from common import rotate_grid
+    from pygeode.dataset import Dataset
     data = netcdf.open(filename)
 
     # Need to define the time axis
@@ -40,11 +43,27 @@ class GEOSCHEM_Data(DataProduct):
     elif prefix == 'ship':
       date = search("ship\.(?P<month>[0-9]{2})\.geos\.4x5\.nc", filename).groupdict()
       time = StandardTime(year=[2009], month=[int(date['month'])])
-
+    else:
+      time = data.time
 
     # Need the time axis to have a consistent start date
     time = StandardTime(startdate={'year':2009, 'month':1, 'day':1}, units='hours', **time.auxarrays)
     data = data.replace_axes(time=time)
+
+    # Rotate the longitudes so they start at 0 (same as 3D COARDS fields).
+    data = data.map(rotate_grid)
+
+
+    # Rename 'latitude' axis to 'lat', for compatibility with 3D COARDS data.
+    data = data.rename_axes(latitude='lat')
+
+    # Hack for the grid cell areas - remove time axis.
+    # Copied from geoschem-coards interface.
+    data = list(data)
+    for i, var in enumerate(data):
+      if var.name.startswith('DXYP'):
+        var = var.squeeze('time')
+        data[i] = var
 
     return data
 
@@ -56,9 +75,6 @@ class GEOSCHEM_Data(DataProduct):
 
     # Apply fieldname conversions
     data = DataProduct.decode.__func__(cls,dataset)
-
-    # Remove degenenerate vertical axis
-    data = data.squeeze('level')
 
     # Detect climatologies (had to add a fake year in the file opener)
     if 'CO2_shipping_flux' in data:
@@ -76,9 +92,8 @@ class GEOSCHEM_Data(DataProduct):
       if var.name.startswith('CO2'):
         var.atts['specie'] = 'CO2'
 
-    """
     # Convert to a dictionary (for referencing by variable name)
-    data = dict((var.name,var) for var in dataset)
+    data = dict((var.name,var) for var in data)
 
     # General cleanup stuff
 
@@ -87,7 +102,11 @@ class GEOSCHEM_Data(DataProduct):
 
     # Convert to a list
     data = list(data.values())
-    """
+
+    # Remove degenenerate vertical axis
+    for i, var in enumerate(data):
+      if var.hasaxis('level'):
+        data[i] = var.squeeze('level')
 
     return data
 
