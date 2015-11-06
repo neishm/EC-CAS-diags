@@ -133,15 +133,15 @@ class DataProduct (DataInterface):
 
   # Method to find all relevant files for the given patterns.
   # Evaluates globbing patterns, and searches directories.
-  @staticmethod
-  def expand_files (files):
+  @classmethod
+  def expand_files (cls, files):
     from os.path import exists, isdir
     from glob import glob
     expanded_files = []
     if isinstance(files,str): files = [files]
     for f in files:
       if isdir(f):
-        expanded_files.extend(self.find_files(f))
+        expanded_files.extend(cls.find_files(f))
       else:
         expanded_files.extend(glob(f))
     if len(expanded_files) == 0:
