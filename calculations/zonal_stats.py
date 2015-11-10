@@ -36,14 +36,17 @@ def zonalstd (var):
 def all_zonalmean (model):
   from common import number_of_levels, number_of_timesteps
   from ..interfaces import DerivedProduct
-  fieldnames = [v.name for d in model.datasets for v in d]
-  fieldnames = sorted(set(fieldnames))
-  outvars = []
-  for fieldname in fieldnames:
-    var = model.find_best(fieldname, maximize=(number_of_levels,number_of_timesteps))
-    if not var.hasaxis('lon'): continue
-    var = zonalmean(var)
-    outvars.append(var)
-  outdata = DerivedProduct(outvars, name=model.name+'_zonalmean', title=model.title, color=model.color, cache=model.cache)
-  return outdata
+  from pygeode.dataset import Dataset
+  out_datasets = []
+  for in_dataset in model.datasets:
+    out_dataset = []
+    for in_var in in_dataset:
+      if not in_var.hasaxis('lon'): continue
+      out_var = zonalmean(in_var)
+      out_dataset.append(out_var)
+    if len(out_dataset) == 0: continue
+    out_dataset = Dataset(out_dataset)
+    out_datasets.append(out_dataset)
+  out = DerivedProduct(out_datasets, name=model.name+'_zonalmean', title=model.title, color=model.color, cache=model.cache)
+  return out
 
