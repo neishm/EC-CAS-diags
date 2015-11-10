@@ -15,7 +15,14 @@ class GEOS5_Weird_Format(DataProduct):
   @staticmethod
   def open_file (filename):
     from pygeode.formats import netcdf
-    return netcdf.open(filename)
+    data = netcdf.open(filename)
+    # If we have year information for OH climatology, then store it for future reference.
+    if 'UCX-OH-' in filename:
+      from pygeode.var import Var
+      year = filename.split('_')[-1][:-3]
+      year = Var(axes=[data.tau0], values=[int(year)]*12,name='year')
+      data = data + year
+    return data
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
@@ -47,6 +54,12 @@ class GEOS5_Weird_Format(DataProduct):
 
     # Generate the expected vertical axis
     if sigma is not None:
+      # Special case - 59-level OH input
+      if len(sigma) == 59:
+        A = A[:59]
+        B = B[:59]
+        dA = dA[:59]
+        dB = dB[:59]
       zaxis = Hybrid(values=(A+B*1000)/1000, A=A, B=B)
       A = Var(name='A', axes=[zaxis], values=A)
       B = Var(name='B', axes=[zaxis], values=B)
@@ -56,7 +69,10 @@ class GEOS5_Weird_Format(DataProduct):
     # Generate the expected time axis
     if tau0 is not None:
       if len(tau0) == 12:
-        taxis = StandardTime(month=tau0.values)
+        if 'year' in dataset:
+          taxis = StandardTime(year=dataset.year[:], month=tau0.values)
+        else:
+          taxis = StandardTime(month=tau0.values)
       elif len(tau0) == 576:
         taxis = StandardTime(tau0.values, units='hours', startdate=dict(year=1985,month=1,day=1))
 
