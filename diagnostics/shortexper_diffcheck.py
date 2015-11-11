@@ -2,7 +2,7 @@ def extract_timeseries (model, fieldname, units, lat, lon, location):
   from ..common import number_of_levels, number_of_timesteps, convert
   field = model.find_best(fieldname, maximize=(number_of_levels, number_of_timesteps))
   field = field(lat=lat,lon=lon)
-  field = model.cache.write(field, prefix=fieldname+'_'+location)
+  field = model.cache.write(field, prefix=model.name+'_'+fieldname+'_'+location)
   field = convert(field,units)
   return field
 
@@ -20,7 +20,7 @@ def shortexper_diffcheck(models, obs, location, outdir):
 
   # Cache the observation data, for faster subsequent access
   # (uses same cache as timeseries diagnostics)
-  co2_obs = obs.cache.write(co2_obs, prefix='sfc_CO2', split_time=False)
+  co2_obs = obs.cache.write(co2_obs, prefix=obs.name+'_sfc_CO2', split_time=False)
 
   co2_obs = co2_obs(station=location)
 

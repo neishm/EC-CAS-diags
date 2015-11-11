@@ -56,7 +56,7 @@ if True:
     if typestat == "mean" : var=var_mean
 
     # Cache the zonalmean data
-    var = model.cache.write(var, prefix='zonal'+typestat+'_gph_'+fieldname)
+    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_gph_'+fieldname)
 
     return var
 
@@ -103,7 +103,7 @@ if True:
     if typestat == "mean" : var=var_mean
 
     # Cache the zonalmean data
-    var = model.cache.write(var, prefix='zonal'+typestat+'_pres_'+fieldname)
+    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_pres_'+fieldname)
 
     return var
 

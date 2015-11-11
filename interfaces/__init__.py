@@ -208,7 +208,7 @@ class DataProduct (DataInterface):
     self.color = color
     self.cache = cache
     if cache is not None:
-      manifest = cache.full_path("manifest", writeable=True)
+      manifest = cache.full_path(name+"_manifest", writeable=True)
     else:
       manifest = None
 

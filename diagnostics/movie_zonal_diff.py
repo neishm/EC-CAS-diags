@@ -47,7 +47,7 @@ if True:
     diff = fields[0]-fields[1]
     diff.name=fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = models[0].cache.write(diff, prefix='zonal'+typestat+'_gph_diff_'+models[1].name+'_'+fieldname)
+    diff = models[0].cache.write(diff, prefix=models[0].name+'_zonal'+typestat+'_gph_diff_'+models[1].name+'_'+fieldname)
     fields.append(diff)
     subtitles.append('difference')
 

@@ -74,7 +74,7 @@ if args.dry_air: eccas = interfaces.table['eccas-dry']
 else: eccas = interfaces.table['eccas-moist']
 eccas_flux = interfaces.table['eccas-flux']
 
-experiment = eccas(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir], global_prefix=experiment_name+"_"))
+experiment = eccas(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir]))
 # Duct-tape the flux data to the experiment data
 #TODO: make the fluxes a separate product
 if args.emissions is not None:
@@ -85,17 +85,17 @@ if args.emissions is not None:
   experiment.datasets += tuple(d.replace_axes(lat=lat,lon=lon) for d in flux.datasets)
 
 if control_dir is not None:
-  control = eccas(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir], global_prefix=control_name+"_"))
+  control = eccas(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir]))
 else:
   control = None
 
 # CarbonTracker data
-carbontracker = interfaces.table['carbontracker'](["/wrk1/EC-CAS/CarbonTracker"], name='CT2010', title='CarbonTracker', cache=Cache('/wrk1/EC-CAS/CarbonTracker/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CT2010_'))
-carbontracker_ch4 = interfaces.table['carbontracker-ch4']("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc", name='CTCH42010', title='CarbonTracker', cache=Cache('/wrk6/eltonc/ct_ch4/molefractions/nc_cache', fallback_dirs=filter(None,[args.tmpdir]), global_prefix='CTCH42010_'))
+carbontracker = interfaces.table['carbontracker'](["/wrk1/EC-CAS/CarbonTracker"], name='CT2010', title='CarbonTracker', cache=Cache('/wrk1/EC-CAS/CarbonTracker/nc_cache', fallback_dirs=filter(None,[args.tmpdir])))
+carbontracker_ch4 = interfaces.table['carbontracker-ch4']("/wrk6/eltonc/ct_ch4/molefractions/2009????.nc", name='CTCH42010', title='CarbonTracker', cache=Cache('/wrk6/eltonc/ct_ch4/molefractions/nc_cache', fallback_dirs=filter(None,[args.tmpdir])))
 
 # Observation data
-ec_obs = interfaces.table['ec-station-obs'](["/wrk1/EC-CAS/surface/EC-2013","/wrk1/EC-CAS/surface_ch4/EC-2013"], name="EC", title="EC Station Obs", cache=Cache(args.tmpdir, global_prefix="ec-station-obs_", split_time=False))
-gaw_obs = interfaces.table['gaw-station-obs'](["/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2009","/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2010","/wrk6/chan/gaw_ch4_obs/hourly/y2009"], name="GAW", title='GAW-2014 Station Obs', cache=Cache(args.tmpdir, global_prefix="gaw-station-obs_", split_time=False))
+ec_obs = interfaces.table['ec-station-obs'](["/wrk1/EC-CAS/surface/EC-2013","/wrk1/EC-CAS/surface_ch4/EC-2013"], name="ec-station-obs", title="EC Station Obs", cache=Cache(args.tmpdir, split_time=False))
+gaw_obs = interfaces.table['gaw-station-obs'](["/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2009","/wrk1/EC-CAS/surface/GAW-2014/co2/hourly/y2010","/wrk6/chan/gaw_ch4_obs/hourly/y2009"], name="gaw-station-obs", title='GAW-2014 Station Obs', cache=Cache(args.tmpdir, split_time=False))
 
 
 # Dump the output files to a subdirectory of the experiment data

@@ -113,7 +113,7 @@ for section in configparser.sections():
     fallback_dirs = [args.tmpdir]
   else: fallback_dirs = []
   
-  cache = Cache(dir=data_dirs[0]+"/nc_cache", fallback_dirs=fallback_dirs, global_prefix=data_name+"_")
+  cache = Cache(dir=data_dirs[0]+"/nc_cache", fallback_dirs=fallback_dirs)
 
   experiment = data_interface(data_dirs, name=data_name, title='%s (%s)'%(desc,data_name), color=color, cache=cache)
 
