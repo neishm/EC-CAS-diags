@@ -323,7 +323,10 @@ from pygeode.var import Var, copy_meta
 class DelayedWrite(Var):
   @classmethod
   def construct (cls, cache, invar, *args, **kwargs):
-    var = cls(invar.axes, name=invar.name, dtype=invar.dtype)
+    dtype = invar.dtype
+    if kwargs.get('force_single_precision',True) is True:
+      dtype = 'float32'
+    var = cls(invar.axes, name=invar.name, dtype=dtype)
     copy_meta (invar, var)
     var.cache = cache
     var.invar = invar
