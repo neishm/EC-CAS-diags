@@ -8,10 +8,6 @@ def zonalmean (var):
   # Do the zonal mean
   var = var.nanmean('lon')
 
-  # Cache the data
-  #TODO
-#  var = model.cache.write(var, prefix='zonal'+typestat+'_pres_'+fieldname)
-
   return var
 
 def zonalstd (var):
@@ -43,6 +39,9 @@ def all_zonalmean (model):
     for in_var in in_dataset:
       if not in_var.hasaxis('lon'): continue
       out_var = zonalmean(in_var)
+      # Cache the data (delayed)
+      if model.cache is not None:
+        out_var = model.cache.delayed_write(out_var, prefix=model.name+'_zonalmean_'+in_var.name)
       out_dataset.append(out_var)
     if len(out_dataset) == 0: continue
     out_dataset = Dataset(out_dataset)
