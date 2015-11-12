@@ -25,19 +25,23 @@ def gph (var, z):
 def all_gph (model):
   from common import number_of_levels, number_of_timesteps
   from ..interfaces import DerivedProduct
-  fieldnames = [v.name for d in model.datasets for v in d]
-  fieldnames = sorted(set(fieldnames))
-  outvars = []
-  for fieldname in fieldnames:
-    try:
-      if fieldname == 'geopotential_height': continue
-      var, z = model.find_best([fieldname,'geopotential_height'], maximize=(number_of_levels,number_of_timesteps))
-      if not var.hasaxis('zaxis'): continue
-      var = gph(var,z)
-      outvars.append(var)
-    except KeyError: pass # Unable to get concurrent var / geopotential height
-  outdata = DerivedProduct(outvars, name=model.name+'_gph', title=model.title, color=model.color, cache=model.cache)
-  return outdata
+  from pygeode.dataset import Dataset
+  out_datasets = []
+  for in_dataset in model.datasets:
+    if 'geopotential_height' not in in_dataset: continue
+    z = in_dataset.geopotential_height
+    out_dataset = []
+    for in_var in in_dataset:
+      if not in_var.hasaxis('zaxis'): continue
+      out_var = gph(in_var,z)
+      out_dataset.append(out_var)
+    if len(out_dataset) == 0: continue
+    out_dataset = Dataset(out_dataset)
+    out_datasets.append(out_dataset)
+  out = DerivedProduct(out_datasets, name=model.name+'_gph', title=model.title, color=model.color, cache=model.cache)
+  #TODO: When there's more than one copy an an output field, use the one that had the largest number of vertical levels on input?
+  return out
+
   
 # Convert zonal mean data (on pressure levels)
 def pres (var, p):
@@ -65,18 +69,20 @@ def pres (var, p):
 def all_pres (model):
   from common import number_of_levels, number_of_timesteps
   from ..interfaces import DerivedProduct
-  fieldnames = [v.name for d in model.datasets for v in d]
-  fieldnames = sorted(set(fieldnames))
-  outvars = []
-  for fieldname in fieldnames:
-    try:
-      if fieldname == 'air_pressure': continue
-      var, z = model.find_best([fieldname,'air_pressure'], maximize=(number_of_levels,number_of_timesteps))
-      if not var.hasaxis('zaxis'): continue
-      var = pres(var,z)
-      outvars.append(var)
-    except KeyError: pass # Unable to get concurrent var / geopotential height
-  outdata = DerivedProduct(outvars, name=model.name+'_pres', title=model.title, color=model.color, cache=model.cache)
-  return outdata
-  
+  from pygeode.dataset import Dataset
+  out_datasets = []
+  for in_dataset in model.datasets:
+    if 'air_pressure' not in in_dataset: continue
+    p = in_dataset.air_pressure
+    out_dataset = []
+    for in_var in in_dataset:
+      if not in_var.hasaxis('zaxis'): continue
+      out_var = pres(in_var,p)
+      out_dataset.append(out_var)
+    if len(out_dataset) == 0: continue
+    out_dataset = Dataset(out_dataset)
+    out_datasets.append(out_dataset)
+  out = DerivedProduct(out_datasets, name=model.name+'_pres', title=model.title, color=model.color, cache=model.cache)
+  #TODO: When there's more than one copy an an output field, use the one that had the largest number of vertical levels on input?
+  return out
 
