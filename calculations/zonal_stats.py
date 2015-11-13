@@ -1,32 +1,39 @@
+from . import unary_calc
 
-def zonalmean (var):
+@unary_calc(cache=True)
+def zonalmean (dataset):
   from ..common import remove_repeated_longitude
 
-  # Remove any repeated longtiude (for global data)
-  var = remove_repeated_longitude(var)
+  for invar in dataset:
+    if not invar.hasaxis('lon'): continue
 
-  # Do the zonal mean
-  var = var.nanmean('lon')
+    # Remove any repeated longtiude (for global data)
+    invar = remove_repeated_longitude(invar)
 
-  return var
+    # Do the zonal mean
+    yield invar.nanmean('lon')
 
-def zonalstd (var):
+
+@unary_calc(cache=True)
+def zonalrms (dataset):
   from ..common import remove_repeated_longitude
 
-  var_mean = zonalmean(var)
+  for invar in dataset:
+    if not invar.hasaxis('lon'): continue
 
-  # Remove any repeated longtiude (for global data)
-  var = remove_repeated_longitude(var)
+    # Remove any repeated longtiude (for global data)
+    invar = remove_repeated_longitude(invar)
 
-  # Do the zonal standard deviation
-  var = (var-var_mean).nanstdev('lon')
-  var.name = var_mean.name
+    outvar = (invar**2).nanmean('lon').sqrt()
+    outvar.name = invar.name
 
-  # Cache the data
-  #TODO
-#  var = model.cache.write(var, prefix='zonal'+typestat+'_pres_'+fieldname)
+    yield outvar
 
-  return var
+@unary_calc
+def _zonal_filter (dataset):
+  for invar in dataset:
+    if not invar.hasaxis('lon'): continue
+    yield invar
 
 
 def all_zonalmean (model):
