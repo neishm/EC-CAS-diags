@@ -274,6 +274,10 @@ class Cache (object):
       dataset = asdataset(load_hook(dataset))
     var = dataset.vars[0]
 
+    # Force the time axis (we lose information about whether this was a monthly
+    # mean, etc. once we write into netcdf).
+    var = var.replace_axes(time=taxis)
+
     return var
 
 
