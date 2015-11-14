@@ -108,24 +108,7 @@ if True:
     return var
 
 
-# Modify ContourMovie to hack in the "height" label
-from .movie import ContourMovie
-class ZonalMovie (ContourMovie):
-  # Modify the panel rendering to show the y-axis on the first panel,
-  # and override the latitude labels
-  def render_panel (self, axis, field, n):
-    from .movie import ContourMovie
-    ContourMovie.render_panel (self, axis, field, n)
-    if n == 0:
-      axis.set_ylabel(field.zaxis.name)
-    else:
-      axis.set_ylabel('')
-    if self.shape[1] >= 3:
-      axis.set_xticks([-90,-60,-30,0,30,60,90])
-      axis.set_xticklabels(['90S','','','EQ','','','90N'])
-del ContourMovie
-
-
+from .movie import ZonalMovie
 if True:
 
   def movie_zonal (models, fieldname, units, outdir, zaxis='gph', typestat='mean'):
