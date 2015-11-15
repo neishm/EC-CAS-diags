@@ -15,7 +15,7 @@ def zonalmean (dataset):
 
 
 @quick_calc(cache=True)
-def zonalstd (dataset):
+def zonalstdev (dataset):
   from ..common import remove_repeated_longitude
 
   for invar in dataset:
