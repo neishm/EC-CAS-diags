@@ -281,11 +281,6 @@ class Cache (object):
     return var
 
 
-  # Write out the data, but only when it's accessed
-  def delayed_write (self, var, *args, **kwargs):
-    return DelayedWrite.construct(cache=self, invar=var, *args, **kwargs)
-
-
 
   # Given a filename, add the appropriate directory structure.
   # Parameters:
@@ -321,26 +316,4 @@ class Cache (object):
       mkdir(dirname(self.write_dir+filename))
 
     return self.write_dir+filename
-
-# A wrapper to cache a field only when the data is accessed.
-from pygeode.var import Var, copy_meta
-class DelayedWrite(Var):
-  @classmethod
-  def construct (cls, cache, invar, *args, **kwargs):
-    dtype = invar.dtype
-    if kwargs.get('force_single_precision',True) is True:
-      dtype = 'float32'
-    var = cls(invar.axes, name=invar.name, dtype=dtype)
-    copy_meta (invar, var)
-    var.cache = cache
-    var.invar = invar
-    var.cache_args = args
-    var.cache_kwargs = kwargs
-    var.cached_var = None
-    return var
-  def getview (self, view, pbar):
-    if self.cached_var is None:
-      self.cached_var = self.cache.write(self.invar, *self.cache_args, **self.cache_kwargs)
-    return view.get(self.cached_var)
-del Var
 
