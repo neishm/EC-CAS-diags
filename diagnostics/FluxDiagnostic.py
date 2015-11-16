@@ -38,7 +38,7 @@ if True:
     data = remove_repeated_longitude(data)
 
     # Cache the data (mainly to get the high/low stats)
-    data = model.cache.write(data, prefix='flux_'+fieldname)
+    data = model.cache.write(data, prefix=model.name+'_flux_'+fieldname)
 
     return data
 

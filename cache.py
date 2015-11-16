@@ -44,7 +44,7 @@ class CacheWriteError (IOError): pass
 # The Cache object:
 
 class Cache (object):
-  def __init__ (self, dir, fallback_dirs=[], global_prefix='', split_time=True):
+  def __init__ (self, dir, fallback_dirs=[], split_time=True):
     from os.path import exists, isdir
     from os import mkdir, remove
 
@@ -58,7 +58,6 @@ class Cache (object):
     self.save_hooks = [station_axis_save_hook]
     self.load_hooks = [station_axis_load_hook, fstd_load_hook]
 
-    self.global_prefix = global_prefix
     self.split_time = split_time
 
     self.read_dirs = []
@@ -190,7 +189,7 @@ class Cache (object):
 
         # Loop over each time, save into a cache file
         from pygeode.progress import PBar
-        pbar = PBar (message = "Caching %s"%self.global_prefix+prefix)
+        pbar = PBar (message = "Caching %s"%prefix)
         for i, datestring in enumerate(datestrings):
           pbar.update(i*100./len(datestrings))
 
@@ -275,15 +274,19 @@ class Cache (object):
       dataset = asdataset(load_hook(dataset))
     var = dataset.vars[0]
 
+    # Force the time axis (we lose information about whether this was a monthly
+    # mean, etc. once we write into netcdf).
+    var = var.replace_axes(time=taxis)
+
     return var
+
 
 
   # Given a filename, add the appropriate directory structure.
   # Parameters:
   #   existing (default: False) -  If True, the file must already exist.
   #   writeable (default: False) - If True, the file must be in a writeable location.
-  def full_path (self, name, existing=False, writeable=False):
-    filename = self.global_prefix + name
+  def full_path (self, filename, existing=False, writeable=False):
 
     from os.path import exists, dirname
     from os import mkdir

@@ -71,7 +71,7 @@ if True:
       data.atts['specie'] = specie
 
     # Cache the data
-    return model.cache.write(data,prefix="totalmass_"+fieldname, force_single_precision=False)
+    return model.cache.write(data,prefix=model.name+"_totalmass_"+fieldname, force_single_precision=False)
 
   # Integrated flux (moles per second)
   def compute_totalflux (model, fieldname):
@@ -98,7 +98,7 @@ if True:
     data.name = fieldname
 
     # Cache the data
-    return model.cache.write(data,prefix="totalflux_"+fieldname, force_single_precision=False)
+    return model.cache.write(data,prefix=model.name+"_totalflux_"+fieldname, force_single_precision=False)
 
 
   def doplot (outfile, title, fields, colours, styles, labels):

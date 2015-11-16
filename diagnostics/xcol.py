@@ -36,7 +36,7 @@ if True:
       data.atts['specie'] = c.atts['specie']
 
     # Cache the data
-    return model.cache.write(data,prefix="totalcolumn_"+fieldname)
+    return model.cache.write(data,prefix=model.name+"_totalcolumn_"+fieldname)
 
 
   # Compute average column of a tracer
@@ -52,7 +52,7 @@ if True:
       data.atts['specie'] = c.atts['specie']
 
     # Cache the data
-    return model.cache.write(data,prefix="avgcolumn_"+fieldname)
+    return model.cache.write(data,prefix=model.name+"_avgcolumn_"+fieldname)
 
 
 

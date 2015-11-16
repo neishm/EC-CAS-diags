@@ -56,22 +56,41 @@ class Movie(object):
       # Sample the fields at the current time
       fields = [f(time=t) for f in self.fields]
 
-      year = fields[0].time.year[0]
-      month = fields[0].time.month[0]
-      day = fields[0].time.day[0]
-      hour = fields[0].time.hour[0]
-      minute = fields[0].time.minute[0]
-      # If the minutes are all '0', then don't use minutes in the filenames.
-      # Allows backwards compatibility with previous version of the diagnostics.
-      if list(set(taxis.minute)) == [0]:
-        outfile = imagedir + "/%04d%02d%02d%02d.png"%(year,month,day,hour)
-      # Otherwise, need to include minute information to distinguish each
-      # timestep.
-      else:
-        outfile = imagedir + "/%04d%02d%02d%02d%02d.png"%(year,month,day,hour,minute)
+      outfile = imagedir + "/"
+      datestring = ""
+      #TODO: more comprehensive function for mapping different combinations
+      # of year/month/day/hour/minute to filename strings and title strings.
+      year = getattr(fields[0].time,'year',[None])[0]
+      if year is not None:
+        outfile += "%04d"%year
+        datestring = "%04d"%year
+      month = getattr(fields[0].time,'month',[None])[0]
+      if month is not None:
+        outfile += "%02d"%month
+        if datestring != "": datestring += "-"
+        datestring += "%02d"%month
+      day = getattr(fields[0].time,'day',[None])[0]
+      if day is not None:
+        outfile += "%02d"%day
+        if datestring != "": datestring += "-"
+        datestring += "%02d"%day
+      hour = getattr(fields[0].time,'hour',[None])[0]
+      if hour is not None:
+        outfile += "%02d"%hour
+        if datestring != "": datestring += " "
+        datestring += "%02d"%hour
+      minute = getattr(fields[0].time,'minute',[None])[0]
+      if minute is not None:
+        # If the minutes are all '0', then don't use minutes in the filenames.
+        # Allows backwards compatibility with previous version of the diagnostics.
+        # Otherwise, need to include minute information to distinguish each
+        # timestep.
+        if list(set(taxis.minute)) != [0]:
+          outfile += "%02d"%minute
+        if datestring != "": datestring += ":"
+        datestring += "%02d"%minute
 
-#      datestring = taxis.formatvalue(t, fmt="$Y-$m-$d ${H}:${M}")
-      datestring = "%04d-%02d-%02d %02d:%02d"%(year,month,day,hour,minute)
+      outfile += ".png"
 
       if not exists(outfile):
         fig.clear()
@@ -151,4 +170,19 @@ class ContourMovie(TiledMovie):
     from pygeode.plot import plotvar
     clevs = self.clevs[field.name]
     plotvar (field, ax=axis, clevs=clevs, title=self.subtitles[n])
+
+class ZonalMovie (ContourMovie):
+  # Modify the panel rendering to show the y-axis on the first panel,
+  # and override the latitude labels
+  def render_panel (self, axis, field, n):
+    from .movie import ContourMovie
+    ContourMovie.render_panel (self, axis, field, n)
+    if n == 0:
+      axis.set_ylabel(field.zaxis.name)
+    else:
+      axis.set_ylabel('')
+    if self.shape[1] >= 3:
+      axis.set_xticks([-90,-60,-30,0,30,60,90])
+      axis.set_xticklabels(['90S','','','EQ','','','90N'])
+
 

@@ -52,14 +52,14 @@ if True:
     obs_data = obs.find_best(fieldname)
     obs_data = select_surface(obs_data)
     # Cache the observation data, for faster subsequent access
-    obs_data = obs.cache.write(obs_data, prefix='sfc_%s'%fieldname, split_time=False)
+    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s'%fieldname, split_time=False)
 
     obs_data = convert(obs_data, units, context=fieldname)
     try:
       obs_stderr = obs.find_best(fieldname+'_std')
       obs_stderr = select_surface(obs_stderr)
       # Cache the observation data, for faster subsequent access
-      obs_stderr = obs.cache.write(obs_stderr, prefix='sfc_%s_std'%fieldname, split_time=False)
+      obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s_std'%fieldname, split_time=False)
       obs_stderr = convert(obs_stderr, units, context=fieldname)
     except KeyError:
       obs_stderr = None

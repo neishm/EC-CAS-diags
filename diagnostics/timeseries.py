@@ -31,7 +31,7 @@ if True:
     field = model.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
     field = select_surface(field)
     # Cache the data for faster subsequent access
-    field = model.cache.write(field, prefix='sfc_'+fieldname)
+    field = model.cache.write(field, prefix=model.name+'_sfc_'+fieldname)
     return field
 
   # Sample a model field at station locations
@@ -102,7 +102,7 @@ if True:
     # Cache the data for faster subsequent access.
     # Disable time splitting for the cache file, since open_multi doesn't work
     # very well with the encoded station data.
-    field = model.cache.write(field, prefix='at_%s_%s'%(obs.name,fieldname), split_time=False)
+    field = model.cache.write(field, prefix=model.name+'_at_%s_%s'%(obs.name,fieldname), split_time=False)
     return field
 
 
@@ -139,14 +139,14 @@ if True:
     obs_data = obs.find_best(fieldname)
     obs_data = select_surface(obs_data)
     # Cache the observation data, for faster subsequent access
-    obs_data = obs.cache.write(obs_data, prefix='sfc_%s'%fieldname, split_time=False)
+    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s'%fieldname, split_time=False)
 
     obs_data = convert(obs_data, units, context=fieldname)
     try:
       obs_stderr = obs.find_best(fieldname+'_std')
       obs_stderr = select_surface(obs_stderr)
       # Cache the observation data, for faster subsequent access
-      obs_stderr = obs.cache.write(obs_stderr, prefix='sfc_%s_std'%fieldname, split_time=False)
+      obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s_std'%fieldname, split_time=False)
       obs_stderr = convert(obs_stderr, units, context=fieldname)
     except KeyError:
       obs_stderr = None

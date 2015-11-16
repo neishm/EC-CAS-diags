@@ -31,7 +31,7 @@ if True:
     c = c(zaxis=float(level))
 
     # Cache the data
-    return model.cache.write(c,prefix=c.zaxis.name+level+"_"+fieldname)
+    return model.cache.write(c,prefix=model.name+'_'+c.zaxis.name+level+"_"+fieldname)
 
 
   # Get the horizontal slice (and prep it for plotting)
@@ -74,7 +74,7 @@ if True:
     diff = fields[0]-fields[1]
     diff.name=fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = models[0].cache.write(diff, prefix=fieldname+'_level'+level+"_diff_"+models[1].name+'_'+fieldname)
+    diff = models[0].cache.write(diff, prefix=models[0].name+'_'+fieldname+'_level'+level+"_diff_"+models[1].name+'_'+fieldname)
     fields.append(diff)
     subtitles.append('difference')
     movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio)

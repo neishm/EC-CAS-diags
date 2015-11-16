@@ -74,7 +74,7 @@ if args.dry_air: eccas = interfaces.table['eccas-dry']
 else: eccas = interfaces.table['eccas-moist']
 eccas_flux = interfaces.table['eccas-flux']
 
-experiment = eccas(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir], global_prefix=experiment_name+"_"))
+experiment = eccas(experiment_dir, name=experiment_name, title=experiment_title, cache=Cache(dir=experiment_dir+"/nc_cache", fallback_dirs=[experiment_tmpdir]))
 # Duct-tape the flux data to the experiment data
 #TODO: make the fluxes a separate product
 if args.emissions is not None:
@@ -85,7 +85,7 @@ if args.emissions is not None:
   experiment.datasets += tuple(d.replace_axes(lat=lat,lon=lon) for d in flux.datasets)
 
 if control_dir is not None:
-  control = eccas(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir], global_prefix=control_name+"_"))
+  control = eccas(control_dir, name=control_name, title=control_title, cache=Cache(dir=control_dir+"/nc_cache", fallback_dirs=[control_tmpdir]))
 else:
   control = None
 
