@@ -5,7 +5,10 @@
 def quick_calc(f):
   from pygeode.dataset import Dataset
   from ..interfaces import DerivedProduct
+  from pygeode.var import Var
   def new_func (model):
+    # Special case: single variable (no data product metadata to deal with)
+    if isinstance(model,Var): return list(f(Dataset([model])))[0]
     out_datasets = []
     for in_dataset in model.datasets:
       try:
