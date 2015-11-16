@@ -57,7 +57,7 @@ def copy_var (var):
 
 # Helper method - find the field in the dataset, and apply some unit conversion.
 # Handle some extra logic, such as going between dry and moist air.
-def find_and_convert (product, fieldnames, units, **conditions):
+def _find_and_convert (product, fieldnames, units, **conditions):
   from units import _canonical_form, copy_default_table, define_conversion
 
   return_list = True
@@ -153,6 +153,17 @@ def find_and_convert (product, fieldnames, units, **conditions):
 
   raise ValueError ("Don't know how to convert one or more of %s to units of %s, in '%s'"%(fieldnames,units,product.name))
 
+
+# Cached version of the above function
+def find_and_convert (product, fieldnames, units, cache=False, **conditions):
+  from pygeode.var import Var
+  out = _find_and_convert (product, fieldnames, units, **conditions)
+  if cache:
+    if isinstance(out,Var):
+      out = product.cache.write(out, prefix=product.name+'_'+out.name)
+    else:
+      out = [product.cache.write(v, prefix=product.name+'_'+v.name) for v in out]
+  return out
 
 
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
