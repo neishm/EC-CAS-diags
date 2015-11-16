@@ -5,16 +5,12 @@
 def quick_calc(f):
   from pygeode.dataset import Dataset
   from ..interfaces import DerivedProduct
-  def new_func (*models, **kwargs):
-    filter_vars = kwargs.get('vars',None) or kwargs.get('var',None)
-    if isinstance(filter_vars,str): filter_vars = [filter_vars]
+  def new_func (*models):
     out_datasets = []
     for in_datasets in zip(*[m.datasets for m in models]):
       try:
         out_vars = list(f(*in_datasets))
       except KeyError: continue
-      if filter_vars is not None:
-        out_vars = [v for v in out_vars if v.name in filter_vars]
       if len(out_vars) == 0: continue
       prefix = models[0].name+'_'+f.__name__
       if len(models) > 1:
