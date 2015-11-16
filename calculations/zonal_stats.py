@@ -1,6 +1,6 @@
 from . import quick_calc
 
-@quick_calc(cache=True)
+@quick_calc
 def zonalmean (dataset):
   from ..common import remove_repeated_longitude
 
@@ -14,7 +14,7 @@ def zonalmean (dataset):
     yield invar.nanmean('lon')
 
 
-@quick_calc(cache=True)
+@quick_calc
 def zonalstdev (dataset):
   from ..common import remove_repeated_longitude
 

@@ -1,7 +1,7 @@
 from . import quick_calc
 
 #TODO: Check if we have the full month, or only a partial version.
-@quick_calc(cache=True)
+@quick_calc
 def monthlymean (dataset):
   from pygeode.climat import monthlymean
 
