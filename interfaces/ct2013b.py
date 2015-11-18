@@ -32,7 +32,14 @@ class CT2013B_Data(CT_Data):
       dp = p_p - p_m
       dp.name = 'dp'
       dp.atts['units'] = 'Pa'
-      data = data + p0 + dp
+      # Pressure interpolated to mid-levels
+      p_level = (p_p+p_m)/2
+      p_level.name = 'press'
+      p_level.atts['units'] = 'Pa'
+      # Remove old air pressure (defined on boundaries)
+      data = data - 'pressure'
+      # Put in new fields
+      data = data + p_level + p0 + dp
     return data
 
 

@@ -104,7 +104,7 @@ class CT_Data(DataProduct):
 
     # Other (more heavily derived) products
 
-    if 'air_pressure' in data:
+    if 'air_pressure' in data and len(data['air_pressure'].level) == 34:
       # Surface pressure
       # Get pressure at the bottom mid-level
       pmid = data['air_pressure'].squeeze(level=1)
