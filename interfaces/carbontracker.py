@@ -27,8 +27,11 @@ class CT_Data(DataProduct):
     ('ocn_flux_opt', 'CO2_ocean_flux', 'mol m-2 s-1'),
     ('fire_flux_imp', 'CO2_fire_flux', 'mol m-2 s-1'),
     ('press', 'air_pressure', 'Pa'),
+    ('pressure', 'air_pressure', 'Pa'),
     ('gph', 'geopotential_height', 'm'),
     ('co2', 'CO2', '1E-6 mol mol(semidry_air)-1'),
+    ('specific_humidity', 'specific_humidity', 'kg(H2O) kg(air)-1'),
+    ('temperature', 'air_temperature', 'K'),
   )
   # Helper methods
 
@@ -68,7 +71,7 @@ class CT_Data(DataProduct):
     # Don't worry about the date_components and decimal_date domain?
     # (Doesn't have any CO2-related variables).
     varnames = [v.name for v in data]
-    if 'bio' not in varnames and 'bio_flux_opt' not in varnames: return data
+    if 'co2' not in varnames and 'bio' not in varnames and 'bio_flux_opt' not in varnames: return data
 
     # Force vertical axis to be a ZAxis
     data = data.replace_axes(level = ZAxis)
@@ -83,7 +86,8 @@ class CT_Data(DataProduct):
     data = dict((var.name,var) for var in data)
 
     # Find the total CO2 (sum of components)
-    if 'CO2_background' in data:
+    # Only for older CT products that didn't have a separate 'total' file?
+    if 'CO2_background' in data and 'air_pressure' in data:
       data['CO2'] = data['CO2_background'] + data['CO2_fossil'] + data['CO2_bio'] + data['CO2_ocean'] + data['CO2_fire']
       data['CO2'].atts['units'] = data['CO2_background'].atts['units']
 
@@ -133,6 +137,8 @@ class CT_Data(DataProduct):
     from ..common import get_area
     if 'CO2' in data:
       x = data['CO2'].squeeze(level=1)
+    elif 'CO2_bio' in data:
+      x = data['CO2_bio'].squeeze(level=1)
     else:
       x = data['CO2_flux']
     data['cell_area'] = get_area(x.lat, x.lon).extend(0,x.time)
