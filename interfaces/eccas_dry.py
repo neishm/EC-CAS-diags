@@ -30,17 +30,6 @@ class ECCAS_Data(GEM_Data):
     # Do generic GEM field decoding
     dataset = GEM_Data.decode.__func__(cls,dataset)
 
-    # Determine if we have ensemble spread data from EC-CAS
-    chmstd = False
-    for var in dataset:
-      if var.atts.get('etiket') == 'STDDEV':
-        chmstd = True
-
-    # Add a suffix to the variable names, if we have ensemble spread data.
-    if chmstd:
-      for var in dataset:
-        var.name += "_ensemblespread"
-
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
 
