@@ -14,7 +14,6 @@ class GEOSCHEM_Data(DataProduct):
     ('ocn', 'CO2_ocean_flux', 'molecules cm-2 s-1'),
     ('bb', 'CO2_fire_flux', 'g m-2'),
     ('shp', 'CO2_shipping_flux', 'molecules cm-2 s-1'),
-    ('DXYP__DXYP', 'cell_area', 'm2'),
   )
 
   # Method to open a single file
