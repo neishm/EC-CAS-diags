@@ -115,7 +115,10 @@ class GEOSCHEM_Data(DataProduct):
     for i, var in enumerate(dataset):
       if var.name.endswith('_CO2'):
         var.name = 'CO2'
-        var.atts['units'] = '1E-9 mol mol(semidry_air)-1'
+        if var.atts['units'] == "v/v":  # From restart file?
+          var.atts['units'] = "mol mol(dry_air)-1"
+        else:  # From experiment output?
+          var.atts['units'] = '1E-9 mol mol(dry_air)-1'
       if var.name.endswith('_PSURF') or var.name.endswith('_PS') or var.name.startswith('PEDGE_S'):
         if var.name.startswith('GMAO_'):
            var.atts['units'] = 'hPa'
