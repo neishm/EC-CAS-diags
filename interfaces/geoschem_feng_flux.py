@@ -95,6 +95,20 @@ class GEOSCHEM_Data(DataProduct):
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in data)
 
+    # Change units of biomass burning (from monthly total to rate)
+    if 'CO2_fire_flux' in data:
+      from calendar import monthrange
+      from pygeode.var import Var
+      bb = data['CO2_fire_flux']
+      year = bb.time.year
+      month = bb.time.month
+      ndays = [monthrange(y,m)[1] for y,m in zip(year,month)]
+      ndays = Var(axes=[bb.time], values=ndays)
+      bb /= ndays
+      bb /= 86400
+      bb.name = 'CO2_fire_flux'
+      bb.atts['units'] = 'g m-2 s-1'
+
     # General cleanup stuff
 
     # Make sure the variables have the appropriate names
