@@ -8,6 +8,8 @@ if True:
     for x in inputs:
       if any ((fieldname in d and have_gridded_3d_data(d)) or fieldname+'_flux' in d for d in x.datasets):
         models.append(x)
+      elif fieldname == 'air' and any('dp' in d for d in x.datasets):
+        models.append(x)
     if len(models) == 0:
       raise ValueError("No inputs match the criteria.")
     return models
