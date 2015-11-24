@@ -105,8 +105,9 @@ class GEOSCHEM_Data(DataProduct):
       ndays = Var(axes=[bb.time], values=ndays)
       bb /= ndays
       bb /= 86400
-      bb.name = 'CO2_fire_flux'
       bb.atts['units'] = 'g m-2 s-1'
+      bb.atts['specie'] = 'CO2'
+      data['CO2_fire_flux'] = bb
 
     # General cleanup stuff
 
