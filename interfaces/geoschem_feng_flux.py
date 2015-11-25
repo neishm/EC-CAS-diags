@@ -13,7 +13,7 @@ class GEOSCHEM_Data(DataProduct):
     ('ff', 'CO2_fossil_flux', 'molecules cm-2 s-1'),
     ('ocn', 'CO2_ocean_flux', 'molecules cm-2 s-1'),
     ('bb', 'CO2_fire_flux', 'g m-2'),
-    ('shp', 'CO2_shipping_flux', 'molecules cm-2 s-1'),
+    ('shp', 'CO2_fossil_flux', 'molecules cm-2 s-1'),
   )
 
   # Method to open a single file
