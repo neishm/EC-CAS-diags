@@ -57,6 +57,17 @@ class GEM_Data(DataProduct):
             data['dp'] = compute_dp(zaxis, Ps)
           except (TypeError, ValueError): pass
           break
+    # Special case - already on pressure levels?
+    else:
+      for var in data.itervalues():
+        if var.hasaxis('pres'):
+          p = var.pres
+          paxis = var.whichaxis('pres')
+          p = p.extend(0,var.axes[:paxis])
+          p = p.extend(paxis+1, var.axes[paxis+1:])
+          p.atts['units'] = var.pres.units
+          data['air_pressure'] = p
+          break
 
     # Grid cell areas
     if 'cell_area' not in data:
