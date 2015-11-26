@@ -13,7 +13,9 @@ def gph (dataset):
   height = Height(range(68), name='height')
 
   for invar in dataset:
-    if not invar.hasaxis('zaxis'): continue
+    if not invar.hasaxis('zaxis'):
+      yield invar
+      continue
 
     # Define the final expected order of axes
     # (since 'interpolate' moves the interpolated axis)
@@ -44,7 +46,9 @@ def pres (dataset):
 
   for invar in dataset:
 
-    if not invar.hasaxis('zaxis'): continue
+    if not invar.hasaxis('zaxis'):
+      yield invar
+      continue
 
     # Define the final expected order of axes
     # (since 'interpolate' moves the interpolated axis)
