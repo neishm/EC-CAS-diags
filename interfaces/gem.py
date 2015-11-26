@@ -7,9 +7,11 @@ class GEM_Data(DataProduct):
   field_list = (
     ('GZ', 'geopotential_height', 'dam'),
     ('P0', 'surface_pressure', 'hPa'),
+    ('PN', 'MSL_pressure', 'hPa'),
     ('TT', 'air_temperature', 'K'),
     ('UU', 'zonal_wind', 'knots'),
     ('VV', 'meridional_wind', 'knots'),
+    ('WW', 'vertical_motion', 'Pa s-1'),
     ('HU', 'specific_humidity', 'kg(H2O) kg(air)-1'),
     ('DX', 'cell_area', 'm2'),
     ('H', 'PBL_height', 'm'),
@@ -119,6 +121,7 @@ class GEM_Data(DataProduct):
     files.extend(glob(model_dir+"/k[0-9]*_[0-9]*"))
     files.extend(glob(model_dir+"/d[0-9]*_[0-9]*"))
     files.extend(glob(model_dir+"/p[0-9]*_[0-9]*"))
+    files.extend(glob(model_dir+"/2[0-9]*.fst"))
     # Omit 0h forecasts
     files = [f for f in files if not f.endswith('_000') and not f.endswith('_000h')]
 
