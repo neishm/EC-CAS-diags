@@ -7,7 +7,9 @@ def monthlymean (dataset):
   from pygeode.var import copy_meta
 
   for invar in dataset:
-    if not invar.hasaxis('time'): continue
+    if not invar.hasaxis('time'):
+      yield invar
+      continue
 
     # Do the monthly mean
     outvar = monthlymean(invar)

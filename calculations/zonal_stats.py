@@ -5,7 +5,9 @@ def zonalmean (dataset):
   from ..common import remove_repeated_longitude
 
   for invar in dataset:
-    if not invar.hasaxis('lon'): continue
+    if not invar.hasaxis('lon'):
+      yield invar
+      continue
 
     # Remove any repeated longtiude (for global data)
     invar = remove_repeated_longitude(invar)
@@ -19,7 +21,9 @@ def zonalstdev (dataset):
   from ..common import remove_repeated_longitude
 
   for invar in dataset:
-    if not invar.hasaxis('lon'): continue
+    if not invar.hasaxis('lon'):
+      yield invar
+      continue
 
     # Remove any repeated longtiude (for global data)
     invar = remove_repeated_longitude(invar)
