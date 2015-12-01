@@ -358,9 +358,6 @@ def compute_dp (zaxis, p0):
     b_m = zeta.atts['b_m']
     a_t = zeta.atts['a_t']
     b_t = zeta.atts['b_t']
-    # Add extra level at the lid
-    a_m = np.array([math.log(zeta.atts['ptop'])] + list(a_m))
-    b_m = np.array([0] + list(b_m))
 
     # Figure out if we have thermodynamic or momentum levels, and use the
     # other set of levels as the interfaces
@@ -368,6 +365,11 @@ def compute_dp (zaxis, p0):
       a_int = a_t
       b_int = b_t
     elif set(zeta.A) <= set(a_t) and set(zeta.B) <= set(b_t):
+      # Omit the highest level (diagnostic, not used in the mass calculations?)
+      # NOTE: this level may be removed in future GEM versions, so we may need
+      # to check model version first?
+      assert zeta[0] < zeta[-1]
+      zeta = zeta.slice[1:]
       a_int = a_m
       b_int = b_m
     else:
