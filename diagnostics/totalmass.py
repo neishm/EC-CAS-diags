@@ -44,7 +44,7 @@ if True:
          #raise ValueError("Don't know how to compute mass from units of '%s'"%c.atts['units'])
          raise
 
-
+       c = c.as_type('float64')
        # Integrate to get total column
        tc = (c*dp).sum('zaxis') / g
 
@@ -96,6 +96,7 @@ if True:
 
     # Sum, skipping the last (repeated) longitude
     data = remove_repeated_longitude(data)
+    data = data.as_type('float64')
     data = data.sum('lat','lon')
     data.name = fieldname
 
