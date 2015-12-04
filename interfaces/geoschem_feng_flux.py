@@ -31,12 +31,21 @@ class GEOSCHEM_Data(DataProduct):
     from pygeode.timeaxis import StandardTime
     prefix = filename.split('/')[-1].split('.')[0]
     if prefix == 'bio':
-      date = search("(?P<year>[0-9]{4})(?P<doy>[0-9]{3})\.geos\.4x5\.nc", filename).groupdict()
-      date = datetime(year=int(date['year']), month=1, day=1) + timedelta(days=int(date['doy'])-1)
-      date = dict(year=date.year, month=date.month, day=date.day)
-      time = StandardTime(startdate=date, units='hours', values=range(0,24,3))
+      # Posterior fluxes have a year
+      try:
+        date = search("bio\.(?P<year>[0-9]{4})(?P<doy>[0-9]{3})\.geos\.4x5", filename).groupdict()
+        date = datetime(year=int(date['year']), month=1, day=1) + timedelta(days=int(date['doy'])-1)
+        date = dict(year=date.year, month=date.month, day=date.day)
+        time = StandardTime(startdate=date, units='hours', values=range(0,24,3))
+      # Prior fluxes don't have a year
+      except AttributeError:
+        date = search("bio\.(?P<doy>[0-9]{3})\.geos\.4x5", filename).groupdict()
+        date = datetime(year=2009, month=1, day=1) + timedelta(days=int(date['doy'])-1)
+        date = dict(year=date.year, month=date.month, day=date.day)
+        time = StandardTime(startdate=date, units='hours', values=range(0,24,3))
+
     elif prefix == 'ff_ocn_bb':
-      date = search("(?P<year>[0-9]{4})(?P<month>[0-9]{2})\.geos\.4x5\.nc", filename).groupdict()
+      date = search("(?P<year>[0-9]{4})(?P<month>[0-9]{2})\.geos\.4x5", filename).groupdict()
       date = dict(year=int(date['year']), month=int(date['month']))
       time = StandardTime(startdate=date, units='hours', values=[0])
     elif prefix == 'ship':
