@@ -290,7 +290,6 @@ except Exception as e:
 from eccas_diags.diagnostics import totalmass_diff
 # Total mass CO2 difference
 try:
-  totalmass_diff.do_all (datasets, fieldname='CO2', units='Pg(C)', outdir=outdir, normalize_air_mass=True)
   totalmass_diff.do_all (datasets, fieldname='CO2', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass_diff CO2', e])
