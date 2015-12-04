@@ -37,18 +37,14 @@ description = 'Produce various diagnostics (figures and animations).'
 # Pass 1: get configuration file.
 parser = argparse.ArgumentParser (description=description, epilog='Different arguments may exist for particular configuration files.', add_help=False)
 parser.add_argument('-h', '--help', action='store_true', help="Display help message")
-parser.add_argument('configfile', type=argparse.FileType('r'), nargs='?', help="Configuration file to use for the diagnostics.")
+parser.add_argument('-f', '--configfile', default='default.cfg', type=argparse.FileType('r'), nargs='?')
 args, extra_args = parser.parse_known_args()
 
-if args.configfile is None:
-  if args.help is True: parser.print_help()
-  else: parser.print_usage()
-  quit()
 
 # Start a new argument parser, now that we have the configuration file.
 parser = argparse.ArgumentParser (description=description, add_help=True)
 # Add this config file as an option
-parser.add_argument(args.configfile.name, help='The current configuration being used.')
+parser.add_argument('-f', '--configfile', help="Configuration file to use for the diagnostics.  Default is 'default.cfg'.  Currently using '%s'."%args.configfile.name)
 parser.add_argument('--tmpdir', help="where to put any intermediate files that get generated, if they can't be stored in their usual location.  THIS SHOULD NOT BE IN YOUR HOME DIRECTORY.")
 
 # Read the configuration file.
