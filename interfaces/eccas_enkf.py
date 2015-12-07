@@ -2,14 +2,14 @@ from .eccas_dry import ECCAS_Data
 
 class ECCAS_EnKF_Data(ECCAS_Data):
 
-  # Method to decode an opened dataset (standardize variable names, and add any
-  # extra info needed (pressure values, cell area, etc.)
-  @classmethod
-  def decode (cls,dataset):
-    from .eccas_dry import ECCAS_Data
+  # Method to open a single file
+  @staticmethod
+  def open_file (filename):
+    from pygeode.formats import fstd
+    dataset = fstd.open(filename, raw_list=True)
 
-    # Do generic GEM field decoding
-    dataset = ECCAS_Data.decode.__func__(cls,dataset)
+    # We need to rename the CO2 field from the ensemble spread  file, so it
+    # doesn't get mixed up with the ensemble mean data (also called CO2).
 
     # Determine if we have ensemble spread data from EC-CAS
     chmstd = False
