@@ -44,6 +44,33 @@ class ECCAS_EnKF_Data(ECCAS_Data):
     records['deet'][ind] = 0
 
 
+  # Method to find all files in the given directory, which can be accessed
+  # through this interface.
+  @staticmethod
+  def find_files (dirname):
+    from os.path import exists
+    from glob import glob
+
+    files = []
+
+    ##############################
+    # Model output
+    ##############################
+
+    if exists (dirname+'/model'):
+      model_dir = dirname+'/model'
+    else:
+      model_dir = dirname
+
+    files.extend(glob(model_dir+"/[0-9]*_[0-9]*chmmean"))
+    files.extend(glob(model_dir+"/[0-9]*_[0-9]*chmstd"))
+    # Omit 0h forecasts
+    files = [f for f in files if not f.endswith('_000') and not f.endswith('_000h')]
+
+    return files
+
+
+
 # Add this interface to the table.
 from . import table
 table['eccas-enkf'] = ECCAS_EnKF_Data
