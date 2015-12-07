@@ -214,7 +214,7 @@ if True:
           fill_max = values + 2*std
           fill_mask = np.isfinite(fill_max)
           pl.fill_between(dates, fill_min, fill_max, where=fill_mask, color=line_colours[j], linewidth=0, alpha=0.5)
-        pl.plot(dates, values, color=line_colours[j], linestyle=line_styles[j], marker=markers[j], markersize=markersize)
+        pl.plot(dates, values, color=line_colours[j], linestyle=line_styles[j], marker=markers[j], markersize=markersize, markeredgecolor=line_colours[j])
 
       pl.title(title)
       pl.ylabel('%s %s'%(fieldname,units))
