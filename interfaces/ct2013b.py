@@ -34,12 +34,21 @@ class CT2013B_Data(CT_Data):
       dp.atts['units'] = 'Pa'
       # Pressure interpolated to mid-levels
       p_level = (p_p+p_m)/2
-      p_level.name = 'press'
+      p_level.name = 'air_pressure'
       p_level.atts['units'] = 'Pa'
-      # Remove old air pressure (defined on boundaries)
-      data = data - 'pressure'
       # Put in new fields
       data = data + p_level + p0 + dp
+    # Same thing with geopotential height (defined on the boundaries, so
+    # compute mid-level values).
+    if 'gph' in data:
+      gph = data['gph']
+      gph_p = gph.slice[:,:-1,:,:].replace_axes(boundary=data.level)
+      gph_m = gph.slice[:,1:,:,:].replace_axes(boundary=data.level)
+      gph_level = (gph_p+gph_m)/2
+      gph_level.name = 'geopotential_height'
+      gph_level.atts['units'] = 'm'
+      data = data + gph_level
+
     return data
 
 
