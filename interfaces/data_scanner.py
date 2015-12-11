@@ -260,7 +260,8 @@ class AxisManager (object):
     values = map(self.settify_axis, axes)
     values = reduce(frozenset.intersection, values, values[0])
     intersection = self.unsettify_axis (axes[0], values)
-    self._intersections[key] = intersection
+    if len(intersection) > 0:
+      self._intersections[key] = intersection
     return intersection
 
 
