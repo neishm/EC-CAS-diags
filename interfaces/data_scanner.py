@@ -492,10 +492,10 @@ def _get_domains (manifest, force_common_axis=[]):
   # For each common axis that's specified, build it from the pieces in the
   # domains.
   if len(force_common_axis) > 0:
-    common_axes = {}
-    for axis in force_common_axis:
-      common_axes[axis] = axis_manager.get_axis_union([a for d in domains for a in d if a.name == axis])
-    domains = set(Domain([common_axes.get(a.name,a) for a in d.axes]) for d in domains)
+    assert len(force_common_axis) == 1, "Can't handle multiple common axes yet."
+    axis_name = force_common_axis[0]
+    values = frozenset.union(*[v for d in domains for s,v in zip(d.axis_samples,d.axis_values) if s.name == axis_name])
+    domains = set(d.without_axis(axis_name).with_axis(axis_name,values) for d in domains)
 
   # Reduce this to a minimal number of domains for data coverage
   domains = _get_prime_domains(domains)
