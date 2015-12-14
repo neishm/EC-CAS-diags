@@ -267,17 +267,16 @@ class AxisManager (object):
 
 # A domain (essentially a tuple of axes, with no deep comparisons)
 class Domain (object):
-  def __init__ (self, axes, axis_manager):
-    # The axis manager (used for encoding / decoding / comparing axes efficiently).
-    self.axis_manager = axis_manager
+  def __init__ (self, axis_samples, axis_values):
     # Sample axis objects, for reconstructing axes of these types.
     # (may not contain the actual data that will be reconstructed).
-    self.axis_samples = tuple(axes)
+    self.axis_samples = tuple(axis_samples)
+    self.axis_names = tuple([a.name for a in axis_samples])
     # Store the axis values as sets, to make unions/intersections faster.
-    self.axis_values = tuple(None if a is None else axis_manager.settify_axis(a) for a in axes)
+    self.axis_values = tuple(axis_values)
   def __cmp__ (self, other):
-    key1 = ([getattr(s,'name') for s in self.axis_samples], self.axis_values)
-    key2 = ([getattr(s,'name') for s in other.axis_samples], other.axis_values)
+    key1 = (self.axis_names, self.axis_values)
+    key2 = (other.axis_names, other.axis_values)
     return cmp(key1, key2)
   def __hash__ (self):
     return hash(self.axis_values)
@@ -287,31 +286,27 @@ class Domain (object):
   def which_axis (self, iaxis):
     if isinstance(iaxis,int): return iaxis
     assert isinstance(iaxis,str)
-    for i,s in enumerate(self.axis_samples):
-      if s.name == iaxis: return i
+    if iaxis in self.axis_names:
+      return self.axis_names.index(iaxis)
     return None
   def without_axis (self, iaxis):
-    from copy import copy
-    domain = copy(self)
-    axis_values = list(domain.axis_values)
-    axis_values[domain.which_axis(iaxis)] = None
-    domain.axis_values = tuple(axis_values)
-    return domain
+    axis_values = list(self.axis_values)
+    axis_values[self.which_axis(iaxis)] = None
+    axis_values = tuple(axis_values)
+    return type(self)(self.axis_samples, axis_values)
   # Unmask an axis type (re-insert an axis object where the 'None' placeholder was
   def with_axis (self, iaxis, values):
-    from copy import copy
     assert isinstance(values,frozenset)
-    domain = copy(self)
-    axis_values = list(domain.axis_values)
-    axis_values[domain.which_axis(iaxis)] = values
-    domain.axis_values = tuple(axis_values)
-    return domain
+    axis_values = list(self.axis_values)
+    axis_values[self.which_axis(iaxis)] = values
+    axis_values = tuple(axis_values)
+    return type(self)(self.axis_samples, axis_values)
   # Reconstructs the axes from the samples and values. 
-  def make_axes (self):
-    return [self.axis_manager.unsettify_axis(s,v) for (s,v) in zip(self.axis_samples, self.axis_values)]
+  def make_axes (self, axis_manager):
+    return [axis_manager.unsettify_axis(s,v) for (s,v) in zip(self.axis_samples, self.axis_values)]
   # Determine if the given axis is in this domain (given its name)
   def has_axis (self, axis_name):
-    if any(s.name == axis_name for s in self.axis_samples): return True
+    return axis_name in self.axis_names
   # Return the (unordered) values of a particular axis.
   def get_axis_values (self, iaxis):
     return self.axis_values[self.which_axis(iaxis)]
@@ -323,8 +318,7 @@ class Domain (object):
 def _get_axis_names (domains):
   names = set()
   for domain in domains:
-    for axis in domain.axis_samples:
-      names.add(axis.name)
+    names.update(domain.axis_names)
   return names
 
 # Helper method - aggregate along a particular axis
@@ -478,16 +472,15 @@ def _cleanup_subdomains (domains):
   return domains - junk_domains
 
 # Scan a file manifest, return all possible domains available.
-def _get_domains (manifest, force_common_axis=[]):
-
-  axis_manager = AxisManager()  # For memoized axis operations
+def _get_domains (manifest, axis_manager, force_common_axis=[]):
 
   # Start by adding all domain pieces to the list
   domains = set()
   for interface, entries in manifest.itervalues():
     for var, axes, atts in entries:
       axes = axis_manager.lookup_axes([Varlist([var])]+list(axes))
-      domains.add(Domain(axes, axis_manager=axis_manager))
+      axis_values = map(axis_manager.settify_axis, axes)
+      domains.add(Domain(axis_samples=axes, axis_values=axis_values))
 
   # For each common axis that's specified, build it from the pieces in the
   # domains.
@@ -507,15 +500,16 @@ def _get_domains (manifest, force_common_axis=[]):
 # Create a dataset from a set of files and an interface class
 def from_files (filelist, interface, manifest=None, force_common_axis=()):
   manifest = scan_files (filelist, interface, manifest)
-  domains = _get_domains(manifest, force_common_axis=force_common_axis)
-  datasets = [_domain_as_dataset(d,manifest) for d in domains]
+  axis_manager = AxisManager()
+  domains = _get_domains(manifest, axis_manager, force_common_axis=force_common_axis)
+  datasets = [_domain_as_dataset(d,manifest,axis_manager) for d in domains]
   return datasets
 
 # Wrap a domain as a dataset.
 # Requires the original file manifest, to determine where to get the data.
-def _domain_as_dataset (domain, manifest):
+def _domain_as_dataset (domain, manifest, axis_manager):
   from pygeode.dataset import Dataset
-  axes = domain.make_axes()
+  axes = domain.make_axes(axis_manager)
   ivarlist = domain.which_axis('varlist')
   assert ivarlist is not None, "Unable to determine variable names"
   varlist = axes[ivarlist]
