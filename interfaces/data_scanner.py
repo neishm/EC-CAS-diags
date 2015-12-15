@@ -529,7 +529,13 @@ class DataVar(Var):
           atts.append(_atts)
           table.append((filename, interface, _axes))
     # Get subset of attributes that are consistent among all sources of data
-    atts = common_dict(atts)
+    # Remove duplicate entries before calling common_dict, because this routine
+    # is a little slow.
+    unique_atts = []
+    for a in atts:
+      if a not in unique_atts:
+        unique_atts.append(a)
+    atts = common_dict(unique_atts)
     # Reduce the axes to only those that the variable actually has
     axis_names = set(a.name for f,o,_axes in table for a in _axes)
     axes = [a for a in axes if a.name in axis_names]
