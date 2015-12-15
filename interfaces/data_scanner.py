@@ -291,11 +291,17 @@ class Domain (object):
 
 
 # Helper method - return all names of axes in a set of domains
+# Returned in approximate order that they're found in the domains.
 def _get_axis_names (domains):
-  names = set()
+  ordered_names = set()
   for domain in domains:
-    names.update(domain.axis_names)
-  return names
+    ordered_names.update(enumerate(domain.axis_names))
+  names = []
+  for i,name in sorted(ordered_names,reverse=True):
+    if name not in names:
+      names.append(name)
+  return tuple(reversed(names))
+
 
 # Helper method - aggregate along a particular axis
 # Inputs:
@@ -341,13 +347,16 @@ def _aggregate_along_axis (domains, axis_name, used_domains):
 def _get_prime_domains (domains):
   axis_names = _get_axis_names(domains)
   # This may be an iterative process, that may need to be repeated.
-  while True:
-    used_domains = set()
+  aggregated = True
+  while aggregated:
+    aggregated = False
     # Aggregate along one axis at a time.
     for axis_name in axis_names:
+      used_domains = set()
       domains = _aggregate_along_axis(domains, axis_name, used_domains)
-    if len(used_domains) == 0: break  # Nothing aggregated
-    domains -= used_domains  # Remove smaller pieces that are aggregated.
+      if len(used_domains) > 0:
+        aggregated = True
+      domains -= used_domains  # Remove smaller pieces that are aggregated.
 
   return domains
 
