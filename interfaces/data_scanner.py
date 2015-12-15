@@ -103,6 +103,13 @@ class Varlist (object):
   def __len__ (self): return len(self.values)
   def __repr__ (self): return "<%s>"%self.__class__.__name__
   def __cmp__ (self, other): return cmp(self.values, other.values)
+  _memoized = dict()
+  @classmethod
+  def singlevar (cls, varname):
+    var = cls._memoized.get(varname,None)
+    if var is None:
+      var = cls._memoized[varname] = cls([varname])
+    return var
 
 
 # An interface for axis-manipulation methods.
@@ -463,7 +470,7 @@ def _get_domains (manifest, axis_manager, force_common_axis=[]):
   domains = set()
   for interface, entries in manifest.itervalues():
     for var, axes, atts in entries:
-      axes = axis_manager.lookup_axes([Varlist([var])]+list(axes))
+      axes = axis_manager.lookup_axes([Varlist.singlevar(var)]+list(axes))
       axis_values = map(axis_manager.settify_axis, axes)
       domains.add(Domain(axis_samples=axes, axis_values=axis_values))
 
