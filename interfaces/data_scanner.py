@@ -310,7 +310,12 @@ def _get_axis_names (domains):
   for i,name in sorted(ordered_names,reverse=True):
     if name not in names:
       names.append(name)
-  return tuple(reversed(names))
+  names = list(reversed(names))
+  # Special case: time axis should be handled first (makes aggregating faster)
+  if 'time' in names:
+    names.remove('time')
+    names = ['time'] + names
+  return tuple(names)
 
 
 # Helper method - aggregate along a particular axis
