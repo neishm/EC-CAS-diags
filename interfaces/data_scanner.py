@@ -467,7 +467,7 @@ def _cleanup_subdomains (domains):
   return domains - junk_domains
 
 # Scan a file manifest, return all possible domains available.
-def _get_domains (manifest, axis_manager, force_common_axis=[]):
+def _get_domains (manifest, axis_manager, force_common_axis=None):
 
   # Start by adding all domain pieces to the list
   domains = set()
@@ -479,9 +479,8 @@ def _get_domains (manifest, axis_manager, force_common_axis=[]):
 
   # For each common axis that's specified, build it from the pieces in the
   # domains.
-  if len(force_common_axis) > 0:
-    assert len(force_common_axis) == 1, "Can't handle multiple common axes yet."
-    axis_name = force_common_axis[0]
+  if force_common_axis is not None:
+    axis_name = force_common_axis
     values = frozenset.union(*[v for d in domains for s,v in zip(d.axis_samples,d.axis_values) if s.name == axis_name])
     domains = set(d.without_axis(axis_name).with_axis(axis_name,values) for d in domains)
 
@@ -493,7 +492,7 @@ def _get_domains (manifest, axis_manager, force_common_axis=[]):
 
 
 # Create a dataset from a set of files and an interface class
-def from_files (filelist, interface, manifest=None, force_common_axis=()):
+def from_files (filelist, interface, manifest=None, force_common_axis=None):
   axis_manager = AxisManager()
   manifest = scan_files (filelist, interface, manifest, axis_manager)
   domains = _get_domains(manifest, axis_manager, force_common_axis=force_common_axis)

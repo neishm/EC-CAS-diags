@@ -196,8 +196,9 @@ class DataProduct (DataInterface):
     raise NotImplementedError
 
 
-  # Any axes that should be common among datasets.
-  _common_axes = ()
+  # Any axis that should be common among datasets.
+  # Final values will be superset of values from all variables.
+  _common_axis = None
 
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
@@ -213,7 +214,7 @@ class DataProduct (DataInterface):
       manifest = None
 
     expanded_files = self.expand_files(files)
-    data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axes)
+    data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axis)
     # Decode the data (get standard field names, etc.)
     data = map(self.decode, data)
     # Store the data in this object.
@@ -222,7 +223,7 @@ class DataProduct (DataInterface):
 
 # A sub-class to handle station obs data.
 class StationObsProduct(DataProduct):
-  _common_axes = ('time',)
+  _common_axis = 'time'
 
 
 # A special class to represent derived data as a "product"
