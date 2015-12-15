@@ -139,7 +139,8 @@ class AxisManager (object):
   def lookup_axis (self, axis):
     # Check if we've already looked at this exact object.
     axis_id = id(axis)
-    if axis_id in self._id_lookup: return self._id_lookup[axis_id]
+    entry = self._id_lookup.get(axis_id,None)
+    if entry is not None: return entry
     # Store a reference to this axis, so the object id doesn't get recycled.
     self._all_axes.append(axis)
     values = tuple(axis.values)
@@ -173,8 +174,8 @@ class AxisManager (object):
   def flatten_axis (self, axis):
     axis = self.lookup_axis(axis)
     axis_id = id(axis)
-    if axis_id in self._flattened_axes:
-      return self._flattened_axes[axis_id]
+    entry = self._flattened_axes.get(axis_id,None)
+    if entry is not None: return entry
 
     if isinstance(axis,Varlist):
       auxarrays = []
@@ -192,8 +193,8 @@ class AxisManager (object):
   def settify_axis (self, axis):
     axis = self.lookup_axis(axis)
     axis_id = id(axis)
-    if axis_id in self._settified_axes:
-      return self._settified_axes[axis_id]
+    entry = self._settified_axes.get(axis_id,None)
+    if entry is not None: return entry
 
     out = frozenset(self.flatten_axis (axis))
     self._settified_axes[axis_id] = out
