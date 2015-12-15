@@ -488,7 +488,8 @@ def _get_domains (manifest, axis_manager, force_common_axis=None):
   for interface, entries in manifest.itervalues():
     for var, axes, atts in entries:
       # Apply the common axis?
-      axes = tuple(common_axis if a.name == force_common_axis else a for a in axes)
+      if force_common_axis:
+        axes = tuple(common_axis if a.name == force_common_axis else a for a in axes)
       # Map each entry to a domain.
       axes = (Varlist.singlevar(var),)+axes
       axis_values = map(axis_manager.settify_axis, axes)
