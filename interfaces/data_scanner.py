@@ -466,23 +466,40 @@ def _cleanup_subdomains (domains):
         junk_domains.add(d1)
   return domains - junk_domains
 
+
+# Get a common axis
+# Note: assume the values are all intercomparable.
+def _get_common_axis (manifest, axis_name):
+  import numpy as np
+  sample = None
+  values = []
+  for interface, entries in manifest.itervalues():
+    for var, axes, atts in entries:
+      for axis in axes:
+        if axis.name != axis_name: continue
+        if sample is None: sample = axis
+        values.append(axis.values)
+  values = np.concatenate(values)
+  values = np.unique(values)
+  return sample.withnewvalues(values)
+
 # Scan a file manifest, return all possible domains available.
 def _get_domains (manifest, axis_manager, force_common_axis=None):
+
+  # Fetch a common axis?
+  if force_common_axis is not None:
+    common_axis = _get_common_axis(manifest, axis_name=force_common_axis)
 
   # Start by adding all domain pieces to the list
   domains = set()
   for interface, entries in manifest.itervalues():
     for var, axes, atts in entries:
+      # Apply the common axis?
+      axes = tuple(common_axis if a.name == force_common_axis else a for a in axes)
+      # Map each entry to a domain.
       axes = (Varlist.singlevar(var),)+axes
       axis_values = map(axis_manager.settify_axis, axes)
       domains.add(Domain(axis_samples=axes, axis_values=axis_values))
-
-  # For each common axis that's specified, build it from the pieces in the
-  # domains.
-  if force_common_axis is not None:
-    axis_name = force_common_axis
-    values = frozenset.union(*[v for d in domains for s,v in zip(d.axis_samples,d.axis_values) if s.name == axis_name])
-    domains = set(d.without_axis(axis_name).with_axis(axis_name,values) for d in domains)
 
   # Reduce this to a minimal number of domains for data coverage
   domains = _get_prime_domains(domains)
