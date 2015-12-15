@@ -7,7 +7,7 @@
 MANIFEST_VERSION="2"
 
 # Scan through all the given files, produce a manifest of all data available.
-def scan_files (files, interface, manifest=None):
+def scan_files (files, interface, manifest=None, axis_manager=None):
   from os.path import exists, getatime, getmtime, normpath
   from os import utime
   import gzip
@@ -39,7 +39,9 @@ def scan_files (files, interface, manifest=None):
     mtime = 0
 
   # Re-use axis objects wherever possible.
-  axis_manager = AxisManager()
+  # Use a global axis manager if available, otherwise use a local one here.
+  if axis_manager is None:
+    axis_manager = AxisManager()
   for filename, (_interface,entries) in table.iteritems():
     for varname, axes, atts in entries:
       axis_manager.register_axes(axes)
@@ -470,7 +472,7 @@ def _get_domains (manifest, axis_manager, force_common_axis=[]):
   domains = set()
   for interface, entries in manifest.itervalues():
     for var, axes, atts in entries:
-      axes = axis_manager.lookup_axes([Varlist.singlevar(var)]+list(axes))
+      axes = [Varlist.singlevar(var)]+list(axes)
       axis_values = map(axis_manager.settify_axis, axes)
       domains.add(Domain(axis_samples=axes, axis_values=axis_values))
 
@@ -491,8 +493,8 @@ def _get_domains (manifest, axis_manager, force_common_axis=[]):
 
 # Create a dataset from a set of files and an interface class
 def from_files (filelist, interface, manifest=None, force_common_axis=()):
-  manifest = scan_files (filelist, interface, manifest)
   axis_manager = AxisManager()
+  manifest = scan_files (filelist, interface, manifest, axis_manager)
   domains = _get_domains(manifest, axis_manager, force_common_axis=force_common_axis)
   datasets = [_domain_as_dataset(d,manifest,axis_manager) for d in domains]
   return datasets
