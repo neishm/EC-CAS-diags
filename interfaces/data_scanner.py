@@ -562,11 +562,6 @@ class DataVar(Var):
     obj._axis_manager = axis_manager
     obj._varname = varname  # In case the object gets renamed.
 
-    #TODO: handle unsorted axes, using an extra argsort step?
-    import numpy as np
-    for a in obj.axes:
-      assert np.all(a.values == np.sort(a.values)), "Unhandled case: unsorted axis %s"%a
-
     return obj
 
   def getview (self, view, pbar):
