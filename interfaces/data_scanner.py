@@ -508,24 +508,37 @@ def _get_domains (manifest, axis_manager, force_common_axis=None):
   return domains
 
 
+# Extract variable attributes and table of files from the given manifest.
+def get_var_info(manifest):
+  from pygeode.tools import common_dict
+  atts = dict()
+  table = dict()
+  for filename, (interface, entries) in manifest.iteritems():
+    for _varname, _axes, _atts in entries:
+      _attslist = atts.setdefault(_varname,[])
+      if atts not in _attslist: _attslist.append(atts)
+      table.setdefault(_varname,[]).append((filename, interface, _axes))
+  atts = dict((_varname,common_dict(_attslist)) for (_varname,_attslist) in atts.iteritems())
+  return atts, table
+
 # Create a dataset from a set of files and an interface class
 def from_files (filelist, interface, manifest=None, force_common_axis=None):
   axis_manager = AxisManager()
   manifest = scan_files (filelist, interface, manifest, axis_manager)
   domains = _get_domains(manifest, axis_manager, force_common_axis=force_common_axis)
-  datasets = [_domain_as_dataset(d,manifest,axis_manager) for d in domains]
+  atts, table = get_var_info(manifest)
+  datasets = [_domain_as_dataset(d,atts,table,axis_manager) for d in domains]
   return datasets
 
 # Wrap a domain as a dataset.
-# Requires the original file manifest, to determine where to get the data.
-def _domain_as_dataset (domain, manifest, axis_manager):
+def _domain_as_dataset (domain, atts, table, axis_manager):
   from pygeode.dataset import Dataset
   axes = domain.make_axes(axis_manager)
   ivarlist = domain.which_axis('varlist')
   assert ivarlist is not None, "Unable to determine variable names"
   varlist = axes[ivarlist]
   axes = axes[:ivarlist] + axes[ivarlist+1:]
-  return Dataset([DataVar.construct(name, axes, manifest, axis_manager) for name in varlist])
+  return Dataset([DataVar.construct(name, axes, atts[name], table[name], axis_manager) for name in varlist])
 
 
 
@@ -533,25 +546,8 @@ def _domain_as_dataset (domain, manifest, axis_manager):
 from pygeode.var import Var
 class DataVar(Var):
   @classmethod
-  def construct (cls, varname, axes, manifest, axis_manager):
-    from pygeode.tools import common_dict
+  def construct (cls, varname, axes, atts, table, axis_manager):
 
-    atts = []
-    table = []
-    # Scan through the manifest, collect a table of available axes.
-    for filename, (interface, entries) in manifest.iteritems():
-      for _varname, _axes, _atts in entries:
-        if _varname == varname:
-          atts.append(_atts)
-          table.append((filename, interface, _axes))
-    # Get subset of attributes that are consistent among all sources of data
-    # Remove duplicate entries before calling common_dict, because this routine
-    # is a little slow.
-    unique_atts = []
-    for a in atts:
-      if a not in unique_atts:
-        unique_atts.append(a)
-    atts = common_dict(unique_atts)
     # Reduce the axes to only those that the variable actually has
     axis_names = set(a.name for f,o,_axes in table for a in _axes)
     axes = [a for a in axes if a.name in axis_names]
