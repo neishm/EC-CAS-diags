@@ -509,7 +509,7 @@ def _domain_as_dataset (domain, manifest, axis_manager):
   assert ivarlist is not None, "Unable to determine variable names"
   varlist = axes[ivarlist]
   axes = axes[:ivarlist] + axes[ivarlist+1:]
-  return Dataset([DataVar.construct(name, axes, manifest) for name in varlist])
+  return Dataset([DataVar.construct(name, axes, manifest, axis_manager) for name in varlist])
 
 
 
@@ -517,11 +517,8 @@ def _domain_as_dataset (domain, manifest, axis_manager):
 from pygeode.var import Var
 class DataVar(Var):
   @classmethod
-  def construct (cls, varname, axes, manifest):
+  def construct (cls, varname, axes, manifest, axis_manager):
     from pygeode.tools import common_dict
-
-    # Use an axis manager for accelerating axis operations.
-    axis_manager = AxisManager()
 
     atts = []
     table = []
@@ -531,7 +528,6 @@ class DataVar(Var):
         if _varname == varname:
           atts.append(_atts)
           table.append((filename, interface, _axes))
-          axis_manager.register_axes(_axes)
     # Get subset of attributes that are consistent among all sources of data
     atts = common_dict(atts)
     # Reduce the axes to only those that the variable actually has
