@@ -534,7 +534,7 @@ def get_var_info(manifest):
   for filename, (interface, entries) in manifest.iteritems():
     for _varname, _axes, _atts in entries:
       _attslist = atts.setdefault(_varname,[])
-      if atts not in _attslist: _attslist.append(atts)
+      if _atts not in _attslist: _attslist.append(_atts)
       table.setdefault(_varname,[]).append((filename, interface, _axes))
   atts = dict((_varname,common_dict(_attslist)) for (_varname,_attslist) in atts.iteritems())
   return atts, table
