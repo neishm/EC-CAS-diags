@@ -7,7 +7,7 @@
 MANIFEST_VERSION="2"
 
 # Scan through all the given files, produce a manifest of all data available.
-def scan_files (files, interface, manifest=None):
+def scan_files (files, interface, manifest=None, axis_manager=None):
   from os.path import exists, getatime, getmtime, normpath
   from os import utime
   import gzip
@@ -39,7 +39,9 @@ def scan_files (files, interface, manifest=None):
     mtime = 0
 
   # Re-use axis objects wherever possible.
-  axis_manager = AxisManager()
+  # Use a global axis manager if available, otherwise use a local one here.
+  if axis_manager is None:
+    axis_manager = AxisManager()
   for filename, (_interface,entries) in table.iteritems():
     for varname, axes, atts in entries:
       axis_manager.register_axes(axes)
@@ -103,6 +105,13 @@ class Varlist (object):
   def __len__ (self): return len(self.values)
   def __repr__ (self): return "<%s>"%self.__class__.__name__
   def __cmp__ (self, other): return cmp(self.values, other.values)
+  _memoized = dict()
+  @classmethod
+  def singlevar (cls, varname):
+    var = cls._memoized.get(varname,None)
+    if var is None:
+      var = cls._memoized[varname] = cls([varname])
+    return var
 
 
 # An interface for axis-manipulation methods.
@@ -122,10 +131,6 @@ class AxisManager (object):
     self._settified_axes = {}
     self._unsettified_axes = {}
 
-    # For union / intersection of axes
-    self._unions = {}
-    self._intersections = {}
-
     self.register_axes (axes)
 
   # Helper function: recycle an existing axis object if possible.
@@ -134,7 +139,8 @@ class AxisManager (object):
   def lookup_axis (self, axis):
     # Check if we've already looked at this exact object.
     axis_id = id(axis)
-    if axis_id in self._id_lookup: return self._id_lookup[axis_id]
+    entry = self._id_lookup.get(axis_id,None)
+    if entry is not None: return entry
     # Store a reference to this axis, so the object id doesn't get recycled.
     self._all_axes.append(axis)
     values = tuple(axis.values)
@@ -168,8 +174,8 @@ class AxisManager (object):
   def flatten_axis (self, axis):
     axis = self.lookup_axis(axis)
     axis_id = id(axis)
-    if axis_id in self._flattened_axes:
-      return self._flattened_axes[axis_id]
+    entry = self._flattened_axes.get(axis_id,None)
+    if entry is not None: return entry
 
     if isinstance(axis,Varlist):
       auxarrays = []
@@ -187,8 +193,8 @@ class AxisManager (object):
   def settify_axis (self, axis):
     axis = self.lookup_axis(axis)
     axis_id = id(axis)
-    if axis_id in self._settified_axes:
-      return self._settified_axes[axis_id]
+    entry = self._settified_axes.get(axis_id,None)
+    if entry is not None: return entry
 
     out = frozenset(self.flatten_axis (axis))
     self._settified_axes[axis_id] = out
@@ -243,68 +249,74 @@ class AxisManager (object):
     self._unsettified_axes[type(sample)][key] = axis
     return axis
 
-  # Merge axes together
-  def get_axis_union (self, axes):
-    key = tuple(sorted(map(id,axes)))
-    if key in self._unions: return self._unions[key]
-    values = map(self.settify_axis, axes)
-    values = reduce(frozenset.union, values, frozenset())
-    union = self.unsettify_axis (axes[0], values)
-    self._unions[key] = union
-    return union
-
-  # Find common values between axes
-  def get_axis_intersection (self, axes):
-    key = tuple(sorted(map(id,axes)))
-    if key in self._intersections: return self._intersections[key]
-    values = map(self.settify_axis, axes)
-    values = reduce(frozenset.intersection, values, values[0])
-    intersection = self.unsettify_axis (axes[0], values)
-    if len(intersection) > 0:
-      self._intersections[key] = intersection
-    return intersection
 
 
 # A domain (essentially a tuple of axes, with no deep comparisons)
 class Domain (object):
-  def __init__ (self, axes):
-    self.axes = tuple(axes)
-    # A unique representation of the domain.
-    # Assumes there is only one object id for each possible axis object,
-    # to save time in comparisons.
-    self._id = tuple(map(id,self.axes))
+  def __init__ (self, axis_samples, axis_values):
+    # Sample axis objects, for reconstructing axes of these types.
+    # (may not contain the actual data that will be reconstructed).
+    self.axis_samples = tuple(axis_samples)
+    self.axis_names = tuple([a.name for a in axis_samples])
+    # Store the axis values as sets, to make unions/intersections faster.
+    self.axis_values = tuple(axis_values)
   def __cmp__ (self, other):
-    return cmp(self._id, other._id)
+    key1 = (self.axis_names, self.axis_values)
+    key2 = (other.axis_names, other.axis_values)
+    return cmp(key1, key2)
   def __hash__ (self):
-    return hash(self._id)
-  def __iter__ (self):
-    return iter(self.axes)
+    return hash(self.axis_values)
   def __repr__ (self):
-#    return "("+",".join("%s:%s"%(a.__class__.__name__,len(a)) for a in self.axes)+")"
-    return "("+",".join(map(str,map(len,filter(None,self.axes))))+")"
+    return "("+",".join(map(str,map(len,filter(None,self.axis_values))))+")"
   # Mask out an axis (convert it to a 'None' placeholder)
-  def without_axis (self, axis_name):
-    return Domain([None if a.name == axis_name else a for a in self.axes])
-  # Unmask an axis type (re-insert an axis object where the 'None' placeholder was
-  def with_axis (self, axis):
-    return Domain([axis if a is None else a for a in self.axes])
-  # Return the axis of the given name.
-  # Returns None if no such axis name is found.
-  def get_axis (self, axis_name):
-    for axis in self.axes:
-      if axis.name == axis_name: return axis
+  def which_axis (self, iaxis):
+    if isinstance(iaxis,int): return iaxis
+    assert isinstance(iaxis,str)
+    if iaxis in self.axis_names:
+      return self.axis_names.index(iaxis)
     return None
+  def without_axis (self, iaxis):
+    axis_values = list(self.axis_values)
+    axis_values[self.which_axis(iaxis)] = None
+    axis_values = tuple(axis_values)
+    return type(self)(self.axis_samples, axis_values)
+  # Unmask an axis type (re-insert an axis object where the 'None' placeholder was
+  def with_axis (self, iaxis, values):
+    assert isinstance(values,frozenset)
+    axis_values = list(self.axis_values)
+    axis_values[self.which_axis(iaxis)] = values
+    axis_values = tuple(axis_values)
+    return type(self)(self.axis_samples, axis_values)
+  # Reconstructs the axes from the samples and values. 
+  def make_axes (self, axis_manager):
+    return [axis_manager.unsettify_axis(s,v) for (s,v) in zip(self.axis_samples, self.axis_values)]
+  # Determine if the given axis is in this domain (given its name)
+  def has_axis (self, axis_name):
+    return axis_name in self.axis_names
+  # Return the (unordered) values of a particular axis.
+  def get_axis_values (self, iaxis):
+    return self.axis_values[self.which_axis(iaxis)]
 
 
 
 
 # Helper method - return all names of axes in a set of domains
+# Returned in approximate order that they're found in the domains.
 def _get_axis_names (domains):
-  names = set()
+  ordered_names = set()
   for domain in domains:
-    for axis in domain:
-      names.add(axis.name)
-  return names
+    ordered_names.update(enumerate(domain.axis_names))
+  names = []
+  for i,name in sorted(ordered_names,reverse=True):
+    if name not in names:
+      names.append(name)
+  names = list(reversed(names))
+  # Special case: time axis should be handled first (makes aggregating faster)
+  if 'time' in names:
+    names.remove('time')
+    names = ['time'] + names
+  return tuple(names)
+
 
 # Helper method - aggregate along a particular axis
 # Inputs:
@@ -316,55 +328,46 @@ def _get_axis_names (domains):
 #                 These are appended to an existing set passed in.
 # Output: the domains that could be aggregated along to given axis.
 #         Domains without that axis type are ignored.
-def _aggregate_along_axis (domains, axis_name, used_domains, axis_manager):
+def _aggregate_along_axis (domains, axis_name):
+  output = set()
   bins = {}
-  touched_domains = set()
   for domain in domains:
-    axis = domain.get_axis(axis_name)
-    if axis is not None:
-      touched_domains.add(domain)
-      domain_group = domain.without_axis(axis_name)
-      axis_bin = bins.setdefault(domain_group,{})
-      axis_bin[id(axis)] = axis
+    iaxis = domain.which_axis(axis_name)
+    if iaxis is None:
+      output.add(domain)
+      continue
+    domain_group = domain.without_axis(iaxis)
+    axis_bin = bins.setdefault(domain_group,set())
+    axis_bin.add(domain.axis_values[iaxis])
   # For each domain group, aggregate the axes together
   # NOTE: assumes that all the axis segments are consistent
   # (same origin, units, etc.)
   # Also, assumes the axis values should be monotonically increasing.
-  output = set()
   for domain_group, axis_bin in bins.iteritems():
     if len(axis_bin) == 1:  # Only one axis piece (nothing to aggregate)
-      axis = axis_bin.values()[0]
-      output.add(domain_group.with_axis(axis))
+      axis_values = axis_bin.pop()
     # Otherwise, need to aggregate pieces together.
     else:
-      new_axis = axis_manager.get_axis_union (axis_bin.values())
-      output.add(domain_group.with_axis(new_axis))
+      axis_values = frozenset.union(*axis_bin)
+    output.add(domain_group.with_axis(axis_name,axis_values))
 
-  if used_domains is not None:
-    # Only consider a domain to be "used" if it was aggregated into a bigger
-    # domain, *not* if it was directly copied to the output.
-    used_domains.update(touched_domains - output)
-  return domains | output
+  return output
 
 
 # Find a minimal set of domains that cover all available data
-def _get_prime_domains (domains, axis_manager):
+def _get_prime_domains (domains):
   axis_names = _get_axis_names(domains)
-  # This may be an iterative process, that may need to be repeated.
-  while True:
-    used_domains = set()
-    # Aggregate along one axis at a time.
-    for axis_name in axis_names:
-      domains = _aggregate_along_axis(domains, axis_name, used_domains, axis_manager)
-    if len(used_domains) == 0: break  # Nothing aggregated
-    domains -= used_domains  # Remove smaller pieces that are aggregated.
+  # Aggregate along one axis at a time.
+  for axis_name in axis_names:
+    domains = _aggregate_along_axis(domains, axis_name)
 
   return domains
 
 # Try merging multiple domains together.
 # For each pair of domains, look for an axis over which they could be
 # concatenated.  All other axes will be intersected between domains.
-def _merge_domains (d1, d2, axis_manager):
+def _merge_domains (d1, d2):
+  from copy import copy
   domains = set()
   axis_names = _get_axis_names([d1,d2])
   # We need at least one of the two domains to contain all the types
@@ -377,45 +380,63 @@ def _merge_domains (d1, d2, axis_manager):
     d1, d2 = d2, d1  # Swap
   else:
     return set()  # Nothing can be done
+  del axis_names
 
+  # Pre-compute union and intersection of the axes.
+  # Determine which axes may be useful to merge over.
   # Early termination if 2 or more axes are non-intersectable
+  intersections = []
+  unions = []
+  merge_axes = []
   non_intersectable = 0
-  for axis_name in axis_names:
-    a1 = d1.get_axis(axis_name)
-    a2 = d2.get_axis(axis_name)
-    if a1 is None or a2 is None: continue
-    a1 = axis_manager.settify_axis(a1)
-    a2 = axis_manager.settify_axis(a2)
-    if len(a1 & a2) == 0:
+  for iaxis,v1 in enumerate(d1.axis_values):
+    axis_name = d1.axis_samples[iaxis].name
+    if d2.has_axis(axis_name):
+      v2 = d2.get_axis_values(axis_name)
+    else:
+      v2 = v1
+    if v1 is v2:
+      intersection = v1
+      union = v2
+    else:
+      intersection = v1 & v2
+      union = v1 | v2
+    # Would we get anything useful from merging this axis?
+    # (note: other conditions would need to be met as well)
+    if len(union) > len(v1) and len(union) > len(v2):
+      merge_axes.append(iaxis)
+    # Check for non-overlapping axes (can have up to 1 such dimension).
+    if len(intersection) == 0:
       non_intersectable += 1
+    # Store the union / intersection for use later.
+    intersections.append(intersection)
+    unions.append(union)
   if non_intersectable > 1:
     return set()  # We will alway have an empty domain after a merge
-                  # over any single axis.
+                  # where multiple dimensions have no overlap.
 
 
-  # Give the domains the same axes (broadcasting to extra axes)
-  d2 = Domain([d2.get_axis(a.name) or a for a in d1.axes])
-  for merge_axis_name in axis_names:
-    m1 = d1.get_axis(merge_axis_name)
-    m2 = d2.get_axis(merge_axis_name)
-    merge_axis = axis_manager.get_axis_union([m1,m2])
-    # Skip if we aren't actually getting a bigger axis.
-    if merge_axis is m1 or merge_axis is m2: continue
-    axes = [merge_axis if a1.name == merge_axis_name else axis_manager.get_axis_intersection([a1,a2]) for a1, a2 in zip(d1,d2)]
+  # Test each axis to see if it can be a merge axis
+  # (if the other axes have non-zero intersection).
+  for iaxis in merge_axes:
+    axis_values = list(intersections)
+    axis_values[iaxis] = unions[iaxis]
     # Skip if we don't have any overlap
-    if any(len(a) == 0 for a in axes): continue
-    domains.add(Domain(axes))
+    if any(len(v) == 0 for v in axis_values): continue
+    domain = copy(d1)
+    domain.axis_values = tuple(axis_values)
+    domains.add(domain)
 
   return domains
 
-def _merge_all_domains (domains, axis_manager):
+def _merge_all_domains (domains):
   merged_domains = set(domains)
   while True:
     new_merged_domains = set()
     for d1 in domains:
       for d2 in merged_domains:
         if d1 is d2: continue
-        new_merged_domains.update(_merge_domains(d1,d2,axis_manager))
+        new_merged_domains.update(_merge_domains(d1,d2))
     new_merged_domains -= merged_domains
     if len(new_merged_domains) == 0: break  # Nothing new added
     merged_domains.update(new_merged_domains)
@@ -432,57 +453,86 @@ def _cleanup_subdomains (domains):
       assert d1 != d2
       if _get_axis_names([d1]) != _get_axis_names([d2]): continue
       axis_names = _get_axis_names([d2])
-      values1 = [d1.get_axis(a).values for a in axis_names]
-      values2 = [d2.get_axis(a).values for a in axis_names]
-      if all(set(v1) <= set(v2) for v1, v2 in zip(values1,values2)):
+      values1 = [d1.get_axis_values(a) for a in axis_names]
+      values2 = [d2.get_axis_values(a) for a in axis_names]
+      if all(v1 <= v2 for v1, v2 in zip(values1,values2)):
         junk_domains.add(d1)
   return domains - junk_domains
 
-# Scan a file manifest, return all possible domains available.
-def _get_domains (manifest, force_common_axis=[]):
 
-  axis_manager = AxisManager()  # For memoized axis operations
+# Get a common axis
+# Note: assume the values are all intercomparable.
+def _get_common_axis (manifest, axis_name):
+  import numpy as np
+  sample = None
+  values = []
+  for interface, entries in manifest.itervalues():
+    for var, axes, atts in entries:
+      for axis in axes:
+        if axis.name != axis_name: continue
+        if sample is None: sample = axis
+        values.append(axis.values)
+  values = np.concatenate(values)
+  values = np.unique(values)
+  return sample.withnewvalues(values)
+
+# Scan a file manifest, return all possible domains available.
+def _get_domains (manifest, axis_manager, force_common_axis=None):
+
+  # Fetch a common axis?
+  if force_common_axis is not None:
+    common_axis = _get_common_axis(manifest, axis_name=force_common_axis)
 
   # Start by adding all domain pieces to the list
   domains = set()
   for interface, entries in manifest.itervalues():
     for var, axes, atts in entries:
-      axes = axis_manager.lookup_axes([Varlist([var])]+list(axes))
-      # Make sure the axes are sorted (some optimizations assume this, such
-      # as the use of sets to compare axes).
-      axes = [axis_manager.unflatten_axis(a,axis_manager.flatten_axis(a)) for a in axes]
-      domains.add(Domain(axes))
-
-  # For each common axis that's specified, build it from the pieces in the
-  # domains.
-  if len(force_common_axis) > 0:
-    common_axes = {}
-    for axis in force_common_axis:
-      common_axes[axis] = axis_manager.get_axis_union([a for d in domains for a in d if a.name == axis])
-    domains = set(Domain([common_axes.get(a.name,a) for a in d.axes]) for d in domains)
+      # Apply the common axis?
+      if force_common_axis:
+        axes = tuple(common_axis if a.name == force_common_axis else a for a in axes)
+      # Map each entry to a domain.
+      axes = (Varlist.singlevar(var),)+axes
+      axis_values = map(axis_manager.settify_axis, axes)
+      domains.add(Domain(axis_samples=axes, axis_values=axis_values))
 
   # Reduce this to a minimal number of domains for data coverage
-  domains = _get_prime_domains(domains, axis_manager)
-  domains = _merge_all_domains(domains, axis_manager)
+  domains = _get_prime_domains(domains)
+  domains = _merge_all_domains(domains)
   domains = _cleanup_subdomains(domains)
   return domains
 
 
+# Extract variable attributes and table of files from the given manifest.
+def get_var_info(manifest):
+  from pygeode.tools import common_dict
+  atts = dict()
+  table = dict()
+  for filename, (interface, entries) in manifest.iteritems():
+    for _varname, _axes, _atts in entries:
+      _attslist = atts.setdefault(_varname,[])
+      if atts not in _attslist: _attslist.append(atts)
+      table.setdefault(_varname,[]).append((filename, interface, _axes))
+  atts = dict((_varname,common_dict(_attslist)) for (_varname,_attslist) in atts.iteritems())
+  return atts, table
+
 # Create a dataset from a set of files and an interface class
-def from_files (filelist, interface, manifest=None, force_common_axis=()):
-  manifest = scan_files (filelist, interface, manifest)
-  domains = _get_domains(manifest, force_common_axis=force_common_axis)
-  datasets = [_domain_as_dataset(d,manifest) for d in domains]
+def from_files (filelist, interface, manifest=None, force_common_axis=None):
+  axis_manager = AxisManager()
+  manifest = scan_files (filelist, interface, manifest, axis_manager)
+  domains = _get_domains(manifest, axis_manager, force_common_axis=force_common_axis)
+  atts, table = get_var_info(manifest)
+  datasets = [_domain_as_dataset(d,atts,table,axis_manager) for d in domains]
   return datasets
 
 # Wrap a domain as a dataset.
-# Requires the original file manifest, to determine where to get the data.
-def _domain_as_dataset (domain, manifest):
+def _domain_as_dataset (domain, atts, table, axis_manager):
   from pygeode.dataset import Dataset
-  varlist = domain.get_axis('varlist')
-  assert varlist is not None, "Unable to determine variable names"
-  axes = filter(None,domain.without_axis('varlist').axes)
-  return Dataset([DataVar.construct(name, axes, manifest) for name in varlist])
+  axes = domain.make_axes(axis_manager)
+  ivarlist = domain.which_axis('varlist')
+  assert ivarlist is not None, "Unable to determine variable names"
+  varlist = axes[ivarlist]
+  axes = axes[:ivarlist] + axes[ivarlist+1:]
+  return Dataset([DataVar.construct(name, axes, atts[name], table[name], axis_manager) for name in varlist])
 
 
 
@@ -490,23 +540,8 @@ def _domain_as_dataset (domain, manifest):
 from pygeode.var import Var
 class DataVar(Var):
   @classmethod
-  def construct (cls, varname, axes, manifest):
-    from pygeode.tools import common_dict
+  def construct (cls, varname, axes, atts, table, axis_manager):
 
-    # Use an axis manager for accelerating axis operations.
-    axis_manager = AxisManager()
-
-    atts = []
-    table = []
-    # Scan through the manifest, collect a table of available axes.
-    for filename, (interface, entries) in manifest.iteritems():
-      for _varname, _axes, _atts in entries:
-        if _varname == varname:
-          atts.append(_atts)
-          table.append((filename, interface, _axes))
-          axis_manager.register_axes(_axes)
-    # Get subset of attributes that are consistent among all sources of data
-    atts = common_dict(atts)
     # Reduce the axes to only those that the variable actually has
     axis_names = set(a.name for f,o,_axes in table for a in _axes)
     axes = [a for a in axes if a.name in axis_names]
@@ -516,11 +551,6 @@ class DataVar(Var):
     obj._table = table
     obj._axis_manager = axis_manager
     obj._varname = varname  # In case the object gets renamed.
-
-    #TODO: handle unsorted axes, using an extra argsort step?
-    import numpy as np
-    for a in obj.axes:
-      assert np.all(a.values == np.sort(a.values)), "Unhandled case: unsorted axis %s"%a
 
     return obj
 
