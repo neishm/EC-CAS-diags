@@ -131,6 +131,10 @@ class AxisManager (object):
     self._settified_axes = {}
     self._unsettified_axes = {}
 
+    # For union / intersection of axes
+    self._unions = {}
+    self._intersections = {}
+
     self.register_axes (axes)
 
   # Helper function: recycle an existing axis object if possible.
@@ -249,6 +253,26 @@ class AxisManager (object):
     self._unsettified_axes[type(sample)][key] = axis
     return axis
 
+  # Merge axes together
+  def get_axis_union (self, axes):
+    key = tuple(sorted(map(id,axes)))
+    if key in self._unions: return self._unions[key]
+    values = map(self.settify_axis, axes)
+    values = reduce(frozenset.union, values, frozenset())
+    union = self.unsettify_axis (axes[0], values)
+    self._unions[key] = union
+    return union
+
+  # Find common values between axes
+  def get_axis_intersection (self, axes):
+    key = tuple(sorted(map(id,axes)))
+    if key in self._intersections: return self._intersections[key]
+    values = map(self.settify_axis, axes)
+    values = reduce(frozenset.intersection, values, values[0])
+    intersection = self.unsettify_axis (axes[0], values)
+    if len(intersection) > 0:
+      self._intersections[key] = intersection
+    return intersection
 
 
 # A domain (essentially a tuple of axes, with no deep comparisons)
