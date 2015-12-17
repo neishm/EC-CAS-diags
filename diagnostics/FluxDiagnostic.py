@@ -320,7 +320,7 @@ if True:
 
       if preview is False:
         fig.savefig(fname)
-        fig.clear()
+        plt.close()
         pbar.update(i*100/len(flux1.time))
       else:
         break

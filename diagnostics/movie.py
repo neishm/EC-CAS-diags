@@ -93,9 +93,9 @@ class Movie(object):
       outfile += ".png"
 
       if not exists(outfile):
-        fig.clear()
         self.render (fig, fields, datestring)
         fig.savefig(outfile)
+        pl.close()
 
       pbar.update(i*100./len(taxis))
 
