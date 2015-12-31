@@ -206,7 +206,8 @@ if True:
         timevalues = timevalues[np.isfinite(values)]
         dt = filter(None,np.diff(timevalues))
         if len(dt) > 0:
-          dt = min(dt)
+          # Choose a representative dt.
+          dt = sorted(dt)[len(dt)/2]
         else:
           dt = float('nan')
         count = (time2-time1) / dt
