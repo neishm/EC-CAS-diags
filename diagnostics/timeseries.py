@@ -20,6 +20,8 @@ if True:
 
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)
+    # If there's no model data to plot, then don't bother plotting!
+    if len(model_inputs) == 0: return
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
       timeseries (obs, model_inputs, fieldname, units, outdir, **kwargs)
