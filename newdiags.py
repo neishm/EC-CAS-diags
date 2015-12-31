@@ -32,12 +32,20 @@ def split_cmdline_arg (value):
 
 # Extract command-line arguments
 
-description = 'Produce various diagnostics (figures and animations).'
+def make_parser(add_help=True):
+  description = 'Produce various diagnostics (figures and animations).'
+  epilog='Different arguments may exist for particular configuration files.'
 
-parser = argparse.ArgumentParser (description=description, epilog='Different arguments may exist for particular configuration files.')
-parser.add_argument('-f', '--configfile', type=argparse.FileType('r'), nargs='?', help="Configuration file to use for the diagnostics.")
-parser.add_argument('--tmpdir', help="where to put any intermediate files that get generated, if they can't be stored in their usual location.  THIS SHOULD NOT BE IN YOUR HOME DIRECTORY.")
+  parser = argparse.ArgumentParser (description=description, epilog=epilog, add_help=add_help)
+  parser.add_argument('-f', '--configfile', type=argparse.FileType('r'), nargs='?', help="Configuration file to use for the diagnostics.")
+  parser.add_argument('--tmpdir', help="where to put any intermediate files that get generated, if they can't be stored in their usual location.  THIS SHOULD NOT BE IN YOUR HOME DIRECTORY.")
+  parser.add_argument('--rescan', action='store_true', help="Force the input files to be re-scanned.  Useful if the interfaces have changed since the last time the script was run.")
+  return parser
+
+parser = make_parser(add_help=False)
 args, extra_args = parser.parse_known_args()
+
+parser = make_parser(add_help=True)
 
 if args.configfile is None:
   parser.print_help()
@@ -107,7 +115,7 @@ for section in configparser.sections():
   
   cache = Cache(dir=data_dirs[0]+"/nc_cache", fallback_dirs=fallback_dirs)
 
-  experiment = data_interface(data_dirs, name=data_name, title='%s (%s)'%(desc,data_name), color=color, cache=cache)
+  experiment = data_interface(data_dirs, name=data_name, title='%s (%s)'%(desc,data_name), color=color, cache=cache, rescan=args.rescan)
 
   datasets.append(experiment)
 

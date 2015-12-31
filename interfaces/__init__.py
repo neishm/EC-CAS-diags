@@ -202,14 +202,17 @@ class DataProduct (DataInterface):
 
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
-  def __init__ (self, files, name=None, title=None, color=None, cache=None):
+  def __init__ (self, files, name=None, title=None, color=None, cache=None, rescan=False):
     from .data_scanner import from_files
+    from os.path import exists
+    from os import remove
     self.name = name
     self.title = title
     self.color = color
     self.cache = cache
     if cache is not None:
       manifest = cache.full_path(name+"_manifest", writeable=True)
+      if exists(manifest) and rescan: remove(manifest)
     else:
       manifest = None
 
