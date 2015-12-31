@@ -169,14 +169,6 @@ if True:
     time1 = min(times)
     time2 = max(times)
 
-    # Determine marker size based on the density of observations
-    obs_dt = min(filter(None,np.diff(obs_data.time.values)))
-    count = (time2-time1) / obs_dt
-    # Size of marker (in points) for roughly no overlap
-    markersize = figwidth * 72.0 / count
-    markersize = max(markersize,1.0)
-    markersize = min(markersize,10.0)
-
     data = [d(time=(time1,time2)) for d in data]
     spread = [None if s is None else s(time=(time1,time2)) for s in spread]
 
@@ -208,6 +200,16 @@ if True:
       for j in range(len(data)):
         dates = to_datetimes(data[j].time)
         values = data[j].get(station=location).flatten()
+
+        # Determine marker size based on the density of observations
+        dt = min(filter(None,np.diff(values)))
+        count = (time2-time1) / dt
+        # Size of marker (in points) for roughly no overlap
+        markersize = figwidth * 72.0 / count
+        markersize = max(markersize,1.0)
+        markersize = min(markersize,10.0)
+        if np.isnan(markersize):
+          markersize = 0
 
         # Draw standard deviation?
         if spread[j] is not None:
