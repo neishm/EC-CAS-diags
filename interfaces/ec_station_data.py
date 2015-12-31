@@ -73,6 +73,7 @@ class EC_Station_Data(StationObsProduct):
     # Define the time axis.  Use a consistent start date, so the various
     # station records can be more easily compared.
     taxis = StandardTime (year=year, month=np.ones(len(year)), day=doy, hour=hourend, units='hours', startdate={'year':1980,'month':1,'day':1})
+    taxis = StandardTime (values=taxis.values, units=taxis.units, startdate=taxis.startdate)
 
     # Build the variables.
     mean   = Var([taxis,station], values=mean.reshape(-1,1), name=tracer+'_mean')
