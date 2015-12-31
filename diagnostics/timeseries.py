@@ -209,7 +209,7 @@ if True:
         markersize = max(markersize,1.0)
         markersize = min(markersize,10.0)
         if np.isnan(markersize):
-          markersize = 0
+          markersize = 1.0
 
         # Draw standard deviation?
         if spread[j] is not None:
