@@ -202,7 +202,13 @@ if True:
         values = data[j].get(station=location).flatten()
 
         # Determine marker size based on the density of observations
-        dt = min(filter(None,np.diff(values)))
+        timevalues = data[j](station=location).time.values
+        timevalues = timevalues[np.isfinite(values)]
+        dt = filter(None,np.diff(timevalues))
+        if len(dt) > 0:
+          dt = min(dt)
+        else:
+          dt = float('nan')
         count = (time2-time1) / dt
         # Size of marker (in points) for roughly no overlap
         markersize = figwidth * 72.0 / count
