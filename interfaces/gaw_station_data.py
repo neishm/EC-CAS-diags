@@ -104,7 +104,7 @@ class GAW_Station_Data(StationObsProduct):
 
     # Define the time axis.  Use a consistent start date, so the various
     # station records can be more easily compared.
-    time = StandardTime(year=year, month=month, day=day, hour=hour, minute=minute, units='hours', startdate={'year':1980,'month':1,'day':1})
+    time = StandardTime(year=year, month=month, day=day, hour=hour, units='hours', startdate={'year':1980,'month':1,'day':1})
     # Define the station axis.
     lat = float(atts['latitude'])
     lon = float(atts['longitude'])
