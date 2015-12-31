@@ -486,7 +486,7 @@ def _cleanup_subdomains (domains):
 
 # Get a common axis
 # Note: assume the values are all intercomparable.
-def _get_common_axis (manifest, axis_name):
+def _get_common_axis (manifest, axis_name, axis_manager):
   import numpy as np
   sample = None
   values = []
@@ -495,17 +495,17 @@ def _get_common_axis (manifest, axis_name):
       for axis in axes:
         if axis.name != axis_name: continue
         if sample is None: sample = axis
-        values.append(axis.values)
-  values = np.concatenate(values)
-  values = np.unique(values)
-  return sample.withnewvalues(values)
+        values.append(axis_manager.settify_axis(axis))
+  values = frozenset.union(*values)
+  common_axis = axis_manager.unsettify_axis(sample, values)
+  return common_axis
 
 # Scan a file manifest, return all possible domains available.
 def _get_domains (manifest, axis_manager, force_common_axis=None):
 
   # Fetch a common axis?
   if force_common_axis is not None:
-    common_axis = _get_common_axis(manifest, axis_name=force_common_axis)
+    common_axis = _get_common_axis(manifest, axis_name=force_common_axis, axis_manager=axis_manager)
 
   # Start by adding all domain pieces to the list
   domains = set()
@@ -582,7 +582,7 @@ class DataVar(Var):
 
     import numpy as np
     from pygeode.view import View, simplify
-    out = np.zeros(view.shape, dtype=self.dtype)
+    out = np.empty(view.shape, dtype=self.dtype)
     out[()] = float('nan')
     out_axes = view.clip().axes
     # Loop over all available files.
