@@ -42,8 +42,6 @@ class Movie(object):
     if start > end:
       raise ValueError ("No common time period for %s"%prefix)
 
-    fig = pl.figure(figsize=self.figsize)
-
     imagedir = outdir + "/images_%s"%prefix
     if not exists(imagedir): makedirs(imagedir)
 
@@ -52,6 +50,8 @@ class Movie(object):
     pbar = PBar()
     print "Saving %s images"%prefix
     for i,t in enumerate(taxis):
+
+      fig = pl.figure(figsize=self.figsize)
 
       # Sample the fields at the current time
       fields = [f(time=t) for f in self.fields]
@@ -95,7 +95,8 @@ class Movie(object):
       if not exists(outfile):
         self.render (fig, fields, datestring)
         fig.savefig(outfile)
-        pl.close()
+
+      pl.close()
 
       pbar.update(i*100./len(taxis))
 
