@@ -17,7 +17,8 @@ def quick_calc(f):
       if len(out_vars) == 0: continue
       prefix = model.name+'_'+f.__name__
       out_datasets.append(Dataset(out_vars))
-    out_product = DerivedProduct(out_datasets, name=prefix, title=model.title, color=model.color, cache=model.cache)
+    out_product = DerivedProduct(out_datasets, name=prefix, title=model.title, cache=model.cache)
+    out_product.color = model.color
     return out_product
   new_func.__name__ = f.__name__
 

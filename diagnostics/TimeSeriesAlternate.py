@@ -27,7 +27,7 @@ if True:
 
     models = [m for m in models if m is not None]
 
-    if obs.color is not None:
+    if hasattr(obs,'color'):
       model_line_colours = [m.color for m in models]
       obs_line_colour = obs.color
     else:

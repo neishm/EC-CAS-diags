@@ -120,12 +120,20 @@ if True:
 
     models = [m for m in models if m is not None]
 
-    if obs.color is not None:
+    if hasattr(obs,'color'):
       model_line_colours = [m.color for m in models]
       obs_line_colour = obs.color
+      model_line_styles = [m.linestyle for m in models]
+      obs_line_style = obs.linestyle
+      model_markers = [m.marker for m in models]
+      obs_marker = obs.marker
     else:
       model_line_colours = ['blue', 'red']
       obs_line_colour = 'green'
+      model_line_styles = ['-']*len(model_data)
+      obs_line_style = 'None'
+      model_markers = ['None']*len(model_data)
+      obs_marker = 'o'
 
     model_data = []
     model_spread = []
@@ -157,8 +165,8 @@ if True:
     data = model_data + [obs_data]
     spread = model_spread + [obs_stderr]
     line_colours = model_line_colours[:len(model_data)] + [obs_line_colour]
-    line_styles = ['-']*len(model_data) + ['None']
-    markers = ['None']*len(model_data) + ['o']
+    line_styles = model_line_styles + [obs_line_style]
+    markers = model_markers + [obs_marker]
 
     # Use the first model data as a basis for the time axis.
     timeaxis = (d.getaxis('time') for d in data).next()

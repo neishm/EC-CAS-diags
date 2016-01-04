@@ -202,13 +202,12 @@ class DataProduct (DataInterface):
 
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
-  def __init__ (self, files, name=None, title=None, color=None, cache=None, rescan=False):
+  def __init__ (self, files, name=None, title=None, cache=None, rescan=False):
     from .data_scanner import from_files
     from os.path import exists
     from os import remove
     self.name = name
     self.title = title
-    self.color = color
     self.cache = cache
     if cache is not None:
       manifest = cache.full_path(name+"_manifest", writeable=True)
@@ -232,12 +231,11 @@ class StationObsProduct(DataProduct):
 # A special class to represent derived data as a "product"
 class DerivedProduct (DataProduct):
   # Override the __init__ to take a list of variables, not filenames.
-  def __init__ (self, datasets, name=None, title=None, color=None, cache=None):
+  def __init__ (self, datasets, name=None, title=None, cache=None):
     from pygeode.var import Var
     from pygeode.dataset import Dataset
     self.name = name
     self.title = title
-    self.color = color
     self.cache = cache
     if isinstance(datasets,Var):
       datasets = [Dataset([datasets])]

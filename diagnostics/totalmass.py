@@ -169,7 +169,7 @@ if True:
         if normalize_air_mass:
           mass = mass / airmass * airmass0
         fields.append(mass)
-        if model.color is not None:
+        if hasattr(model,'color'):
           colours.append(model.color)
         else:
           colours.append(totalmass_colours[i])
@@ -216,7 +216,7 @@ if True:
         # Limit the time period to plot
         totalflux = totalflux(time=(t0,t1))
         fields.append(totalflux)
-        if model.color is not None:
+        if hasattr(model,'color'):
           colours.append(model.color)
         else:
           colours.append(totalflux_colours[i])
