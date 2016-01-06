@@ -77,7 +77,7 @@ if True:
 
     prefix = "ZonalMeanBG-images_%s_%s"%('_'.join(m.name for m in models), fieldname)
 
-    fields = [zonalmean_gph(m,fieldname,units) for m in models]
+    fields = [zonalmean_gph(m,fieldname,units,typestat="mean") for m in models]
     fields = [f(height=height) for f in fields]
 
     # Unit conversion
