@@ -37,11 +37,11 @@ if True:
     model_data = []
     model_spread = []
     for m in models:
-      field = sample_model_at_obs(m,obs,fieldname)
+      field = sample_model_at_obs(m,obs,fieldname,units=units)
       field = convert(field, units, context=fieldname)
       model_data.append(field)
       try:
-        field = sample_model_at_obs(m,obs,fieldname+'_ensemblespread')
+        field = sample_model_at_obs(m,obs,fieldname+'_ensemblespread',units=units)
         field = convert(field, units, context=fieldname)
         model_spread.append(field)
       except KeyError:  # No ensemble spread for this model data
