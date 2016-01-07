@@ -130,9 +130,9 @@ if True:
     else:
       model_line_colours = ['blue', 'red']
       obs_line_colour = 'green'
-      model_line_styles = ['-']*len(model_data)
+      model_line_styles = ['-']*len(models)
       obs_line_style = 'None'
-      model_markers = ['None']*len(model_data)
+      model_markers = ['None']*len(models)
       obs_marker = 'o'
 
     model_data = []
