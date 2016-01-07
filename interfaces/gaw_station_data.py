@@ -108,12 +108,13 @@ class GAW_Station_Data(StationObsProduct):
     # Define the station axis.
     lat = float(atts['latitude'])
     lon = float(atts['longitude'])
+    altitude = float(atts['altitude'])
     # Check for mis-spelling of 'territory'
     if 'country_territory' in atts:
       country = atts['country_territory']
     else:
       country = atts['country_teritory']
-    station = Station([station_name], lat=[lat], lon=[lon], country=[country])
+    station = Station([station_name], lat=[lat], lon=[lon], altitude=[altitude], country=[country])
 
     # Wrap in PyGeode Vars
     mean = Var([time,station], values=np.asarray(values).reshape(-1,1), name=specie+'_mean', atts=atts)
