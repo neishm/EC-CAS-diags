@@ -205,6 +205,9 @@ class DataProduct (DataInterface):
   # Final values will be superset of values from all variables.
   _common_axis = None
 
+  # Indicates that the domains should not cross file boundaries.
+  _per_file = False
+
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
   def __init__ (self, files, name=None, title=None, cache=None, rescan=False):
@@ -221,7 +224,12 @@ class DataProduct (DataInterface):
       manifest = None
 
     expanded_files = self.expand_files(files)
-    data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axis)
+    if self._per_file:
+      data = [from_files([f], type(self), manifest=manifest, force_common_axis=self._common_axis) for f in expanded_files]
+      # Flatten into a single list
+      data = sum(data,[])
+    else:
+      data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axis)
     # Decode the data (get standard field names, etc.)
     data = map(self.decode, data)
     # Store the data in this object.
@@ -232,6 +240,11 @@ class DataProduct (DataInterface):
 class StationObsProduct(DataProduct):
   _common_axis = 'time'
 
+
+# A sub-class to handle data that should be treated independently for each
+# file.
+class SplitProduct(DataProduct):
+  _per_file = True
 
 # A special class to represent derived data as a "product"
 class DerivedProduct (DataProduct):
