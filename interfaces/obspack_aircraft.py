@@ -1,7 +1,7 @@
 # Interface for ObsPack aircraft data
 
-from . import StationObsProduct
-class ObsPack_Aircraft_Data(StationObsProduct):
+from . import SplitProduct
+class ObsPack_Aircraft_Data(SplitProduct):
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
