@@ -22,7 +22,7 @@ class ObsPack_Aircraft_Data(SplitProduct):
     time = StandardTime(values=data.time.get(), startdate = dict(year=1970,month=1,day=1), units='seconds')
     data = data.replace_axes(obs=time)
     # Attach a "station" axis to retain the lat/lon information.
-    station = Station([data.atts['site_name']], lat=[data.atts['site_latitude']], lon=[data.atts['site_longitude']], country=[data.atts['site_country']])
+    station = Station([data.atts['site_name']], site_code=[data.atts['site_code']], lat=[data.atts['site_latitude']], lon=[data.atts['site_longitude']], country=[data.atts['site_country']])
     data = [v.extend(1, station) for v in data.vars]
     return data
 
