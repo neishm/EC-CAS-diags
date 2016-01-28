@@ -25,22 +25,40 @@ if True:
   # Interpolate model data directly to aircraft site locations
   def sample_model_at_obs (model, obs, fieldname, units):
     from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert, convert
-    field,gph = find_and_convert(model, [fieldname,'geopotential_height', [units,'m'], requirement=have_gridded_3d_data, maximize = (number_of_levels,number_of_timesteps))
+    field, gph = find_and_convert(model, [fieldname,'geopotential_height', [units,'m'], requirement=have_gridded_3d_data, maximize = (number_of_levels,number_of_timesteps))
+    from pygeode.timeaxis import StandardTime
+    from scipy.interpolate import interp1d
 
     outfields = []
+    # This will give the timeseries of altitude values, iterating over each
+    # station.
     for altitude in obs.find('altitude'):
 
-      altitude = convert(altitude,'m')
-
       # Sample at the station locations
-      outfield = StationSample(field, series.getaxis('station'))
+      outfield = StationSample(field, altitude.getaxis('station'))
+      outgph = StationSample(gph, altitude.getaxis('station'))
 
       # Cache the data for faster subsequent access.
       # Disable time splitting for the cache file, since open_multi doesn't work
       # very well with the encoded station data.
       outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s'%(obs.name,fieldname), split_time=False)
+      outgph = model.cache.write(outgph, prefix=model.name+'_at_%s_%s'%(obs.name,'geopotential_height'), split_time=False)
 
-      # TODO
+      # Load the data, and observation times & altitudes.
+      outfield = outfield.load()
+      outgph = convert(outgph,'m').load()
+      altitude = convert(altitude,'m').load()
+
+      # Get the obs times into the same coordinate as the model data.
+      obstimes = StandardTime(startdate=outfield.time.startdate, units=outfield.time.units, **altitude.time.auxarrays)
+
+      # Interpolate the model data to the observation times
+      f_field = interp1d(outfield.time.values, outfield.values, axis=0, kind='linear',bounds_error=False)
+      f_gph = interp1d(outfield.time.values, outfield.values, axis=0, kind='linear',bounds_error=False)
+      outfield = f_field(obstimes)
+      outgph = f_gph(obstimes)
+
+      #TODO
 
       outfields.append(outfield)
 
