@@ -92,7 +92,7 @@ class Cache (object):
 
 
   # Write out the data
-  def write (self, var, prefix, split_time=None, force_single_precision=True):
+  def write (self, var, prefix, split_time=None, force_single_precision=True, _dryrun=False):
     from os.path import exists
     from os import remove, mkdir
     from pygeode.formats import netcdf
@@ -122,6 +122,7 @@ class Cache (object):
       filename = self.full_path(prefix + ".nc")
       if not exists(filename):
         filename = self.full_path(prefix + ".nc", writeable=True)
+        if _dryrun: return filename
         dataset = asdataset([var])
         for save_hook in self.save_hooks:
           dataset = asdataset(save_hook(dataset))
@@ -182,6 +183,7 @@ class Cache (object):
     if not exists(bigfile):
 
       bigfile = self.full_path(prefix+"_"+datestrings[0]+"-"+datestrings[-1]+".nc", writeable=True)
+      if _dryrun: return bigfile
 
       # Split into 1 file per timestep?
       # Useful for model output, where you might extend the data with extra timesteps later.
@@ -280,7 +282,18 @@ class Cache (object):
 
     return var
 
+  # Give the name of the cache file that would be created when write() is called
+  def where_write (self, *args, **kwargs):
+    kwargs['_dryrun'] = True
+    filename = self.write(*args, **kwargs)
+    return filename
 
+  # Determine if the data was already cached.
+  def exists (self, *args, **kwargs):
+    from os.path import exists
+    filename = self.where_write(*args,**kwargs)
+    if exists(filename): return True
+    else: return False
 
   # Given a filename, add the appropriate directory structure.
   # Parameters:
