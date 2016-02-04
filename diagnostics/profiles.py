@@ -28,6 +28,7 @@ if True:
     field, gph = find_and_convert(model, [fieldname,'geopotential_height', [units,'m'], requirement=have_gridded_3d_data, maximize = (number_of_levels,number_of_timesteps))
     from pygeode.timeaxis import StandardTime
     from scipy.interpolate import interp1d
+    from pygeode.var import Var
 
     outfields = []
     # This will give the timeseries of altitude values, iterating over each
@@ -38,11 +39,13 @@ if True:
       outfield = StationSample(field, altitude.getaxis('station'))
       outgph = StationSample(gph, altitude.getaxis('station'))
 
+      #TODO: check for existing cached data
+
       # Cache the data for faster subsequent access.
       # Disable time splitting for the cache file, since open_multi doesn't work
       # very well with the encoded station data.
-      outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s'%(obs.name,fieldname), split_time=False)
-      outgph = model.cache.write(outgph, prefix=model.name+'_at_%s_%s'%(obs.name,'geopotential_height'), split_time=False)
+      outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_full'%(obs.name,fieldname), split_time=False)
+      outgph = model.cache.write(outgph, prefix=model.name+'_at_%s_%s_full'%(obs.name,'geopotential_height'), split_time=False)
 
       # Load the data, and observation times & altitudes.
       outfield = outfield.load()
@@ -52,13 +55,29 @@ if True:
       # Get the obs times into the same coordinate as the model data.
       obstimes = StandardTime(startdate=outfield.time.startdate, units=outfield.time.units, **altitude.time.auxarrays)
 
+      #TODO: limit obstimes to model times, plus the two bounding times
+
       # Interpolate the model data to the observation times
       f_field = interp1d(outfield.time.values, outfield.values, axis=0, kind='linear',bounds_error=False)
       f_gph = interp1d(outfield.time.values, outfield.values, axis=0, kind='linear',bounds_error=False)
       outfield = f_field(obstimes)
       outgph = f_gph(obstimes)
 
-      #TODO
+      # Cache the data again
+      outfield = Var([altitude.time,field.zaxis], values=outfield, name=fieldname)
+      outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_timesample'%(obs.name,fieldname), split_time=False)
+      outgph = model.cache.write(outgph, prefix=model.name+'_at_%s_%s_timesample'%(obs.name,'geopotential_height'), split_time=False)
+
+      outfield = outfield.get()
+      outgph = outgph.get()
+
+      # Interpolate the model data to observation altitudes
+      #TODO: more efficient interpolation?
+      outfield = [interp1d(outgph[i,:], outfield[i,:], kind='linear',bounds_error=False)(h) for i,h in enumerate(altitude.values)]
+
+      # Cache the data again
+      outfield = Var([altitude.time], values=outfield, name=fieldname)
+      outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s'%(obs.name,fieldname), split_time=False)
 
       outfields.append(outfield)
 
@@ -73,24 +92,17 @@ if True:
     from os.path import exists
     from ..common import convert, select_surface, to_datetimes
 
-    figwidth = 15
+    for m in models:
+      field = sample_model_at_obs(m,obs,fieldname,units)
 
-    models = [m for m in models if m is not None]
+    return
 
-    if hasattr(obs,'color'):
-      model_line_colours = [m.color for m in models]
-      obs_line_colour = obs.color
-      model_line_styles = [m.linestyle for m in models]
-      obs_line_style = obs.linestyle
-      model_markers = [m.marker for m in models]
-      obs_marker = obs.marker
-    else:
-      model_line_colours = ['blue', 'red']
-      obs_line_colour = 'green'
-      model_line_styles = ['-']*len(models)
-      obs_line_style = 'None'
-      model_markers = ['None']*len(models)
-      obs_marker = 'o'
+    model_line_colours = [m.color for m in models]
+    model_line_styles = [m.linestyle for m in models]
+    obs_line_colour = obs.color
+    obs_line_style = obs.linestyle
+    model_markers = [m.marker for m in models]
+    obs_marker = obs.marker
 
     model_data = []
     model_spread = []
