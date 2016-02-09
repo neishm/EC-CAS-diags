@@ -2,7 +2,13 @@
 
 if True:
 
-  from .timeseries import find_applicable_obs
+  def find_applicable_obs (inputs, fieldname):
+    from ..common import have_station_data
+    obs_inputs = []
+    for x in inputs:
+      if any(fieldname in d and 'altitude' in d and have_station_data(d) for d in x.datasets):
+        obs_inputs.append(x)
+    return obs_inputs
 
   def find_applicable_models (inputs, fieldname):
     from ..common import have_gridded_3d_data
