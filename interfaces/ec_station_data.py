@@ -51,14 +51,27 @@ class EC_Station_Data(StationObsProduct):
     from os.path import basename
     from ..station_data import Station
 
-    station, tracer, period = basename(filename).rstrip('.DAT').split('-')
-    lat, lon, elevation, country = obs_locations[station]
+    station, tracer, period = basename(filename).rstrip('.DAT').rsplit('-',2)
+
+    # Try looking up the station.  Report an error if it's not found in the table.
+    try:
+      lat, lon, elevation, country = obs_locations[station]
+    except KeyError:
+      print "Warning: ec-station-obs: %s not found in the table."%station
+      return asdataset([])
+
     station = Station([station], lat=[lat], lon=[lon], elevation=[elevation], country=[country])
 
     # Read the data and put each column into an array.
     with open(filename, "r") as f:
       header = f.readline()
+      # Skip certain sites with non-standard file format
+      if header.startswith('REM'): return asdataset([])
+
       data = zip(*[line.rstrip('\n').split(',') for line in f])
+
+    # Skip files with no data.
+    if len(data) == 0: return asdataset([])
 
     decyear = np.array ([float(x) for x in data[0]])
     year    = np.array ([int(x) for x in data[1]])
