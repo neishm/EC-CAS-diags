@@ -164,7 +164,10 @@ class CT_Data(DataProduct):
     molefractions = glob(dirname+"/molefractions/CT2010*.molefrac_glb3x2_????-??-??.nc")
     # CT2013B has "total" and "components" products.
     molefractions += glob(dirname+"/molefractions/co2_total/CT2013B*.molefrac_glb3x2_????-??-??.nc")
-    molefractions += glob(dirname+"/molefractions/co2_components/CT2013B*.molefrac_glb3x2_????-??-??.nc")
+    molefractions += glob(dirname+"/molefractions/co2_components/CT2013B*.molefrac_components_glb3x2_????-??-??.nc")
+    # CT-NRT
+    molefractions += glob(dirname+"/molefractions/CT-NRT.v2015-2.molefrac_glb3x2_????-??-??.nc")
+    molefractions += glob(dirname+"/molefractions/CT-NRT.v2015-2.molefrac_components_glb3x2_????-??-??.nc")
     fluxes = glob(dirname+"/fluxes/CT*.flux1x1.????????.nc")
 
     # Blacklist the 2009-08-07 molefractions file, which has bad data at 10:30
