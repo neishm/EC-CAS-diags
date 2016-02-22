@@ -4,8 +4,6 @@
 # This is/was used for checking the effects of adding convection to tracers.
 
 from .xcol import find_applicable_models
-from .movie_zonal_diff import get_lats
-from .xcol_diff import get_lons
 
 
 if True:
@@ -15,8 +13,12 @@ if True:
     models = find_applicable_models(datasets, fieldname)
     n = len(models)
     for i in range(n):
+      if not models[i].have(fieldname): continue
       for j in range(i+1,n):
-        if get_lats(models[i]) == get_lats(models[j]) and get_lons(models[i]) == get_lons(models[j]):
+        if not models[j].have(fieldname): continue
+        f1 = models[i].find_best(fieldname)
+        f2 = models[j].find_best(fieldname)
+        if f1.lat == f2.lat and f1.lon == f2.lon:
           horz_slice_movie([models[i],models[j]], fieldname, units, outdir, **kwargs)
 
 

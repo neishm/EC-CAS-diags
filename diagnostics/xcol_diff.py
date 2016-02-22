@@ -7,17 +7,8 @@
 # (in kg/m2)
 
 from .xcol import get_xcol
-from .movie_zonal_diff import get_lats
 
 if True:
-
-  def get_lons (model):
-    if len(model.datasets) == 0:
-      raise ValueError("No data in %s"%model.name)
-    lons = set(tuple(v.lon.values) for d in model.datasets for v in d if v.hasaxis('lon'))
-    if len(lons) == 0: raise ValueError("No gridded data in %s"%model.name)
-    if len(lons) > 1: raise ValueError("Multiple grids found in %s"%model.name)
-    return lons.pop()
 
   from .xcol import find_applicable_models
 
@@ -25,8 +16,12 @@ if True:
     models = find_applicable_models(datasets, fieldname)
     n = len(models)
     for i in range(n):
+      if not models[i].have(fieldname): continue
       for j in range(i+1,n):
-        if get_lats(models[i]) == get_lats(models[j]) and get_lons(models[i]) == get_lons(models[j]):
+        if not models[j].have(fieldname): continue
+        f1 = models[i].find_best(fieldname)
+        f2 = models[j].find_best(fieldname)
+        if f1.lat == f2.lat and f1.lon == f2.lon:
           xcol_diff([models[i],models[j]], fieldname, units, outdir, **kwargs)
 
 
