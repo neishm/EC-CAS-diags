@@ -29,13 +29,14 @@ if True:
   from .timeseries import StationSample
 
   # Interpolate model data directly to aircraft site locations
-  def sample_model_at_obs (model, obs, fieldname, units):
+  def sample_model_at_obs (model, obs, fieldname, units, z):
     from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert, convert
     from pygeode.timeaxis import StandardTime
     from scipy.interpolate import interp1d
     from pygeode.var import Var
+    from pygeode.interp import interpolate
 
-    field, gph = find_and_convert(model, [fieldname,'geopotential_height'], [units,'m'], requirement=have_gridded_3d_data, maximize = (number_of_levels,number_of_timesteps))
+    field, gph_field = find_and_convert(model, [fieldname,'geopotential_height'], [units,'m'], requirement=have_gridded_3d_data, maximize = (number_of_levels,number_of_timesteps))
 
     outfields = []
     # This will give the timeseries of altitude values, iterating over each
@@ -44,13 +45,17 @@ if True:
 
       # Sample at the station locations
       outfield = StationSample(field, altitude.getaxis('station'))
-      outgph = StationSample(gph, altitude.getaxis('station'))
+      gph = StationSample(gph_field, altitude.getaxis('station'))
 
       # Cache the data for faster subsequent access.
       # Disable time splitting for the cache file, since open_multi doesn't work
       # very well with the encoded station data.
       outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_full'%(obs.name,fieldname), split_time=False)
-      outgph = model.cache.write(outgph, prefix=model.name+'_at_%s_%s_full'%(obs.name,'geopotential_height'), split_time=False)
+      gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s_full'%(obs.name,'geopotential_height'), split_time=False)
+
+      # Interpolate to the fixed vertical levels.
+      outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
+      outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_zinterp'%(obs.name,fieldname), split_time=False)
 
       outfields.append(outfield)
 
@@ -64,9 +69,13 @@ if True:
     import matplotlib.pyplot as pl
     from os.path import exists
     from ..common import convert, select_surface, to_datetimes
+    from pygeode.axis import Height
+
+    # The fixed height levels to interpolate the model data to
+    z = Height([1000.,2000.,3000.,4000.,5000.,6000.])
 
     for m in models:
-      field = sample_model_at_obs(m,obs,fieldname,units)
+      field = sample_model_at_obs(m,obs,fieldname,units,z)
 
     return
 
