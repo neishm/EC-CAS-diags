@@ -6,7 +6,7 @@ class ObsPack_Aircraft_Data(SplitProduct):
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
   field_list = (
-    ('value',    'CO2',      'mol mol(dryair)-1'),
+    ('value',    'CO2',      'mol mol(dry_air)-1'),
     ('altitude', 'altitude', 'm'),
   )
 
