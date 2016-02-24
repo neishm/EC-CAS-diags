@@ -29,23 +29,45 @@ if True:
   from .timeseries import StationSample
 
   # Interpolate model data directly to aircraft site locations
-  def sample_model_at_obs (model, obs, fieldname, units, z):
+  def sample_model_at_obs (model, obs, fieldname, units, z_levels, z_bounds):
     from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert, convert
     from pygeode.timeaxis import StandardTime
     from scipy.interpolate import interp1d
     from pygeode.var import Var
+    from pygeode.axis import Height
     from pygeode.interp import interpolate
+    import numpy as np
+
+    z = Height(z_levels)
 
     field, gph_field = find_and_convert(model, [fieldname,'geopotential_height'], [units,'m'], requirement=have_gridded_3d_data, maximize = (number_of_levels,number_of_timesteps))
 
-    outfields = []
-    # This will give the timeseries of altitude values, iterating over each
-    # station.
-    for altitude in obs.find('altitude'):
+    # Get the time range for the model.
+    gettimes = lambda f: zip(*[f.time.auxarrays[v] for v in 'year','month'])
+    model_times = gettimes(field)
 
-      # Sample at the station locations
-      outfield = StationSample(field, altitude.getaxis('station'))
-      gph = StationSample(gph_field, altitude.getaxis('station'))
+    outfields = []
+    for obsfield,altitude in obs.find(fieldname,'altitude'):
+
+      # Sample the model at the station locations
+      outfield = StationSample(field, obsfield.getaxis('station'))
+      gph = StationSample(gph_field, obsfield.getaxis('station'))
+
+      # Get the time range for the obs.
+      obs_times = gettimes(obsfield)
+
+      # Select the time period with which we have both obs and model data.
+      t0 = max(model_times[0],obs_times[0])
+      t1 = min(model_times[-1],obs_times[-1])
+      # Skip locations where we have no model/obs overlap
+      if t1 < t0: continue
+
+      ind = np.where([t >= t0 and t <= t1 for t in model_times])
+      outfield = outfield(li_time=ind)
+
+      ind = np.where([t >= t0 and t <= t1 for t in obs_times])
+      obsfield = obsfield(li_time=ind)
+      altitude = altitude(li_time=ind)
 
       # Cache the data for faster subsequent access.
       # Disable time splitting for the cache file, since open_multi doesn't work
@@ -53,11 +75,26 @@ if True:
       outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_full'%(obs.name,fieldname), split_time=False)
       gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s_full'%(obs.name,'geopotential_height'), split_time=False)
 
-      # Interpolate to the fixed vertical levels.
+      # Interpolate the model to the fixed vertical levels.
       outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
       outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_zinterp'%(obs.name,fieldname), split_time=False)
 
-      outfields.append(outfield)
+      # Bin the aircraft data into the fixed levels.
+      binned_data = np.empty(obsfield.shape+(len(z_levels),))
+      binned_data[()] = float('nan')
+      obsfield = obsfield.load()
+      altitude = altitude.load()
+      for i in range(len(z_levels)):
+        match = (altitude.values >= z_bounds[i]) & (altitude.values < z_bounds[i+1])
+        match = np.where(match)
+        binned_data[...,i][match] = obsfield.values[match]
+
+      obsfield = Var(axes=obsfield.axes+(z,), values=binned_data, name=obsfield.name)
+
+      # Just for a test
+      obsfield = model.cache.write(obsfield, prefix=obs.name+'_%s_zbin'%fieldname, split_time=False)
+
+      outfields.append((obsfield,outfield))
 
     return outfields
 
@@ -69,13 +106,14 @@ if True:
     import matplotlib.pyplot as pl
     from os.path import exists
     from ..common import convert, select_surface, to_datetimes
-    from pygeode.axis import Height
 
     # The fixed height levels to interpolate the model data to
-    z = Height([1000.,2000.,3000.,4000.,5000.,6000.])
+    z_levels =   [1000.,2000.,3000.,4000.,5000.,6000.]
+    z_bounds = [500.,1500.,2500.,3500.,4500.,5500.,6500.]
 
     for m in models:
-      field = sample_model_at_obs(m,obs,fieldname,units,z)
+      for obsfield, modelfield in sample_model_at_obs(m,obs,fieldname,units,z_levels,z_bounds):
+        pass
 
     return
 
