@@ -140,16 +140,16 @@ if True:
 
     import numpy as np
     import matplotlib.pyplot as pl
+    import numpy as np
     from os.path import exists
     from ..common import convert, select_surface, to_datetimes
 
     years = [2009,2010]
+    year_string = str(years[0]) if len(years) == 1 else str(years[0])+'-'+str(years[-1])
 
     # The fixed height levels to interpolate the model data to
     z_levels =   [1000.,2000.,3000.,4000.,5000.,6000.]
     z_bounds = [500.,1500.,2500.,3500.,4500.,5500.,6500.]
-
-    fig = pl.figure(figsize=(8,12))
 
     monthly_model = [dict() for m in range(len(models))]
     monthly_obs = dict()
@@ -163,8 +163,13 @@ if True:
         for month in range(1,13):
           monthly_model[i].setdefault(month,[]).append(modelfield(month=month))
 
+    fig = pl.figure(figsize=(6,6))
+
     season = 'Jan-Feb-Mar'
     months = [1,2,3]
+
+    outfile = "%s/%s_timeseries_%s_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,season,year_string)
+
     obs_data = sum([monthly_obs[m] for m in months],[])
     obs_data = average_profile(obs_data)
     model_data = []
@@ -173,6 +178,15 @@ if True:
       mod_data = average_profile(mod_data)
       model_data.append(mod_data)
 
+    ax = pl.subplot(111)
+    pl.plot(obs_data, z_levels, color=obs.color, linestyle=obs.linestyle, marker=obs.marker, markersize=10, markeredgecolor=obs.color)
+    pl.title('%s (%s)'%(season,year_string))
+    pl.xticks(np.linspace(388,393,6))
+    pl.xlim(387.5,393)
+    pl.xlabel('%s [%s]'%(fieldname,units))
+    pl.ylabel('Altitude [m]')
+
+    fig.savefig(outfile)
 
     return
 
