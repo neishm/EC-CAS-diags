@@ -33,7 +33,10 @@ if True:
   def find_obs(obs, *fieldnames):
     handled = []
     for data in obs.find(*fieldnames):
-      key = data[0].axes
+      if isinstance(data,list):
+        key = data[0].axes
+      else:
+        key = data.axes
       if key not in handled:
         yield data
       handled.append(key)
@@ -80,35 +83,40 @@ if True:
     from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert
     from pygeode.axis import Height
     from pygeode.interp import interpolate
+    from ..station_data import Station
 
     z = Height(z_levels)
 
     field, gph_field = find_and_convert(model, [fieldname,'geopotential_height'], [units,'m'], requirement=have_gridded_3d_data, maximize = (number_of_levels,number_of_timesteps))
 
-    outfields = []
-    for obsfield,altitude in find_obs(obs,fieldname,'altitude'):
+    # Concatenate all the available station locations into a single coordinate.
+    station_names = []
+    auxarrays = {}
+    for obsfield in find_obs(obs,fieldname):
+      station_names.extend(obsfield.station.values)
+      for key, value in obsfield.station.auxarrays.iteritems():
+        auxarrays.setdefault(key,[]).extend(value)
+    stations = Station(values=station_names, **auxarrays)
 
-      # Sample the model at the station locations
-      outfield = StationSample(field, obsfield.getaxis('station'))
-      gph = StationSample(gph_field, obsfield.getaxis('station'))
+    # Sample the model at the station locations
+    outfield = StationSample(field, stations)
+    gph = StationSample(gph_field, stations)
 
-      outfield = outfield(l_year=years)
-      gph = gph(l_year=years)
+    outfield = outfield(l_year=years)
+    gph = gph(l_year=years)
 
-      # Cache the data for faster subsequent access.
+    # Cache the data for faster subsequent access.
       # Disable time splitting for the cache file, since open_multi doesn't work
-      # very well with the encoded station data.
-      print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
-      outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_full'%(obs.name,fieldname), split_time=False)
-      gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s_full'%(obs.name,'geopotential_height'), split_time=False)
+    # very well with the encoded station data.
+    print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
+    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_full'%(obs.name,fieldname), split_time=False)
+    gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s_full'%(obs.name,'geopotential_height'), split_time=False)
 
-      # Interpolate the model to the fixed vertical levels.
-      outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
-      outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_zinterp'%(obs.name,fieldname), split_time=False)
+    # Interpolate the model to the fixed vertical levels.
+    outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
+    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_zinterp'%(obs.name,fieldname), split_time=False)
 
-      outfields.append(outfield)
-
-    return outfields
+    return [outfield]
 
 
   # Take an average of all pieces of data given
