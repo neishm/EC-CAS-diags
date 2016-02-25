@@ -39,7 +39,7 @@ if True:
       handled.append(key)
 
   # Bin the obs data into fixed levels
-  def bin_obs (obs, fieldname, units, z_levels, z_bounds):
+  def bin_obs (obs, fieldname, units, z_levels, z_bounds, years):
     from ..common import convert
     from pygeode.var import Var
     from pygeode.axis import Height
@@ -49,6 +49,9 @@ if True:
 
     outfields = []
     for obsfield,altitude in find_obs(obs,fieldname,'altitude'):
+
+      obsfield = obsfield(l_year=years)
+      altitude = altitude(l_year=years)
 
       obsfield = convert(obsfield,units)
 
@@ -73,7 +76,7 @@ if True:
 
 
   # Interpolate model data directly to aircraft site locations
-  def sample_model_at_obs (model, obs, fieldname, units, z_levels, z_bounds):
+  def sample_model_at_obs (model, obs, fieldname, units, z_levels, z_bounds, years):
     from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert
     from pygeode.axis import Height
     from pygeode.interp import interpolate
@@ -89,9 +92,13 @@ if True:
       outfield = StationSample(field, obsfield.getaxis('station'))
       gph = StationSample(gph_field, obsfield.getaxis('station'))
 
+      outfield = outfield(l_year=years)
+      gph = gph(l_year=years)
+
       # Cache the data for faster subsequent access.
       # Disable time splitting for the cache file, since open_multi doesn't work
       # very well with the encoded station data.
+      print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
       outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_full'%(obs.name,fieldname), split_time=False)
       gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s_full'%(obs.name,'geopotential_height'), split_time=False)
 
@@ -104,6 +111,22 @@ if True:
     return outfields
 
 
+  # Take an average of all pieces of data given
+  # (averaged over all dimensions except height)
+  def average_profile(data):
+    import numpy as np
+    from pygeode.concat import concat
+    zindex = data[0].whichaxis('zaxis')
+    zaxis = data[0].getaxis('zaxis')
+    # Temporal average
+    data = [v for v in data if len(v.time) > 0] # Ignore time periods with no data
+    data = [v.nanmean('time') for v in data]
+    # Average over all stations
+    data = np.concatenate([d.get() for d in data])
+    sum = np.nansum(data,axis=0)
+    count = np.sum(np.isfinite(data),axis=0)
+    data = sum/count
+    return data
 
   def profiles (obs, models, fieldname, units, outdir):
 
@@ -112,21 +135,36 @@ if True:
     from os.path import exists
     from ..common import convert, select_surface, to_datetimes
 
+    years = [2009,2010]
+
     # The fixed height levels to interpolate the model data to
     z_levels =   [1000.,2000.,3000.,4000.,5000.,6000.]
     z_bounds = [500.,1500.,2500.,3500.,4500.,5500.,6500.]
 
-#    fig = pl.figure(figsize=(8,12))
+    fig = pl.figure(figsize=(8,12))
 
     monthly_model = [dict() for m in range(len(models))]
     monthly_obs = dict()
 
-    for obsfield in bin_obs(obs, fieldname, units, z_levels, z_bounds):
-      #print obsfield
+    for obsfield in bin_obs(obs, fieldname, units, z_levels, z_bounds, years):
       for month in range(1,13):
         monthly_obs.setdefault(month,[]).append(obsfield(month=month))
 
-    for v in monthly_obs[3]: print v
+    for i,model in enumerate(models):
+      for modelfield in sample_model_at_obs(model, obs, fieldname, units, z_levels, z_bounds, years):
+        for month in range(1,13):
+          monthly_model[i].setdefault(month,[]).append(modelfield(month=month))
+
+    season = 'Jan-Feb-Mar'
+    months = [1,2,3]
+    obs_data = sum([monthly_obs[m] for m in months],[])
+    obs_data = average_profile(obs_data)
+    model_data = []
+    for monthly_mod in monthly_model:
+      mod_data = sum([monthly_mod[m] for m in months],[])
+      mod_data = average_profile(mod_data)
+      model_data.append(mod_data)
+
 
     return
 
