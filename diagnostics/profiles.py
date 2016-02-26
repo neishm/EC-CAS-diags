@@ -181,42 +181,39 @@ if True:
         for month in range(1,13):
           monthly_model[i].setdefault(month,[]).append(modelfield(month=month))
 
-    fig = pl.figure(figsize=(6,6))
+    for season, months in ('Jan-Feb-Mar',[1,2,3]), ('Apr-May-Jun',[4,5,6]), ('Jul-Aug-Sep',[7,8,9]), ('Oct-Nov-Dec',[10,11,12]), ('Annual',range(1,13)):
 
-    season = 'Jan-Feb-Mar'
-    months = [1,2,3]
+      fig = pl.figure(figsize=(6,6))
 
-    outfile = "%s/%s_timeseries_%s_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,season,year_string)
+      outfile = "%s/%s_profiles_%s_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,season,year_string)
 
-    obs_data = sum([monthly_obs[m] for m in months],[])
-    obs_std = stddev_profile(obs_data)
-    obs_data = average_profile(obs_data)
-    model_data = []
-    model_std = []
-    for monthly_mod in monthly_model:
-      mod_data = sum([monthly_mod[m] for m in months],[])
-      mod_std = stddev_profile(mod_data)
-      mod_data = average_profile(mod_data)
-      model_data.append(mod_data)
-      model_std.append(mod_std)
+      obs_data = sum([monthly_obs[m] for m in months],[])
+      obs_std = stddev_profile(obs_data)
+      obs_data = average_profile(obs_data)
+      model_data = []
+      model_std = []
+      for monthly_mod in monthly_model:
+        mod_data = sum([monthly_mod[m] for m in months],[])
+        mod_std = stddev_profile(mod_data)
+        mod_data = average_profile(mod_data)
+        model_data.append(mod_data)
+        model_std.append(mod_std)
 
-    ax = pl.subplot(111)
-    for i in range(len(models)):
-      pl.plot(model_data[i], z_levels, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
-      pl.plot(model_data[i]+model_std[i], z_levels, color=models[i].color, linestyle='--')
-      pl.plot(model_data[i]-model_std[i], z_levels, color=models[i].color, linestyle='--')
+      ax = pl.subplot(111)
+      for i in range(len(models)):
+        pl.plot(model_data[i], z_levels, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
+        pl.plot(model_data[i]+model_std[i], z_levels, color=models[i].color, linestyle='--')
+        pl.plot(model_data[i]-model_std[i], z_levels, color=models[i].color, linestyle='--')
 
-    pl.plot(obs_data, z_levels, color=obs.color, linestyle=obs.linestyle, linewidth=2, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label='obs')
-    pl.plot(obs_data+obs_std, z_levels, color=obs.color, linestyle='--')
-    pl.plot(obs_data-obs_std, z_levels, color=obs.color, linestyle='--')
-    pl.title('%s (%s)'%(season,year_string))
-#    pl.xticks(np.linspace(388,393,6))
-#    pl.xlim(387.5,393)
-    pl.xlabel('%s [%s]'%(fieldname,units))
-    pl.ylabel('Altitude [m]')
-    pl.legend(loc='best')
+      pl.plot(obs_data, z_levels, color=obs.color, linestyle=obs.linestyle, linewidth=2, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label='obs')
+      pl.plot(obs_data+obs_std, z_levels, color=obs.color, linestyle='--')
+      pl.plot(obs_data-obs_std, z_levels, color=obs.color, linestyle='--')
+      pl.title('%s (%s)'%(season,year_string))
+      pl.xlabel('%s [%s]'%(fieldname,units))
+      pl.ylabel('Altitude [m]')
+      pl.legend(loc='best')
 
-    fig.savefig(outfile)
+      fig.savefig(outfile)
 
     return
 
