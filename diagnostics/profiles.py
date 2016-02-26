@@ -122,8 +122,6 @@ if True:
   # (averaged over all dimensions except height)
   def average_profile(data):
     import numpy as np
-    # Filter empty data
-    data = [v for v in data if len(v.time) > 0] # Ignore time periods with no data
     # Extract the data
     data = [v.get() for v in data]
     # Temporal average
@@ -135,6 +133,24 @@ if True:
     sum = np.nansum(data,axis=0)
     count = np.sum(np.isfinite(data),axis=0)
     data = sum/count
+    return data
+
+  # Take standard deviation of all pieces of data given
+  # (over all dimensions except height)
+  def stddev_profile(data):
+    import numpy as np
+    mean = average_profile(data)
+    # Extract the data
+    data = [v.get()-mean for v in data]
+    # Temporal stddev
+    sum = [np.nansum(v**2,axis=0) for v in data]
+    count = [np.sum(np.isfinite(v),axis=0) for v in data]
+    data = [np.sqrt(s/c) for s,c in zip(sum,count)]
+    # Std. dev. over all stations
+    data = np.concatenate(data)
+    sum = np.nansum(data**2,axis=0)
+    count = np.sum(np.isfinite(data),axis=0)
+    data = np.sqrt(sum/count)
     return data
 
 
@@ -173,17 +189,26 @@ if True:
     outfile = "%s/%s_timeseries_%s_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,season,year_string)
 
     obs_data = sum([monthly_obs[m] for m in months],[])
+    obs_std = stddev_profile(obs_data)
     obs_data = average_profile(obs_data)
     model_data = []
+    model_std = []
     for monthly_mod in monthly_model:
       mod_data = sum([monthly_mod[m] for m in months],[])
+      mod_std = stddev_profile(mod_data)
       mod_data = average_profile(mod_data)
       model_data.append(mod_data)
+      model_std.append(mod_std)
 
     ax = pl.subplot(111)
     for i in range(len(models)):
-      pl.plot(model_data[i], z_levels, color=models[i].color, linestyle=models[i].linestyle, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
-    pl.plot(obs_data, z_levels, color=obs.color, linestyle=obs.linestyle, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label='obs')
+      pl.plot(model_data[i], z_levels, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
+      pl.plot(model_data[i]+model_std[i], z_levels, color=models[i].color, linestyle='--')
+      pl.plot(model_data[i]-model_std[i], z_levels, color=models[i].color, linestyle='--')
+
+    pl.plot(obs_data, z_levels, color=obs.color, linestyle=obs.linestyle, linewidth=2, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label='obs')
+    pl.plot(obs_data+obs_std, z_levels, color=obs.color, linestyle='--')
+    pl.plot(obs_data-obs_std, z_levels, color=obs.color, linestyle='--')
     pl.title('%s (%s)'%(season,year_string))
 #    pl.xticks(np.linspace(388,393,6))
 #    pl.xlim(387.5,393)
