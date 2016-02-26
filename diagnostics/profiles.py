@@ -179,12 +179,15 @@ if True:
       model_data.append(mod_data)
 
     ax = pl.subplot(111)
-    pl.plot(obs_data, z_levels, color=obs.color, linestyle=obs.linestyle, marker=obs.marker, markersize=10, markeredgecolor=obs.color)
+    for i in range(len(models)):
+      pl.plot(model_data[i], z_levels, color=models[i].color, linestyle=models[i].linestyle, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
+    pl.plot(obs_data, z_levels, color=obs.color, linestyle=obs.linestyle, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label='obs')
     pl.title('%s (%s)'%(season,year_string))
-    pl.xticks(np.linspace(388,393,6))
-    pl.xlim(387.5,393)
+#    pl.xticks(np.linspace(388,393,6))
+#    pl.xlim(387.5,393)
     pl.xlabel('%s [%s]'%(fieldname,units))
     pl.ylabel('Altitude [m]')
+    pl.legend(loc='best')
 
     fig.savefig(outfile)
 
