@@ -586,6 +586,7 @@ class DataVar(Var):
     out[()] = float('nan')
     out_axes = view.clip().axes
     # Loop over all available files.
+    N = 0  # Number of points covered so far
     for filename, interface, axes in self._table:
       subaxes = [self._axis_manager.get_axis_intersection([a1,a2]) for a1,a2 in zip(out_axes,axes)]
       reorder = []
@@ -614,6 +615,8 @@ class DataVar(Var):
       assert len([r for r in reorder if isinstance(r,(tuple,np.ndarray))]) <= 1, "Unhandled advanced indexing case."
       assert len([m for m in mask if isinstance(m,(tuple,np.ndarray))]) <= 1, "Unhandled advanced indexing case."
       out[mask] = chunk[reorder]
+      N = N + chunk.size
+      pbar.update(100.*N/out.size)
 
     return out
 
