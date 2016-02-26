@@ -14,7 +14,7 @@ if True:
     from ..common import have_gridded_3d_data
     model_inputs = []
     for x in inputs:
-      if any(fieldname in d and have_gridded_3d_data(d) for d in x.datasets):
+      if any(fieldname in d and 'geopotential_height' in d and have_gridded_3d_data(d) for d in x.datasets):
         model_inputs.append(x)
     return model_inputs
 
