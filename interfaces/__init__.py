@@ -15,9 +15,17 @@ class DataInterface (object):
   # Get the requested variable(s).
   # The possible matches are returned one at a time, and the calling method
   # will have to figure out which one is the best.
-  def find (self, *vars):
+  def find (self, *vars, **kwargs):
+    requirement=kwargs.pop('requirement',None)
+    if len(kwargs) > 0:
+      raise TypeError("Unexpected keyword arguments: %s"%kwargs.keys())
 
     for dataset in self.datasets:
+      # Check if this dataset meets any extra requirements
+      if requirement is not None:
+        if not requirement(dataset):
+          continue
+      # Check if all the variables are in the dataset
       if all(v in dataset for v in vars):
         varlist = [dataset[v] for v in vars]
         if len(varlist) == 1: yield varlist[0]
@@ -40,12 +48,9 @@ class DataInterface (object):
       collapse_result = True
 
     if len(fields) == 1:
-      candidates = zip(self.find(*fields))
+      candidates = zip(self.find(*fields,requirement=requirement))
     else:
-      candidates = list(self.find(*fields))
-
-    if requirement is not None:
-      candidates = filter(requirement, candidates)
+      candidates = list(self.find(*fields,requirement=requirement))
 
     # At the very least, order by domain shapes
     # (so we never have an arbitrary order of matches)
@@ -200,6 +205,9 @@ class DataProduct (DataInterface):
   # Final values will be superset of values from all variables.
   _common_axis = None
 
+  # Indicates that the domains should not cross file boundaries.
+  _per_file = False
+
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
   def __init__ (self, files, name=None, title=None, cache=None, rescan=False):
@@ -216,7 +224,12 @@ class DataProduct (DataInterface):
       manifest = None
 
     expanded_files = self.expand_files(files)
-    data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axis)
+    if self._per_file:
+      data = [from_files([f], type(self), manifest=manifest, force_common_axis=self._common_axis) for f in expanded_files]
+      # Flatten into a single list
+      data = sum(data,[])
+    else:
+      data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axis)
     # Decode the data (get standard field names, etc.)
     data = map(self.decode, data)
     # Store the data in this object.
@@ -227,6 +240,11 @@ class DataProduct (DataInterface):
 class StationObsProduct(DataProduct):
   _common_axis = 'time'
 
+
+# A sub-class to handle data that should be treated independently for each
+# file.
+class SplitProduct(DataProduct):
+  _per_file = True
 
 # A special class to represent derived data as a "product"
 class DerivedProduct (DataProduct):
