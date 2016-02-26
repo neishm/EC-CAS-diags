@@ -79,7 +79,7 @@ if True:
 
 
   # Interpolate model data directly to aircraft site locations
-  def sample_model_at_obs (model, obs, fieldname, units, z_levels, z_bounds, years):
+  def sample_model_at_obs (model, obs, fieldname, units, z_levels, z_bounds):
     from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert
     from pygeode.axis import Height
     from pygeode.interp import interpolate
@@ -88,6 +88,14 @@ if True:
     z = Height(z_levels)
 
     field, gph_field = find_and_convert(model, [fieldname,'geopotential_height'], [units,'m'], requirement=have_gridded_3d_data, maximize = (number_of_levels,number_of_timesteps))
+
+    # Determine which years to do (based on available model data).
+    # Look for years with more than a couple of timesteps (since for GEM we
+    # can have a single 24h forecast from the end of the year, which gets
+    # treated as valid at the start of the next year).
+    years = set()
+    for y in set(field.time.year):
+      if sum(field.time.year==y) > 10: years.add(y)
 
     # Concatenate all the available station locations into a single coordinate.
     station_names = []
@@ -162,9 +170,6 @@ if True:
     from os.path import exists
     from ..common import convert, select_surface, to_datetimes
 
-    years = [2009,2010]
-    year_string = str(years[0]) if len(years) == 1 else str(years[0])+'-'+str(years[-1])
-
     # The fixed height levels to interpolate the model data to
     z_levels =   [1000.,2000.,3000.,4000.,5000.,6000.]
     z_bounds = [500.,1500.,2500.,3500.,4500.,5500.,6500.]
@@ -172,14 +177,23 @@ if True:
     monthly_model = [dict() for m in range(len(models))]
     monthly_obs = dict()
 
+    # Extract model data at obs locations, and interpolate to fixed vertical
+    # levels.
+    # Also, use the model time period(s) to determine which years to consider
+    # for comparisons.
+    years = set()
+    for i,model in enumerate(models):
+      for modelfield in sample_model_at_obs(model, obs, fieldname, units, z_levels, z_bounds):
+        for month in range(1,13):
+          monthly_model[i].setdefault(month,[]).append(modelfield(month=month))
+        years.update(set(modelfield.time.year))
+    years = sorted(years)
+    year_string = str(years[0]) if len(years) == 1 else str(years[0])+'-'+str(years[-1])
+
+    # Bin the obs data into fixed vertical levels.
     for obsfield in bin_obs(obs, fieldname, units, z_levels, z_bounds, years):
       for month in range(1,13):
         monthly_obs.setdefault(month,[]).append(obsfield(month=month))
-
-    for i,model in enumerate(models):
-      for modelfield in sample_model_at_obs(model, obs, fieldname, units, z_levels, z_bounds, years):
-        for month in range(1,13):
-          monthly_model[i].setdefault(month,[]).append(modelfield(month=month))
 
     for season, months in ('Jan-Feb-Mar',[1,2,3]), ('Apr-May-Jun',[4,5,6]), ('Jul-Aug-Sep',[7,8,9]), ('Oct-Nov-Dec',[10,11,12]), ('Annual',range(1,13)):
 
