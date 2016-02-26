@@ -186,6 +186,7 @@ if True:
       fig = pl.figure(figsize=(6,6))
 
       outfile = "%s/%s_profiles_%s_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,season,year_string)
+      if exists(outfile): continue
 
       obs_data = sum([monthly_obs[m] for m in months],[])
       obs_std = stddev_profile(obs_data)
