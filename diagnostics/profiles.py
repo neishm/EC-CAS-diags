@@ -118,23 +118,25 @@ if True:
 
     return [outfield]
 
-
   # Take an average of all pieces of data given
   # (averaged over all dimensions except height)
   def average_profile(data):
     import numpy as np
-    from pygeode.concat import concat
-    zindex = data[0].whichaxis('zaxis')
-    zaxis = data[0].getaxis('zaxis')
-    # Temporal average
+    # Filter empty data
     data = [v for v in data if len(v.time) > 0] # Ignore time periods with no data
-    data = [v.nanmean('time') for v in data]
+    # Extract the data
+    data = [v.get() for v in data]
+    # Temporal average
+    sum = [np.nansum(v,axis=0) for v in data]
+    count = [np.sum(np.isfinite(v),axis=0) for v in data]
+    data = [s/c for s,c in zip(sum,count)]
     # Average over all stations
-    data = np.concatenate([d.get() for d in data])
+    data = np.concatenate(data)
     sum = np.nansum(data,axis=0)
     count = np.sum(np.isfinite(data),axis=0)
     data = sum/count
     return data
+
 
   def profiles (obs, models, fieldname, units, outdir):
 
