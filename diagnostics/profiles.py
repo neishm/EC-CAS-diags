@@ -199,7 +199,7 @@ if True:
     # Loop over each individual year, then do all years combined.
     for years in zip(all_years) + [all_years]:
      year_string = str(years[0]) if len(years) == 1 else str(years[0])+'-'+str(years[-1])
-     for season, months in ('Jan-Feb-Mar',[1,2,3]), ('Apr-May-Jun',[4,5,6]), ('Jul-Aug-Sep',[7,8,9]), ('Oct-Nov-Dec',[10,11,12]), ('Annual',range(1,13)):
+     for season, months in ('Dec-Jan-Feb',[12,1,2]), ('Mar-Apr-May',[3,4,5]), ('Jun-Jul-Aug',[6,7,8]), ('Sep-Oct-Nov',[9,10,11]), ('Annual',range(1,13)):
 
       fig = pl.figure(figsize=(6,6))
 
