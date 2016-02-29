@@ -179,36 +179,40 @@ if True:
 
     # Extract model data at obs locations, and interpolate to fixed vertical
     # levels.
-    # Also, use the model time period(s) to determine which years to consider
-    # for comparisons.
-    years = set()
     for i,model in enumerate(models):
       for modelfield in sample_model_at_obs(model, obs, fieldname, units, z_levels, z_bounds):
+       for year in sorted(set(modelfield.time.year)):
         for month in range(1,13):
-          monthly_model[i].setdefault(month,[]).append(modelfield(month=month))
-        years.update(set(modelfield.time.year))
-    years = sorted(years)
-    year_string = str(years[0]) if len(years) == 1 else str(years[0])+'-'+str(years[-1])
+          monthly_model[i].setdefault((year,month),[]).append(modelfield(year=year,month=month))
+
+    # Use the model time period(s) to determine which years to consider
+    # for comparisons.
+    all_years = sorted(set(year for monthly_mod in monthly_model for (year,month) in monthly_mod.keys()))
 
     # Bin the obs data into fixed vertical levels.
-    for obsfield in bin_obs(obs, fieldname, units, z_levels, z_bounds, years):
+    for obsfield in bin_obs(obs, fieldname, units, z_levels, z_bounds, all_years):
+     for year in sorted(set(obsfield.time.year)):
       for month in range(1,13):
-        monthly_obs.setdefault(month,[]).append(obsfield(month=month))
+        monthly_obs.setdefault((year,month),[]).append(obsfield(year=year,month=month))
 
-    for season, months in ('Jan-Feb-Mar',[1,2,3]), ('Apr-May-Jun',[4,5,6]), ('Jul-Aug-Sep',[7,8,9]), ('Oct-Nov-Dec',[10,11,12]), ('Annual',range(1,13)):
+
+    # Loop over each individual year, then do all years combined.
+    for years in zip(all_years) + [all_years]:
+     year_string = str(years[0]) if len(years) == 1 else str(years[0])+'-'+str(years[-1])
+     for season, months in ('Dec-Jan-Feb',[12,1,2]), ('Mar-Apr-May',[3,4,5]), ('Jun-Jul-Aug',[6,7,8]), ('Sep-Oct-Nov',[9,10,11]), ('Annual',range(1,13)):
 
       fig = pl.figure(figsize=(6,6))
 
       outfile = "%s/%s_profiles_%s_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,season,year_string)
       if exists(outfile): continue
 
-      obs_data = sum([monthly_obs[m] for m in months],[])
+      obs_data = sum([monthly_obs.get((y,m),[]) for y in years for m in months],[])
       obs_std = stddev_profile(obs_data)
       obs_data = average_profile(obs_data)
       model_data = []
       model_std = []
       for monthly_mod in monthly_model:
-        mod_data = sum([monthly_mod[m] for m in months],[])
+        mod_data = sum([monthly_mod.get((y,m),[]) for y in years for m in months],[])
         mod_std = stddev_profile(mod_data)
         mod_data = average_profile(mod_data)
         model_data.append(mod_data)
@@ -221,8 +225,7 @@ if True:
         pl.plot(model_data[i]-model_std[i], z_levels, color=models[i].color, linestyle='--')
 
       pl.plot(obs_data, z_levels, color=obs.color, linestyle=obs.linestyle, linewidth=2, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label='obs')
-      pl.plot(obs_data+obs_std, z_levels, color=obs.color, linestyle='--')
-      pl.plot(obs_data-obs_std, z_levels, color=obs.color, linestyle='--')
+      pl.fill_betweenx(z_levels, obs_data-obs_std, obs_data+obs_std, color=obs.color, alpha=0.2, linewidth=0)
       pl.title('%s (%s)'%(season,year_string))
       pl.xlabel('%s [%s]'%(fieldname,units))
       pl.ylabel('Altitude [m]')
