@@ -225,9 +225,7 @@ if True:
         pl.plot(model_data[i]-model_std[i], z_levels, color=models[i].color, linestyle='--')
 
       pl.plot(obs_data, z_levels, color=obs.color, linestyle=obs.linestyle, linewidth=2, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label='obs')
-      pl.fill_betweenx(z_levels, obs_data-obs_std, obs_data+obs_std, color=obs.color, alpha=0.2)
-      pl.plot(obs_data+obs_std, z_levels, color=obs.color, linestyle='--')
-      pl.plot(obs_data-obs_std, z_levels, color=obs.color, linestyle='--')
+      pl.fill_betweenx(z_levels, obs_data-obs_std, obs_data+obs_std, color=obs.color, alpha=0.2, linewidth=0)
       pl.title('%s (%s)'%(season,year_string))
       pl.xlabel('%s [%s]'%(fieldname,units))
       pl.ylabel('Altitude [m]')
