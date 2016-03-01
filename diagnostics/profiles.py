@@ -130,6 +130,7 @@ if True:
   # (averaged over all dimensions except height)
   def average_profile(data):
     import numpy as np
+    if len(data) == 0: return None
     # Extract the data
     data = [v.get() for v in data]
     # Temporal average
@@ -147,6 +148,7 @@ if True:
   # (over all dimensions except height)
   def stddev_profile(data):
     import numpy as np
+    if len(data) == 0: return None
     mean = average_profile(data)
     # Extract the data
     data = [v.get()-mean for v in data]
@@ -209,9 +211,16 @@ if True:
       outfile = "%s/%s_profiles_%s_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,season,year_string)
       if exists(outfile): continue
 
+      # Placeholder profile for missing data
+      missing = np.empty([len(z_levels)])
+      missing[:] = float('nan')
+
       obs_data = sum([monthly_obs.get((y,m),[]) for y,m in keys],[])
       obs_std = stddev_profile(obs_data)
       obs_data = average_profile(obs_data)
+      if obs_data is None:
+        obs_data = obs_std = missing
+
       model_data = []
       model_std = []
       for monthly_mod in monthly_model:
@@ -223,6 +232,7 @@ if True:
 
       ax = pl.subplot(111)
       for i in range(len(models)):
+        if model_data[i] is None: continue
         pl.plot(model_data[i], z_levels, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
         pl.plot(model_data[i]+model_std[i], z_levels, color=models[i].color, linestyle='--')
         pl.plot(model_data[i]-model_std[i], z_levels, color=models[i].color, linestyle='--')
