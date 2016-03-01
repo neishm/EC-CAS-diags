@@ -199,20 +199,23 @@ if True:
     # Loop over each individual year, then do all years combined.
     for years in zip(all_years) + [all_years]:
      year_string = str(years[0]) if len(years) == 1 else str(years[0])+'-'+str(years[-1])
-     for season, months in ('Dec-Jan-Feb',[12,1,2]), ('Mar-Apr-May',[3,4,5]), ('Jun-Jul-Aug',[6,7,8]), ('Sep-Oct-Nov',[9,10,11]), ('Annual',range(1,13)):
+     for season, months in ('Dec-Jan-Feb',[0,1,2]), ('Mar-Apr-May',[3,4,5]), ('Jun-Jul-Aug',[6,7,8]), ('Sep-Oct-Nov',[9,10,11]), ('Annual',range(1,13)):
+      # Broadcast years and months into pairs, and adjust to previous year
+      # if month < 1
+      keys = [(y,m) if m > 0 else (y-1,m+12) for y in years for m in months]
 
       fig = pl.figure(figsize=(6,6))
 
       outfile = "%s/%s_profiles_%s_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,season,year_string)
       if exists(outfile): continue
 
-      obs_data = sum([monthly_obs.get((y,m),[]) for y in years for m in months],[])
+      obs_data = sum([monthly_obs.get((y,m),[]) for y,m in keys],[])
       obs_std = stddev_profile(obs_data)
       obs_data = average_profile(obs_data)
       model_data = []
       model_std = []
       for monthly_mod in monthly_model:
-        mod_data = sum([monthly_mod.get((y,m),[]) for y in years for m in months],[])
+        mod_data = sum([monthly_mod.get((y,m),[]) for y,m in keys],[])
         mod_std = stddev_profile(mod_data)
         mod_data = average_profile(mod_data)
         model_data.append(mod_data)
