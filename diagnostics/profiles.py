@@ -104,6 +104,17 @@ if True:
       station_names.extend(obsfield.station.values)
       for key, value in obsfield.station.auxarrays.iteritems():
         auxarrays.setdefault(key,[]).extend(value)
+
+    # Use only continental US/Canada sites
+    keep = [False]*len(station_names)
+    for i in range(len(station_names)):
+      if auxarrays['country'][i] in ('United States','Canada'):
+        keep[i] = True
+      if 'Hawaii' in station_names[i]:
+        keep[i] = False
+    station_names = [s for k,s in zip(keep,station_names) if k]
+    auxarrays = dict((key,[v for k,v in zip(keep,values) if k]) for key,values in auxarrays.iteritems())
+
     stations = Station(values=station_names, **auxarrays)
 
     # Sample the model at the station locations
