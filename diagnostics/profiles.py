@@ -104,6 +104,17 @@ if True:
       station_names.extend(obsfield.station.values)
       for key, value in obsfield.station.auxarrays.iteritems():
         auxarrays.setdefault(key,[]).extend(value)
+
+    # Use only continental US/Canada sites
+    keep = [False]*len(station_names)
+    for i in range(len(station_names)):
+      if auxarrays['country'][i] in ('United States','Canada'):
+        keep[i] = True
+      if 'Hawaii' in station_names[i]:
+        keep[i] = False
+    station_names = [s for k,s in zip(keep,station_names) if k]
+    auxarrays = dict((key,[v for k,v in zip(keep,values) if k]) for key,values in auxarrays.iteritems())
+
     stations = Station(values=station_names, **auxarrays)
 
     # Sample the model at the station locations
@@ -130,6 +141,7 @@ if True:
   # (averaged over all dimensions except height)
   def average_profile(data):
     import numpy as np
+    if len(data) == 0: return None
     # Extract the data
     data = [v.get() for v in data]
     # Temporal average
@@ -147,6 +159,7 @@ if True:
   # (over all dimensions except height)
   def stddev_profile(data):
     import numpy as np
+    if len(data) == 0: return None
     mean = average_profile(data)
     # Extract the data
     data = [v.get()-mean for v in data]
@@ -199,20 +212,30 @@ if True:
     # Loop over each individual year, then do all years combined.
     for years in zip(all_years) + [all_years]:
      year_string = str(years[0]) if len(years) == 1 else str(years[0])+'-'+str(years[-1])
-     for season, months in ('Dec-Jan-Feb',[12,1,2]), ('Mar-Apr-May',[3,4,5]), ('Jun-Jul-Aug',[6,7,8]), ('Sep-Oct-Nov',[9,10,11]), ('Annual',range(1,13)):
+     for season, months in ('Dec-Jan-Feb',[0,1,2]), ('Mar-Apr-May',[3,4,5]), ('Jun-Jul-Aug',[6,7,8]), ('Sep-Oct-Nov',[9,10,11]), ('Annual',range(1,13)):
+      # Broadcast years and months into pairs, and adjust to previous year
+      # if month < 1
+      keys = [(y,m) if m > 0 else (y-1,m+12) for y in years for m in months]
 
       fig = pl.figure(figsize=(6,6))
 
       outfile = "%s/%s_profiles_%s_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,season,year_string)
       if exists(outfile): continue
 
-      obs_data = sum([monthly_obs.get((y,m),[]) for y in years for m in months],[])
+      # Placeholder profile for missing data
+      missing = np.empty([len(z_levels)])
+      missing[:] = float('nan')
+
+      obs_data = sum([monthly_obs.get((y,m),[]) for y,m in keys],[])
       obs_std = stddev_profile(obs_data)
       obs_data = average_profile(obs_data)
+      if obs_data is None:
+        obs_data = obs_std = missing
+
       model_data = []
       model_std = []
       for monthly_mod in monthly_model:
-        mod_data = sum([monthly_mod.get((y,m),[]) for y in years for m in months],[])
+        mod_data = sum([monthly_mod.get((y,m),[]) for y,m in keys],[])
         mod_std = stddev_profile(mod_data)
         mod_data = average_profile(mod_data)
         model_data.append(mod_data)
@@ -220,6 +243,7 @@ if True:
 
       ax = pl.subplot(111)
       for i in range(len(models)):
+        if model_data[i] is None: continue
         pl.plot(model_data[i], z_levels, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
         pl.plot(model_data[i]+model_std[i], z_levels, color=models[i].color, linestyle='--')
         pl.plot(model_data[i]-model_std[i], z_levels, color=models[i].color, linestyle='--')
