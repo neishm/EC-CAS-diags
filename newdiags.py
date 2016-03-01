@@ -163,7 +163,7 @@ from eccas_diags.diagnostics import profiles
 try:
   profiles.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
-  failures.append(['CO2 aircraft profiles'])
+  failures.append(['CO2 aircraft profiles'],e)
 
 from eccas_diags.diagnostics import movie_zonal
 # CO2 Zonal mean movies
