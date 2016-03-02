@@ -96,6 +96,7 @@ if True:
     years = set()
     for y in set(field.time.year):
       if sum(field.time.year==y) > 10: years.add(y)
+    years = sorted(years)
 
     # Concatenate all the available station locations into a single coordinate.
     station_names = []

@@ -62,9 +62,11 @@ if True:
       model_data.append(sample_model_at_obs(model,obs,fieldname,units))
 
     # Use model years for comparisons
-    years = [set(mod_data.time.year) for mod_data in model_data]
-    years = sorted(set.union(*years))
-    print years
+    years = set()
+    for mod_data in model_data:
+      for y in set(mod_data.time.year):
+        if sum(mod_data.time.year==y) > 10: years.add(y)
+    years = sorted(years)
 
     obs_data = obs.find_best(fieldname)
     obs_data = select_surface(obs_data)
@@ -76,9 +78,13 @@ if True:
     # Compute the diurnal means and do the plot.
     for station in obs_data.station.values:
       for year in years:
-        outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d"%(outdir,'_'.join(d.name for d in models+[obs]), fieldname, station, year)
+        outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d.png"%(outdir,'_'.join(d.name for d in models+[obs]), fieldname, station.replace('/','^'), year)
+        if exists(outfile): continue
         fig = pl.figure(figsize=(10,10))
-        pl.suptitle ("%s diurnal cycle at %s"%(fieldname,station), fontsize=18)
+        title = "%s diurnal cycle at %s"%(fieldname,station)
+        # Fix issue with certain characters in station names
+        title = title.decode('latin-1')
+        pl.suptitle (title, fontsize=18)
         for month, month_string in long_monthnames:
           if month <= 6: plotnum = 2*month-1
           else: plotnum = 2*(month-6)
@@ -87,8 +93,9 @@ if True:
 
           for i in range(len(models)):
             current_model_data = model_data[i](station=station).squeeze('station')(year=year,month=month).squeeze()
+            if len(current_model_data.axes) == 0: continue
             hours, data = compute_diurnal_mean(current_model_data)
-            pl.plot(hours, data, color=models[i].color, linestyle=models[i].linestyle, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
+            pl.plot(hours, data, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
 
           current_obs_data = obs_data(station=station).squeeze('station')(year=year,month=month)
           hours, data = compute_diurnal_mean(current_obs_data)
@@ -106,7 +113,5 @@ if True:
           # http://stackoverflow.com/questions/24171064/matplotlib-remove-axis-label-offset-by-default
           pl.gca().get_yaxis().get_major_formatter().set_useOffset(False)
         pl.savefig(outfile)
-        return
-    #TODO
 
 
