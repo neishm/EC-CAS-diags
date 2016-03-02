@@ -165,6 +165,13 @@ try:
 except Exception as e:
   failures.append(['CO2 aircraft profiles'],e)
 
+# Diurnal cycle
+from eccas_diags.diagnostics import diurnal_cycle
+try:
+  diurnal_cycle.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
+except Exception as e:
+  failures.append(['CO2 diurnal cycle'],e)
+
 from eccas_diags.diagnostics import movie_zonal
 # CO2 Zonal mean movies
 try:

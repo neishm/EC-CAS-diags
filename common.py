@@ -1,5 +1,23 @@
 # Functions / constants common to multiple modules
 
+# Month names
+long_monthnames = [
+  (1,'January'),
+  (2,'February'),
+  (3,'March'),
+  (4,'April'),
+  (5,'May'),
+  (6,'June'),
+  (7,'July'),
+  (8,'August'),
+  (9,'September'),
+  (10,'October'),
+  (11,'November'),
+  (12,'December'),
+]
+short_monthnames = [(n,month[:3]) for n,month in long_monthnames]
+del n,month
+
 # Unit conversion
 from units import define_conversion, define_unit, conversion_factor
 
