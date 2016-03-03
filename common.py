@@ -376,9 +376,6 @@ def compute_dp (zaxis, p0):
     b_m = zeta.atts['b_m']
     a_t = zeta.atts['a_t']
     b_t = zeta.atts['b_t']
-    # Add extra level at the lid
-    a_m = np.array([math.log(zeta.atts['ptop'])] + list(a_m))
-    b_m = np.array([0] + list(b_m))
 
     # Figure out if we have thermodynamic or momentum levels, and use the
     # other set of levels as the interfaces
@@ -392,28 +389,35 @@ def compute_dp (zaxis, p0):
       raise ValueError ("Vertical axis must be entirely on model thermodynamic or momentum levels.")
 
     # Find indices of interfaces
-    interface_ind = []
+    a_upper = []
+    a_lower = []
+    b_upper = []
+    b_lower = []
     for a in zeta.A:
-      j = np.searchsorted(a_int, a) - 1
-      if a_int[j+1] == a: j+= 1  # Check for lower boundary?
-      interface_ind.append(j)
-    # Add the bottom interface
-    interface_ind.append(np.searchsorted(a_int, a))
-    # Double-check we have the right things
-    for a, j in zip(zeta.A, interface_ind[:-1]):
-      assert a_int[j] <= a
-    for a, j in zip(zeta.A, interface_ind[1:]):
-      assert a_int[j] >= a
+      j = np.searchsorted(a_int, a)
+
+      if j == 0:  # Beyond actual model lid?
+        a_upper.append(a_int[j])
+        b_upper.append(b_int[j])
+      else:
+        a_upper.append(a_int[j-1])
+        b_upper.append(b_int[j-1])
+
+      if j == len(a_int) or a_int[j] == a:  # Beyond model surface?
+        a_lower.append(a_int[j-1])
+        b_lower.append(b_int[j-1])
+      else:
+        a_lower.append(a_int[j])
+        b_lower.append(b_int[j])
 
     # Define a dp operator
-    a_upper = Var([zeta], values=a_int[interface_ind[:-1]])
-    a_lower = Var([zeta], values=a_int[interface_ind[1:]])
-    b_upper = Var([zeta], values=b_int[interface_ind[:-1]])
-    b_lower = Var([zeta], values=b_int[interface_ind[1:]])
+    a_upper = Var([zeta], values=a_upper)
+    a_lower = Var([zeta], values=a_lower)
+    b_upper = Var([zeta], values=b_upper)
+    b_lower = Var([zeta], values=b_lower)
     p_upper = exp(a_upper + b_upper*log(p0/zeta.atts['pref']))
     p_lower = exp(a_lower + b_lower*log(p0/zeta.atts['pref']))
     dp = p_lower - p_upper
-
   else:
     raise TypeError("Can't handle '%s' axis."%zaxis.__class__.__name__)
 
