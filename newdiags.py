@@ -171,6 +171,10 @@ try:
   diurnal_cycle.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['CO2 diurnal cycle'],e)
+try:
+  diurnal_cycle.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir)
+except Exception as e:
+  failures.append(['CH4 diurnal cycle'],e)
 
 from eccas_diags.diagnostics import movie_zonal
 # CO2 Zonal mean movies
@@ -291,6 +295,10 @@ try:
   xcol.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir)
 except Exception as e:
   failures.append(['XCH4', e])
+try:
+  xcol_diff.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir)
+except Exception as e:
+  failures.append(['XCH4_diff', e])
 
 from eccas_diags.diagnostics import totalmass
 # Total mass CO2
