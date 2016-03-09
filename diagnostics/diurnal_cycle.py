@@ -53,6 +53,11 @@ if True:
       mean.append (m)
       v = np.nansum((current_data-m)**2)/(count-1)
       stddev.append (np.sqrt(v))
+    # Wrap around to the start of the next day (complete cycle)
+    # Also, wrap to the end of the previous day, in case the first hour is > 0.
+    diurnal_hours = [diurnal_hours[-1]-24] + diurnal_hours + [diurnal_hours[0]+24]
+    mean = [mean[-1]] + mean + [mean[0]]
+    stddev = [stddev[-1]] + stddev + [stddev[0]]
     return np.array(diurnal_hours), np.array(mean), np.array(stddev)
 
   def diurnal_cycle (obs, models, fieldname, units, outdir):
@@ -107,7 +112,7 @@ if True:
           hours, data, std = compute_diurnal_mean_stddev(current_obs_data)
           pl.plot(hours, data, color=obs.color, linestyle=obs.linestyle, linewidth=2, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label=obs.title)
           pl.fill_between(hours, data-std, data+std, color=obs.color, alpha=0.2, linewidth=0)
-          hourticks = range(0,24,2)
+          hourticks = range(0,26,2)
           if plotnum in (11,12):
             pl.xticks(hourticks)
             pl.xlabel('hour')
