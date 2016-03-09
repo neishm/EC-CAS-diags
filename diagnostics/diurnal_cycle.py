@@ -55,9 +55,10 @@ if True:
       stddev.append (np.sqrt(v))
     # Wrap around to the start of the next day (complete cycle)
     # Also, wrap to the end of the previous day, in case the first hour is > 0.
-    diurnal_hours = [diurnal_hours[-1]-24] + diurnal_hours + [diurnal_hours[0]+24]
-    mean = [mean[-1]] + mean + [mean[0]]
-    stddev = [stddev[-1]] + stddev + [stddev[0]]
+    if len(diurnal_hours) > 0:
+      diurnal_hours = [diurnal_hours[-1]-24] + diurnal_hours + [diurnal_hours[0]+24]
+      mean = [mean[-1]] + mean + [mean[0]]
+      stddev = [stddev[-1]] + stddev + [stddev[0]]
     return np.array(diurnal_hours), np.array(mean), np.array(stddev)
 
   def diurnal_cycle (obs, models, fieldname, units, outdir):
