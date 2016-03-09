@@ -81,7 +81,7 @@ if True:
         outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d.png"%(outdir,'_'.join(d.name for d in models+[obs]), fieldname, station.replace('/','^'), year)
         if exists(outfile): continue
         fig = pl.figure(figsize=(10,10))
-        title = "%s diurnal cycle at %s"%(fieldname,station)
+        title = "%s diurnal cycle at %s (%04d)"%(fieldname,station,year)
         # Fix issue with certain characters in station names
         title = title.decode('latin-1')
         pl.suptitle (title, fontsize=18)
