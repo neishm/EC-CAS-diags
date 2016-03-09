@@ -36,7 +36,7 @@ if True:
   # Takes a PyGeode Var object as input.
   # Returns the hour of the day, and the diurnal mean data as numpy arrays.
   # Note: only works on one timeseries at a time.
-  def compute_diurnal_mean (var):
+  def compute_diurnal_mean_stddev (var):
     import numpy as np
     from pygeode.timeutils import reltime
     assert len(var.axes) == 1
@@ -44,12 +44,16 @@ if True:
     hours_mod = hours%24
     data = var.get()
     diurnal_hours = sorted(set(hours_mod))
-    out = []
+    mean = []
+    stddev = []
     for h in diurnal_hours:
       current_data = data[hours_mod==h]
       count = np.nansum(np.isfinite(current_data))
-      out.append (np.nansum(current_data) / count)
-    return diurnal_hours, out
+      m = np.nansum(current_data) / count
+      mean.append (m)
+      v = np.nansum((current_data-m)**2)/(count-1)
+      stddev.append (np.sqrt(v))
+    return np.array(diurnal_hours), np.array(mean), np.array(stddev)
 
   def diurnal_cycle (obs, models, fieldname, units, outdir):
     from .timeseries import sample_model_at_obs
@@ -94,12 +98,15 @@ if True:
           for i in range(len(models)):
             current_model_data = model_data[i](station=station).squeeze('station')(year=year,month=month).squeeze()
             if len(current_model_data.axes) == 0: continue
-            hours, data = compute_diurnal_mean(current_model_data)
+            hours, data, std = compute_diurnal_mean_stddev(current_model_data)
             pl.plot(hours, data, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
+            pl.plot(hours, data+std, color=models[i].color, linestyle='--')
+            pl.plot(hours, data-std, color=models[i].color, linestyle='--')
 
           current_obs_data = obs_data(station=station).squeeze('station')(year=year,month=month)
-          hours, data = compute_diurnal_mean(current_obs_data)
+          hours, data, std = compute_diurnal_mean_stddev(current_obs_data)
           pl.plot(hours, data, color=obs.color, linestyle=obs.linestyle, linewidth=2, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label=obs.title)
+          pl.fill_between(hours, data-std, data+std, color=obs.color, alpha=0.2, linewidth=0)
           hourticks = range(0,24,2)
           if plotnum in (11,12):
             pl.xticks(hourticks)
