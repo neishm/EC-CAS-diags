@@ -59,16 +59,18 @@ class DataInterface (object):
     candidates = sorted(candidates, key=domain_size, reverse=True)
 
     if isinstance(maximize,tuple):
-      maximize = lambda x,F=maximize: [f(x) for f in F]
+      # Will be sorted by increasing order, so need to reverse the cost
+      # functions here.
+      maximize = lambda x,F=maximize: [-f(x) for f in F]
 
     if isinstance(minimize,tuple):
       minimize = lambda x,F=minimize: [f(x) for f in F]
 
     # Sort by the criteria (higher value is better)
     if maximize is not None:
-      candidates = sorted(candidates, key=maximize, reverse=True)
+      candidates = sorted(candidates, key=maximize)
     elif minimize is not None:
-      candidates = sorted(candidates, key=minimize, reverse=False)
+      candidates = sorted(candidates, key=minimize)
 
     if len(candidates) == 0:
       raise KeyError("Unable to find any matches for fields=%s, requirement=%s, maximize=%s, minimize=%s"%(fields, requirement, maximize, minimize))
