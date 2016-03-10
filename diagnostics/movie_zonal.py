@@ -1,17 +1,19 @@
 if True:
 
-  def find_applicable_models (inputs, fieldname):
-    from ..common import have_gridded_data
+  def find_applicable_models (inputs, fieldname, zaxis):
+    from ..common import have_gridded_3d_data
     models = []
+    other_fieldname = {'gph':'geopotential_height','plev':'air_pressure'}[zaxis]
     for x in inputs:
-      if any (fieldname in d and have_gridded_data(d) for d in x.datasets):
+      if any (fieldname in d and other_fieldname in d and have_gridded_3d_data(d) for d in x.datasets):
         models.append(x)
     if len(models) == 0:
       raise ValueError("No inputs match the criteria.")
     return models
 
   def do_all (inputs, fieldname, units, outdir, **kwargs):
-    models = find_applicable_models(inputs, fieldname)
+    zaxis = kwargs.get('zaxis','gph')
+    models = find_applicable_models(inputs, fieldname, zaxis)
     movie_zonal(models, fieldname, units, outdir, **kwargs)
 
   # Convert zonal mean data (on height)
