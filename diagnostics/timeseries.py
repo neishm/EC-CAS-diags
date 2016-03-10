@@ -244,6 +244,8 @@ if True:
         labels = [d.title for d in models+[obs]]
         pl.legend(labels)
 
+        pl.tight_layout()
+
         # Save as an image file.
         outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1)
         if not exists(outfile):
