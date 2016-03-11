@@ -7,12 +7,16 @@ matplotlib.use('Agg')
 
 import argparse
 import ConfigParser
-from os.path import exists
+from os.path import exists, basename, splitext
+from shutil import copy
 from glob import glob
 import os
+from datetime import datetime
 
 from eccas_diags.cache import Cache
 from eccas_diags import interfaces
+
+now = datetime.now()
 
 # Helper method - check if a value is a special marker for a command-line
 # argument
@@ -141,11 +145,15 @@ if not exists(outdir) or not os.access (outdir, os.R_OK | os.W_OK | os.X_OK):
   outdir=args.tmpdir
 
 # Write basic information to a history file.
-from datetime import datetime
 from sys import argv
 history_file = open(outdir+"/history.txt","a")
-history_file.write("=== %s ===\n"%datetime.now())
+history_file.write("=== %s ===\n"%now)
 history_file.write(" ".join(argv)+"\n\n")
+
+# Make a snapshot of the config file for posterity.
+configbase, configext = splitext(basename(args.configfile.name))
+copy(args.configfile.name, outdir+"/"+configbase+now.strftime(".%Y%m%d_%H:%M:%S")+configext)
+
 
 # Some standard diagnostics
 failures = []
