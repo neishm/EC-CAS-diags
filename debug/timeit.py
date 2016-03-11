@@ -1,3 +1,3 @@
 from cProfile import run
-run("import newdiags", filename='timing.dat')
+run("import diags", filename='timing.dat')
 
