@@ -18,7 +18,6 @@ if True:
     from matplotlib import pyplot as pl
     from pygeode.plot import plotvar
 
-    models = [m for m in models if m is not None]
     if len(models) != 2:
       raise ValueError ("Expected 2 datasets")
 
@@ -40,7 +39,7 @@ if True:
 
     diff.name=fieldname+'_diff'
 
-    outfile = outdir + "/%s_totalmass_diff_%s%s.png"%('_'.join(m.name for m in models if m is not None),fieldname,'_normalized' if normalize_air_mass else '')
+    outfile = outdir + "/%s_totalmass_diff_%s%s.png"%('_'.join(m.name for m in models),fieldname,'_normalized' if normalize_air_mass else '')
     if not exists(outfile):
       fig = pl.figure(figsize=(15,12))
       ax = pl.subplot(111)

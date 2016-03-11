@@ -108,7 +108,7 @@ def shortexper_diffcheck(models, obs, location, outdir):
     axis.set_ylim([co2_sfc_min,co2_sfc_max])
     axis.legend ([dataset.title, 'Obs'])
 
-  outfile = outdir+"/%s_%s_diffcheck.png"%('_'.join(m.name for m in models if m is not None),location)
+  outfile = outdir+"/%s_%s_diffcheck.png"%('_'.join(m.name for m in models),location)
   if not exists(outfile):
     fig.savefig(outfile)
 

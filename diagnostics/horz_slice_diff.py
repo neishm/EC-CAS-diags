@@ -56,7 +56,6 @@ if True:
     from ..common import same_times
 
     plotname = fieldname+"_level"+level
-    models = [m for m in models if m is not None]
     prefix = '_'.join(m.name for m in models) + '_' + plotname
 
     fields = [get_horz_slice(m,fieldname,level,units) for m in models]

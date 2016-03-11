@@ -118,22 +118,12 @@ if True:
 
     figwidth = 15
 
-    models = [m for m in models if m is not None]
-
-    if hasattr(obs,'color'):
-      model_line_colours = [m.color for m in models]
-      obs_line_colour = obs.color
-      model_line_styles = [m.linestyle for m in models]
-      obs_line_style = obs.linestyle
-      model_markers = [m.marker for m in models]
-      obs_marker = obs.marker
-    else:
-      model_line_colours = ['blue', 'red']
-      obs_line_colour = 'green'
-      model_line_styles = ['-']*len(models)
-      obs_line_style = 'None'
-      model_markers = ['None']*len(models)
-      obs_marker = 'o'
+    model_line_colours = [m.color for m in models]
+    obs_line_colour = obs.color
+    model_line_styles = [m.linestyle for m in models]
+    obs_line_style = obs.linestyle
+    model_markers = [m.marker for m in models]
+    obs_marker = obs.marker
 
     model_data = []
     model_spread = []

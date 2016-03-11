@@ -73,8 +73,6 @@ if True:
     from ..common import convert
     from .movie_zonal import zonalmean_gph
 
-    models = [m for m in models if m is not None]
-
     prefix = "ZonalMeanBG-images_%s_%s"%('_'.join(m.name for m in models), fieldname)
 
     fields = [zonalmean_gph(m,fieldname,units,typestat="mean") for m in models]

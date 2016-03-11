@@ -34,8 +34,6 @@ if True:
 
     from .timeseries import sample_model_at_obs
 
-    models = [m for m in models if m is not None]
-
     model_data = []
     model_spread = []
     for m in models:

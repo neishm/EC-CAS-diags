@@ -18,7 +18,6 @@ if True:
     from ..common import convert, same_times
     from .movie_zonal import zonalmean_gph, zonalmean_pres, ZonalMovie
 
-    models = [m for m in models if m is not None]
     prefix = '_'.join(m.name for m in models) + '_zonal_diff'+typestat+"_"+fieldname+'_on_'+zaxis
     title = 'Zonal %s %s (in %s)'%(typestat, fieldname,units)
     aspect_ratio = 1.0

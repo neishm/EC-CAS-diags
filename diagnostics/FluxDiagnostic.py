@@ -332,7 +332,6 @@ if True:
 
     assert len(models) > 0
     assert len(models) <= 3  # too many things to plot
-    models = [m for m in models if m is not None]
 
     imagedir=outdir+"/FluxDiag-%s-%s-images_%s_flux%s"%(plottype,timefilter,'_'.join(m.name for m in models), fieldname)
 

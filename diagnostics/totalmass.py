@@ -123,15 +123,11 @@ if True:
     from ..common import convert
     from pygeode import timeutils
 
-    totalmass_colours = 'blue', 'green', 'red', 'black'
-    totalflux_colours = '#C0C0FF', '#C0FFC0', '#FFC0C0', 'grey'
-
     # Find common time period
     #TODO:  a method to query the time axis from the model without needing to grab an actual diagnostic field.
     t0 = []
     t1 = []
     for m in models:
-      if m is None: continue
       try:
         t0.append(compute_totalmass(m,fieldname).time.values[0])
         t1.append(compute_totalmass(m,fieldname).time.values[-1])
@@ -141,7 +137,7 @@ if True:
         t1.append(compute_totalflux(m,fieldname).time.values[-1])
       except Exception: pass
     if len(t0) == 0 or len(t1) == 0:
-      raise ValueError("Unable to find any '%s' data in %s."%(fieldname,[m.name for m in models if m is not None]))
+      raise ValueError("Unable to find any '%s' data in %s."%(fieldname,[m.name for m in models]))
     t0 = max(t0)
     t1 = min(t1)
 
@@ -169,11 +165,8 @@ if True:
         if normalize_air_mass:
           mass = mass / airmass * airmass0
         fields.append(mass)
-        if hasattr(model,'color'):
-          colours.append(model.color)
-        else:
-          colours.append(totalmass_colours[i])
-        styles.append('-')
+        colours.append(model.color)
+        styles.append(model.linestyle)
         labels.append(model.title)
       except KeyError: pass  # No 3D field available.
 
@@ -216,15 +209,12 @@ if True:
         # Limit the time period to plot
         totalflux = totalflux(time=(t0,t1))
         fields.append(totalflux)
-        if hasattr(model,'color'):
-          colours.append(model.color)
-        else:
-          colours.append(totalflux_colours[i])
-        styles.append('-')
+        colours.append(model.color)
+        styles.append(model.linestyle)
         labels.append('integrated flux')
       except (KeyError, IndexError): pass  # No flux and/or mass field available
 
-    outfile = outdir + "/%s_totalmass_%s%s.png"%('_'.join(m.name for m in models if m is not None),fieldname,'_normalized_by_dryair' if normalize_air_mass else '')
+    outfile = outdir + "/%s_totalmass_%s%s.png"%('_'.join(m.name for m in models),fieldname,'_normalized_by_dryair' if normalize_air_mass else '')
     if not exists(outfile):
       title = "Total mass %s in %s"%(fieldname,units)
       doplot (outfile, title, fields, colours, styles, labels)

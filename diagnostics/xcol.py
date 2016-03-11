@@ -77,7 +77,6 @@ if True:
     from .movie import ContourMovie
 
     plotname = 'X'+fieldname
-    models = [m for m in models if m is not None]
     prefix = '_'.join(m.name for m in models) + '_' + plotname
 
     fields = [get_xcol(m,fieldname,units) for m in models]

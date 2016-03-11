@@ -25,14 +25,8 @@ if True:
 
     from .timeseries import sample_model_at_obs
 
-    models = [m for m in models if m is not None]
-
-    if hasattr(obs,'color'):
-      model_line_colours = [m.color for m in models]
-      obs_line_colour = obs.color
-    else:
-      model_line_colours = ['blue', 'red']
-      obs_line_colour = 'green'
+    model_line_colours = [m.color for m in models]
+    obs_line_colour = obs.color
 
     model_data = []
     model_spread = []

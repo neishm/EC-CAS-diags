@@ -30,7 +30,6 @@ if True:
     from ..common import same_times
 
     plotname = 'X'+fieldname
-    models = [m for m in models if m is not None]
     prefix = '_'.join(m.name for m in models) + '_diff_' + plotname
 
     fields = [get_xcol(m,fieldname,units) for m in models]

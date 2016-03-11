@@ -58,8 +58,6 @@ if True:
     from ..common import convert
     from .movie_zonal import zonalmean_gph
 
-    models = [m for m in models if m is not None]
-
     prefix = '%s_CvH%s'%('_'.join(m.name for m in models), fieldname)
 
     #Names of each model - For plot titles later
