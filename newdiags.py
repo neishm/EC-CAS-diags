@@ -146,9 +146,17 @@ if not exists(outdir) or not os.access (outdir, os.R_OK | os.W_OK | os.X_OK):
 
 # Write basic information to a history file.
 from sys import argv
+# Helper function to quote arguments with spaces in them.
+def quote_arg (s):
+  if ' ' not in s: return s
+  if '=' in s:
+    key,value = s.split('=',1)
+    return key+'='+quote_arg(value)
+  return '"'+s+'"'
+
 history_file = open(outdir+"/history.txt","a")
 history_file.write("=== %s ===\n"%now)
-history_file.write(" ".join(argv)+"\n\n")
+history_file.write(" ".join(quote_arg(v) for v in argv)+"\n\n")
 
 # Make a snapshot of the config file for posterity.
 configbase, configext = splitext(basename(args.configfile.name))
