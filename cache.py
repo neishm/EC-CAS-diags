@@ -101,6 +101,9 @@ class Cache (object):
     from common import fix_timeaxis
     import numpy as np
 
+    if var.size == 0:
+      raise ValueError("No data to cache - field '%s' is empty.  Shape: %s"%(var.name,var.shape))
+
     if split_time is None: split_time = self.split_time
 
     # Make sure the data is saved with a consistent start date
