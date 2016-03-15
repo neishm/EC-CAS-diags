@@ -4,7 +4,7 @@ from .movie_zonal import find_applicable_models
 if True:
 
   def do_all (inputs, fieldname, units, outdir, **kwargs):
-    models = find_applicable_models(inputs, fieldname)
+    models = find_applicable_models(inputs, fieldname, zaxis='gph')
     movie_bargraph(models, fieldname, units, outdir, **kwargs)
 
 

@@ -2,7 +2,8 @@ if True:
 
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     from .movie_zonal import find_applicable_models
-    models = find_applicable_models(datasets, fieldname)
+    zaxis = kwargs.get('zaxis','gph')
+    models = find_applicable_models(inputs, fieldname, zaxis)
     n = len(models)
     for i in range(n):
       if not models[i].have(fieldname): continue
