@@ -10,10 +10,14 @@ if True:
       raise ValueError("No inputs match the criteria.")
     return models
 
+from . import Diagnostic
+class FluxDiagnostic(Diagnostic):
+  @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)
     movie_flux (models, fieldname, units, outdir, **kwargs)
 
+if True:
   # Get a flux product for the given experiment and tracer name.
   def get_flux (model, fieldname):
     from ..common import convert, number_of_timesteps, remove_repeated_longitude
@@ -355,4 +359,7 @@ if True:
       from os.path import exists
       if not exists(moviefile):
         system("mencoder -o %s mf://%s/*.png -ovc lavc -lavcopts vcodec=msmpeg4v2"%(moviefile, imagedir))
+
+from . import table
+table['flux-movie'] = FluxDiagnostic
 

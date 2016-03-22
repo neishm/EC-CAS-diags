@@ -1,3 +1,8 @@
+# Generic interface for a diagnostic, to be sub-classed by each particular
+# diagnostic.
+class Diagnostic(object):
+  pass
+
 # Find all available diagnostics
 table = {}
 def _load_diagnostics ():

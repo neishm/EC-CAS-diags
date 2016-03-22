@@ -1,8 +1,9 @@
 
 from .movie_zonal import find_applicable_models
 
-if True:
-
+from . import Diagnostic
+class ZonalMeanBG(Diagnostic):
+  @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(inputs, fieldname, zaxis='gph')
     movie_bargraph(models, fieldname, units, outdir, **kwargs)
@@ -89,4 +90,7 @@ if True:
     movie = BG_Movie (fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=1.4)
 
     movie.save (outdir=outdir, prefix=prefix)
+
+from . import table
+table['zonal-bargraph'] = ZonalMeanBG
 

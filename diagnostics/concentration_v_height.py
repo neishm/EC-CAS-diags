@@ -1,8 +1,10 @@
 
 from .movie_zonal import find_applicable_models
 
-if True:
+from . import Diagnostic
+class Concentration_VS_Height(Diagnostic):
 
+  @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(inputs, fieldname, zaxis='gph')
     movie_CvH(models, fieldname, units, outdir, **kwargs)
@@ -73,3 +75,8 @@ if True:
     movie = CvH_Movie(fields, title='CvH', subtitles=subtitles, shape=shape, aspect_ratio=1.5)
 
     movie.save(outdir=outdir, prefix=prefix)
+
+from . import table
+table['concentration-v-height'] = Concentration_VS_Height
+
+

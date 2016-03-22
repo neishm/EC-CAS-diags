@@ -15,11 +15,17 @@ if True:
       raise ValueError("No inputs match the criteria.")
     return models
 
+
+from . import Diagnostic
+class XColEnKF(Diagnostic):
+  @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)
     xcol_enkf (models, fieldname, units, outdir, **kwargs)
 
 
+
+if True:
 
   def xcol_enkf (model, fieldname, units, outdir):
     from .movie import ContourMovie
@@ -38,4 +44,7 @@ if True:
     movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio)
 
     movie.save (outdir=outdir, prefix=prefix)
+
+from . import table
+table['xcol-enkf'] = XColEnKF
 

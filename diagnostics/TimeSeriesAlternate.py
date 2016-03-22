@@ -1,13 +1,17 @@
 # timeseries with difference plot
 
-if True:
+from .timeseries import find_applicable_obs, find_applicable_models
 
-  from .timeseries import find_applicable_obs, find_applicable_models
+from . import Diagnostic
+class TimeseriesDiff(Diagnostic):
+  @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
       timeseries (obs, model_inputs, fieldname, units, outdir, **kwargs)
+
+if True:
 
   def timeseries (obs, models, fieldname, units, outdir, plot_months=None,timefilter=None):
 
@@ -228,3 +232,8 @@ if True:
         fig.savefig(outfile)
 
     pl.close(fig)
+
+
+from . import table
+table['timeseries-diff'] = TimeseriesDiff
+

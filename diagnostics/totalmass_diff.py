@@ -1,9 +1,9 @@
 from .totalmass import compute_totalmass
 from .xcol import find_applicable_models
 
-if True:
-
-
+from . import Diagnostic
+class TotalmassDiff(Diagnostic):
+  @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)
     n = len(models)
@@ -11,6 +11,8 @@ if True:
       for j in range(i+1,n):
         totalmass_diff([models[i],models[j]], fieldname, units, outdir, **kwargs)
 
+
+if True:
 
   def totalmass_diff (models, fieldname, units, outdir, normalize_air_mass=False):
     from os.path import exists
@@ -46,4 +48,7 @@ if True:
       plotvar (diff, ax=ax)
       ax.set_title("%s total mass difference (%s-%s)"%(fieldname,models[0].name,models[1].name))
       fig.savefig(outfile)
+
+from . import table
+table['totalmass-diff'] = TotalmassDiff
 

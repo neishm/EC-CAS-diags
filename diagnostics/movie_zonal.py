@@ -11,11 +11,15 @@ if True:
       raise ValueError("No inputs match the criteria.")
     return models
 
+from . import Diagnostic
+class ZonalMovie(Diagnostic):
+  @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     zaxis = kwargs.get('zaxis','gph')
     models = find_applicable_models(inputs, fieldname, zaxis)
     movie_zonal(models, fieldname, units, outdir, **kwargs)
 
+if True:
   # Convert zonal mean data (on height)
   def zonalmean_gph (model, fieldname, units, typestat):
     from pygeode.interp import interpolate
@@ -132,4 +136,8 @@ if True:
     movie = ZonalMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=aspect_ratio)
 
     movie.save (outdir=outdir, prefix=prefix)
+
+
+from . import table
+table['zonal-movie'] = ZonalMovie
 

@@ -24,6 +24,11 @@ if True:
         obs_inputs.append(x)
     return obs_inputs
 
+
+from . import Diagnostic
+class DiurnalCycle(Diagnostic):
+
+  @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)
     # If there's no model data to plot, then don't bother plotting!
@@ -32,6 +37,7 @@ if True:
     for obs in obs_inputs:
       diurnal_cycle (obs, model_inputs, fieldname, units, outdir, **kwargs)
 
+if True:
   # Compute a diurnal mean.
   # Takes a PyGeode Var object as input.
   # Returns the hour of the day, and the diurnal mean data as numpy arrays.
@@ -127,4 +133,6 @@ if True:
           pl.gca().get_yaxis().get_major_formatter().set_useOffset(False)
         pl.savefig(outfile)
 
+from . import table
+table['diurnal-cycle'] = DiurnalCycle
 

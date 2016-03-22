@@ -15,10 +15,15 @@ if True:
     return models
 
 
+from . import Diagnostic
+class Totalmass(Diagnostic):
+  @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)
     totalmass (models, fieldname, units, outdir, **kwargs)
 
+
+if True:
 
   # Total mass (Pg)
   def compute_totalmass (model, fieldname):
@@ -218,4 +223,7 @@ if True:
     if not exists(outfile):
       title = "Total mass %s in %s"%(fieldname,units)
       doplot (outfile, title, fields, colours, styles, labels)
+
+from . import table
+table['totalmass'] = Totalmass
 

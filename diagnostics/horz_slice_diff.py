@@ -6,9 +6,9 @@
 from .xcol import find_applicable_models
 
 
-if True:
-
-
+from . import Diagnostic
+class HorzSliceDiff(Diagnostic):
+  @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)
     n = len(models)
@@ -21,6 +21,8 @@ if True:
         if f1.lat == f2.lat and f1.lon == f2.lon:
           horz_slice_movie([models[i],models[j]], fieldname, units, outdir, **kwargs)
 
+
+if True:
 
 
   # Cache the slice for faster reading on subsequent diagnostic calls.
@@ -81,4 +83,8 @@ if True:
     movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio)
 
     movie.save (outdir=outdir, prefix=prefix)
+
+
+from . import table
+table['horz-slice-diff'] = HorzSliceDiff
 

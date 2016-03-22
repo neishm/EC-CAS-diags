@@ -5,15 +5,18 @@ It is important to note that the model histogram will consist of a full year's d
 Whereas the observations may only exist for one season, causing them to look much different.
 """
 
-if True:
+from .timeseries import find_applicable_obs, find_applicable_models
 
-  from .timeseries import find_applicable_obs, find_applicable_models
+from . import Diagnostic
+class TimeseriesHist(Diagnostic):
+  @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
       timeseries (obs, model_inputs, fieldname, units, outdir, **kwargs)
 
+if True:
   def timeseries (obs, models, fieldname, units, outdir, plot_months=None,timefilter=None):
     from .plot_wrapper import Multiplot, Legend, Overlay, Text,Histogram
     import matplotlib.pyplot as pl
@@ -178,3 +181,7 @@ if True:
         fig.savefig(outfile)
 
     pl.close(fig)
+
+from . import table
+table['timeseries-hist'] = TimeseriesHist
+

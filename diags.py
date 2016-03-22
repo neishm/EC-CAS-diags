@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 
 from eccas_diags.cache import Cache
-from eccas_diags import interfaces
+from eccas_diags import interfaces, diagnostics
 
 now = datetime.now()
 
@@ -166,7 +166,7 @@ copy(args.configfile.name, outdir+"/"+configbase+now.strftime(".%Y%m%d_%H:%M:%S"
 # Some standard diagnostics
 failures = []
 
-from eccas_diags.diagnostics import timeseries
+timeseries = diagnostics.table['timeseries']
 # CO2 Timeseries
 try:
   timeseries.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
@@ -179,14 +179,14 @@ except Exception as e:
   failures.append(['CH4 timeseries', e])
 
 # Aircraft profiles
-from eccas_diags.diagnostics import profiles
+profiles = diagnostics.table['aircraft-profiles']
 try:
   profiles.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['CO2 aircraft profiles', e])
 
 # Diurnal cycle
-from eccas_diags.diagnostics import diurnal_cycle
+diurnal_cycle = diagnostics.table['diurnal-cycle']
 try:
   diurnal_cycle.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
@@ -196,7 +196,7 @@ try:
 except Exception as e:
   failures.append(['CH4 diurnal cycle', e])
 
-from eccas_diags.diagnostics import movie_zonal
+movie_zonal = diagnostics.table['zonal-movie']
 # CO2 Zonal mean movies
 try:
   movie_zonal.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir)
@@ -213,7 +213,7 @@ try:
 except Exception as e:
   failures.append(['CH4 movie_zonal', e])
 
-from eccas_diags.diagnostics import movie_zonal_diff
+movie_zonal_diff = diagnostics.table['zonal-mean-diff']
 # CO2 Zonal mean movies
 try:
   movie_zonal_diff.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir)
@@ -236,9 +236,9 @@ except Exception as e:
   failures.append(['diffcheck', e])
 """
 
-from eccas_diags.diagnostics import xcol
-from eccas_diags.diagnostics import xcol_enkf
-from eccas_diags.diagnostics import xcol_diff
+xcol = diagnostics.table['xcol']
+xcol_enkf = diagnostics.table['xcol-enkf']
+xcol_diff = diagnostics.table['xcol-diff']
 # XCO2
 try:
   xcol.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
@@ -320,7 +320,7 @@ try:
 except Exception as e:
   failures.append(['XCH4_diff', e])
 
-from eccas_diags.diagnostics import totalmass
+totalmass = diagnostics.table['totalmass']
 # Total mass CO2
 try:
   totalmass.do_all (datasets, fieldname='CO2', units='Pg(C)', outdir=outdir)
@@ -331,7 +331,7 @@ try:
   totalmass.do_all (datasets, fieldname='CO2_fossil', units='Pg(C)', outdir=outdir)
 except Exception as e:
   failures.append(['totalmass CO2_fossil', e])
-from eccas_diags.diagnostics import totalmass_diff
+totalmass_diff = diagnostics.table['totalmass-diff']
 # Total mass CO2 difference
 try:
   totalmass_diff.do_all (datasets, fieldname='CO2', units='Pg(C)', outdir=outdir)
@@ -355,7 +355,7 @@ except Exception as e:
   failures.append(['totalmass H2O', e])
 
 # Horizontal slice movie
-from eccas_diags.diagnostics import horz_slice_diff
+horz_slice_diff = diagnostics.table['horz-slice-diff']
 try:
   horz_slice_diff.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, level="1.0")
 except Exception as e:
@@ -364,12 +364,13 @@ except Exception as e:
 #-------------------Jake's Diags------------------------
 
 from eccas_diags.diagnostics import concentration_v_height
+concentration_v_height = diagnostics.table['concentration-v-height']
 try:
   concentration_v_height.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['concentration vs. height', e])
 
-from eccas_diags.diagnostics import FluxDiagnostic
+FluxDiagnostic = diagnostics.table['flux-movie']
 try:
   FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='BG')
 except Exception as e:
@@ -396,26 +397,26 @@ except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 
 
-from eccas_diags.diagnostics import TimeSeriesHist as TSH
+TSH = diagnostics.table['timeseries-hist']
 try:
   TSH.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['timeseries histogram', e])
 
-from eccas_diags.diagnostics import TimeSeriesAlternate as TSA
+TSA = diagnostics.table['timeseries-diff']
 try:
   TSA.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['time series alternate', e])
 
-from eccas_diags.diagnostics import TimeSeriesRBP
+TimeSeriesRBP = diagnostics.table['regional-bargraph']
 try:
   TimeSeriesRBP.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
 except Exception as e:
   failures.append(['time series rbp', e])
   raise
 
-from eccas_diags.diagnostics import ZonalMeanBG
+ZonalMeanBG = diagnostics.table['zonal-bargraph']
 try:
   ZonalMeanBG.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir, height=0)
 except Exception as e:

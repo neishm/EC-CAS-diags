@@ -16,9 +16,14 @@ if True:
       raise ValueError("No inputs match the criteria.")
     return models
 
+from . import Diagnostic
+class XCol(Diagnostic):
+  @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)
     xcol (models, fieldname, units, outdir, **kwargs)
+
+if True:
 
   # Compute total column of a tracer
   # (in kg/m2)
@@ -90,4 +95,7 @@ if True:
     movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio)
 
     movie.save (outdir=outdir, prefix=prefix)
+
+from . import table
+table['xcol'] = XCol
 

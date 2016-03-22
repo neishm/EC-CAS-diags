@@ -12,6 +12,10 @@ if True:
 
   from .xcol import find_applicable_models
 
+
+from . import Diagnostic
+class XColDiff(Diagnostic):
+  @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)
     n = len(models)
@@ -24,6 +28,8 @@ if True:
         if f1.lat == f2.lat and f1.lon == f2.lon:
           xcol_diff([models[i],models[j]], fieldname, units, outdir, **kwargs)
 
+
+if True:
 
   def xcol_diff (models, fieldname, units, outdir):
     from .movie import ContourMovie
@@ -56,4 +62,7 @@ if True:
     movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio)
 
     movie.save (outdir=outdir, prefix=prefix)
+
+from . import table
+table['xcol-diff'] = XColDiff
 

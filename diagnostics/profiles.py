@@ -18,6 +18,9 @@ if True:
         model_inputs.append(x)
     return model_inputs
 
+from . import Diagnostic
+class AircraftProfiles(Diagnostic):
+  @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)
     # If there's no model data to plot, then don't bother plotting!
@@ -26,6 +29,7 @@ if True:
     for obs in obs_inputs:
       profiles (obs, model_inputs, fieldname, units, outdir, **kwargs)
 
+if True:
   from .timeseries import StationSample
 
   # Find all unique observation fields
@@ -257,4 +261,7 @@ if True:
       pl.legend(loc='best')
 
       fig.savefig(outfile)
+
+from . import table
+table['aircraft-profiles'] = AircraftProfiles
 

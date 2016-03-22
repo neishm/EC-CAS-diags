@@ -1,5 +1,6 @@
-if True:
-
+from . import Diagnostic
+class ZonalMeanDiff(Diagnostic):
+  @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     from .movie_zonal import find_applicable_models
     zaxis = kwargs.get('zaxis','gph')
@@ -14,6 +15,7 @@ if True:
         if f1.lat == f2.lat:
           movie_zonal_diff([models[i],models[j]], fieldname, units, outdir, **kwargs)
 
+if True:
   def movie_zonal_diff (models, fieldname, units, outdir, zaxis='gph', typestat='mean'):
 
     from ..common import convert, same_times
@@ -50,4 +52,7 @@ if True:
     movie = ZonalMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=aspect_ratio)
 
     movie.save (outdir=outdir, prefix=prefix)
+
+from . import table
+table['zonal-mean-diff'] = ZonalMeanDiff
 
