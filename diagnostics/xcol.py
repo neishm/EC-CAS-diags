@@ -18,6 +18,10 @@ if True:
 
 from . import Diagnostic
 class XCol(Diagnostic):
+  """
+  Show the average column of a field, animated in time.  Note that no averaging
+  kernel is used in the average, it is simply weighted by air mass.
+  """
   @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)

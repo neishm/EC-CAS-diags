@@ -17,6 +17,10 @@ if True:
 
 from . import Diagnostic
 class Totalmass(Diagnostic):
+  """
+  Compute the total mass budget for a field.  Show the time variation as a
+  1D line plot.
+  """
   @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)

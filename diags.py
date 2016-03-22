@@ -44,12 +44,19 @@ def make_parser(add_help=True):
   parser.add_argument('-f', '--configfile', type=argparse.FileType('r'), nargs='?', help="Configuration file to use for the diagnostics.")
   parser.add_argument('--tmpdir', help="where to put any intermediate files that get generated, if they can't be stored in their usual location.  THIS SHOULD NOT BE IN YOUR HOME DIRECTORY.")
   parser.add_argument('--rescan', action='store_true', help="Force the input files to be re-scanned.  Useful if the interfaces have changed since the last time the script was run.")
+  parser.add_argument('--list-diagnostics', action='store_true', help="List all the available diagnostics, then exit.")
   return parser
 
 parser = make_parser(add_help=False)
 args, extra_args = parser.parse_known_args()
 
 parser = make_parser(add_help=True)
+
+if args.list_diagnostics:
+  print "Available diagnostics:\n"
+  for diagname, diagclass in sorted(diagnostics.table.items()):
+    print '%s%s'%(diagname,diagclass.__doc__ or '\n  ???')
+  quit()
 
 if args.configfile is None:
   parser.print_help()

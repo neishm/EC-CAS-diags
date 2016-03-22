@@ -1,5 +1,8 @@
 from . import Diagnostic
 class ZonalMeanDiff(Diagnostic):
+  """
+  Difference between two zonal mean fields, animated in time.
+  """
   @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     from .movie_zonal import find_applicable_models

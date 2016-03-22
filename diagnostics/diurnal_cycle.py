@@ -27,7 +27,9 @@ if True:
 
 from . import Diagnostic
 class DiurnalCycle(Diagnostic):
-
+  """
+  Mean diurnal cycle, sampled at obs locations.
+  """
   @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)

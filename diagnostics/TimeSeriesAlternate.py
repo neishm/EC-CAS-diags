@@ -4,6 +4,9 @@ from .timeseries import find_applicable_obs, find_applicable_models
 
 from . import Diagnostic
 class TimeseriesDiff(Diagnostic):
+  """
+  Difference between two datasets, sampled at obs locations.
+  """
   @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)

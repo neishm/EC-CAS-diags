@@ -3,7 +3,9 @@ from .movie_zonal import find_applicable_models
 
 from . import Diagnostic
 class Concentration_VS_Height(Diagnostic):
-
+  """
+  Vertial profiles, averaged by zonal region and animated in time.
+  """
   @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(inputs, fieldname, zaxis='gph')

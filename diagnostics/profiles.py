@@ -20,6 +20,9 @@ if True:
 
 from . import Diagnostic
 class AircraftProfiles(Diagnostic):
+  """
+  Mean vertical profiles, sampled at obs locations.
+  """
   @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)

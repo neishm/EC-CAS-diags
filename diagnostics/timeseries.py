@@ -20,6 +20,9 @@ if True:
 
 from . import Diagnostic
 class Timeseries(Diagnostic):
+  """
+  Sample data at surface obs locations, and plot the result as a 1D line plot.
+  """
   @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)

@@ -12,7 +12,10 @@ if True:
     return models
 
 from . import Diagnostic
-class ZonalMovie(Diagnostic):
+class ZonalMean(Diagnostic):
+  """
+  Zonal mean (or standard deviation) of a field, animated in time.
+  """
   @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     zaxis = kwargs.get('zaxis','gph')
@@ -139,5 +142,5 @@ if True:
 
 
 from . import table
-table['zonal-movie'] = ZonalMovie
+table['zonal-movie'] = ZonalMean
 

@@ -15,6 +15,10 @@ if True:
 
 from . import Diagnostic
 class XColDiff(Diagnostic):
+  """
+  Compute the difference of two fields, after taking the avarage column of
+  each.
+  """
   @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)

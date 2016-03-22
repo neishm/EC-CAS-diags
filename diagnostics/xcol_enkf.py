@@ -18,6 +18,10 @@ if True:
 
 from . import Diagnostic
 class XColEnKF(Diagnostic):
+  """
+  Plot the column average of a field, alongside the column average of the
+  ensemble spread.  Only useful for ensemble runs.
+  """
   @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)

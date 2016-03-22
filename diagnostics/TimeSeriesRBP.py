@@ -14,6 +14,10 @@ if True:
 
 from . import Diagnostic
 class TimeseriesRBP(Diagnostic):
+  """
+  Bin data into regions (country or zone), and produce a histogram of the
+  result.
+  """
   @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)

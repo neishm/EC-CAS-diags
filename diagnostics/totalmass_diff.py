@@ -3,6 +3,9 @@ from .xcol import find_applicable_models
 
 from . import Diagnostic
 class TotalmassDiff(Diagnostic):
+  """
+  Plot the difference in mass for the same field between two datasets.
+  """
   @staticmethod
   def do_all (datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)

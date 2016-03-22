@@ -3,6 +3,10 @@ from .movie_zonal import find_applicable_models
 
 from . import Diagnostic
 class ZonalMeanBG(Diagnostic):
+  """
+  Samples data at a particular height, bins it into zones, and displays the
+  result as a bargraph.
+  """
   @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(inputs, fieldname, zaxis='gph')
