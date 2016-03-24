@@ -252,11 +252,11 @@ if True:
       ax = pl.subplot(111)
       for i in range(len(models)):
         if model_data[i] is None: continue
-        pl.plot(model_data[i], z_levels, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
+        pl.plot(model_data[i], z_levels, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].title)
         pl.plot(model_data[i]+model_std[i], z_levels, color=models[i].color, linestyle='--')
         pl.plot(model_data[i]-model_std[i], z_levels, color=models[i].color, linestyle='--')
 
-      pl.plot(obs_data, z_levels, color=obs.color, linestyle=obs.linestyle, linewidth=2, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label='obs')
+      pl.plot(obs_data, z_levels, color=obs.color, linestyle=obs.linestyle, linewidth=2, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label=obs.title)
       pl.fill_betweenx(z_levels, obs_data-obs_std, obs_data+obs_std, color=obs.color, alpha=0.2, linewidth=0)
       pl.title('%s (%s)'%(season,year_string))
       pl.xlabel('%s [%s]'%(fieldname,units))

@@ -113,7 +113,7 @@ if True:
             current_model_data = model_data[i](station=station).squeeze('station')(year=year,month=month).squeeze()
             if len(current_model_data.axes) == 0: continue
             hours, data, std = compute_diurnal_mean_stddev(current_model_data)
-            pl.plot(hours, data, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].name)
+            pl.plot(hours, data, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].title)
             pl.plot(hours, data+std, color=models[i].color, linestyle='--')
             pl.plot(hours, data-std, color=models[i].color, linestyle='--')
 
