@@ -179,10 +179,11 @@ if True:
     # Create plots of each location
     # Plot 4 timeseries per figure
     n = 4
-    for i,location in enumerate(data[0].station):
+    locations = list(data[0].station)
+    for i,location in enumerate(locations):
       if i%n == 0:
         fig = pl.figure(figsize=(figwidth,12))
-      pl.subplot(4,1,i%4+1)
+      pl.subplot(n,1,i%n+1)
       station_info = data[0](station=location).getaxis("station")
       lat = station_info.lat[0]
       lon = station_info.lon[0]
@@ -235,7 +236,7 @@ if True:
       pl.ylabel('%s %s'%(fieldname,units))
 
       # Things to do one the last plot of the figure
-      if i%4 == 3:
+      if i%n == (n-1) or i == len(locations)-1:
         # Put a legend on the last plot
         labels = [d.title for d in models+[obs]]
         pl.legend(labels)
@@ -243,7 +244,7 @@ if True:
         pl.tight_layout()
 
         # Save as an image file.
-        outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1)
+        outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/n+1)
         if not exists(outfile):
           fig.savefig(outfile)
 
