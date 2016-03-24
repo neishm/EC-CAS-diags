@@ -26,7 +26,7 @@ class TimeseriesRBP(Diagnostic):
       Barplot (obs, model_inputs, fieldname, units, outdir, **kwargs)
 
 if True:
-  def Barplot (obs, models, fieldname, units, outdir, plot_months=None,ymin=350,ymax=420):
+  def Barplot (obs, models, fieldname, units, outdir, ymin=350,ymax=420):
 
     from .plot_shortcuts import plot, plot_stdfill
     from .plot_wrapper import Multiplot, Legend, Overlay, Text
@@ -77,8 +77,6 @@ if True:
     # Use the first model data as a basis for the time axis.
     timeaxis = (d.getaxis('time') for d in data).next()
     # Limit the range to plot
-    if plot_months is not None:
-      timeaxis = timeaxis(year=2009,month=plot_months)
     times = timeaxis.get()
     time1 = min(times)
     time2 = max(times)

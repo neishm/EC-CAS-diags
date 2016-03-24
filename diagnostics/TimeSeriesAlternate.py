@@ -16,7 +16,7 @@ class TimeseriesDiff(Diagnostic):
 
 if True:
 
-  def timeseries (obs, models, fieldname, units, outdir, plot_months=None,timefilter=None):
+  def timeseries (obs, models, fieldname, units, outdir, timefilter=None):
 
     from .plot_shortcuts import plot, plot_stdfill
     from .plot_wrapper import Multiplot, Legend, Overlay, Text, TwinX
@@ -71,8 +71,6 @@ if True:
     # Use the first model data as a basis for the time axis.
     timeaxis = (d.getaxis('time') for d in data).next()
     # Limit the range to plot
-    if plot_months is not None:
-      timeaxis = timeaxis(year=2009,month=plot_months)
     times = timeaxis.get()
     time1 = min(times)
     time2 = max(times)

@@ -117,7 +117,7 @@ if True:
 
 
 
-  def timeseries (obs, models, fieldname, units, outdir, plot_months=None):
+  def timeseries (obs, models, fieldname, units, outdir):
 
     import numpy as np
     import matplotlib.pyplot as pl
@@ -169,8 +169,6 @@ if True:
     # Use the first model data as a basis for the time axis.
     timeaxis = (d.getaxis('time') for d in data).next()
     # Limit the range to plot
-    if plot_months is not None:
-      timeaxis = timeaxis(year=2009,month=plot_months)
     times = timeaxis.get()
     time1 = min(times)
     time2 = max(times)
