@@ -1,7 +1,16 @@
 # Generic interface for a diagnostic, to be sub-classed by each particular
 # diagnostic.
 class Diagnostic(object):
-  pass
+  @staticmethod
+  # Method to add extra command-line arguments needed for this diagnostic.
+  def add_args (parser):
+    return  # Nothing needed by default.
+
+  # Method to collect the above command-line arguments into key/value pairs.
+  # The output from this will be passed on to the diagnostic.
+  @staticmethod
+  def handle_args (args):
+    return {}  # Nothing needed by default.
 
 # Find all available diagnostics
 table = {}

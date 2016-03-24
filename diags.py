@@ -66,9 +66,11 @@ if args.diagnostics is not None:
   allowed_diagnostics = args.diagnostics.split(',')
 else:
   allowed_diagnostics = list(diagnostics.table.keys())
-for d in allowed_diagnostics:
+for d in sorted(allowed_diagnostics):
   if d not in diagnostics.table:
     parser.error("Unknown diagnostic '%s'.  Use the '--list-diagnostics' option to see all available diagnostics."%d)
+  # Add diagnostic-specific command-line arguments.
+  diagnostics.table[d].add_args(parser)
 
 if args.configfile is None:
   parser.print_help()
@@ -186,65 +188,70 @@ copy(args.configfile.name, outdir+"/"+configbase+now.strftime(".%Y%m%d_%H:%M:%S"
 failures = []
 
 timeseries = diagnostics.table['timeseries']
+kwargs = timeseries.handle_args(args)
 # CO2 Timeseries
 try:
  if 'timeseries' in allowed_diagnostics:
-  timeseries.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
+  timeseries.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['CO2 timeseries', e])
 # CH4 Timeseries
 try:
  if 'timeseries' in allowed_diagnostics:
-  timeseries.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir)
+  timeseries.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['CH4 timeseries', e])
 
 # Aircraft profiles
 profiles = diagnostics.table['aircraft-profiles']
+kwargs = profiles.handle_args(args)
 try:
  if 'aircraft-profiles' in allowed_diagnostics:
-  profiles.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
+  profiles.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['CO2 aircraft profiles', e])
 
 # Diurnal cycle
 diurnal_cycle = diagnostics.table['diurnal-cycle']
+kwargs = diurnal_cycle.handle_args(args)
 try:
  if 'diurnal-cycle' in allowed_diagnostics:
-  diurnal_cycle.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
+  diurnal_cycle.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['CO2 diurnal cycle', e])
 try:
  if 'diurnal-cycle' in allowed_diagnostics:
-  diurnal_cycle.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir)
+  diurnal_cycle.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['CH4 diurnal cycle', e])
 
 movie_zonal = diagnostics.table['zonal-movie']
+kwargs = movie_zonal.handle_args(args)
 # CO2 Zonal mean movies
 try:
  if 'zonal-movie' in allowed_diagnostics:
-  movie_zonal.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir)
+  movie_zonal.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['CO2 movie_zonal', e])
 # CO2 Zonal mean of spread
 try:
  if 'zonal-movie' in allowed_diagnostics:
-  movie_zonal.do_all(datasets, fieldname='CO2_ensemblespread', units='ppm', outdir=outdir)
+  movie_zonal.do_all(datasets, fieldname='CO2_ensemblespread', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['CO2 movie_zonal spread', e])
 # CH4 Zonal mean movies
 try:
  if 'zonal-movie' in allowed_diagnostics:
-  movie_zonal.do_all(datasets, fieldname='CH4', units='ppb', outdir=outdir)
+  movie_zonal.do_all(datasets, fieldname='CH4', units='ppb', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['CH4 movie_zonal', e])
 
 movie_zonal_diff = diagnostics.table['zonal-mean-diff']
+kwargs = movie_zonal_diff.handle_args(args)
 # CO2 Zonal mean movies
 try:
  if 'zonal-mean-diff' in allowed_diagnostics:
-  movie_zonal_diff.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir)
+  movie_zonal_diff.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['CO2 movie_zonal_diff', e])
 
@@ -267,149 +274,155 @@ except Exception as e:
 xcol = diagnostics.table['xcol']
 xcol_enkf = diagnostics.table['xcol-enkf']
 xcol_diff = diagnostics.table['xcol-diff']
+kwargs = xcol.handle_args(args)
+kwargs_enkf = xcol_enkf.handle_args(args)
+kwargs_diff = xcol_diff.handle_args(args)
 # XCO2
 try:
  if 'xcol' in allowed_diagnostics:
-  xcol.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['XCO2', e])
 # XCO2 diff movies
 try:
  if 'xcol-diff' in allowed_diagnostics:
-  xcol_diff.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
+  xcol_diff.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir, **kwargs_diff)
 except Exception as e:
   failures.append(['XCO2_diff', e])
 # XH2O
 try:
  if 'xcol' in allowed_diagnostics:
-  xcol.do_all (datasets, fieldname='H2O', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='H2O', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['XH2O', e])
 # Average column of stats
 try:
  if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2', units='ppm', outdir=outdir, **kwargs_enkf)
 except Exception as e:
   failures.append(['XCO2 enkf', e])
 # XCO2B
 try:
  if 'xcol' in allowed_diagnostics:
-  xcol.do_all (datasets, fieldname='CO2_background', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2_background', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['XCO2B', e])
 # Average column of stats
 try:
  if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf.do_all (datasets, fieldname='CO2_background', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2_background', units='ppm', outdir=outdir, **kwargs_enkf)
 except Exception as e:
   failures.append(['XCO2B enkf', e])
 # XCLA
 try:
  if 'xcol' in allowed_diagnostics:
-  xcol.do_all (datasets, fieldname='CO2_bio', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2_bio', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['XCLA', e])
 # Average column of stats
 try:
  if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf.do_all (datasets, fieldname='CO2_bio', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2_bio', units='ppm', outdir=outdir, **kwargs_enkf)
 except Exception as e:
   failures.append(['XCLA enkf', e])
 # XCOC
 try:
  if 'xcol' in allowed_diagnostics:
-  xcol.do_all (datasets, fieldname='CO2_ocean', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2_ocean', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['XCOC', e])
 # Average column of stats
 try:
  if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf.do_all (datasets, fieldname='CO2_ocean', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2_ocean', units='ppm', outdir=outdir, **kwargs_enkf)
 except Exception as e:
   failures.append(['XCOC enkf', e])
 # XCFF
 try:
  if 'xcol' in allowed_diagnostics:
-  xcol.do_all (datasets, fieldname='CO2_fossil', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2_fossil', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['XCFF', e])
 # Average column of stats
 try:
  if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf.do_all (datasets, fieldname='CO2_fossil', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2_fossil', units='ppm', outdir=outdir, **kwargs_enkf)
 except Exception as e:
   failures.append(['XCFF enkf', e])
 # XCBB
 try:
  if 'xcol' in allowed_diagnostics:
-  xcol.do_all (datasets, fieldname='CO2_fire', units='ppm', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CO2_fire', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['XCBB', e])
 # Average column of stats
 try:
  if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf.do_all (datasets, fieldname='CO2_fire', units='ppm', outdir=outdir)
+  xcol_enkf.do_all (datasets, fieldname='CO2_fire', units='ppm', outdir=outdir, **kwargs_enkf)
 except Exception as e:
   failures.append(['XCBB enkf', e])
 
 # XCH4
 try:
  if 'xcol' in allowed_diagnostics:
-  xcol.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir)
+  xcol.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['XCH4', e])
 try:
  if 'xcol-diff' in allowed_diagnostics:
-  xcol_diff.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir)
+  xcol_diff.do_all (datasets, fieldname='CH4', units='ppb', outdir=outdir, **kwargs_diff)
 except Exception as e:
   failures.append(['XCH4_diff', e])
 
 totalmass = diagnostics.table['totalmass']
+kwargs = totalmass.handle_args(args)
 # Total mass CO2
 try:
  if 'totalmass' in allowed_diagnostics:
-  totalmass.do_all (datasets, fieldname='CO2', units='Pg(C)', outdir=outdir)
+  totalmass.do_all (datasets, fieldname='CO2', units='Pg(C)', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['totalmass CO2', e])
 # Total mass CFF
 try:
  if 'totalmass' in allowed_diagnostics:
-  totalmass.do_all (datasets, fieldname='CO2_fossil', units='Pg(C)', outdir=outdir)
+  totalmass.do_all (datasets, fieldname='CO2_fossil', units='Pg(C)', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['totalmass CO2_fossil', e])
 
 totalmass_diff = diagnostics.table['totalmass-diff']
+kwargs_diff = totalmass_diff.handle_args(args)
 # Total mass CO2 difference
 try:
  if 'totalmass-diff' in allowed_diagnostics:
-  totalmass_diff.do_all (datasets, fieldname='CO2', units='Pg(C)', outdir=outdir)
+  totalmass_diff.do_all (datasets, fieldname='CO2', units='Pg(C)', outdir=outdir, **kwargs_diff)
 except Exception as e:
   failures.append(['totalmass_diff CO2', e])
 # Total mass CH4
 try:
  if 'totalmass' in allowed_diagnostics:
-  totalmass.do_all (datasets, fieldname='CH4', units='Pg', outdir=outdir)
+  totalmass.do_all (datasets, fieldname='CH4', units='Pg', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['totalmass CH4', e])
 # Total mass air
 try:
  if 'totalmass' in allowed_diagnostics:
-  totalmass.do_all (datasets, fieldname='air', units='Pg', outdir=outdir)
-  totalmass.do_all (datasets, fieldname='dry_air', units='Pg', outdir=outdir)
+  totalmass.do_all (datasets, fieldname='air', units='Pg', outdir=outdir, **kwargs)
+  totalmass.do_all (datasets, fieldname='dry_air', units='Pg', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['totalmass air', e])
 # Total mass H2O
 try:
  if 'totalmass' in allowed_diagnostics:
-  totalmass.do_all (datasets, fieldname='H2O', units='Pg', outdir=outdir)
+  totalmass.do_all (datasets, fieldname='H2O', units='Pg', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['totalmass H2O', e])
 
 # Horizontal slice movie
 horz_slice_diff = diagnostics.table['horz-slice-diff']
+kwargs = horz_slice_diff.handle_args(args)
 try:
  if 'horz-slice-diff' in allowed_diagnostics:
-  horz_slice_diff.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, level="1.0")
+  horz_slice_diff.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, level="1.0", **kwargs)
 except Exception as e:
   failures.append(['horz_slice_movie', e])
 
@@ -417,71 +430,77 @@ except Exception as e:
 
 from eccas_diags.diagnostics import concentration_v_height
 concentration_v_height = diagnostics.table['concentration-v-height']
+kwargs = concentration_v_height.handle_args(args)
 try:
  if 'concentration-v-height' in allowed_diagnostics:
-  concentration_v_height.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
+  concentration_v_height.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['concentration vs. height', e])
 
 FluxDiagnostic = diagnostics.table['flux-movie']
+kwargs = FluxDiagnostic.handle_args(args)
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='BG')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='BG', **kwargs)
 except Exception as e:
   failures.append(['Flux Diagnostic - Bar Graph', e])
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='BG')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='BG', **kwargs)
 except Exception as e:
   failures.append(['Flux Diagnostic - Bar Graph', e])
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='Map')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='Map', **kwargs)
 except Exception as e:
   failures.append(['Flux Diagnostic - Map', e])
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='Map')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='Map', **kwargs)
 except Exception as e:
   failures.append(['Flux Diagnostic - Map', e])
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='MeanMap')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Monthly', plottype='MeanMap', **kwargs)
 except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='MeanMap')
+  FluxDiagnostic.do_all(datasets, fieldname='CO2', units='ppm', outdir=outdir, timefilter='Daily', plottype='MeanMap', **kwargs)
 except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 
 
 TSH = diagnostics.table['timeseries-hist']
+kwargs = TSH.handle_args(args)
 try:
  if 'timeseries-hist' in allowed_diagnostics:
-  TSH.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
+  TSH.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['timeseries histogram', e])
 
 TSA = diagnostics.table['timeseries-diff']
+kwargs = TSA.handle_args(args)
 try:
  if 'timeseries-diff' in allowed_diagnostics:
-  TSA.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
+  TSA.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['time series alternate', e])
 
 TimeSeriesRBP = diagnostics.table['regional-bargraph']
+kwargs = TimeSeriesRBP.handle_args(args)
 try:
  if 'regional-bargraph' in allowed_diagnostics:
-  TimeSeriesRBP.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir)
+  TimeSeriesRBP.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir, **kwargs)
 except Exception as e:
   failures.append(['time series rbp', e])
   raise
 
 ZonalMeanBG = diagnostics.table['zonal-bargraph']
+kwargs = ZonalMeanBG.handle_args(args)
 try:
  if 'zonal-bargraph' in allowed_diagnostics:
-  ZonalMeanBG.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir, height=0)
+  ZonalMeanBG.do_all(datasets,fieldname='CO2', units='ppm', outdir=outdir, height=0, **kwargs)
 except Exception as e:
   failures.append(['zonal mean bargraph', e])
 
