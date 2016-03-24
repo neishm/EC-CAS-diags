@@ -24,6 +24,16 @@ class Timeseries(Diagnostic):
   Sample data at surface obs locations, and plot the result as a 1D line plot.
   """
   @staticmethod
+  def add_args (parser):
+    group = parser.add_argument_group('options for timeseries diagnostics')
+    group.add_argument('--stations', action='store', metavar='StationA,StationB,...', help='Comma-separated list of stations to look at.  Only part of the station name is needed.  By default, all available stations are used.')
+  @staticmethod
+  def handle_args(args):
+    kwargs = {}
+    if args.stations is not None:
+      kwargs['stations'] = args.stations.split(',')
+    return kwargs
+  @staticmethod
   def do_all (inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)
     # If there's no model data to plot, then don't bother plotting!
@@ -116,8 +126,17 @@ if True:
     return field
 
 
+  # Determine if a particular station matches a list of station names.
+  def lookup_station (station, station_list):
+    string_filter = lambda x: x.lower().replace(' ','').replace('_','')
+    station = string_filter(station)
+    station_list = [string_filter(s) for s in station_list]
+    for s in station_list:
+      if station.startswith(s): return s
+    return None
 
-  def timeseries (obs, models, fieldname, units, outdir):
+
+  def timeseries (obs, models, fieldname, units, outdir, stations=None):
 
     import numpy as np
     import matplotlib.pyplot as pl
@@ -180,13 +199,21 @@ if True:
     # Plot 4 timeseries per figure
     n = 4
     locations = list(data[0].station)
+    if stations is not None:
+      locations = [l for s in stations for l in locations if lookup_station(l,[s]) is not None]
     for i,location in enumerate(locations):
+
       if i%n == 0:
         fig = pl.figure(figsize=(figwidth,12))
+        stations_on_figure = []
       pl.subplot(n,1,i%n+1)
       station_info = data[0](station=location).getaxis("station")
       lat = station_info.lat[0]
       lon = station_info.lon[0]
+
+      if stations is not None:
+        s = lookup_station(location,stations)
+        stations_on_figure.append(s)
 
       # Construct a title for the plot
       title = location + ' - (%4.2f'%abs(lat)
@@ -244,7 +271,11 @@ if True:
         pl.tight_layout()
 
         # Save as an image file.
-        outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/n+1)
+        if stations is not None:
+          fig_id = ','.join(stations_on_figure)
+        else:
+          fig_id = '%02d'%(i/n+1)
+        outfile = "%s/%s_timeseries_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,fig_id)
         if not exists(outfile):
           fig.savefig(outfile)
 
