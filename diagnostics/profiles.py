@@ -18,8 +18,8 @@ if True:
         model_inputs.append(x)
     return model_inputs
 
-from . import Diagnostic
-class AircraftProfiles(Diagnostic):
+from . import ImageDiagnostic
+class AircraftProfiles(ImageDiagnostic):
   """
   Mean vertical profiles, sampled at obs locations.
   """
@@ -183,7 +183,8 @@ if True:
     return data
 
 
-  def profiles (obs, models, fieldname, units, outdir):
+  def profiles (obs, models, fieldname, units, outdir, format='png'):
+    print '??', format
 
     import numpy as np
     import matplotlib.pyplot as pl
@@ -227,7 +228,7 @@ if True:
 
       fig = pl.figure(figsize=(6,6))
 
-      outfile = "%s/%s_profiles_%s_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,season,year_string)
+      outfile = "%s/%s_profiles_%s_%s_%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,season,year_string,format)
       if exists(outfile): continue
 
       # Placeholder profile for missing data

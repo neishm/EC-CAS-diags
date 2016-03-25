@@ -25,8 +25,8 @@ if True:
     return obs_inputs
 
 
-from . import Diagnostic
-class DiurnalCycle(Diagnostic):
+from . import ImageDiagnostic
+class DiurnalCycle(ImageDiagnostic):
   """
   Mean diurnal cycle, sampled at obs locations.
   """
@@ -69,7 +69,7 @@ if True:
       stddev = [stddev[-1]] + stddev + [stddev[0]]
     return np.array(diurnal_hours), np.array(mean), np.array(stddev)
 
-  def diurnal_cycle (obs, models, fieldname, units, outdir):
+  def diurnal_cycle (obs, models, fieldname, units, outdir, format='png'):
     from .timeseries import sample_model_at_obs
     from ..common import convert, long_monthnames, select_surface
     from matplotlib import pyplot as pl
@@ -96,7 +96,7 @@ if True:
     # Compute the diurnal means and do the plot.
     for station in obs_data.station.values:
       for year in years:
-        outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d.png"%(outdir,'_'.join(d.name for d in models+[obs]), fieldname, station.replace('/','^'), year)
+        outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d.%s"%(outdir,'_'.join(d.name for d in models+[obs]), fieldname, station.replace('/','^'), year, format)
         if exists(outfile): continue
         fig = pl.figure(figsize=(10,10))
         title = "%s diurnal cycle at %s (%04d)"%(fieldname,station,year)

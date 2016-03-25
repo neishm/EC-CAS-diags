@@ -15,8 +15,8 @@ if True:
     return models
 
 
-from . import Diagnostic
-class Totalmass(Diagnostic):
+from . import ImageDiagnostic
+class Totalmass(ImageDiagnostic):
   """
   Compute the total mass budget for a field.  Show the time variation as a
   1D line plot.
@@ -126,7 +126,7 @@ if True:
 
     fig.savefig(outfile)
 
-  def totalmass (models, fieldname, units, outdir, normalize_air_mass=False):
+  def totalmass (models, fieldname, units, outdir, normalize_air_mass=False, format='png'):
     from os.path import exists
     from pygeode.var import Var
     from ..common import convert
@@ -223,7 +223,7 @@ if True:
         labels.append('integrated flux')
       except (KeyError, IndexError): pass  # No flux and/or mass field available
 
-    outfile = outdir + "/%s_totalmass_%s%s.png"%('_'.join(m.name for m in models),fieldname,'_normalized_by_dryair' if normalize_air_mass else '')
+    outfile = outdir + "/%s_totalmass_%s%s.%s"%('_'.join(m.name for m in models),fieldname,'_normalized_by_dryair' if normalize_air_mass else '', format)
     if not exists(outfile):
       title = "Total mass %s in %s"%(fieldname,units)
       doplot (outfile, title, fields, colours, styles, labels)

@@ -18,18 +18,21 @@ if True:
         model_inputs.append(x)
     return model_inputs
 
-from . import Diagnostic
-class Timeseries(Diagnostic):
+from . import ImageDiagnostic
+class Timeseries(ImageDiagnostic):
   """
   Sample data at surface obs locations, and plot the result as a 1D line plot.
   """
   @staticmethod
-  def add_args (parser):
+  def add_args (parser, handled=[]):
+    super(Timeseries,Timeseries).add_args(parser)
+    if len(handled) > 0: return  # Only run once
     group = parser.add_argument_group('options for timeseries diagnostics')
     group.add_argument('--stations', action='store', metavar='StationA,StationB,...', help='Comma-separated list of stations to look at.  Only part of the station name is needed.  By default, all available stations are used.')
+    handled.append(True)
   @staticmethod
   def handle_args(args):
-    kwargs = {}
+    kwargs = super(Timeseries,Timeseries).handle_args(args)
     if args.stations is not None:
       kwargs['stations'] = args.stations.split(',')
     return kwargs
@@ -136,7 +139,7 @@ if True:
     return None
 
 
-  def timeseries (obs, models, fieldname, units, outdir, stations=None):
+  def timeseries (obs, models, fieldname, units, outdir, stations=None, format='png'):
 
     import numpy as np
     import matplotlib.pyplot as pl
@@ -275,7 +278,7 @@ if True:
           fig_id = ','.join(stations_on_figure)
         else:
           fig_id = '%02d'%(i/n+1)
-        outfile = "%s/%s_timeseries_%s_%s.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,fig_id)
+        outfile = "%s/%s_timeseries_%s_%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,fig_id,format)
         if not exists(outfile):
           fig.savefig(outfile)
 

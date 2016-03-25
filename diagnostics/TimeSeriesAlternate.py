@@ -2,8 +2,8 @@
 
 from .timeseries import find_applicable_obs, find_applicable_models
 
-from . import Diagnostic
-class TimeseriesDiff(Diagnostic):
+from . import ImageDiagnostic
+class TimeseriesDiff(ImageDiagnostic):
   """
   Difference between two datasets, sampled at obs locations.
   """
@@ -16,7 +16,7 @@ class TimeseriesDiff(Diagnostic):
 
 if True:
 
-  def timeseries (obs, models, fieldname, units, outdir, timefilter=None):
+  def timeseries (obs, models, fieldname, units, outdir, timefilter=None, format='png'):
 
     from .plot_shortcuts import plot, plot_stdfill
     from .plot_wrapper import Multiplot, Legend, Overlay, Text, TwinX
@@ -228,7 +228,7 @@ if True:
       pl.tight_layout()    #Makes layout tighter - less clutter for 4 plots
 
 
-      outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1)
+      outfile = "%s/%s_timeseries_%s_%02d.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1,format)
       if not exists(outfile):
         fig.savefig(outfile)
 

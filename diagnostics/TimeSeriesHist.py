@@ -7,8 +7,8 @@ Whereas the observations may only exist for one season, causing them to look muc
 
 from .timeseries import find_applicable_obs, find_applicable_models
 
-from . import Diagnostic
-class TimeseriesHist(Diagnostic):
+from . import ImageDiagnostic
+class TimeseriesHist(ImageDiagnostic):
   """
   Histogram of a field sampled at obs locations.
   """
@@ -20,7 +20,7 @@ class TimeseriesHist(Diagnostic):
       timeseries (obs, model_inputs, fieldname, units, outdir, **kwargs)
 
 if True:
-  def timeseries (obs, models, fieldname, units, outdir, timefilter=None):
+  def timeseries (obs, models, fieldname, units, outdir, timefilter=None, format='png'):
     from .plot_wrapper import Multiplot, Legend, Overlay, Text,Histogram
     import matplotlib.pyplot as pl
     import matplotlib as mpl
@@ -177,7 +177,7 @@ if True:
       pl.tight_layout()    #Makes layout tighter - less clutter for 4 plots
 
 
-      outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1)
+      outfile = "%s/%s_timeseries_%s_%02d.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1,format)
       if not exists(outfile):
         fig.savefig(outfile)
 

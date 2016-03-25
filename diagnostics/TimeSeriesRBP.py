@@ -12,8 +12,8 @@ if True:
         obs_inputs.append(x)
     return obs_inputs
 
-from . import Diagnostic
-class TimeseriesRBP(Diagnostic):
+from . import ImageDiagnostic
+class TimeseriesRBP(ImageDiagnostic):
   """
   Bin data into regions (country or zone), and produce a histogram of the
   result.
@@ -26,7 +26,7 @@ class TimeseriesRBP(Diagnostic):
       Barplot (obs, model_inputs, fieldname, units, outdir, **kwargs)
 
 if True:
-  def Barplot (obs, models, fieldname, units, outdir, ymin=350,ymax=420):
+  def Barplot (obs, models, fieldname, units, outdir, ymin=350,ymax=420, format='png'):
 
     from .plot_shortcuts import plot, plot_stdfill
     from .plot_wrapper import Multiplot, Legend, Overlay, Text
@@ -208,7 +208,7 @@ if True:
       from os import makedirs
       makedirs(outdir)
 
-    outfile = "%s/%s_timeseries_%s_%02d.png"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1)
+    outfile = "%s/%s_timeseries_%s_%02d.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1,format)
     if not exists(outfile):
       fig.savefig(outfile)
 

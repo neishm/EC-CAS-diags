@@ -1,8 +1,8 @@
 from .totalmass import compute_totalmass
 from .xcol import find_applicable_models
 
-from . import Diagnostic
-class TotalmassDiff(Diagnostic):
+from . import ImageDiagnostic
+class TotalmassDiff(ImageDiagnostic):
   """
   Plot the difference in mass for the same field between two datasets.
   """
@@ -17,7 +17,7 @@ class TotalmassDiff(Diagnostic):
 
 if True:
 
-  def totalmass_diff (models, fieldname, units, outdir, normalize_air_mass=False):
+  def totalmass_diff (models, fieldname, units, outdir, normalize_air_mass=False, format='png'):
     from os.path import exists
     from ..common import convert, same_times
     from matplotlib import pyplot as pl
@@ -44,7 +44,7 @@ if True:
 
     diff.name=fieldname+'_diff'
 
-    outfile = outdir + "/%s_totalmass_diff_%s%s.png"%('_'.join(m.name for m in models),fieldname,'_normalized' if normalize_air_mass else '')
+    outfile = outdir + "/%s_totalmass_diff_%s%s.%s"%('_'.join(m.name for m in models),fieldname,'_normalized' if normalize_air_mass else '', format)
     if not exists(outfile):
       fig = pl.figure(figsize=(15,12))
       ax = pl.subplot(111)

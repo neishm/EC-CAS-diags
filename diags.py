@@ -69,8 +69,10 @@ else:
 for d in sorted(allowed_diagnostics):
   if d not in diagnostics.table:
     parser.error("Unknown diagnostic '%s'.  Use the '--list-diagnostics' option to see all available diagnostics."%d)
-  # Add diagnostic-specific command-line arguments.
-  diagnostics.table[d].add_args(parser)
+
+# Add diagnostic-specific command-line arguments.
+for diagname,diagclass in sorted(diagnostics.table.items()):
+  diagclass.add_args(parser)
 
 if args.configfile is None:
   parser.print_help()

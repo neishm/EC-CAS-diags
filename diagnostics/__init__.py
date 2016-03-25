@@ -12,6 +12,21 @@ class Diagnostic(object):
   def handle_args (args):
     return {}  # Nothing needed by default.
 
+# Diagnostics that deal with static figures (no movies).
+class ImageDiagnostic(Diagnostic):
+  # Control image format through command-line parameter
+  @staticmethod
+  def add_args (parser, handled=[]):
+    super(ImageDiagnostic,ImageDiagnostic).add_args(parser)
+    if len(handled) > 0: return  # Only run once
+    parser.add_argument('--image-format', action='store', choices=('png','eps','svg','ps','pdf'), default='png', help="Specify the format of output images.  Default is png.")
+    handled.append(True)
+  @staticmethod
+  def handle_args (args):
+    kwargs = super(ImageDiagnostic,ImageDiagnostic).handle_args(args)
+    kwargs['format'] = args.image_format
+    return kwargs
+
 # Find all available diagnostics
 table = {}
 def _load_diagnostics ():
