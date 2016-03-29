@@ -254,12 +254,15 @@ class SplitProduct(DataProduct):
 # A special class to represent derived data as a "product"
 class DerivedProduct (DataProduct):
   # Override the __init__ to take a list of variables, not filenames.
-  def __init__ (self, datasets, name=None, title=None, cache=None):
+  def __init__ (self, datasets, source):
     from pygeode.var import Var
     from pygeode.dataset import Dataset
-    self.name = name
-    self.title = title
-    self.cache = cache
+    self.name = source.name
+    self.title = source.title
+    self.cache = source.cache
+    self.color = source.color
+    self.linestyle = source.linestyle
+    self.marker = source.marker
     if isinstance(datasets,Var):
       datasets = [Dataset([datasets])]
     elif hasattr(datasets,'__len__') and isinstance(datasets[0],Var):
