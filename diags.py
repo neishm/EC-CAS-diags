@@ -146,10 +146,10 @@ for section in configparser.sections():
   
   cache = Cache(dir=data_dirs[0]+"/nc_cache", fallback_dirs=fallback_dirs)
 
-  experiment = data_interface(data_dirs, name=data_name, title=title, cache=cache, rescan=args.rescan)
-  experiment.color = configparser.get(section,'color')
-  experiment.linestyle = configparser.get(section,'linestyle')
-  experiment.marker = configparser.get(section,'marker')
+  color = configparser.get(section,'color')
+  linestyle = configparser.get(section,'linestyle')
+  marker = configparser.get(section,'marker')
+  experiment = data_interface(data_dirs, name=data_name, title=title, cache=cache, rescan=args.rescan, color=color, linestyle=linestyle, marker=marker)
 
   datasets.append(experiment)
 
