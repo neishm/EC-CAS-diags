@@ -46,6 +46,7 @@ def make_parser(add_help=True):
   parser.add_argument('--rescan', action='store_true', help="Force the input files to be re-scanned.  Useful if the interfaces have changed since the last time the script was run.")
   parser.add_argument('--list-diagnostics', action='store_true', help="List all the available diagnostics, then exit.")
   parser.add_argument('--diagnostics', action='store', metavar="diagname1,diagname2,...", help="Comma-separated list of diagnostics to run.  By default, all available diagnostics are run.")
+  parser.add_argument('--crash', action='store_true', help="If there's an unexpected error when doing a diagnostic, terminate with a full stack trace.  The default behaviour is to continue on to the next diagnostic, and print a short warning message at the end.")
   return parser
 
 parser = make_parser(add_help=False)
@@ -516,6 +517,8 @@ if len(failures) > 0:
   print "The following diagnostics failed to run:"
   for diag, e in failures:
     print "%s: %s"%(diag,e)
+  if args.crash:
+    raise
 
 history_file.write("Finished: %s\n\n"%datetime.now())
 history_file.close()
