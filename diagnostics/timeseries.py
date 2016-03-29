@@ -18,8 +18,8 @@ if True:
         model_inputs.append(x)
     return model_inputs
 
-from . import ImageDiagnostic
-class Timeseries(ImageDiagnostic):
+from . import TimeVaryingDiagnostic,ImageDiagnostic
+class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Sample data at surface obs locations, and plot the result as a 1D line plot.
   """
@@ -139,12 +139,16 @@ if True:
     return None
 
 
-  def timeseries (obs, models, fieldname, units, outdir, stations=None, format='png'):
+  def timeseries (obs, models, fieldname, units, outdir, stations=None, format='png', date_range=(None,None)):
 
     import numpy as np
     import matplotlib.pyplot as pl
     from os.path import exists
     from ..common import convert, select_surface, to_datetimes
+    from . import TimeVaryingDiagnostic
+
+    obs = TimeVaryingDiagnostic.apply_date_range([obs],date_range)[0]
+    models = TimeVaryingDiagnostic.apply_date_range(models,date_range)
 
     figwidth = 15
 
