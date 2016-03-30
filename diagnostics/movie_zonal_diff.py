@@ -3,8 +3,7 @@ class ZonalMeanDiff(Diagnostic):
   """
   Difference between two zonal mean fields, animated in time.
   """
-  @staticmethod
-  def do_all (inputs, fieldname, units, outdir, **kwargs):
+  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
     from .movie_zonal import find_applicable_models
     zaxis = kwargs.get('zaxis','gph')
     models = find_applicable_models(inputs, fieldname, zaxis)

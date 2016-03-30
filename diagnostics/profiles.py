@@ -23,14 +23,13 @@ class AircraftProfiles(ImageDiagnostic):
   """
   Mean vertical profiles, sampled at obs locations.
   """
-  @staticmethod
-  def do_all (inputs, fieldname, units, outdir, **kwargs):
+  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)
     # If there's no model data to plot, then don't bother plotting!
     if len(model_inputs) == 0: return
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
-      profiles (obs, model_inputs, fieldname, units, outdir, **kwargs)
+      profiles (obs, model_inputs, fieldname, units, outdir, format=self.image_format)
 
 if True:
   from .timeseries import StationSample
@@ -184,7 +183,6 @@ if True:
 
 
   def profiles (obs, models, fieldname, units, outdir, format='png'):
-    print '??', format
 
     import numpy as np
     import matplotlib.pyplot as pl

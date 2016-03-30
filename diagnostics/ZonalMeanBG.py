@@ -7,8 +7,7 @@ class ZonalMeanBG(Diagnostic):
   Samples data at a particular height, bins it into zones, and displays the
   result as a bargraph.
   """
-  @staticmethod
-  def do_all (inputs, fieldname, units, outdir, **kwargs):
+  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(inputs, fieldname, zaxis='gph')
     movie_bargraph(models, fieldname, units, outdir, **kwargs)
 

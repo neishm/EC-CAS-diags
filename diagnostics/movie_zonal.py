@@ -16,8 +16,7 @@ class ZonalMean(Diagnostic):
   """
   Zonal mean (or standard deviation) of a field, animated in time.
   """
-  @staticmethod
-  def do_all (inputs, fieldname, units, outdir, **kwargs):
+  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
     zaxis = kwargs.get('zaxis','gph')
     models = find_applicable_models(inputs, fieldname, zaxis)
     movie_zonal(models, fieldname, units, outdir, **kwargs)

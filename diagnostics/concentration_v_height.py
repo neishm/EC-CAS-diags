@@ -6,10 +6,9 @@ class Concentration_VS_Height(Diagnostic):
   """
   Vertial profiles, averaged by zonal region and animated in time.
   """
-  @staticmethod
-  def do_all (inputs, fieldname, units, outdir, **kwargs):
+  def do_all (self, inputs, fieldname, units, outdir):
     models = find_applicable_models(inputs, fieldname, zaxis='gph')
-    movie_CvH(models, fieldname, units, outdir, **kwargs)
+    movie_CvH(models, fieldname, units, outdir)
 
 from .movie import TiledMovie
 class CvH_Movie(TiledMovie):

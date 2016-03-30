@@ -19,8 +19,7 @@ class XColDiff(Diagnostic):
   Compute the difference of two fields, after taking the avarage column of
   each.
   """
-  @staticmethod
-  def do_all (datasets, fieldname, units, outdir, **kwargs):
+  def do_all (self, datasets, fieldname, units, outdir):
     models = find_applicable_models(datasets, fieldname)
     n = len(models)
     for i in range(n):
@@ -30,7 +29,7 @@ class XColDiff(Diagnostic):
         f1 = models[i].find_best(fieldname)
         f2 = models[j].find_best(fieldname)
         if f1.lat == f2.lat and f1.lon == f2.lon:
-          xcol_diff([models[i],models[j]], fieldname, units, outdir, **kwargs)
+          xcol_diff([models[i],models[j]], fieldname, units, outdir)
 
 
 if True:

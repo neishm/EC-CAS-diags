@@ -6,13 +6,12 @@ class TotalmassDiff(ImageDiagnostic):
   """
   Plot the difference in mass for the same field between two datasets.
   """
-  @staticmethod
-  def do_all (datasets, fieldname, units, outdir, **kwargs):
+  def do_all (self, datasets, fieldname, units, outdir, **kwargs):
     models = find_applicable_models(datasets, fieldname)
     n = len(models)
     for i in range(n):
       for j in range(i+1,n):
-        totalmass_diff([models[i],models[j]], fieldname, units, outdir, **kwargs)
+        totalmass_diff([models[i],models[j]], fieldname, units, outdir, format=self.image_format, **kwargs)
 
 
 if True:

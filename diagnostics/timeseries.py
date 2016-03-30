@@ -30,20 +30,19 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic):
     group = parser.add_argument_group('options for timeseries diagnostics')
     group.add_argument('--stations', action='store', metavar='StationA,StationB,...', help='Comma-separated list of stations to look at.  Only part of the station name is needed.  By default, all available stations are used.')
     handled.append(True)
-  @staticmethod
-  def handle_args(args):
-    kwargs = super(Timeseries,Timeseries).handle_args(args)
-    if args.stations is not None:
-      kwargs['stations'] = args.stations.split(',')
-    return kwargs
-  @staticmethod
-  def do_all (inputs, fieldname, units, outdir, **kwargs):
+  def __init__(self, stations=None, **kwargs):
+    super(Timeseries,self).__init__(**kwargs)
+    if stations is not None:
+      self.stations = stations.split(',')
+    else:
+      self.stations = None
+  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
     model_inputs = find_applicable_models(inputs, fieldname)
     # If there's no model data to plot, then don't bother plotting!
     if len(model_inputs) == 0: return
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
-      timeseries (obs, model_inputs, fieldname, units, outdir, **kwargs)
+      timeseries (obs, model_inputs, fieldname, units, outdir, stations=self.stations, format=self.image_format, date_range=self.date_range)
 
 
 if True:

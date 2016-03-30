@@ -6,11 +6,9 @@ class Diagnostic(object):
   def add_args (parser):
     return  # Nothing needed by default.
 
-  # Method to collect the above command-line arguments into key/value pairs.
-  # The output from this will be passed on to the diagnostic.
-  @staticmethod
-  def handle_args (args):
-    return {}  # Nothing needed by default.
+  # Attach the command-line arguments to this object for later use.
+  def __init__ (self, **kwargs):
+    return  # Don't need any further arguments at this level of abstraction.
 
 # Diagnostics that deal with static figures (no movies).
 class ImageDiagnostic(Diagnostic):
@@ -21,11 +19,9 @@ class ImageDiagnostic(Diagnostic):
     if len(handled) > 0: return  # Only run once
     parser.add_argument('--image-format', action='store', choices=('png','eps','svg','ps','pdf'), default='png', help="Specify the format of output images.  Default is png.")
     handled.append(True)
-  @staticmethod
-  def handle_args (args):
-    kwargs = super(ImageDiagnostic,ImageDiagnostic).handle_args(args)
-    kwargs['format'] = args.image_format
-    return kwargs
+  def __init__ (self,image_format='png',**kwargs):
+    super(ImageDiagnostic,self).__init__(**kwargs)
+    self.image_format = image_format
 
 # Diagnostics that deal with a time range (pretty much all of them!)
 class TimeVaryingDiagnostic(Diagnostic):
@@ -43,19 +39,17 @@ class TimeVaryingDiagnostic(Diagnostic):
     group.add_argument('--year', action='store', type=int, help="Limit the diagnostics to a particular year.")
     group.add_argument('--hour0-only', action='store_true', help="Sample the data once per day, to speed up the diagnostics (useful when sub-daily scales don't matter anyway).")
     handled.append(True)
-  @classmethod
-  def handle_args(cls,args):
+  def __init__(self,start_date=None,end_date=None,year=None,**kwargs):
     from datetime import datetime, timedelta
-    kwargs = super(TimeVaryingDiagnostic,cls).handle_args(args)
+    super(TimeVaryingDiagnostic,self).__init__(**kwargs)
     # Parse start and end dates
-    start = args.start_date
+    start = start_date
     if start is not None:
       start = datetime.strptime(start, cls.date_format)
-    end = args.end_date
+    end = end_date
     if end is not None:
       end = datetime.strptime(end, cls.date_format)
     # Apply year filter
-    year = args.year
     if year is not None:
       if start is not None:
         start = start.replace(year=year)
@@ -65,8 +59,7 @@ class TimeVaryingDiagnostic(Diagnostic):
         end = end.replace(year=year)
       else:
         end = datetime(year=year+1,month=1,day=1) - timedelta(days=1)
-    kwargs['date_range'] = (start,end)
-    return kwargs
+    self.date_range = (start,end)
   # Limit the time range for the data.
   @staticmethod
   def apply_date_range(models, date_range):
