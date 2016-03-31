@@ -10,6 +10,10 @@ class Diagnostic(object):
   def __init__ (self, **kwargs):
     return  # Don't need any further arguments at this level of abstraction.
 
+  # Filter all input datasets to satisfy any conditions set for this diagnostic.
+  def filter_inputs (self, inputs):
+    return inputs  # Nothing to filter at this level of abstraction.
+
 # Diagnostics that deal with static figures (no movies).
 class ImageDiagnostic(Diagnostic):
   # Control image format through command-line parameter
@@ -45,10 +49,10 @@ class TimeVaryingDiagnostic(Diagnostic):
     # Parse start and end dates
     start = start_date
     if start is not None:
-      start = datetime.strptime(start, cls.date_format)
+      start = datetime.strptime(start, self.date_format)
     end = end_date
     if end is not None:
-      end = datetime.strptime(end, cls.date_format)
+      end = datetime.strptime(end, self.date_format)
     # Apply year filter
     if year is not None:
       if start is not None:
@@ -61,9 +65,10 @@ class TimeVaryingDiagnostic(Diagnostic):
         end = datetime(year=year+1,month=1,day=1) - timedelta(days=1)
     self.date_range = (start,end)
   # Limit the time range for the data.
-  @staticmethod
-  def apply_date_range(models, date_range):
+  def filter_inputs(self, models):
     from ..interfaces import DerivedProduct
+    models = super(TimeVaryingDiagnostic,self).filter_inputs(models)
+    date_range = self.date_range
     out_models = []
     for m in models:
       out_datasets = []

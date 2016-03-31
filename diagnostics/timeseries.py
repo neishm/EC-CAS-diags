@@ -37,12 +37,15 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic):
     else:
       self.stations = None
   def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+    # Apply any pre-filtering to the input data.
+    inputs = self.filter_inputs(inputs)
+    # Find all applicable model data and obs data to use in the diagnostic.
     model_inputs = find_applicable_models(inputs, fieldname)
     # If there's no model data to plot, then don't bother plotting!
     if len(model_inputs) == 0: return
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
-      timeseries (obs, model_inputs, fieldname, units, outdir, stations=self.stations, format=self.image_format, date_range=self.date_range)
+      timeseries (obs, model_inputs, fieldname, units, outdir, stations=self.stations, format=self.image_format)
 
 
 if True:
@@ -138,16 +141,13 @@ if True:
     return None
 
 
-  def timeseries (obs, models, fieldname, units, outdir, stations=None, format='png', date_range=(None,None)):
+  def timeseries (obs, models, fieldname, units, outdir, stations=None, format='png'):
 
     import numpy as np
     import matplotlib.pyplot as pl
     from os.path import exists
     from ..common import convert, select_surface, to_datetimes
     from . import TimeVaryingDiagnostic
-
-    obs = TimeVaryingDiagnostic.apply_date_range([obs],date_range)[0]
-    models = TimeVaryingDiagnostic.apply_date_range(models,date_range)
 
     figwidth = 15
 
