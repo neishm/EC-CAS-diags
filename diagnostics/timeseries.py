@@ -45,7 +45,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic):
     if len(model_inputs) == 0: return
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
-      timeseries (obs, model_inputs, fieldname, units, outdir, stations=self.stations, format=self.image_format)
+      timeseries (obs, model_inputs, fieldname, units, outdir, stations=self.stations, format=self.image_format, suffix=self.suffix)
 
 
 if True:
@@ -141,7 +141,7 @@ if True:
     return None
 
 
-  def timeseries (obs, models, fieldname, units, outdir, stations=None, format='png'):
+  def timeseries (obs, models, fieldname, units, outdir, stations=None, format='png', suffix=""):
 
     import numpy as np
     import matplotlib.pyplot as pl
@@ -281,7 +281,7 @@ if True:
           fig_id = ','.join(stations_on_figure)
         else:
           fig_id = '%02d'%(i/n+1)
-        outfile = "%s/%s_timeseries_%s_%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,fig_id,format)
+        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,fig_id,suffix,format)
         if not exists(outfile):
           fig.savefig(outfile)
 

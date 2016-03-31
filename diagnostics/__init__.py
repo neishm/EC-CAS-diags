@@ -14,6 +14,9 @@ class Diagnostic(object):
   def filter_inputs (self, inputs):
     return inputs  # Nothing to filter at this level of abstraction.
 
+  # Suffix to append to any output files
+  suffix = ""
+
 # Diagnostics that deal with static figures (no movies).
 class ImageDiagnostic(Diagnostic):
   # Control image format through command-line parameter
@@ -64,6 +67,14 @@ class TimeVaryingDiagnostic(Diagnostic):
       else:
         end = datetime(year=year+1,month=1,day=1) - timedelta(days=1)
     self.date_range = (start,end)
+    suffix = ""
+    if start is not None:
+      suffix = suffix + start.strftime("%Y%m%d-")
+    if end is not None:
+      if not suffix.endswith("-"): suffix = suffix+"-"
+      suffix = suffix + end.strftime("%Y%m%d")
+    if len(suffix) > 0: self.suffix = self.suffix + "_" + suffix
+
   # Limit the time range for the data.
   def filter_inputs(self, models):
     from ..interfaces import DerivedProduct
