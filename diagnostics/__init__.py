@@ -41,19 +41,17 @@ class TimeVaryingDiagnostic(Diagnostic):
     if len(handled) > 0: return  # Only run once
     group = parser.add_argument_group('options for specifying the date range')
     date_format = datetime(year=1987,month=11,day=22).strftime(cls.date_format).replace('1987','yyyy').replace('87','yy').replace('11','mm').replace('22','dd')
-    group.add_argument('--start-date', action='store', help="Specify a start date for the diagnostics.  Format: %s."%date_format)
-    group.add_argument('--end-date', action='store', help="Specify an end date for the diagnostics.  Format: %s."%date_format)
+    group.add_argument('--start', action='store', metavar=date_format.upper(), help="Specify a start date for the diagnostics.")
+    group.add_argument('--end', action='store', metavar=date_format.upper(), help="Specify an end date for the diagnostics.")
     group.add_argument('--year', action='store', type=int, help="Limit the diagnostics to a particular year.")
     group.add_argument('--hour0-only', action='store_true', help="Sample the data once per day, to speed up the diagnostics (useful when sub-daily scales don't matter anyway).")
     handled.append(True)
-  def __init__(self,hour0_only,start_date=None,end_date=None,year=None,**kwargs):
+  def __init__(self,hour0_only,start=None,end=None,year=None,**kwargs):
     from datetime import datetime, timedelta
     super(TimeVaryingDiagnostic,self).__init__(**kwargs)
     # Parse start and end dates
-    start = start_date
     if start is not None:
       start = datetime.strptime(start, self.date_format)
-    end = end_date
     if end is not None:
       end = datetime.strptime(end, self.date_format)
     # Apply year filter
