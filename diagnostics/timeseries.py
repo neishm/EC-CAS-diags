@@ -18,8 +18,8 @@ if True:
         model_inputs.append(x)
     return model_inputs
 
-from . import ImageDiagnostic
-class Timeseries(ImageDiagnostic):
+from . import TimeVaryingDiagnostic,ImageDiagnostic
+class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Sample data at surface obs locations, and plot the result as a 1D line plot.
   """
@@ -30,20 +30,22 @@ class Timeseries(ImageDiagnostic):
     group = parser.add_argument_group('options for timeseries diagnostics')
     group.add_argument('--stations', action='store', metavar='StationA,StationB,...', help='Comma-separated list of stations to look at.  Only part of the station name is needed.  By default, all available stations are used.')
     handled.append(True)
-  @staticmethod
-  def handle_args(args):
-    kwargs = super(Timeseries,Timeseries).handle_args(args)
-    if args.stations is not None:
-      kwargs['stations'] = args.stations.split(',')
-    return kwargs
-  @staticmethod
-  def do_all (inputs, fieldname, units, outdir, **kwargs):
+  def __init__(self, stations=None, **kwargs):
+    super(Timeseries,self).__init__(**kwargs)
+    if stations is not None:
+      self.stations = stations.split(',')
+    else:
+      self.stations = None
+  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+    # Apply any pre-filtering to the input data.
+    inputs = self.filter_inputs(inputs)
+    # Find all applicable model data and obs data to use in the diagnostic.
     model_inputs = find_applicable_models(inputs, fieldname)
     # If there's no model data to plot, then don't bother plotting!
     if len(model_inputs) == 0: return
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
-      timeseries (obs, model_inputs, fieldname, units, outdir, **kwargs)
+      timeseries (obs, model_inputs, fieldname, units, outdir, stations=self.stations, format=self.image_format, suffix=self.suffix)
 
 
 if True:
@@ -139,12 +141,13 @@ if True:
     return None
 
 
-  def timeseries (obs, models, fieldname, units, outdir, stations=None, format='png'):
+  def timeseries (obs, models, fieldname, units, outdir, stations=None, format='png', suffix=""):
 
     import numpy as np
     import matplotlib.pyplot as pl
     from os.path import exists
     from ..common import convert, select_surface, to_datetimes
+    from . import TimeVaryingDiagnostic
 
     figwidth = 15
 
@@ -278,7 +281,7 @@ if True:
           fig_id = ','.join(stations_on_figure)
         else:
           fig_id = '%02d'%(i/n+1)
-        outfile = "%s/%s_timeseries_%s_%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,fig_id,format)
+        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,fig_id,suffix,format)
         if not exists(outfile):
           fig.savefig(outfile)
 

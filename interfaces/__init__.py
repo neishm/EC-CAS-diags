@@ -212,13 +212,16 @@ class DataProduct (DataInterface):
 
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
-  def __init__ (self, files, name=None, title=None, cache=None, rescan=False):
+  def __init__ (self, files, name, title='untitled', cache=None, rescan=False, color='black', linestyle='-', marker=None):
     from .data_scanner import from_files
     from os.path import exists
     from os import remove
     self.name = name
     self.title = title
     self.cache = cache
+    self.color = color
+    self.linestyle = linestyle
+    self.marker = marker
     if cache is not None:
       manifest = cache.full_path(name+"_manifest", writeable=True)
       if exists(manifest) and rescan: remove(manifest)
@@ -251,12 +254,15 @@ class SplitProduct(DataProduct):
 # A special class to represent derived data as a "product"
 class DerivedProduct (DataProduct):
   # Override the __init__ to take a list of variables, not filenames.
-  def __init__ (self, datasets, name=None, title=None, cache=None):
+  def __init__ (self, datasets, source):
     from pygeode.var import Var
     from pygeode.dataset import Dataset
-    self.name = name
-    self.title = title
-    self.cache = cache
+    self.name = source.name
+    self.title = source.title
+    self.cache = source.cache
+    self.color = source.color
+    self.linestyle = source.linestyle
+    self.marker = source.marker
     if isinstance(datasets,Var):
       datasets = [Dataset([datasets])]
     elif hasattr(datasets,'__len__') and isinstance(datasets[0],Var):

@@ -15,10 +15,9 @@ def quick_calc(f):
         out_vars = list(f(in_dataset))
       except KeyError: continue
       if len(out_vars) == 0: continue
-      prefix = model.name+'_'+f.__name__
       out_datasets.append(Dataset(out_vars))
-    out_product = DerivedProduct(out_datasets, name=prefix, title=model.title, cache=model.cache)
-    out_product.color = model.color
+    out_product = DerivedProduct(out_datasets, source=model)
+    out_product.name = out_product.name+'_'+f.__name__
     return out_product
   new_func.__name__ = f.__name__
 

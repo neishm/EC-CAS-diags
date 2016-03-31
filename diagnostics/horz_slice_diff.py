@@ -11,9 +11,11 @@ class HorzSliceDiff(Diagnostic):
   """
   Difference between two data products, sampled at a particular vertical level.
   """
-  @staticmethod
-  def do_all (datasets, fieldname, units, outdir, **kwargs):
-    models = find_applicable_models(datasets, fieldname)
+  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+    # Apply any pre-filtering to the input data.
+    inputs = self.filter_inputs(inputs)
+
+    models = find_applicable_models(inputs, fieldname)
     n = len(models)
     for i in range(n):
       if not models[i].have(fieldname): continue

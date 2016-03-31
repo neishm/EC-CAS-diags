@@ -30,14 +30,16 @@ class DiurnalCycle(ImageDiagnostic):
   """
   Mean diurnal cycle, sampled at obs locations.
   """
-  @staticmethod
-  def do_all (inputs, fieldname, units, outdir, **kwargs):
+  def do_all (self, inputs, fieldname, units, outdir):
+    # Apply any pre-filtering to the input data.
+    inputs = self.filter_inputs(inputs)
+
     model_inputs = find_applicable_models(inputs, fieldname)
     # If there's no model data to plot, then don't bother plotting!
     if len(model_inputs) == 0: return
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
-      diurnal_cycle (obs, model_inputs, fieldname, units, outdir, **kwargs)
+      diurnal_cycle (obs, model_inputs, fieldname, units, outdir, format=self.image_format)
 
 if True:
   # Compute a diurnal mean.

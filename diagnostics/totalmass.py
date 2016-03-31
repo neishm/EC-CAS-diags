@@ -21,10 +21,12 @@ class Totalmass(ImageDiagnostic):
   Compute the total mass budget for a field.  Show the time variation as a
   1D line plot.
   """
-  @staticmethod
-  def do_all (datasets, fieldname, units, outdir, **kwargs):
-    models = find_applicable_models(datasets, fieldname)
-    totalmass (models, fieldname, units, outdir, **kwargs)
+  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+    # Apply any pre-filtering to the input data.
+    inputs = self.filter_inputs(inputs)
+
+    models = find_applicable_models(inputs, fieldname)
+    totalmass (models, fieldname, units, outdir, format=self.image_format, **kwargs)
 
 
 if True:
