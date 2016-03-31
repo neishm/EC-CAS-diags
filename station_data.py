@@ -34,6 +34,7 @@ class Station (Axis):
         if not self.has_alias(key): continue
         return indices
         continue
+      if not self.has_alias(key): continue
       station = kwargs.pop(key)
       if station not in self.values:
         raise IndexError("station '%s' not found in Station axis."%station)
