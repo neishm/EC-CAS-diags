@@ -16,8 +16,11 @@ class FluxDiagnostic(Diagnostic):
   Various movies of input fluxes, plotted either on a map or binned into
   regions.
   """
-  def do_all (self, datasets, fieldname, units, outdir, **kwargs):
-    models = find_applicable_models(datasets, fieldname)
+  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+    # Apply any pre-filtering to the input data.
+    inputs = self.filter_inputs(inputs)
+
+    models = find_applicable_models(inputs, fieldname)
     movie_flux (models, fieldname, units, outdir, **kwargs)
 
 if True:

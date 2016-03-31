@@ -19,8 +19,11 @@ class XColDiff(Diagnostic):
   Compute the difference of two fields, after taking the avarage column of
   each.
   """
-  def do_all (self, datasets, fieldname, units, outdir):
-    models = find_applicable_models(datasets, fieldname)
+  def do_all (self, inputs, fieldname, units, outdir):
+    # Apply any pre-filtering to the input data.
+    inputs = self.filter_inputs(inputs)
+
+    models = find_applicable_models(inputs, fieldname)
     n = len(models)
     for i in range(n):
       if not models[i].have(fieldname): continue

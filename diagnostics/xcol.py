@@ -22,8 +22,11 @@ class XCol(Diagnostic):
   Show the average column of a field, animated in time.  Note that no averaging
   kernel is used in the average, it is simply weighted by air mass.
   """
-  def do_all (self, datasets, fieldname, units, outdir):
-    models = find_applicable_models(datasets, fieldname)
+  def do_all (self, inputs, fieldname, units, outdir):
+    # Apply any pre-filtering to the input data.
+    inputs = self.filter_inputs(inputs)
+
+    models = find_applicable_models(inputs, fieldname)
     xcol (models, fieldname, units, outdir)
 
 if True:

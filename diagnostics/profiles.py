@@ -24,6 +24,9 @@ class AircraftProfiles(ImageDiagnostic):
   Mean vertical profiles, sampled at obs locations.
   """
   def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+    # Apply any pre-filtering to the input data.
+    inputs = self.filter_inputs(inputs)
+
     model_inputs = find_applicable_models(inputs, fieldname)
     # If there's no model data to plot, then don't bother plotting!
     if len(model_inputs) == 0: return

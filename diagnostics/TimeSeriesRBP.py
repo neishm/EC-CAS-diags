@@ -19,6 +19,9 @@ class TimeseriesRBP(ImageDiagnostic):
   result.
   """
   def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+    # Apply any pre-filtering to the input data.
+    inputs = self.filter_inputs(inputs)
+
     model_inputs = find_applicable_models(inputs, fieldname)
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:

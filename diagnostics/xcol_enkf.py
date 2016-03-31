@@ -22,8 +22,11 @@ class XColEnKF(Diagnostic):
   Plot the column average of a field, alongside the column average of the
   ensemble spread.  Only useful for ensemble runs.
   """
-  def do_all (self, datasets, fieldname, units, outdir):
-    models = find_applicable_models(datasets, fieldname)
+  def do_all (self, inputs, fieldname, units, outdir):
+    # Apply any pre-filtering to the input data.
+    inputs = self.filter_inputs(inputs)
+
+    models = find_applicable_models(inputs, fieldname)
     xcol_enkf (models, fieldname, units, outdir)
 
 
