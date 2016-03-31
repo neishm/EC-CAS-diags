@@ -46,7 +46,7 @@ class TimeVaryingDiagnostic(Diagnostic):
     group.add_argument('--year', action='store', type=int, help="Limit the diagnostics to a particular year.")
     group.add_argument('--hour0-only', action='store_true', help="Sample the data once per day, to speed up the diagnostics (useful when sub-daily scales don't matter anyway).")
     handled.append(True)
-  def __init__(self,start_date=None,end_date=None,year=None,**kwargs):
+  def __init__(self,hour0_only,start_date=None,end_date=None,year=None,**kwargs):
     from datetime import datetime, timedelta
     super(TimeVaryingDiagnostic,self).__init__(**kwargs)
     # Parse start and end dates
@@ -69,15 +69,20 @@ class TimeVaryingDiagnostic(Diagnostic):
     self.date_range = (start,end)
     suffix = ""
     if start is not None:
-      suffix = suffix + start.strftime("%Y%m%d-")
+      suffix = suffix + "_" + start.strftime("%Y%m%d-")
     if end is not None:
-      if not suffix.endswith("-"): suffix = suffix+"-"
+      if len(suffix) == 0: suffix = suffix + "_-"
       suffix = suffix + end.strftime("%Y%m%d")
-    if len(suffix) > 0: self.suffix = self.suffix + "_" + suffix
+    self.hour0_only = hour0_only
+    if hour0_only is True:
+      suffix = suffix + "_hour0-only"
+    self.suffix = self.suffix + suffix
 
   # Limit the time range for the data.
   def filter_inputs(self, models):
     from ..interfaces import DerivedProduct
+    from pygeode.timeutils import reltime
+    from math import floor
     models = super(TimeVaryingDiagnostic,self).filter_inputs(models)
     date_range = self.date_range
     out_models = []
@@ -95,8 +100,17 @@ class TimeVaryingDiagnostic(Diagnostic):
         else:
           end = d.time.str_as_val(key=None,s=end.strftime("%d %b %Y"))
         d = d(time=(start,end))
+        if self.hour0_only is True:
+          hour_float = min(set(reltime(d.time,units='hours')%24))
+          hour = int(floor(hour_float))
+          minute = int((hour_float-hour)*60)
+          d = d(hour=hour,minute=minute)
         out_datasets.append(d)
       m = DerivedProduct(out_datasets, source=m)
+      # if we select hour-0 data, then modify the canonical name of the data.
+      # We don't want to collide with the unfiltered (all-hours) cache file,
+      # so this uniquifies the cache filename.
+      if self.hour0_only is True: m.name = m.name + '_hour0-only'
       out_models.append(m)
     return out_models
 # Find all available diagnostics
