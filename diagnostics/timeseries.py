@@ -50,15 +50,6 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic):
 
 if True:
 
-  # This method computes the surface values of a model dataset
-  def get_sfc_data (model, fieldname):
-    from ..common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps
-    field = model.find_best(fieldname, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
-    field = select_surface(field)
-    # Cache the data for faster subsequent access
-    field = model.cache.write(field, prefix=model.name+'_sfc_'+fieldname)
-    return field
-
   # Sample a model field at station locations
   from pygeode.var import Var
   class StationSample(Var):
