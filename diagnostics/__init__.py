@@ -46,7 +46,7 @@ class TimeVaryingDiagnostic(Diagnostic):
     group.add_argument('--year', action='store', type=int, help="Limit the diagnostics to a particular year.")
     group.add_argument('--hour0-only', action='store_true', help="Sample the data once per day, to speed up the diagnostics (useful when sub-daily scales don't matter anyway).")
     handled.append(True)
-  def __init__(self,hour0_only,start=None,end=None,year=None,**kwargs):
+  def __init__(self,hour0_only=False,start=None,end=None,year=None,**kwargs):
     from datetime import datetime, timedelta
     super(TimeVaryingDiagnostic,self).__init__(**kwargs)
     # Parse start and end dates
@@ -82,6 +82,9 @@ class TimeVaryingDiagnostic(Diagnostic):
     from pygeode.timeutils import reltime
     from math import floor
     models = super(TimeVaryingDiagnostic,self).filter_inputs(models)
+    # Don't need to do anything if no time modifiers are used.
+    if self.date_range == (None,None) and self.hour0_only is False:
+      return models
     date_range = self.date_range
     out_models = []
     for m in models:
