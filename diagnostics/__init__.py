@@ -18,6 +18,7 @@ class Diagnostic(object):
   suffix = ""
 
 # Diagnostics that deal with static figures (no movies).
+# Provides command-line arguments for controlling image output.
 class ImageDiagnostic(Diagnostic):
   # Control image format through command-line parameter
   @staticmethod
@@ -30,7 +31,9 @@ class ImageDiagnostic(Diagnostic):
     super(ImageDiagnostic,self).__init__(**kwargs)
     self.image_format = image_format
 
-# Diagnostics that deal with a time range (pretty much all of them!)
+# Diagnostics that deal with a time range (pretty much all of them!).
+# Provides command-line arguments for pre-filtering the time range & frequency
+# of the inputs.
 class TimeVaryingDiagnostic(Diagnostic):
   date_format = '%Y/%m/%d'
   # Select the time range though command-line parameters.
