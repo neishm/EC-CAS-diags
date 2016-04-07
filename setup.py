@@ -5,7 +5,7 @@ regrid_vert = Extension ('eccas_diags.regrid_vert', sources=['regrid_vert.f90'])
 setup (
   name="eccas-diags",
   version="0-20150831",
-  packages=["eccas_diags","eccas_diags.interfaces","eccas_diags.diagnostics"],
+  packages=["eccas_diags","eccas_diags.interfaces","eccas_diags.diagnostics","eccas_diags.calculations"],
   ext_modules=[regrid_horz, regrid_vert],
 )
 
