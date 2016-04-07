@@ -22,10 +22,8 @@ class Totalmass(ImageDiagnostic):
   1D line plot.
   """
   def do_all (self, inputs, fieldname, units, outdir, **kwargs):
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
-
     models = find_applicable_models(inputs, fieldname)
+    models = self.filter_inputs(models)
     totalmass (models, fieldname, units, outdir, format=self.image_format, **kwargs)
 
 

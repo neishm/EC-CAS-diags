@@ -8,13 +8,15 @@ class TimeseriesDiff(ImageDiagnostic):
   Difference between two datasets, sampled at obs locations.
   """
   def do_all (self, inputs, fieldname, units, outdir, **kwargs):
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
-
     model_inputs = find_applicable_models(inputs, fieldname)
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
-      timeseries (obs, model_inputs, fieldname, units, outdir, format=self.image_format, **kwargs)
+      # Filter the input data.
+      all_inputs = [obs] + list(model_inputs)
+      all_inputs = self.filter_inputs(all_inputs)
+      obs, models = all_inputs[0], all_inputs[1:]
+      # Do the diagnostic.
+      timeseries (obs, models, fieldname, units, outdir, format=self.image_format, **kwargs)
 
 if True:
 

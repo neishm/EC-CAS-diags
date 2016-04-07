@@ -23,10 +23,8 @@ class XCol(Diagnostic):
   kernel is used in the average, it is simply weighted by air mass.
   """
   def do_all (self, inputs, fieldname, units, outdir):
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
-
     models = find_applicable_models(inputs, fieldname)
+    models = self.filter_inputs(models)
     xcol (models, fieldname, units, outdir)
 
 if True:

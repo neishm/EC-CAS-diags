@@ -5,9 +5,6 @@ class ZonalMeanDiff(Diagnostic):
   """
   def do_all (self, inputs, fieldname, units, outdir, **kwargs):
     from .movie_zonal import find_applicable_models
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
-
     zaxis = kwargs.get('zaxis','gph')
     models = find_applicable_models(inputs, fieldname, zaxis)
     n = len(models)
@@ -18,7 +15,8 @@ class ZonalMeanDiff(Diagnostic):
         f1 = models[i].find_best(fieldname)
         f2 = models[j].find_best(fieldname)
         if f1.lat == f2.lat:
-          movie_zonal_diff([models[i],models[j]], fieldname, units, outdir, **kwargs)
+          model1, model2 = self.filter_inputs([models[i],models[j]])
+          movie_zonal_diff([model1,model2], fieldname, units, outdir, **kwargs)
 
 if True:
   def movie_zonal_diff (models, fieldname, units, outdir, zaxis='gph', typestat='mean'):

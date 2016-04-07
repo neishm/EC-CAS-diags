@@ -7,10 +7,8 @@ class Concentration_VS_Height(Diagnostic):
   Vertial profiles, averaged by zonal region and animated in time.
   """
   def do_all (self, inputs, fieldname, units, outdir):
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
-
     models = find_applicable_models(inputs, fieldname, zaxis='gph')
+    models = self.filter_inputs(models)
     movie_CvH(models, fieldname, units, outdir)
 
 from .movie import TiledMovie

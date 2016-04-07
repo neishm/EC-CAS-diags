@@ -20,9 +20,6 @@ class XColDiff(Diagnostic):
   each.
   """
   def do_all (self, inputs, fieldname, units, outdir):
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
-
     models = find_applicable_models(inputs, fieldname)
     n = len(models)
     for i in range(n):
@@ -32,7 +29,8 @@ class XColDiff(Diagnostic):
         f1 = models[i].find_best(fieldname)
         f2 = models[j].find_best(fieldname)
         if f1.lat == f2.lat and f1.lon == f2.lon:
-          xcol_diff([models[i],models[j]], fieldname, units, outdir)
+          model1, model2 = self.filter_inputs([models[i],models[j]])
+          xcol_diff([model1,model2], fieldname, units, outdir)
 
 
 if True:

@@ -23,10 +23,8 @@ class XColEnKF(Diagnostic):
   ensemble spread.  Only useful for ensemble runs.
   """
   def do_all (self, inputs, fieldname, units, outdir):
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
-
     models = find_applicable_models(inputs, fieldname)
+    models = self.filter_inputs(models)
     xcol_enkf (models, fieldname, units, outdir)
 
 

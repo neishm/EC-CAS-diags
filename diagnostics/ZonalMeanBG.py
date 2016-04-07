@@ -8,10 +8,8 @@ class ZonalMeanBG(Diagnostic):
   result as a bargraph.
   """
   def do_all (self, inputs, fieldname, units, outdir, **kwargs):
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
-
     models = find_applicable_models(inputs, fieldname, zaxis='gph')
+    models = self.filter_inputs(models)
     movie_bargraph(models, fieldname, units, outdir, **kwargs)
 
 
