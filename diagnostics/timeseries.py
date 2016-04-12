@@ -18,34 +18,12 @@ if True:
         model_inputs.append(x)
     return model_inputs
 
-from . import TimeVaryingDiagnostic,ImageDiagnostic
-class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic):
+from . import TimeVaryingDiagnostic, ImageDiagnostic
+from .station import StationComparison
+class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
   """
   Sample data at surface obs locations, and plot the result as a 1D line plot.
   """
-  @staticmethod
-  def add_args (parser, handled=[]):
-    super(Timeseries,Timeseries).add_args(parser)
-    if len(handled) > 0: return  # Only run once
-    group = parser.add_argument_group('options for timeseries diagnostics')
-    group.add_argument('--stations', action='store', metavar='StationA,StationB,...', help='Comma-separated list of stations to look at.  Only part of the station name is needed.  By default, all available stations are used.')
-    handled.append(True)
-  def __init__(self, stations=None, **kwargs):
-    super(Timeseries,self).__init__(**kwargs)
-    if stations is not None:
-      self.stations = stations.split(',')
-    else:
-      self.stations = None
-  def _input_combos (self, inputs):
-    fieldname = self.fieldname
-    # Find all applicable model data and obs data to use in the diagnostic.
-    model_inputs = find_applicable_models(inputs, fieldname)
-    # If there's no model data to plot, then don't bother plotting!
-    if len(model_inputs) == 0: return
-    obs_inputs = find_applicable_obs(inputs, fieldname)
-    for obs in obs_inputs:
-      yield [obs] + list(model_inputs)
-
   def do (self, inputs):
     # Do the diagnostic.
     timeseries (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, stations=self.stations, format=self.image_format, suffix=self.suffix)
@@ -89,8 +67,7 @@ if True:
     import numpy as np
     import matplotlib.pyplot as pl
     from os.path import exists
-    from ..common import convert, select_surface, to_datetimes
-    from . import TimeVaryingDiagnostic
+    from ..common import convert, select_surface, closeness_to_surface, number_of_timesteps, find_and_convert, to_datetimes
 
     figwidth = 15
 
@@ -104,10 +81,17 @@ if True:
     model_data = []
     model_spread = []
     for m in models:
-      field = sample_model_at_obs(m,obs,fieldname,units)
+      field = find_and_convert(m, fieldname, units, maximize = (closeness_to_surface,number_of_timesteps))
+      field = select_surface(field)
+      # Cache the data for faster subsequent access.
+      # Disable time splitting for the cache file, since open_multi doesn't work
+      # very well with the encoded station data.
+      field = m.cache.write(field, prefix=m.name+'_at_%s_%s'%(obs.name,field.name), split_time=False)
       model_data.append(field)
       try:
-        field = sample_model_at_obs(m,obs,fieldname+'_ensemblespread',units)
+        field = find_and_convert(m, fieldname+'_ensemblespread', units, maximize = (closeness_to_surface,number_of_timesteps))
+        field = select_surface(field)
+        field = m.cache.write(field, prefix=m.name+'_at_%s_%s'%(obs.name,field.name), split_time=False)
         model_spread.append(field)
       except KeyError:  # No ensemble spread for this model data
         model_spread.append(None)
@@ -148,8 +132,6 @@ if True:
     # Plot 4 timeseries per figure
     n = 4
     locations = list(data[0].station)
-    if stations is not None:
-      locations = [l for s in stations for l in locations if lookup_station(l,[s]) is not None]
     for i,location in enumerate(locations):
 
       if i%n == 0:
