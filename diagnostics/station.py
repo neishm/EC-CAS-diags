@@ -86,6 +86,9 @@ class StationComparison(Diagnostic):
     return None
 
 # Sample a model field at station locations
+#TODO: drop locations that aren't within the model grid.
+#TODO: handle non-cartesian coordinates.
+#TODO: handle timeseries data (data already output at particular lat/lon).
 from pygeode.var import Var
 class StationSample(Var):
   def __init__ (self, model_data, station_axis):

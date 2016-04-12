@@ -37,7 +37,7 @@ class AircraftProfiles(ImageDiagnostic):
       profiles (obs, models, fieldname, units, outdir, format=self.image_format)
 
 if True:
-  from .timeseries import StationSample
+  from .station import StationSample
 
   # Find all unique observation fields
   # Discards identical fields from superset domains.

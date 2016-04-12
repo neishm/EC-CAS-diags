@@ -53,63 +53,12 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic):
 
 if True:
 
-  # Sample a model field at station locations
-  from pygeode.var import Var
-  class StationSample(Var):
-    def __init__ (self, model_data, station_axis):
-      from pygeode.var import Var, copy_meta
-      import numpy as np
-      # Determine which model lat/lon indices to sample at
-      lat_indices = []
-      lon_indices = []
-      for lat in station_axis.lat:
-        lat_indices.append(np.argmin(abs(model_data.lat.values-lat)))
-      for lon in station_axis.lon:
-        lon_indices.append(np.argmin(abs(model_data.lon.values%360-lon%360)))
-      self.lat_indices = lat_indices
-      self.lon_indices = lon_indices
-      # Replace lat/lon axes with the station axis
-      lat_iaxis = model_data.whichaxis('lat')
-      lon_iaxis = model_data.whichaxis('lon')
-      axes = list(model_data.axes)
-      axes[lat_iaxis] = station_axis
-      axes = axes[:lon_iaxis]+axes[lon_iaxis+1:]
-      Var.__init__(self, axes, dtype=model_data.dtype)
-      copy_meta(model_data,self)
-      self.model_data = model_data
-      self.station_axis = station_axis
-      self.station_iaxis = self.whichaxis('station')
-      self.lat_iaxis = lat_iaxis
-      self.lon_iaxis = lon_iaxis
-    def getview (self, view, pbar):
-      import numpy as np
-      from pygeode.tools import loopover
-      out = np.empty(view.shape, dtype=self.dtype)
-      v = view.remove(self.station_iaxis)
-      station_axis = self.station_axis
-      istation = self.station_iaxis
-      for outsl, (indata,) in loopover(self.model_data, v, pbar=pbar):
-        # Make sure we have a full lat/lon field to slice from
-        # (otherwise, this routine would have to be re-written)
-        lat_iaxis = self.lat_iaxis
-        lon_iaxis = self.lon_iaxis
-        assert indata.shape[lat_iaxis] == self.model_data.shape[lat_iaxis]
-        assert indata.shape[lon_iaxis] == self.model_data.shape[lon_iaxis]
-        for i,station in enumerate(station_axis.values):
-          # Inject the station index into the output slice
-          full_outsl = outsl[:istation]+(i,)+outsl[istation:]
-          insl = [slice(None)]*self.model_data.naxes
-          insl[lat_iaxis] = self.lat_indices[i]
-          insl[lon_iaxis] = self.lon_indices[i]
-          out[full_outsl] = indata[insl]
-      pbar.update(100)
-      return out
-  del Var
 
   # Interpolate model data directly to station locations
-  #TODO: interpolate to the station height.
+  #TODO: remove this, once other timeseries-type diagnostics are refactored.
   def sample_model_at_obs (model, obs, fieldname, units):
     from ..common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps, find_and_convert
+    from .station import StationSample
     field = find_and_convert(model, fieldname, units, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
     field = select_surface(field)
 
