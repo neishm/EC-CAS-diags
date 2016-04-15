@@ -44,6 +44,7 @@ class Diagnostic(object):
     inputs = self._select_inputs(inputs)
     for current_inputs in self._input_combos(inputs):
       current_inputs = self._transform_inputs(current_inputs)
+      if len(current_inputs) == 0: continue
       self.do(current_inputs)
 
   # The actual diagnostic to run.
