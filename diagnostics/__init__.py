@@ -153,10 +153,6 @@ class TimeVaryingDiagnostic(Diagnostic):
           d = d(hour=hour,minute=minute)
         out_datasets.append(d)
       m = DerivedProduct(out_datasets, source=m)
-      # if we select hour-0 data, then modify the canonical name of the data.
-      # We don't want to collide with the unfiltered (all-hours) cache file,
-      # so this uniquifies the cache filename.
-      if self.hour0_only is True: m.name = m.name + '_hour0-only'
       out_models.append(m)
     return out_models
 

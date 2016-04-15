@@ -74,7 +74,6 @@ class StationComparison(Diagnostic):
           for md in m.datasets:
             datasets.append(self._sample_dataset_at_obs(od,md))
         m = DerivedProduct(datasets,source=m)
-        m.name = m.name + '_at_%s'%obs.name
         out_models.append(m)
       yield [obs] + out_models
 
