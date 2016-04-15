@@ -23,18 +23,18 @@ class AircraftProfiles(ImageDiagnostic):
   """
   Mean vertical profiles, sampled at obs locations.
   """
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+  def _input_combos (self, inputs):
+    fieldname = self.fieldname
     model_inputs = find_applicable_models(inputs, fieldname)
     # If there's no model data to plot, then don't bother plotting!
     if len(model_inputs) == 0: return
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
-      # Filter the input data.
-      all_inputs = [obs] + list(model_inputs)
-      all_inputs = self.filter_inputs(all_inputs)
-      obs, models = all_inputs[0], all_inputs[1:]
-      # Do the diagnostic.
-      profiles (obs, models, fieldname, units, outdir, format=self.image_format)
+      yield [obs] + list(model_inputs)
+
+  def do (self, inputs):
+    # Do the diagnostic.
+    profiles (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format)
 
 if True:
   from .station import StationSample

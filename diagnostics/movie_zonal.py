@@ -16,11 +16,24 @@ class ZonalMean(Diagnostic):
   """
   Zonal mean (or standard deviation) of a field, animated in time.
   """
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
-    zaxis = kwargs.get('zaxis','gph')
-    models = find_applicable_models(inputs, fieldname, zaxis)
-    models = self.filter_inputs(models)
-    movie_zonal(models, fieldname, units, outdir, **kwargs)
+  #
+  """
+  @classmethod
+  def add_args (cls, parser, handled=[]):
+    super(ZonalMean,cls).add_args(parser)
+    if len(handled) > 0: return  # Only run once
+    parser.add_argument('--zaxis', action='store', choices=('gph','plev'), default='gph', help="The vertical coordinate to use for vertical interplation (e.g. for zonal mean plots).  Default is gph.")
+    handled.append(True)
+  """
+  def __init__ (self, zaxis='gph', typestat='mean', **kwargs):
+    super(ZonalMean,self).__init__(**kwargs)
+    self.zaxis = zaxis
+    self.typestat = typestat
+  def _select_inputs (self, inputs):
+    inputs = super(ZonalMean,self)._select_inputs(inputs)
+    return find_applicable_models(inputs, fieldname=self.fieldname, zaxis=self.zaxis)
+  def do (self, inputs):
+    movie_zonal(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, zaxis=self.zaxis, typestat=self.typestat)
 
 if True:
   # Convert zonal mean data (on height)

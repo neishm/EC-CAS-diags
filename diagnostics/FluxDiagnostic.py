@@ -16,10 +16,16 @@ class FluxDiagnostic(Diagnostic):
   Various movies of input fluxes, plotted either on a map or binned into
   regions.
   """
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
-    models = find_applicable_models(inputs, fieldname)
-    models = self.filter_inputs(models)
-    movie_flux (models, fieldname, units, outdir, **kwargs)
+  def __init__ (self, timefilter=None, plottype='BG', **kwargs):
+    super(FluxDiagnostic,self).__init__(**kwargs)
+    self.timefilter = timefilter
+    self.plottype = plottype
+  def _select_inputs(self, inputs):
+    inputs = super(FluxDiagnostic,self)._select_inputs(inputs)
+    return find_applicable_models(inputs, fieldname=self.fieldname)
+
+  def do (self, inputs):
+    movie_flux (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, timefilter=self.timefilter, plottype=self.plottype)
 
 if True:
   # Get a flux product for the given experiment and tracer name.

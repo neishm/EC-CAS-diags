@@ -3,15 +3,17 @@
 # and produces a movie.
 # This is/was used for checking the effects of adding convection to tracers.
 
-from .xcol import find_applicable_models
-
-
 from . import Diagnostic
 class HorzSliceDiff(Diagnostic):
   """
   Difference between two data products, sampled at a particular vertical level.
   """
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+  def __init__ (self, level, **kwargs):
+    super(HorzSliceDiff,self).__init__(**kwargs)
+    self.level = level
+  def _input_combos (self, inputs):
+    from .xcol import find_applicable_models
+    fieldname = self.fieldname
     models = find_applicable_models(inputs, fieldname)
     n = len(models)
     for i in range(n):
@@ -21,8 +23,10 @@ class HorzSliceDiff(Diagnostic):
         f1 = models[i].find_best(fieldname)
         f2 = models[j].find_best(fieldname)
         if f1.lat == f2.lat and f1.lon == f2.lon:
-          model1, model2 = self.filter_inputs([models[i],models[j]])
-          horz_slice_movie([model1,model2], fieldname, units, outdir, **kwargs)
+          yield [models[i], models[j]]
+
+  def do (self, inputs):
+    horz_slice_movie(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, level=self.level)
 
 
 if True:

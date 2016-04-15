@@ -7,12 +7,49 @@ class Diagnostic(object):
     return  # Nothing needed by default.
 
   # Attach the command-line arguments to this object for later use.
-  def __init__ (self, **kwargs):
-    return  # Don't need any further arguments at this level of abstraction.
+  def __init__ (self, fieldname, units, outdir, **kwargs):
+    self.fieldname = fieldname
+    self.units = units
+    self.outdir = outdir
 
-  # Filter all input datasets to satisfy any conditions set for this diagnostic.
-  def filter_inputs (self, inputs):
-    return inputs  # Nothing to filter at this level of abstraction.
+  # Check preconditions for using some particular data.
+  # Given a dataset, determine if we can use the data.
+  def _check_dataset(self, dataset):
+    # Check if we have the field required.
+    return self.fieldname in dataset
+
+  # Pre-select inputs that satisfy certain conditions.
+  def _select_inputs (self, inputs):
+    from ..interfaces import DerivedProduct
+    selected = []
+    for i in inputs:
+      datasets = filter(self._check_dataset,i.datasets)
+      if len(datasets) == 0: continue  # No matches for this product?
+      if list(datasets) == list(i.datasets):
+        selected.append(i)
+      else:
+        selected.append(DerivedProduct(datasets,source=i))
+    return selected
+
+  # Split the data into batches to be fed into the diagnostic.
+  def _input_combos (self, inputs):
+    yield inputs  # By default, use all the inputs at the same time.
+
+  # Transform the data into a form needed by the diagnostic.
+  def _transform_inputs (self, inputs):
+    return inputs  # Nothing to transform at this level of abstraction.
+
+  # Apply the diagnostic to all valid input combos.
+  def do_all (self, inputs):
+    inputs = self._select_inputs(inputs)
+    for current_inputs in self._input_combos(inputs):
+      current_inputs = self._transform_inputs(current_inputs)
+      self.do(current_inputs)
+
+  # The actual diagnostic to run.
+  # Needs to be implemented for each diagnostic class.
+  def do (self, inputs):
+    raise NotImplementedError
 
   # Suffix to append to any output files
   suffix = ""
@@ -79,12 +116,19 @@ class TimeVaryingDiagnostic(Diagnostic):
       suffix = suffix + "_hour0-only"
     self.suffix = self.suffix + suffix
 
+  def _check_dataset (self, dataset):
+    if not super(TimeVaryingDiagnostic,self)._check_dataset(dataset):
+      return False
+    # Select data products that have a time axis
+    return 'time' in dataset
+
+
   # Limit the time range for the data.
-  def filter_inputs(self, models):
+  def _transform_inputs (self, models):
     from ..interfaces import DerivedProduct
     from pygeode.timeutils import reltime
     from math import floor
-    models = super(TimeVaryingDiagnostic,self).filter_inputs(models)
+    models = super(TimeVaryingDiagnostic,self)._transform_inputs(models)
     date_range = self.date_range
     out_models = []
     for m in models:
@@ -114,6 +158,7 @@ class TimeVaryingDiagnostic(Diagnostic):
       if self.hour0_only is True: m.name = m.name + '_hour0-only'
       out_models.append(m)
     return out_models
+
 # Find all available diagnostics
 table = {}
 def _load_diagnostics ():

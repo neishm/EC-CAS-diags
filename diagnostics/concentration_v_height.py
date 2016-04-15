@@ -1,15 +1,17 @@
 
-from .movie_zonal import find_applicable_models
 
 from . import Diagnostic
 class Concentration_VS_Height(Diagnostic):
   """
   Vertial profiles, averaged by zonal region and animated in time.
   """
-  def do_all (self, inputs, fieldname, units, outdir):
-    models = find_applicable_models(inputs, fieldname, zaxis='gph')
-    models = self.filter_inputs(models)
-    movie_CvH(models, fieldname, units, outdir)
+  def _select_inputs (self, inputs):
+    from .movie_zonal import find_applicable_models
+    inputs = super(Concentration_VS_Height,self)._select_inputs(inputs)
+    return find_applicable_models(inputs, fieldname=self.fieldname, zaxis='gph')
+
+  def do (self, inputs):
+    movie_CvH(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir)
 
 from .movie import TiledMovie
 class CvH_Movie(TiledMovie):

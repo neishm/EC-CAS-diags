@@ -36,19 +36,19 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic):
       self.stations = stations.split(',')
     else:
       self.stations = None
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+  def _input_combos (self, inputs):
+    fieldname = self.fieldname
     # Find all applicable model data and obs data to use in the diagnostic.
     model_inputs = find_applicable_models(inputs, fieldname)
     # If there's no model data to plot, then don't bother plotting!
     if len(model_inputs) == 0: return
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
-      # Filter the input data.
-      all_inputs = [obs] + list(model_inputs)
-      all_inputs = self.filter_inputs(all_inputs)
-      obs, models = all_inputs[0], all_inputs[1:]
-      # Do the diagnostic.
-      timeseries (obs, models, fieldname, units, outdir, stations=self.stations, format=self.image_format, suffix=self.suffix)
+      yield [obs] + list(model_inputs)
+
+  def do (self, inputs):
+    # Do the diagnostic.
+    timeseries (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, stations=self.stations, format=self.image_format, suffix=self.suffix)
 
 
 if True:

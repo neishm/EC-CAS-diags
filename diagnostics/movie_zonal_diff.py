@@ -1,12 +1,12 @@
-from . import Diagnostic
-class ZonalMeanDiff(Diagnostic):
+from .movie_zonal import ZonalMean
+class ZonalMeanDiff(ZonalMean):
   """
   Difference between two zonal mean fields, animated in time.
   """
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+  def _input_combos (self, inputs):
     from .movie_zonal import find_applicable_models
-    zaxis = kwargs.get('zaxis','gph')
-    models = find_applicable_models(inputs, fieldname, zaxis)
+    fieldname = self.fieldname
+    models = find_applicable_models(inputs, fieldname, self.zaxis)
     n = len(models)
     for i in range(n):
       if not models[i].have(fieldname): continue
@@ -15,8 +15,10 @@ class ZonalMeanDiff(Diagnostic):
         f1 = models[i].find_best(fieldname)
         f2 = models[j].find_best(fieldname)
         if f1.lat == f2.lat:
-          model1, model2 = self.filter_inputs([models[i],models[j]])
-          movie_zonal_diff([model1,model2], fieldname, units, outdir, **kwargs)
+          yield [models[i],models[j]]
+
+  def do (self, inputs):
+    movie_zonal_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=outdir, zaxis=self.zaxis, typestat=self.typestat)
 
 if True:
   def movie_zonal_diff (models, fieldname, units, outdir, zaxis='gph', typestat='mean'):

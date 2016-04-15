@@ -3,9 +3,6 @@
 # Note: we aren't using any averaging kernal for this, so it's not directly
 # comparable to satellite observations.
 
-# Compute total column of a tracer
-# (in kg/m2)
-
 from .xcol import get_xcol
 
 if True:
@@ -19,7 +16,8 @@ class XColDiff(Diagnostic):
   Compute the difference of two fields, after taking the avarage column of
   each.
   """
-  def do_all (self, inputs, fieldname, units, outdir):
+  def _input_combos (self, inputs):
+    fieldname = self.fieldname
     models = find_applicable_models(inputs, fieldname)
     n = len(models)
     for i in range(n):
@@ -29,8 +27,9 @@ class XColDiff(Diagnostic):
         f1 = models[i].find_best(fieldname)
         f2 = models[j].find_best(fieldname)
         if f1.lat == f2.lat and f1.lon == f2.lon:
-          model1, model2 = self.filter_inputs([models[i],models[j]])
-          xcol_diff([model1,model2], fieldname, units, outdir)
+          yield models[i], models[j]
+  def do (self, inputs):
+    xcol_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir)
 
 
 if True:

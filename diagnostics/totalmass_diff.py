@@ -6,13 +6,17 @@ class TotalmassDiff(ImageDiagnostic):
   """
   Plot the difference in mass for the same field between two datasets.
   """
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
-    models = find_applicable_models(inputs, fieldname)
+  def __init__ (self, normalize_air_mass=False, **kwargs):
+    super(TotalmassDiff,self).__init__(**kwargs)
+    self.normalize_air_mass = normalize_air_mass
+  def _input_combos (self, inputs):
+    models = find_applicable_models(inputs, self.fieldname)
     n = len(models)
     for i in range(n):
       for j in range(i+1,n):
-        model1, model2 = self.filter_inputs([models[i],models[j]])
-        totalmass_diff([model1,model2], fieldname, units, outdir, format=self.image_format, **kwargs)
+        yield models[i], models[j]
+  def do (self, inputs):
+    totalmass_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, normalize_air_mass = self.normalize_air_mass, format=self.image_format)
 
 
 if True:

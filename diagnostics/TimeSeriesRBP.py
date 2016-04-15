@@ -18,16 +18,19 @@ class TimeseriesRBP(ImageDiagnostic):
   Bin data into regions (country or zone), and produce a histogram of the
   result.
   """
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+  def __init__ (self, ymin=350, ymax=420, **kwargs):
+    super(TimeseriesRBP,self).__init__(**kwargs)
+    self.ymin = ymin
+    self.ymax = ymax
+  def _input_combos (self, inputs):
+    fieldname = self.fieldname
     model_inputs = find_applicable_models(inputs, fieldname)
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
-      # Filter the input data.
-      all_inputs = [obs] + list(model_inputs)
-      all_inputs = self.filter_inputs(all_inputs)
-      obs, models = all_inputs[0], all_inputs[1:]
-      # Do the diagnostic.
-      Barplot (obs, models, fieldname, units, outdir, format=self.image_format, **kwargs)
+      yield [obs] + list(model_inputs)
+  def do (self, inputs):
+    # Do the diagnostic.
+    Barplot (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, ymin=self.ymin, ymax=self.ymax, format=self.image_format)
 
 if True:
   def Barplot (obs, models, fieldname, units, outdir, ymin=350,ymax=420, format='png'):

@@ -1,22 +1,25 @@
 # timeseries with difference plot
 
-from .timeseries import find_applicable_obs, find_applicable_models
 
 from . import ImageDiagnostic
 class TimeseriesDiff(ImageDiagnostic):
   """
   Difference between two datasets, sampled at obs locations.
   """
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
+  def __init__ (self, timefilter=None, **kwargs):
+    super(TimeseriesDiff,self).__init__(**kwargs)
+    self.timefilter = timefilter
+  def _input_combos (self, inputs):
+    from .timeseries import find_applicable_obs, find_applicable_models
+    fieldname = self.fieldname
     model_inputs = find_applicable_models(inputs, fieldname)
     obs_inputs = find_applicable_obs(inputs, fieldname)
     for obs in obs_inputs:
-      # Filter the input data.
-      all_inputs = [obs] + list(model_inputs)
-      all_inputs = self.filter_inputs(all_inputs)
-      obs, models = all_inputs[0], all_inputs[1:]
-      # Do the diagnostic.
-      timeseries (obs, models, fieldname, units, outdir, format=self.image_format, **kwargs)
+      yield [obs] + list(model_inputs)
+
+  def do (self, inputs):
+    # Do the diagnostic.
+    timeseries (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format, timefilter=self.timefilter)
 
 if True:
 

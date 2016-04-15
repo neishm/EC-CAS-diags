@@ -1,16 +1,19 @@
 
-from .movie_zonal import find_applicable_models
-
 from . import Diagnostic
 class ZonalMeanBG(Diagnostic):
   """
   Samples data at a particular height, bins it into zones, and displays the
   result as a bargraph.
   """
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
-    models = find_applicable_models(inputs, fieldname, zaxis='gph')
-    models = self.filter_inputs(models)
-    movie_bargraph(models, fieldname, units, outdir, **kwargs)
+  def __init__ (self, height, **kwargs):
+    super(ZonalMeanBG,self).__init__(**kwargs)
+    self.height = height
+  def _select_inputs (self, inputs):
+    from .movie_zonal import find_applicable_models
+    inputs = super(ZonalMeanBG,self)._select_inputs(inputs)
+    return find_applicable_models(inputs, self.fieldname, zaxis='gph')
+  def do (self, inputs):
+    movie_bargraph(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, height=self.height)
 
 
 from .movie import TiledMovie

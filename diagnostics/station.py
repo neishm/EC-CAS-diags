@@ -52,28 +52,31 @@ class StationComparison(Diagnostic):
       if var.hasaxis('station'): return True
     return False
 
-  # Interpolate model data directly to station locations
-  #TODO: interpolate to the station height.
-  def filter_inputs (self, inputs):
+  # For each observation dataset,
+  # interpolate model data directly to station locations.
+  def _input_combos (self, inputs):
     from ..interfaces import DerivedProduct
-    inputs = super(StationComparison,self).filter_inputs(inputs)
-    obs = [m for m in inputs if any(self._has_station_axis(d) for d in m.datasets)][0]
-    models = [m for m in inputs if m is not obs]
+    from pygeode.dataset import Dataset
+    all_obs = [m for m in inputs if any(self._has_station_axis(d) for d in m.datasets)]
+    models = [m for m in inputs if m not in obs]
     # Subset the obs locations (if particular locations were given on the
     # command-line).
-    obs = self._select_obs_sites(obs)
+    all_obs = map(self._select_obs_sites, all_obs)
 
-    # Sample all the model data at the obs locations
-    out_models = []
-    for m in models:
-      datasets = []
-      for od in obs.datasets:
-        for md in m.datasets:
-          datasets.append(self._sample_dataset_at_obs(od,md))
-      m = DerivedProduct(datasets,source=m)
-      m.name = m.name + '_at_%s'%obs.name
-      out_models.append(m)
-    return [obs] + out_models
+    # Loop over each obs product
+    for obs in all_obs:
+      if len(obs.datasets) == 0: continue
+      # Loop over each model
+      out_models = []
+      for m in models:
+        datasets = []
+        for od in obs.datasets:
+          for md in m.datasets:
+            datasets.append(self._sample_dataset_at_obs(od,md))
+        m = DerivedProduct(datasets,source=m)
+        m.name = m.name + '_at_%s'%obs.name
+        out_models.append(m)
+      yield [obs] + out_models
 
 
   # Determine if a particular station matches a list of station names.
