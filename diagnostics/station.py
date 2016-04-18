@@ -73,8 +73,10 @@ class StationComparison(Diagnostic):
         for od in obs.datasets:
           for md in m.datasets:
             datasets.append(self._sample_dataset_at_obs(od,md))
+        if len(datasets) == 0: continue  # Ignore non-applicable models.
         m = DerivedProduct(datasets,source=m)
         out_models.append(m)
+      if len(out_models) == 0: continue  # Don't do obs-only diagnostic.
       yield [obs] + out_models
 
 
