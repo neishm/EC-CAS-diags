@@ -58,7 +58,7 @@ class StationComparison(Diagnostic):
     from ..interfaces import DerivedProduct
     from pygeode.dataset import Dataset
     all_obs = [m for m in inputs if any(self._has_station_axis(d) for d in m.datasets)]
-    models = [m for m in inputs if m not in obs]
+    models = [m for m in inputs if m not in all_obs]
     # Subset the obs locations (if particular locations were given on the
     # command-line).
     all_obs = map(self._select_obs_sites, all_obs)
