@@ -273,7 +273,7 @@ class Cache (object):
   #   writeable (default: False) - If True, the file must be in a writeable location.
   def full_path (self, filename, existing=False, writeable=False):
 
-    from os.path import exists, dirname
+    from os.path import exists, dirname, join
     from os import mkdir
 
     dirs=[]
@@ -285,7 +285,7 @@ class Cache (object):
       dirs.extend(self.read_dirs)
 
     for dir in dirs:
-      if exists(dir+filename): return dir+filename
+      if exists(join(dir,filename)): return join(dir,filename)
 
     # No existing file found.
     # Did we need a file that already exists?
@@ -297,8 +297,8 @@ class Cache (object):
       raise CacheWriteError ("Nowhere to write '%s'"%filename)
 
     # Do we need to make a subdirectory?
-    if not exists(dirname(self.write_dir+filename)):
-      mkdir(dirname(self.write_dir+filename))
+    if not exists(dirname(join(self.write_dir,filename))):
+      mkdir(dirname(join(self.write_dir,filename)))
 
-    return self.write_dir+filename
+    return join(self.write_dir,filename)
 
