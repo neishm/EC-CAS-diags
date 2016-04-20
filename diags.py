@@ -140,11 +140,7 @@ for section in configparser.sections():
   else:
     title = '%s (%s)'%(desc,data_name)
 
-  if args.tmpdir is not None:
-    fallback_dirs = [args.tmpdir]
-  else: fallback_dirs = []
-  
-  cache = Cache(dir=data_dirs[0]+"/nc_cache", fallback_dirs=fallback_dirs)
+  cache = Cache(args.tmpdir)
 
   color = configparser.get(section,'color')
   linestyle = configparser.get(section,'linestyle')

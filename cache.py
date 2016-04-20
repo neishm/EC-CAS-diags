@@ -44,9 +44,7 @@ class CacheWriteError (IOError): pass
 # The Cache object:
 
 class Cache (object):
-  def __init__ (self, dir, fallback_dirs=[]):
-    from os.path import exists, isdir
-    from os import mkdir, remove
+  def __init__ (self, write_dir, read_dirs=[]):
 
     # Set up the save/load hooks.
     from station_data import station_axis_save_hook, station_axis_load_hook
@@ -58,34 +56,9 @@ class Cache (object):
     self.save_hooks = [station_axis_save_hook]
     self.load_hooks = [station_axis_load_hook, fstd_load_hook]
 
-    self.read_dirs = []
-    self.write_dir = None
+    self.read_dirs = read_dirs
+    self.write_dir = write_dir
 
-    for write_dir in [dir]+fallback_dirs:
-
-      try:
-
-        if not exists(write_dir):
-          mkdir(write_dir)
-
-        if not isdir(write_dir):
-          raise IOError ("%s is not a directory"%write_dir)
-
-        # Determine all sources for *reading* pre-cached data
-        self.read_dirs.append(write_dir+"/")
-
-        # Try writing a dummy file, make sure this user has permission to write
-        # into this directory.
-        dummy = write_dir + "/dummy"
-        f = file(dummy, 'a')
-        f.close()
-        remove(dummy)
-
-        self.write_dir = write_dir + "/"
-        return
-
-      except IOError: continue
-      except OSError: continue
 
 
 
