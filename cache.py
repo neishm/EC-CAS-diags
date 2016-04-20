@@ -44,7 +44,7 @@ class CacheWriteError (IOError): pass
 # The Cache object:
 
 class Cache (object):
-  def __init__ (self, dir, fallback_dirs=[], split_time=True):
+  def __init__ (self, dir, fallback_dirs=[]):
     from os.path import exists, isdir
     from os import mkdir, remove
 
@@ -57,8 +57,6 @@ class Cache (object):
       return data
     self.save_hooks = [station_axis_save_hook]
     self.load_hooks = [station_axis_load_hook, fstd_load_hook]
-
-    self.split_time = split_time
 
     self.read_dirs = []
     self.write_dir = None
@@ -92,7 +90,7 @@ class Cache (object):
 
 
   # Write out the data
-  def write (self, var, prefix, split_time=None, force_single_precision=True, _dryrun=False):
+  def write (self, var, prefix, split_time=True, force_single_precision=True, _dryrun=False):
     from os.path import exists
     from os import remove, mkdir
     from pygeode.formats import netcdf
@@ -103,8 +101,6 @@ class Cache (object):
 
     if var.size == 0:
       raise ValueError("No data to cache - field '%s' is empty.  Shape: %s"%(var.name,var.shape))
-
-    if split_time is None: split_time = self.split_time
 
     # Make sure the data is saved with a consistent start date
     # (makes it easier to plot timeseries data from multiple sources)
