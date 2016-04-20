@@ -200,12 +200,6 @@ class Cache (object):
 
           filename = self.full_path(prefix+"_split/"+prefix+"_"+datestring+".nc")
           if exists(filename): continue
-
-          # Check old location as well (before split files were moved to a 
-          # subdirectory.
-          filename = self.full_path(prefix+"_"+datestring+".nc")
-          if exists(filename): continue
-
           filename = self.full_path(prefix+"_split/"+prefix+"_"+datestring+".nc", writeable=True)
 
           # Save the data
@@ -222,14 +216,7 @@ class Cache (object):
         pbar.update(100)
 
         # Re-query for the files
-        filenames = []
-        for datestring in datestrings:
-          # Check old location first
-          filename = self.full_path(prefix+"_"+datestring+".nc")
-          # Otherwise, use new location (separate subdirectory).
-          if not exists(filename):
-            filename = self.full_path(prefix+"_split/"+prefix+"_"+datestring+".nc", existing=True)
-          filenames.append(filename)
+        filenames = [self.full_path(prefix+"_split/"+prefix+"_"+datestring+".nc", existing=True) for datestring in datestrings]
 
         # Open the many small files
         var = open_multi(filenames, format=netcdf, pattern="_"+pattern+"\.nc")[var.name]
