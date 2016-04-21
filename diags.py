@@ -140,7 +140,7 @@ for section in configparser.sections():
   else:
     title = '%s (%s)'%(desc,data_name)
 
-  cache = Cache(args.tmpdir)
+  cache = Cache(args.tmpdir, read_dirs=[data_dirs[0]+"/nc_cache"])
 
   color = configparser.get(section,'color')
   linestyle = configparser.get(section,'linestyle')
