@@ -14,8 +14,8 @@ if True:
         models.append(x)
     return models
 
-from . import Diagnostic
-class XCol(Diagnostic):
+from . import TimeVaryingDiagnostic
+class XCol(TimeVaryingDiagnostic):
   """
   Show the average column of a field, animated in time.  Note that no averaging
   kernel is used in the average, it is simply weighted by air mass.

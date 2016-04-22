@@ -13,8 +13,8 @@ if True:
     return models
 
 
-from . import ImageDiagnostic
-class Totalmass(ImageDiagnostic):
+from . import TimeVaryingDiagnostic, ImageDiagnostic
+class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Compute the total mass budget for a field.  Show the time variation as a
   1D line plot.

@@ -9,8 +9,8 @@ if True:
         models.append(x)
     return models
 
-from . import Diagnostic
-class ZonalMean(Diagnostic):
+from . import TimeVaryingDiagnostic
+class ZonalMean(TimeVaryingDiagnostic):
   """
   Zonal mean (or standard deviation) of a field, animated in time.
   """

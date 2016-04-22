@@ -10,8 +10,8 @@ if True:
   from .xcol import find_applicable_models
 
 
-from . import Diagnostic
-class XColDiff(Diagnostic):
+from . import TimeVaryingDiagnostic
+class XColDiff(TimeVaryingDiagnostic):
   """
   Compute the difference of two fields, after taking the avarage column of
   each.

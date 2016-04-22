@@ -1,8 +1,8 @@
 # timeseries with difference plot
 
 
-from . import ImageDiagnostic
-class TimeseriesDiff(ImageDiagnostic):
+from . import TimeVaryingDiagnostic, ImageDiagnostic
+class TimeseriesDiff(TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Difference between two datasets, sampled at obs locations.
   """

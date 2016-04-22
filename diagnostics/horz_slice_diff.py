@@ -3,8 +3,8 @@
 # and produces a movie.
 # This is/was used for checking the effects of adding convection to tracers.
 
-from . import Diagnostic
-class HorzSliceDiff(Diagnostic):
+from . import TimeVaryingDiagnostic
+class HorzSliceDiff(TimeVaryingDiagnostic):
   """
   Difference between two data products, sampled at a particular vertical level.
   """

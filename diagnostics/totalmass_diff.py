@@ -1,8 +1,8 @@
 from .totalmass import compute_totalmass
 from .xcol import find_applicable_models
 
-from . import ImageDiagnostic
-class TotalmassDiff(ImageDiagnostic):
+from . import TimeVaryingDiagnostic, ImageDiagnostic
+class TotalmassDiff(TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Plot the difference in mass for the same field between two datasets.
   """

@@ -1,7 +1,7 @@
 
 
-from . import Diagnostic
-class Concentration_VS_Height(Diagnostic):
+from . import TimeVaryingDiagnostic
+class Concentration_VS_Height(TimeVaryingDiagnostic):
   """
   Vertial profiles, averaged by zonal region and animated in time.
   """
