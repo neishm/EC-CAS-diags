@@ -26,14 +26,14 @@ class HorzSliceDiff(Diagnostic):
           yield [models[i], models[j]]
 
   def do (self, inputs):
-    horz_slice_movie(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, level=self.level)
+    horz_slice_movie(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, level=self.level, suffix=self.suffix)
 
 
 if True:
 
 
   # Cache the slice for faster reading on subsequent diagnostic calls.
-  def horz_slice (model, fieldname, level):
+  def horz_slice (model, fieldname, level, suffix):
     from ..common import number_of_levels, number_of_timesteps
 
     c = model.find_best(fieldname, maximize=(number_of_levels,number_of_timesteps))
@@ -42,14 +42,14 @@ if True:
     c = c(zaxis=float(level))
 
     # Cache the data
-    return model.cache.write(c,prefix=model.name+'_'+c.zaxis.name+level+"_"+fieldname)
+    return model.cache.write(c,prefix=model.name+'_'+c.zaxis.name+level+"_"+fieldname+suffix)
 
 
   # Get the horizontal slice (and prep it for plotting)
-  def get_horz_slice (experiment, fieldname, level, units):
+  def get_horz_slice (experiment, fieldname, level, units, suffix):
     from ..common import rotate_grid, convert
 
-    data = horz_slice(experiment, fieldname, level)
+    data = horz_slice(experiment, fieldname, level, suffix)
 
     # Rotate the longitudes to 0,360
     data = rotate_grid(data)
@@ -60,14 +60,14 @@ if True:
     return data
 
 
-  def horz_slice_movie (models, fieldname, units, outdir, level):
+  def horz_slice_movie (models, fieldname, units, outdir, level, suffix=""):
     from .movie import ContourMovie
     from ..common import same_times
 
     plotname = fieldname+"_level"+level
-    prefix = '_'.join(m.name for m in models) + '_' + plotname
+    prefix = '_'.join(m.name for m in models) + '_' + plotname + suffix
 
-    fields = [get_horz_slice(m,fieldname,level,units) for m in models]
+    fields = [get_horz_slice(m,fieldname,level,units,suffix) for m in models]
     subtitles = [m.title for m in models]
     title = '%s at level %s'%(fieldname,level)
 
@@ -84,7 +84,7 @@ if True:
     diff = fields[0]-fields[1]
     diff.name=fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = models[0].cache.write(diff, prefix=models[0].name+'_'+fieldname+'_level'+level+"_diff_"+models[1].name+'_'+fieldname)
+    diff = models[0].cache.write(diff, prefix=models[0].name+'_'+fieldname+'_level'+level+"_diff_"+models[1].name+'_'+fieldname+suffix)
     fields.append(diff)
     subtitles.append('difference')
     movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio)

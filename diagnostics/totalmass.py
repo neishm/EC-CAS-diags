@@ -26,13 +26,13 @@ class Totalmass(ImageDiagnostic):
     inputs = super(Totalmass,self)._select_inputs(inputs)
     return find_applicable_models(inputs, self.fieldname)
   def do (self, inputs):
-    totalmass (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, normalize_air_mass=self.normalize_air_mass, format=self.image_format)
+    totalmass (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, normalize_air_mass=self.normalize_air_mass, format=self.image_format, suffix=self.suffix)
 
 
 if True:
 
   # Total mass (Pg)
-  def compute_totalmass (model, fieldname):
+  def compute_totalmass (model, fieldname, suffix=""):
     from ..common import can_convert, convert, find_and_convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude
     specie = None
 
@@ -84,10 +84,10 @@ if True:
       data.atts['specie'] = specie
 
     # Cache the data
-    return model.cache.write(data,prefix=model.name+"_totalmass_"+fieldname, force_single_precision=False)
+    return model.cache.write(data,prefix=model.name+"_totalmass_"+fieldname+suffix, force_single_precision=False)
 
   # Integrated flux (moles per second)
-  def compute_totalflux (model, fieldname):
+  def compute_totalflux (model, fieldname, suffix=""):
     from ..common import convert, number_of_timesteps, remove_repeated_longitude
 
     # Check if we already have integrated flux (per grid cell)
@@ -112,7 +112,7 @@ if True:
     data.name = fieldname
 
     # Cache the data
-    return model.cache.write(data,prefix=model.name+"_totalflux_"+fieldname, force_single_precision=False)
+    return model.cache.write(data,prefix=model.name+"_totalflux_"+fieldname+suffix, force_single_precision=False)
 
 
   def doplot (outfile, title, fields, colours, styles, labels):
@@ -128,7 +128,7 @@ if True:
 
     fig.savefig(outfile)
 
-  def totalmass (models, fieldname, units, outdir, normalize_air_mass=False, format='png'):
+  def totalmass (models, fieldname, units, outdir, normalize_air_mass=False, format='png', suffix=""):
     from os.path import exists
     from pygeode.var import Var
     from ..common import convert
@@ -140,12 +140,12 @@ if True:
     t1 = []
     for m in models:
       try:
-        t0.append(compute_totalmass(m,fieldname).time.values[0])
-        t1.append(compute_totalmass(m,fieldname).time.values[-1])
+        t0.append(compute_totalmass(m,fieldname,suffix=suffix).time.values[0])
+        t1.append(compute_totalmass(m,fieldname,suffix=suffix).time.values[-1])
       except Exception: pass
       try:
-        t0.append(compute_totalflux(m,fieldname).time.values[0])
-        t1.append(compute_totalflux(m,fieldname).time.values[-1])
+        t0.append(compute_totalflux(m,fieldname,suffix=suffix).time.values[0])
+        t1.append(compute_totalflux(m,fieldname,suffix=suffix).time.values[-1])
       except Exception: pass
     if len(t0) == 0 or len(t1) == 0:
       raise ValueError("Unable to find any '%s' data in %s."%(fieldname,[m.name for m in models]))
@@ -165,7 +165,7 @@ if True:
       try:
         # Get model air mass, if we are normalizing the tracer mass.
         if normalize_air_mass:
-          airmass = compute_totalmass(model,'dry_air')(time=(t0,t1)).load()
+          airmass = compute_totalmass(model,'dry_air',suffix=suffix)(time=(t0,t1)).load()
           airmass0 = float(airmass.values[0])
 
         # Total mass
@@ -183,7 +183,7 @@ if True:
 
       # Total flux, integrated in time
       try:
-        totalflux = compute_totalflux(model,fieldname)
+        totalflux = compute_totalflux(model,fieldname,suffix=suffix)
         flux_units = totalflux.atts['units']
         flux_specie = totalflux.atts['specie']
         time = totalflux.time
@@ -225,7 +225,7 @@ if True:
         labels.append('integrated flux')
       except (KeyError, IndexError): pass  # No flux and/or mass field available
 
-    outfile = outdir + "/%s_totalmass_%s%s.%s"%('_'.join(m.name for m in models),fieldname,'_normalized_by_dryair' if normalize_air_mass else '', format)
+    outfile = outdir + "/%s_totalmass_%s%s%s.%s"%('_'.join(m.name for m in models),fieldname,suffix,'_normalized_by_dryair' if normalize_air_mass else '', format)
     if not exists(outfile):
       title = "Total mass %s in %s"%(fieldname,units)
       doplot (outfile, title, fields, colours, styles, labels)

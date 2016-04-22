@@ -18,23 +18,23 @@ class ZonalMeanDiff(ZonalMean):
           yield [models[i],models[j]]
 
   def do (self, inputs):
-    movie_zonal_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=outdir, zaxis=self.zaxis, typestat=self.typestat)
+    movie_zonal_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=outdir, zaxis=self.zaxis, typestat=self.typestat, suffix=self.suffix)
 
 if True:
-  def movie_zonal_diff (models, fieldname, units, outdir, zaxis='gph', typestat='mean'):
+  def movie_zonal_diff (models, fieldname, units, outdir, zaxis='gph', typestat='mean', suffix=""):
 
     from ..common import convert, same_times
     from .movie_zonal import zonalmean_gph, zonalmean_pres, ZonalMovie
 
-    prefix = '_'.join(m.name for m in models) + '_zonal_diff'+typestat+"_"+fieldname+'_on_'+zaxis
+    prefix = '_'.join(m.name for m in models) + '_zonal_diff'+typestat+"_"+fieldname+'_on_'+zaxis+suffix
     title = 'Zonal %s %s (in %s)'%(typestat, fieldname,units)
     aspect_ratio = 1.0
     shape = (1,len(models)+1)
 
     if zaxis == 'gph':
-      fields = [zonalmean_gph(m,fieldname,units,typestat) for m in models]
+      fields = [zonalmean_gph(m,fieldname,units,typestat,suffix=suffix) for m in models]
     else:
-      fields = [zonalmean_pres(m,fieldname,units) for m in models]
+      fields = [zonalmean_pres(m,fieldname,units,suffix=suffix) for m in models]
 
     # Unit conversion
     fields = [convert(f,units) for f in fields]
@@ -50,7 +50,7 @@ if True:
     diff = fields[0]-fields[1]
     diff.name=fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = models[0].cache.write(diff, prefix=models[0].name+'_zonal'+typestat+'_gph_diff_'+models[1].name+'_'+fieldname)
+    diff = models[0].cache.write(diff, prefix=models[0].name+'_zonal'+typestat+'_gph_diff_'+models[1].name+'_'+fieldname+suffix)
     fields.append(diff)
     subtitles.append('difference')
 

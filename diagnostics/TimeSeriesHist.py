@@ -23,10 +23,10 @@ class TimeseriesHist(ImageDiagnostic):
       yield [obs] + list(model_inputs)
   def do (self, inputs):
     # Do the diagnostic.
-    timeseries (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format, timefilter=self.timefilter)
+    timeseries (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format, timefilter=self.timefilter, suffix=self.suffix)
 
 if True:
-  def timeseries (obs, models, fieldname, units, outdir, timefilter=None, format='png'):
+  def timeseries (obs, models, fieldname, units, outdir, timefilter=None, format='png', suffix=""):
     from .plot_wrapper import Multiplot, Legend, Overlay, Text,Histogram
     import matplotlib.pyplot as pl
     import matplotlib as mpl
@@ -44,11 +44,11 @@ if True:
     model_data = []
     model_spread = []
     for m in models:
-      field = sample_model_at_obs(m,obs,fieldname,units=units)
+      field = sample_model_at_obs(m,obs,fieldname,units=units,suffix=suffix)
       field = convert(field, units, context=fieldname)
       model_data.append(field)
       try:
-        field = sample_model_at_obs(m,obs,fieldname+'_ensemblespread',units=units)
+        field = sample_model_at_obs(m,obs,fieldname+'_ensemblespread',units=units,suffix=suffix)
         field = convert(field, units, context=fieldname)
         model_spread.append(field)
       except KeyError:  # No ensemble spread for this model data
@@ -57,14 +57,14 @@ if True:
     obs_data = obs.find_best(fieldname)
     obs_data = select_surface(obs_data)
     # Cache the observation data, for faster subsequent access
-    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s'%fieldname, split_time=False)
+    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False)
 
     obs_data = convert(obs_data, units, context=fieldname)
     try:
       obs_stderr = obs.find_best(fieldname+'_std')
       obs_stderr = select_surface(obs_stderr)
       # Cache the observation data, for faster subsequent access
-      obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s_std'%fieldname, split_time=False)
+      obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False)
       obs_stderr = convert(obs_stderr, units, context=fieldname)
     except KeyError:
       obs_stderr = None
@@ -159,7 +159,7 @@ if True:
       theplot = Overlay (*parts, title=title.decode('latin-1'),xlabel='%s (%s)'%(fieldname,units), ylabel='Occurrences')
       plots.append (theplot)
 
-    outdir = outdir + '/TimeSeriesHist-images_%s_%s'%('_'.join(d.name for d in models+[obs]),fieldname)
+    outdir = outdir + '/TimeSeriesHist-images_%s_%s%s'%('_'.join(d.name for d in models+[obs]),fieldname,suffix)
     if not exists(outdir): makedirs(outdir)
 
     # Plot 4 timeseries per figure
@@ -183,7 +183,7 @@ if True:
       pl.tight_layout()    #Makes layout tighter - less clutter for 4 plots
 
 
-      outfile = "%s/%s_timeseries_%s_%02d.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1,format)
+      outfile = "%s/%s_timeseries_%s_%02d%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1,suffix,format)
       if not exists(outfile):
         fig.savefig(outfile)
 

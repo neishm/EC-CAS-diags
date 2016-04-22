@@ -29,19 +29,19 @@ class XColDiff(Diagnostic):
         if f1.lat == f2.lat and f1.lon == f2.lon:
           yield models[i], models[j]
   def do (self, inputs):
-    xcol_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir)
+    xcol_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, suffix=self.suffix)
 
 
 if True:
 
-  def xcol_diff (models, fieldname, units, outdir):
+  def xcol_diff (models, fieldname, units, outdir, suffix=""):
     from .movie import ContourMovie
     from ..common import same_times
 
     plotname = 'X'+fieldname
-    prefix = '_'.join(m.name for m in models) + '_diff_' + plotname
+    prefix = '_'.join(m.name for m in models) + '_diff_' + plotname + suffix
 
-    fields = [get_xcol(m,fieldname,units) for m in models]
+    fields = [get_xcol(m,fieldname,units,suffix="") for m in models]
     subtitles = [m.title for m in models]
     title = '%s (in %s)'%(plotname,units)
 
@@ -58,7 +58,7 @@ if True:
     diff = fields[0]-fields[1]
     diff.name=fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = models[0].cache.write(diff, prefix=models[0].name+'_xcol_diff_'+models[1].name+'_'+fieldname)
+    diff = models[0].cache.write(diff, prefix=models[0].name+'_xcol_diff_'+models[1].name+'_'+fieldname+suffix)
     fields.append(diff)
     subtitles.append('difference')
 

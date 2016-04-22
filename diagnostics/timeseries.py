@@ -34,7 +34,7 @@ if True:
 
   # Interpolate model data directly to station locations
   #TODO: remove this, once other timeseries-type diagnostics are refactored.
-  def sample_model_at_obs (model, obs, fieldname, units):
+  def sample_model_at_obs (model, obs, fieldname, units, suffix=""):
     from ..common import select_surface, have_gridded_data, closeness_to_surface, number_of_timesteps, find_and_convert
     from .station import StationSample
     field = find_and_convert(model, fieldname, units, requirement=have_gridded_data, maximize = (closeness_to_surface,number_of_timesteps))
@@ -48,7 +48,7 @@ if True:
     # Cache the data for faster subsequent access.
     # Disable time splitting for the cache file, since open_multi doesn't work
     # very well with the encoded station data.
-    field = model.cache.write(field, prefix=model.name+'_at_%s_%s'%(obs.name,fieldname), split_time=False)
+    field = model.cache.write(field, prefix=model.name+'_at_%s_%s%s'%(obs.name,fieldname,suffix), split_time=False)
     return field
 
 
@@ -86,12 +86,12 @@ if True:
       # Cache the data for faster subsequent access.
       # Disable time splitting for the cache file, since open_multi doesn't work
       # very well with the encoded station data.
-      field = m.cache.write(field, prefix=m.name+'_at_%s_%s'%(obs.name,field.name), split_time=False)
+      field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False)
       model_data.append(field)
       try:
         field = find_and_convert(m, fieldname+'_ensemblespread', units, maximize = (closeness_to_surface,number_of_timesteps))
         field = select_surface(field)
-        field = m.cache.write(field, prefix=m.name+'_at_%s_%s'%(obs.name,field.name), split_time=False)
+        field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False)
         model_spread.append(field)
       except KeyError:  # No ensemble spread for this model data
         model_spread.append(None)
@@ -99,14 +99,14 @@ if True:
     obs_data = obs.find_best(fieldname)
     obs_data = select_surface(obs_data)
     # Cache the observation data, for faster subsequent access
-    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s'%fieldname, split_time=False)
+    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False)
 
     obs_data = convert(obs_data, units, context=fieldname)
     try:
       obs_stderr = obs.find_best(fieldname+'_std')
       obs_stderr = select_surface(obs_stderr)
       # Cache the observation data, for faster subsequent access
-      obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s_std'%fieldname, split_time=False)
+      obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False)
       obs_stderr = convert(obs_stderr, units, context=fieldname)
     except KeyError:
       obs_stderr = None

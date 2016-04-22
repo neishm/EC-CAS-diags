@@ -11,7 +11,7 @@ class Concentration_VS_Height(Diagnostic):
     return find_applicable_models(inputs, fieldname=self.fieldname, zaxis='gph')
 
   def do (self, inputs):
-    movie_CvH(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir)
+    movie_CvH(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, suffix=self.suffix)
 
 from .movie import TiledMovie
 class CvH_Movie(TiledMovie):
@@ -59,12 +59,12 @@ class CvH_Movie(TiledMovie):
 
 if True:
 
-  def movie_CvH (models, fieldname, units, outdir):
+  def movie_CvH (models, fieldname, units, outdir, suffix=""):
 
     from ..common import convert
     from .movie_zonal import zonalmean_gph
 
-    prefix = '%s_CvH%s'%('_'.join(m.name for m in models), fieldname)
+    prefix = '%s_CvH%s%s'%('_'.join(m.name for m in models), fieldname, suffix)
 
     #Names of each model - For plot titles later
     subtitles = ['Average CO$_{2}$ Concentration - %s'%(m.name) for m in models]

@@ -13,7 +13,7 @@ class ZonalMeanBG(Diagnostic):
     inputs = super(ZonalMeanBG,self)._select_inputs(inputs)
     return find_applicable_models(inputs, self.fieldname, zaxis='gph')
   def do (self, inputs):
-    movie_bargraph(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, height=self.height)
+    movie_bargraph(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, height=self.height, suffix=self.suffix)
 
 
 from .movie import TiledMovie
@@ -76,14 +76,14 @@ class BG_Movie (TiledMovie):
 if True:
 
 
-  def movie_bargraph (models, fieldname, units, outdir, height):
+  def movie_bargraph (models, fieldname, units, outdir, height, suffix=""):
 
     from ..common import convert
     from .movie_zonal import zonalmean_gph
 
-    prefix = "ZonalMeanBG-images_%s_%s"%('_'.join(m.name for m in models), fieldname)
+    prefix = "ZonalMeanBG-images_%s_%s%s"%('_'.join(m.name for m in models), fieldname, suffix)
 
-    fields = [zonalmean_gph(m,fieldname,units,typestat="mean") for m in models]
+    fields = [zonalmean_gph(m,fieldname,units,typestat="mean",suffix=suffix) for m in models]
     fields = [f(height=height) for f in fields]
 
     # Unit conversion

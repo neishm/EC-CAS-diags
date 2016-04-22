@@ -31,11 +31,11 @@ class ZonalMean(Diagnostic):
     inputs = super(ZonalMean,self)._select_inputs(inputs)
     return find_applicable_models(inputs, fieldname=self.fieldname, zaxis=self.zaxis)
   def do (self, inputs):
-    movie_zonal(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, zaxis=self.zaxis, typestat=self.typestat)
+    movie_zonal(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, zaxis=self.zaxis, typestat=self.typestat, suffix=self.suffix)
 
 if True:
   # Convert zonal mean data (on height)
-  def zonalmean_gph (model, fieldname, units, typestat):
+  def zonalmean_gph (model, fieldname, units, typestat, suffix=""):
     from pygeode.interp import interpolate
     from pygeode.axis import Height
     from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
@@ -66,7 +66,7 @@ if True:
       # Make sure the zonal mean gets cached before use in subsequent
       # calculations.
       # Otherwise, it could cause an O(n^2) slowdown of the diagnostics.
-      var_mean = zonalmean_gph (model, fieldname, units, typestat="mean")
+      var_mean = zonalmean_gph (model, fieldname, units, typestat="mean", suffix=suffix)
 
     # Do a zonal standard deviation
     var_stdev = (var-var_mean).nanstdev('lon')
@@ -76,13 +76,13 @@ if True:
     if typestat == "mean" : var=var_mean
 
     # Cache the zonalmean data
-    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_gph_'+fieldname)
+    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_gph_'+fieldname+suffix)
 
     return var
 
 
   # Convert zonal mean data (on pressure levels)
-  def zonalmean_pres (model, fieldname, units, typestat):
+  def zonalmean_pres (model, fieldname, units, typestat, suffix=""):
     from pygeode.interp import interpolate
     from pygeode.axis import Pres
     from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
@@ -113,7 +113,7 @@ if True:
       # Make sure the zonal mean gets cached before use in subsequent
       # calculations.
       # Otherwise, it could cause an O(n^2) slowdown of the diagnostics.
-      var_mean = zonalmean_gph (model, fieldname, units, typestat="mean")
+      var_mean = zonalmean_gph (model, fieldname, units, typestat="mean", suffix=suffix)
 
     # Do a zonal standard deviation
     var_stdev = (var-var_mean).nanstdev('lon')
@@ -123,7 +123,7 @@ if True:
     if typestat == "mean" : var=var_mean
 
     # Cache the zonalmean data
-    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_pres_'+fieldname)
+    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_pres_'+fieldname+suffix)
 
     return var
 
@@ -131,19 +131,19 @@ if True:
 from .movie import ZonalMovie
 if True:
 
-  def movie_zonal (models, fieldname, units, outdir, zaxis='gph', typestat='mean'):
+  def movie_zonal (models, fieldname, units, outdir, zaxis='gph', typestat='mean', suffix=""):
 
     assert zaxis in ('gph','plev')
 
-    prefix = '_'.join(m.name for m in models) + '_zonal'+typestat+'_'+fieldname+'_on_'+zaxis
+    prefix = '_'.join(m.name for m in models) + '_zonal'+typestat+'_'+fieldname+'_on_'+zaxis+suffix
     title = 'Zonal %s %s (in %s)'%(typestat,fieldname,units)
     aspect_ratio = 1.0
     shape = (1,len(models))
 
     if zaxis == 'gph':
-      fields = [zonalmean_gph(m,fieldname,units,typestat) for m in models]
+      fields = [zonalmean_gph(m,fieldname,units,typestat,suffix=suffix) for m in models]
     else:
-      fields = [zonalmean_pres(m,fieldname,units,typestat) for m in models]
+      fields = [zonalmean_pres(m,fieldname,units,typestat,suffix=suffix) for m in models]
 
     subtitles = [m.title for m in models]
 

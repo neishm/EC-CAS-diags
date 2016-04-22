@@ -16,12 +16,12 @@ class TotalmassDiff(ImageDiagnostic):
       for j in range(i+1,n):
         yield models[i], models[j]
   def do (self, inputs):
-    totalmass_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, normalize_air_mass = self.normalize_air_mass, format=self.image_format)
+    totalmass_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, normalize_air_mass = self.normalize_air_mass, format=self.image_format, suffix=self.suffix)
 
 
 if True:
 
-  def totalmass_diff (models, fieldname, units, outdir, normalize_air_mass=False, format='png'):
+  def totalmass_diff (models, fieldname, units, outdir, normalize_air_mass=False, format='png', suffix=""):
     from os.path import exists
     from ..common import convert, same_times
     from matplotlib import pyplot as pl
@@ -30,7 +30,7 @@ if True:
     if len(models) != 2:
       raise ValueError ("Expected 2 datasets")
 
-    fields = [compute_totalmass(m,fieldname) for m in models]
+    fields = [compute_totalmass(m,fieldname,suffix=suffix) for m in models]
 
     # Unit conversion
     fields = [convert(f,units) for f in fields]
@@ -41,14 +41,14 @@ if True:
 
     # Get model air mass, if we are normalizing the tracer mass.
     if normalize_air_mass:
-      airmass = compute_totalmass(models[0],'air')
+      airmass = compute_totalmass(models[0],'air',suffix=suffix)
       diff, airmass = same_times(diff,airmass)
       airmass0 = float(airmass[0])
       diff = diff / airmass * airmass0
 
     diff.name=fieldname+'_diff'
 
-    outfile = outdir + "/%s_totalmass_diff_%s%s.%s"%('_'.join(m.name for m in models),fieldname,'_normalized' if normalize_air_mass else '', format)
+    outfile = outdir + "/%s_totalmass_diff_%s%s%s.%s"%('_'.join(m.name for m in models),fieldname,suffix,'_normalized' if normalize_air_mass else '', format)
     if not exists(outfile):
       fig = pl.figure(figsize=(15,12))
       ax = pl.subplot(111)

@@ -24,13 +24,13 @@ class XCol(Diagnostic):
     inputs = super(XCol,self)._select_inputs(inputs)
     return find_applicable_models(inputs, self.fieldname)
   def do (self, inputs):
-    xcol (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir)
+    xcol (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, suffix=self.suffix)
 
 if True:
 
   # Compute total column of a tracer
   # (in kg/m2)
-  def totalcolumn (model, fieldname):
+  def totalcolumn (model, fieldname, suffix):
     from ..common import find_and_convert, grav as g, number_of_levels, number_of_timesteps
 
     c, dp = find_and_convert (model, [fieldname,'dp'], ['kg kg(air)-1', 'Pa'], maximize=(number_of_levels,number_of_timesteps))
@@ -44,11 +44,11 @@ if True:
       data.atts['specie'] = c.atts['specie']
 
     # Cache the data
-    return model.cache.write(data,prefix=model.name+"_totalcolumn_"+fieldname)
+    return model.cache.write(data,prefix=model.name+"_totalcolumn_"+fieldname+suffix)
 
 
   # Compute average column of a tracer
-  def avgcolumn (model, fieldname, units):
+  def avgcolumn (model, fieldname, units, suffix):
     from ..common import find_and_convert, number_of_levels, number_of_timesteps
     c, dp = find_and_convert(model, [fieldname,'dp'], [units,'Pa'], maximize=(number_of_levels,number_of_timesteps))
 
@@ -60,16 +60,16 @@ if True:
       data.atts['specie'] = c.atts['specie']
 
     # Cache the data
-    return model.cache.write(data,prefix=model.name+"_avgcolumn_"+fieldname)
+    return model.cache.write(data,prefix=model.name+"_avgcolumn_"+fieldname+suffix)
 
 
 
 
   # Get column average
-  def get_xcol (experiment, fieldname, units):
+  def get_xcol (experiment, fieldname, units, suffix):
     from ..common import rotate_grid, convert
 
-    xcol = avgcolumn(experiment, fieldname, units)
+    xcol = avgcolumn(experiment, fieldname, units, suffix)
 
     # Rotate the longitudes to 0,360
     if xcol.lon[1] < 0:
@@ -81,13 +81,13 @@ if True:
     return xcol
 
 
-  def xcol (models, fieldname, units, outdir):
+  def xcol (models, fieldname, units, outdir, suffix=""):
     from .movie import ContourMovie
 
     plotname = 'X'+fieldname
-    prefix = '_'.join(m.name for m in models) + '_' + plotname
+    prefix = '_'.join(m.name for m in models) + '_' + plotname + suffix
 
-    fields = [get_xcol(m,fieldname,units) for m in models]
+    fields = [get_xcol(m,fieldname,units,suffix=suffix) for m in models]
     subtitles = [m.title for m in models]
     title = '%s (in %s)'%(plotname,units)
 

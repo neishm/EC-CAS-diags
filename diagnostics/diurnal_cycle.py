@@ -40,7 +40,7 @@ class DiurnalCycle(ImageDiagnostic):
       yield [obs]+list(model_inputs)
   def do (self, inputs):
     # Do the diagnostic.
-    diurnal_cycle (obs=inputs[0], models=inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format)
+    diurnal_cycle (obs=inputs[0], models=inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format, suffix=self.suffix)
 
 if True:
   # Compute a diurnal mean.
@@ -72,7 +72,7 @@ if True:
       stddev = [stddev[-1]] + stddev + [stddev[0]]
     return np.array(diurnal_hours), np.array(mean), np.array(stddev)
 
-  def diurnal_cycle (obs, models, fieldname, units, outdir, format='png'):
+  def diurnal_cycle (obs, models, fieldname, units, outdir, format='png', suffix=""):
     from .timeseries import sample_model_at_obs
     from ..common import convert, long_monthnames, select_surface
     from matplotlib import pyplot as pl
@@ -92,14 +92,14 @@ if True:
     obs_data = obs.find_best(fieldname)
     obs_data = select_surface(obs_data)
     # Cache the observation data, for faster subsequent access
-    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s'%fieldname, split_time=False)
+    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False)
     obs_data = convert(obs_data, units, context=fieldname)
 
     # Extract the data for each station,year,month.
     # Compute the diurnal means and do the plot.
     for station in obs_data.station.values:
       for year in years:
-        outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d.%s"%(outdir,'_'.join(d.name for d in models+[obs]), fieldname, station.replace('/','^'), year, format)
+        outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]), fieldname, station.replace('/','^'), year, suffix, format)
         if exists(outfile): continue
         fig = pl.figure(figsize=(10,10))
         title = "%s diurnal cycle at %s (%04d)"%(fieldname,station,year)

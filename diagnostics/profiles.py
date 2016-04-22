@@ -34,7 +34,7 @@ class AircraftProfiles(ImageDiagnostic):
 
   def do (self, inputs):
     # Do the diagnostic.
-    profiles (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format)
+    profiles (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format, suffix=self.suffix)
 
 if True:
   from .station import StationSample
@@ -140,12 +140,12 @@ if True:
       # Disable time splitting for the cache file, since open_multi doesn't work
     # very well with the encoded station data.
     print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
-    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_full'%(obs.name,fieldname), split_time=False)
-    gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s_full'%(obs.name,'geopotential_height'), split_time=False)
+    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,fieldname,suffix), split_time=False)
+    gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,'geopotential_height',suffix), split_time=False)
 
     # Interpolate the model to the fixed vertical levels.
     outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
-    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s_zinterp'%(obs.name,fieldname), split_time=False)
+    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_zinterp'%(obs.name,fieldname,suffix), split_time=False)
 
     return [outfield]
 
@@ -187,7 +187,7 @@ if True:
     return data
 
 
-  def profiles (obs, models, fieldname, units, outdir, format='png'):
+  def profiles (obs, models, fieldname, units, outdir, format='png', suffix=""):
 
     import numpy as np
     import matplotlib.pyplot as pl

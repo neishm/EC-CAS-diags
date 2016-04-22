@@ -25,19 +25,19 @@ class XColEnKF(Diagnostic):
     return find_applicable_models(inputs, self.fieldname)
 
   def do (self, inputs):
-    xcol_enkf (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir)
+    xcol_enkf (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, suffix=self.suffix)
 
 
 
 if True:
 
-  def xcol_enkf (model, fieldname, units, outdir):
+  def xcol_enkf (model, fieldname, units, outdir, suffix=""):
     from .movie import ContourMovie
     from .xcol import get_xcol
 
-    prefix = model.name + '_' + 'X'+fieldname+'_stats'
+    prefix = model.name + '_' + 'X'+fieldname+suffix+'_stats'
 
-    fields = [get_xcol(model,field,units) for field in (fieldname,fieldname+'_ensemblespread')]
+    fields = [get_xcol(model,field,units,suffix="") for field in (fieldname,fieldname+'_ensemblespread')]
     subtitles = ['X%s %s (%s)'%(fieldname,stat,model.name) for stat in 'mean','std dev.']
     title = 'X%s stats (in %s)'%(fieldname,units)
 
