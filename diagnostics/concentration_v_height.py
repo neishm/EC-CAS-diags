@@ -69,7 +69,7 @@ if True:
     #Names of each model - For plot titles later
     subtitles = ['Average CO$_{2}$ Concentration - %s'%(m.name) for m in models]
 
-    fields = [zonalmean_gph(m,fieldname,units,typestat="mean") for m in models]
+    fields = [zonalmean_gph(m,fieldname,units,typestat="mean",suffix=suffix) for m in models]
 
     # Unit conversion
     fields = [convert(f,units) for f in fields]
