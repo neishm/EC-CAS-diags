@@ -1,6 +1,6 @@
 # regional bar plots
 
-from .timeseries import find_applicable_models
+from .timeseries_junk import find_applicable_models
 
 if True:
 
@@ -47,7 +47,7 @@ if True:
 
     from ..common import convert, select_surface
 
-    from .timeseries import sample_model_at_obs
+    from .timeseries_junk import sample_model_at_obs
 
     model_data = []
     model_spread = []

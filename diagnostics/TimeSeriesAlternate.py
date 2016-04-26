@@ -10,7 +10,7 @@ class TimeseriesDiff(TimeVaryingDiagnostic,ImageDiagnostic):
     super(TimeseriesDiff,self).__init__(**kwargs)
     self.timefilter = timefilter
   def _input_combos (self, inputs):
-    from .timeseries import find_applicable_obs, find_applicable_models
+    from .timeseries_junk import find_applicable_obs, find_applicable_models
     fieldname = self.fieldname
     model_inputs = find_applicable_models(inputs, fieldname)
     obs_inputs = find_applicable_obs(inputs, fieldname)
@@ -37,7 +37,7 @@ if True:
 
     from ..common import convert, select_surface
 
-    from .timeseries import sample_model_at_obs
+    from .timeseries_junk import sample_model_at_obs
 
     model_line_colours = [m.color for m in models]
     obs_line_colour = obs.color

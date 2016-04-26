@@ -15,7 +15,7 @@ def have_regular_time_axis(d):
 
 if True:
 
-  from .timeseries import find_applicable_models
+  from .timeseries_junk import find_applicable_models
   def find_applicable_obs (inputs, fieldname):
     from ..common import have_station_data
     obs_inputs = []
@@ -73,7 +73,7 @@ if True:
     return np.array(diurnal_hours), np.array(mean), np.array(stddev)
 
   def diurnal_cycle (obs, models, fieldname, units, outdir, format='png', suffix=""):
-    from .timeseries import sample_model_at_obs
+    from .timeseries_junk import sample_model_at_obs
     from ..common import convert, long_monthnames, select_surface
     from matplotlib import pyplot as pl
     from os.path import exists

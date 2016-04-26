@@ -5,7 +5,7 @@ It is important to note that the model histogram will consist of a full year's d
 Whereas the observations may only exist for one season, causing them to look much different.
 """
 
-from .timeseries import find_applicable_obs, find_applicable_models
+from .timeseries_junk import find_applicable_obs, find_applicable_models
 
 from . import ImageDiagnostic
 class TimeseriesHist(ImageDiagnostic):
@@ -39,7 +39,7 @@ if True:
 
     from ..common import convert, select_surface
 
-    from .timeseries import sample_model_at_obs
+    from .timeseries_junk import sample_model_at_obs
 
     model_data = []
     model_spread = []
