@@ -70,25 +70,6 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
     return list(cached_models)+[cached_obs]
 
   def do (self, inputs):
-    # Do the diagnostic.
-    timeseries (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, stations=self.stations, format=self.image_format, suffix=self.suffix)
-
-
-if True:
-
-
-  # Determine if a particular station matches a list of station names.
-  def lookup_station (station, station_list):
-    string_filter = lambda x: x.lower().replace(' ','').replace('_','')
-    station = string_filter(station)
-    station_list = [string_filter(s) for s in station_list]
-    for s in station_list:
-      if station.startswith(s): return s
-    return None
-
-
-  def timeseries (inputs, fieldname, units, outdir, stations=None, format='png', suffix=""):
-
     import numpy as np
     import matplotlib.pyplot as pl
     from os.path import exists
@@ -112,8 +93,8 @@ if True:
       lat = station_info.lat[0]
       lon = station_info.lon[0]
 
-      if stations is not None:
-        s = lookup_station(location,stations)
+      if self.stations is not None:
+        s = self._lookup_station(location)
         stations_on_figure.append(s)
 
       # Construct a title for the plot
@@ -131,7 +112,7 @@ if True:
       title = title.decode('latin-1')
 
       for inp in inputs:
-        var = inp.find_best(fieldname)
+        var = inp.find_best(self.fieldname)
         dates = to_datetimes(var.time)
         values = var.get(station=location).flatten()
 
@@ -154,7 +135,7 @@ if True:
 
         # Draw standard deviation?
         try:
-          std = inp.find_best(fieldname+'_std').get(station=location).flatten()
+          std = inp.find_best(self.fieldname+'_std').get(station=location).flatten()
           fill_min = values - 2*std
           fill_max = values + 2*std
           fill_mask = np.isfinite(fill_max)
@@ -163,7 +144,7 @@ if True:
         pl.plot(dates, values, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
 
       pl.title(title)
-      pl.ylabel('%s %s'%(fieldname,units))
+      pl.ylabel('%s %s'%(self.fieldname,self.units))
 
       # Things to do one the last plot of the figure
       if i%n == (n-1) or i == len(station_axis)-1:
@@ -174,11 +155,11 @@ if True:
         pl.tight_layout()
 
         # Save as an image file.
-        if stations is not None:
+        if self.stations is not None:
           fig_id = ','.join(stations_on_figure)
         else:
           fig_id = '%02d'%(i/n+1)
-        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),fieldname,fig_id,suffix,format)
+        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(self.outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix,self.format)
         if not exists(outfile):
           fig.savefig(outfile)
 
