@@ -24,9 +24,72 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
   """
   Sample data at surface obs locations, and plot the result as a 1D line plot.
   """
+  # Further modify the station sampling logic to select only surface level
+  # (and cache the data).
+  def _transform_inputs (self, inputs):
+    from ..common import find_and_convert, closeness_to_surface, number_of_timesteps, select_surface, convert
+    from ..interfaces import DerivedProduct
+    from pygeode.timeutils import reltime
+    inputs = super(Timeseries,self)._transform_inputs(inputs)
+    fieldname = self.fieldname
+    units = self.units
+    suffix = self.suffix
+    models = inputs[:-1]
+    obs = inputs[-1]
+    # Cache the model data
+    # Use the first model timeaxis as the range for plotting.
+    timeaxis = None
+    cached_models = []
+    for m in models:
+      dataset = []
+      field = find_and_convert(m, fieldname, units, maximize = (closeness_to_surface,number_of_timesteps))
+      field = select_surface(field)
+      # Apply time axis subsetting
+      if timeaxis is None:
+        timeaxis = field.getaxis('time')
+      else:
+        field = field(time=(timeaxis.values[0],timeaxis.values[-1]))
+      # Cache the data for faster subsequent access.
+      # Disable time splitting for the cache file, since open_multi doesn't work
+      # very well with the encoded station data.
+      field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False)
+      dataset.append(field)
+      try:
+        field = find_and_convert(m, fieldname+'_ensemblespread', units, maximize = (closeness_to_surface,number_of_timesteps))
+        field = select_surface(field)
+        field = field(time=(timeaxis.values[0],timeaxis.values[-1]))
+        field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False)
+        dataset.append(field.rename(fieldname+'_std'))
+      except KeyError:  # No ensemble spread for this model data
+        pass
+      m = DerivedProduct(dataset, source=m)
+      cached_models.append(m)
+
+    # Cache the obs data
+    dataset = []
+    obs_data = obs.find_best(fieldname)
+    obs_data = select_surface(obs_data)
+    obs_data = obs_data(time=(timeaxis.values[0],timeaxis.values[-1]))
+    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False)
+    obs_data = convert(obs_data, units, context=fieldname)
+    dataset.append(obs_data)
+    # Cached the obs std. deviation (if it exists)
+    try:
+      obs_stderr = obs.find_best(fieldname+'_std')
+      obs_stderr = select_surface(obs_stderr)
+      obs_stderr = obs_stderr(time=(timeaxis.values[0],timeaxis.values[-1]))
+      obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False)
+      obs_stderr = convert(obs_stderr, units, context=fieldname)
+      dataset.append(obs_stderr)
+    except KeyError:
+      pass
+    cached_obs = DerivedProduct(dataset, source=obs)
+
+    return list(cached_models)+[cached_obs]
+
   def do (self, inputs):
     # Do the diagnostic.
-    timeseries (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, stations=self.stations, format=self.image_format, suffix=self.suffix)
+    timeseries (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, stations=self.stations, format=self.image_format, suffix=self.suffix)
 
 
 if True:
@@ -62,83 +125,28 @@ if True:
     return None
 
 
-  def timeseries (obs, models, fieldname, units, outdir, stations=None, format='png', suffix=""):
+  def timeseries (inputs, fieldname, units, outdir, stations=None, format='png', suffix=""):
 
     import numpy as np
     import matplotlib.pyplot as pl
     from os.path import exists
-    from ..common import convert, select_surface, closeness_to_surface, number_of_timesteps, find_and_convert, to_datetimes
+    from ..common import to_datetimes
 
     figwidth = 15
-
-    model_line_colours = [m.color for m in models]
-    obs_line_colour = obs.color
-    model_line_styles = [m.linestyle for m in models]
-    obs_line_style = obs.linestyle
-    model_markers = [m.marker for m in models]
-    obs_marker = obs.marker
-
-    model_data = []
-    model_spread = []
-    for m in models:
-      field = find_and_convert(m, fieldname, units, maximize = (closeness_to_surface,number_of_timesteps))
-      field = select_surface(field)
-      # Cache the data for faster subsequent access.
-      # Disable time splitting for the cache file, since open_multi doesn't work
-      # very well with the encoded station data.
-      field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False)
-      model_data.append(field)
-      try:
-        field = find_and_convert(m, fieldname+'_ensemblespread', units, maximize = (closeness_to_surface,number_of_timesteps))
-        field = select_surface(field)
-        field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False)
-        model_spread.append(field)
-      except KeyError:  # No ensemble spread for this model data
-        model_spread.append(None)
-
-    obs_data = obs.find_best(fieldname)
-    obs_data = select_surface(obs_data)
-    # Cache the observation data, for faster subsequent access
-    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False)
-
-    obs_data = convert(obs_data, units, context=fieldname)
-    try:
-      obs_stderr = obs.find_best(fieldname+'_std')
-      obs_stderr = select_surface(obs_stderr)
-      # Cache the observation data, for faster subsequent access
-      obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False)
-      obs_stderr = convert(obs_stderr, units, context=fieldname)
-    except KeyError:
-      obs_stderr = None
-
-    # Combine model and obs data together into one set
-    data = model_data + [obs_data]
-    spread = model_spread + [obs_stderr]
-    line_colours = model_line_colours[:len(model_data)] + [obs_line_colour]
-    line_styles = model_line_styles + [obs_line_style]
-    markers = model_markers + [obs_marker]
-
-    # Use the first model data as a basis for the time axis.
-    timeaxis = (d.getaxis('time') for d in data).next()
-    # Limit the range to plot
-    times = timeaxis.get()
-    time1 = min(times)
-    time2 = max(times)
-
-    data = [d(time=(time1,time2)) for d in data]
-    spread = [None if s is None else s(time=(time1,time2)) for s in spread]
 
     # Create plots of each location
     # Plot 4 timeseries per figure
     n = 4
-    locations = list(data[0].station)
-    for i,location in enumerate(locations):
+    station_axis = inputs[0].datasets[0].vars[0].station
+    time1 = inputs[0].datasets[0].vars[0].time.values[0]
+    time2 = inputs[0].datasets[0].vars[0].time.values[-1]
+    for i,location in enumerate(station_axis.values):
 
       if i%n == 0:
         fig = pl.figure(figsize=(figwidth,12))
         stations_on_figure = []
       pl.subplot(n,1,i%n+1)
-      station_info = data[0](station=location).getaxis("station")
+      station_info = station_axis(station=location)
       lat = station_info.lat[0]
       lon = station_info.lon[0]
 
@@ -160,12 +168,13 @@ if True:
       # Fix issue with certain characters in station names
       title = title.decode('latin-1')
 
-      for j in range(len(data)):
-        dates = to_datetimes(data[j].time)
-        values = data[j].get(station=location).flatten()
+      for inp in inputs:
+        var = inp.find_best(fieldname)
+        dates = to_datetimes(var.time)
+        values = var.get(station=location).flatten()
 
         # Determine marker size based on the density of observations
-        timevalues = data[j](station=location).time.values
+        timevalues = var(station=location).time.values
         timevalues = timevalues[np.isfinite(values)]
         dt = filter(None,np.diff(timevalues))
         if len(dt) > 0:
@@ -182,21 +191,22 @@ if True:
           markersize = 1.0
 
         # Draw standard deviation?
-        if spread[j] is not None:
-          std = spread[j].get(station=location).flatten()
+        try:
+          std = inp.find_best(fieldname+'_std').get(station=location).flatten()
           fill_min = values - 2*std
           fill_max = values + 2*std
           fill_mask = np.isfinite(fill_max)
-          pl.fill_between(dates, fill_min, fill_max, where=fill_mask, color=line_colours[j], linewidth=0, alpha=0.5)
-        pl.plot(dates, values, color=line_colours[j], linestyle=line_styles[j], marker=markers[j], markersize=markersize, markeredgecolor=line_colours[j])
+          pl.fill_between(dates, fill_min, fill_max, where=fill_mask, color=inp.color, linewidth=0, alpha=0.5)
+        except KeyError: pass
+        pl.plot(dates, values, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
 
       pl.title(title)
       pl.ylabel('%s %s'%(fieldname,units))
 
       # Things to do one the last plot of the figure
-      if i%n == (n-1) or i == len(locations)-1:
+      if i%n == (n-1) or i == len(station_axis)-1:
         # Put a legend on the last plot
-        labels = [d.title for d in models+[obs]]
+        labels = [d.title for d in inputs]
         pl.legend(labels)
 
         pl.tight_layout()
@@ -206,7 +216,7 @@ if True:
           fig_id = ','.join(stations_on_figure)
         else:
           fig_id = '%02d'%(i/n+1)
-        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,fig_id,suffix,format)
+        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),fieldname,fig_id,suffix,format)
         if not exists(outfile):
           fig.savefig(outfile)
 

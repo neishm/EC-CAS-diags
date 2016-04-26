@@ -77,7 +77,7 @@ class StationComparison(Diagnostic):
         m = DerivedProduct(datasets,source=m)
         out_models.append(m)
       if len(out_models) == 0: continue  # Don't do obs-only diagnostic.
-      yield [obs] + out_models
+      yield out_models + [obs]
 
 
   # Determine if a particular station matches a list of station names.
