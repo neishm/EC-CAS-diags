@@ -189,11 +189,15 @@ grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 # Normalize the time axes to the same start date / units
 def fix_timeaxis (data):
   from pygeode.timeaxis import StandardTime
+  from pygeode.dataset import Dataset
   if not hasattr(data,'time'): return data  # No time axis found?
   startdate = dict(year=2009, month=1, day=1)
   time = data.time
   time = StandardTime(units='days', startdate=startdate, **time.auxarrays)
-  data = data.replace_axes(time=time)
+  if isinstance(data,Dataset):
+    data = Dataset([v.replace_axes(time=time) for v in data], atts=data.atts)
+  else:
+    data = data.replace_axes(time=time)
   return data
 
 # Convert a string to an int or float, if possible.  (Otherwise, keep it as a string)
