@@ -73,7 +73,7 @@ class Cache (object):
     import numpy as np
 
     if var.size == 0:
-      raise ValueError("No data to cache - field '%s' is empty.  Shape: %s"%(var.name,var.shape))
+      raise ValueError("No data to cache - field '%s' is empty.  Shape: %s  Prefix: %s"%(var.name,var.shape,prefix))
 
     # Make sure the data is saved with a consistent start date
     # (makes it easier to plot timeseries data from multiple sources)
