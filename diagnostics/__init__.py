@@ -127,6 +127,7 @@ class TimeVaryingDiagnostic(Diagnostic):
   # Limit the time range for the data.
   def _transform_inputs (self, models):
     from ..interfaces import DerivedProduct
+    from ..common import fix_timeaxis
     from pygeode.timeutils import reltime
     from math import floor
     models = super(TimeVaryingDiagnostic,self)._transform_inputs(models)
@@ -151,6 +152,8 @@ class TimeVaryingDiagnostic(Diagnostic):
           hour = int(floor(hour_float))
           minute = int((hour_float-hour)*60)
           d = d(hour=hour,minute=minute)
+        # Use the same start date & units for all time axes.
+        d = fix_timeaxis(d)
         out_datasets.append(d)
       m = DerivedProduct(out_datasets, source=m)
       out_models.append(m)
