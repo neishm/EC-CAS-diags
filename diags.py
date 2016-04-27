@@ -80,7 +80,7 @@ if args.configfile is None:
   quit()
 
 # Read the configuration file.
-configparser = ConfigParser.SafeConfigParser(defaults=dict(color='black',linestyle='-',marker='None'))
+configparser = ConfigParser.SafeConfigParser(defaults=dict(color='black',linestyle='-',std_style='lines',marker='None'))
 configparser.readfp(args.configfile)
 
 # Scan for special markup for command-line arguments
@@ -144,8 +144,9 @@ for section in configparser.sections():
 
   color = configparser.get(section,'color')
   linestyle = configparser.get(section,'linestyle')
+  std_style = configparser.get(section,'std_style')
   marker = configparser.get(section,'marker')
-  experiment = data_interface(data_dirs, name=data_name, title=title, cache=cache, rescan=args.rescan, color=color, linestyle=linestyle, marker=marker)
+  experiment = data_interface(data_dirs, name=data_name, title=title, cache=cache, rescan=args.rescan, color=color, linestyle=linestyle, std_style=std_style, marker=marker)
 
   datasets.append(experiment)
 
