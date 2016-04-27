@@ -13,40 +13,25 @@ def have_regular_time_axis(d):
   if len(set(np.diff(hours))) == 1: return True
   return False
 
-if True:
 
-  from .timeseries_junk import find_applicable_models
-  def find_applicable_obs (inputs, fieldname):
-    from ..common import have_station_data
-    obs_inputs = []
-    for x in inputs:
-      if any(fieldname in d and have_station_data(d) and have_regular_time_axis(d) for d in x.datasets):
-        obs_inputs.append(x)
-    return obs_inputs
-
-
-from . import ImageDiagnostic
-class DiurnalCycle(ImageDiagnostic):
+# Start with the timeseries diagnostic, and further process the data to get
+# the diurnal cycle.
+from .timeseries import Timeseries
+class DiurnalCycle(Timeseries):
   """
   Mean diurnal cycle, sampled at obs locations.
   """
-  def _input_combos (self, inputs):
-    fieldname = self.fieldname
-    model_inputs = find_applicable_models(inputs, fieldname)
-    # If there's no model data to plot, then don't bother plotting!
-    if len(model_inputs) == 0: return
-    obs_inputs = find_applicable_obs(inputs, fieldname)
-    for obs in obs_inputs:
-      yield [obs]+list(model_inputs)
-  def do (self, inputs):
-    # Do the diagnostic.
-    diurnal_cycle (obs=inputs[0], models=inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format, suffix=self.suffix)
+  # Only use data that has a regularly-spaced time axis.
+  def _check_dataset (self, dataset):
+    if super(DiurnalCycle,self)._check_dataset(dataset) is False:
+      return False
+    return have_regular_time_axis(dataset)
 
-if True:
   # Compute a diurnal mean.
   # Takes a PyGeode Var object as input.
   # Returns the hour of the day, and the diurnal mean data as numpy arrays.
   # Note: only works on one timeseries at a time.
+  @staticmethod
   def compute_diurnal_mean_stddev (var):
     import numpy as np
     from pygeode.timeutils import reltime
@@ -72,37 +57,28 @@ if True:
       stddev = [stddev[-1]] + stddev + [stddev[0]]
     return np.array(diurnal_hours), np.array(mean), np.array(stddev)
 
-  def diurnal_cycle (obs, models, fieldname, units, outdir, format='png', suffix=""):
-    from .timeseries_junk import sample_model_at_obs
-    from ..common import convert, long_monthnames, select_surface
+  # Do the diurnal cycle plots.
+  def do (self, inputs):
+    from ..common import long_monthnames
     from matplotlib import pyplot as pl
     from os.path import exists
-    print "doing diurnal cycle for obs = %s, models = %s"%(obs.name,[model.name for model in models])
-    model_data = []
-    for model in models:
-      model_data.append(sample_model_at_obs(model,obs,fieldname,units))
 
-    # Use model years for comparisons
+    # Determine years for comparisons
     years = set()
-    for mod_data in model_data:
-      for y in set(mod_data.time.year):
-        if sum(mod_data.time.year==y) > 10: years.add(y)
+    for inp in inputs:
+      t = inp.datasets[0].vars[0].getaxis('time')
+      for y in set(t.year):
+        if sum(t.year==y) > 10: years.add(y)
     years = sorted(years)
-
-    obs_data = obs.find_best(fieldname)
-    obs_data = select_surface(obs_data)
-    # Cache the observation data, for faster subsequent access
-    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False)
-    obs_data = convert(obs_data, units, context=fieldname)
 
     # Extract the data for each station,year,month.
     # Compute the diurnal means and do the plot.
-    for station in obs_data.station.values:
+    for station in inputs[0].datasets[0].station.values:
       for year in years:
-        outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]), fieldname, station.replace('/','^'), year, suffix, format)
+        outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d%s.%s"%(self.outdir,'_'.join(d.name for d in inputs), self.fieldname, station.replace('/','^'), year, self.suffix, self.image_format)
         if exists(outfile): continue
         fig = pl.figure(figsize=(10,10))
-        title = "%s diurnal cycle at %s (%04d)"%(fieldname,station,year)
+        title = "%s diurnal cycle at %s (%04d)"%(self.fieldname,station,year)
         # Fix issue with certain characters in station names
         title = title.decode('latin-1')
         pl.suptitle (title, fontsize=18)
@@ -112,18 +88,17 @@ if True:
           pl.subplot(6,2,plotnum)
           pl.title(month_string)
 
-          for i in range(len(models)):
-            current_model_data = model_data[i](station=station).squeeze('station')(year=year,month=month).squeeze()
-            if len(current_model_data.axes) == 0: continue
-            hours, data, std = compute_diurnal_mean_stddev(current_model_data)
-            pl.plot(hours, data, color=models[i].color, linestyle=models[i].linestyle, linewidth=2, marker=models[i].marker, markersize=10, markeredgecolor=models[i].color, label=models[i].title)
-            pl.plot(hours, data+std, color=models[i].color, linestyle='--')
-            pl.plot(hours, data-std, color=models[i].color, linestyle='--')
+          for inp in inputs:
+            data = inp.find_best(self.fieldname)(station=station).squeeze('station')(year=year,month=month).squeeze()
+            if len(data.axes) == 0: continue
+            hours, data, std = self.compute_diurnal_mean_stddev(data)
+            pl.plot(hours, data, color=inp.color, linestyle=inp.linestyle, linewidth=2, marker=inp.marker, markersize=10, markeredgecolor=inp.color, label=inp.title)
+            if inp.std_style == 'lines':
+              pl.plot(hours, data+std, color=inp.color, linestyle='--')
+              pl.plot(hours, data-std, color=inp.color, linestyle='--')
 
-          current_obs_data = obs_data(station=station).squeeze('station')(year=year,month=month)
-          hours, data, std = compute_diurnal_mean_stddev(current_obs_data)
-          pl.plot(hours, data, color=obs.color, linestyle=obs.linestyle, linewidth=2, marker=obs.marker, markersize=10, markeredgecolor=obs.color, label=obs.title)
-          pl.fill_between(hours, data-std, data+std, color=obs.color, alpha=0.2, linewidth=0)
+            if inp.std_style == 'shade':
+              pl.fill_between(hours, data-std, data+std, color=inp.color, alpha=0.2, linewidth=0)
           hourticks = range(0,26,2)
           if plotnum in (11,12):
             pl.xticks(hourticks)
@@ -132,7 +107,7 @@ if True:
             pl.xticks(hourticks,['']*len(hourticks))
           pl.xlim(0,24)
           if plotnum%2 == 1:
-            pl.ylabel('[%s]'%units)
+            pl.ylabel('[%s]'%self.units)
           # Don't use matplotlib's axis label offset (looks ugly).
           # http://stackoverflow.com/questions/24171064/matplotlib-remove-axis-label-offset-by-default
           pl.gca().get_yaxis().get_major_formatter().set_useOffset(False)
