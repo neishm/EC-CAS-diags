@@ -134,13 +134,18 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
           markersize = 1.0
 
         # Draw standard deviation?
-        try:
+        if inp.have(self.fieldname+'_std'):
           std = inp.find_best(self.fieldname+'_std').get(station=location).flatten()
           fill_min = values - 2*std
           fill_max = values + 2*std
           fill_mask = np.isfinite(fill_max)
-          pl.fill_between(dates, fill_min, fill_max, where=fill_mask, color=inp.color, linewidth=0, alpha=0.5)
-        except KeyError: pass
+          if inp.std_style == 'lines':
+            pl.plot(dates, fill_min, color=inp.color, linestyle='--')
+            pl.plot(dates, fill_max, color=inp.color, linestyle='--')
+          if inp.std_style == 'shade':
+            pl.fill_between(dates, fill_min, fill_max, where=fill_mask, color=inp.color, linewidth=0, alpha=0.5)
+
+        # Plot the timeseries
         pl.plot(dates, values, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
 
       pl.title(title)
