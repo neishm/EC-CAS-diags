@@ -159,7 +159,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
           fig_id = ','.join(stations_on_figure)
         else:
           fig_id = '%02d'%(i/n+1)
-        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(self.outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix,self.format)
+        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(self.outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix,self.image_format)
         if not exists(outfile):
           fig.savefig(outfile)
 
