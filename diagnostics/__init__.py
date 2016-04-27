@@ -1,9 +1,9 @@
 # Generic interface for a diagnostic, to be sub-classed by each particular
 # diagnostic.
 class Diagnostic(object):
-  @staticmethod
+  @classmethod
   # Method to add extra command-line arguments needed for this diagnostic.
-  def add_args (parser):
+  def add_args (cls, parser):
     return  # Nothing needed by default.
 
   # Attach the command-line arguments to this object for later use.
@@ -59,9 +59,9 @@ class Diagnostic(object):
 # Provides command-line arguments for controlling image output.
 class ImageDiagnostic(Diagnostic):
   # Control image format through command-line parameter
-  @staticmethod
-  def add_args (parser, handled=[]):
-    super(ImageDiagnostic,ImageDiagnostic).add_args(parser)
+  @classmethod
+  def add_args (cls, parser, handled=[]):
+    super(ImageDiagnostic,cls).add_args(parser)
     if len(handled) > 0: return  # Only run once
     parser.add_argument('--image-format', action='store', choices=('png','eps','svg','ps','pdf'), default='png', help="Specify the format of output images.  Default is png.")
     handled.append(True)

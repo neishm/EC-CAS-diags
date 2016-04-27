@@ -2,9 +2,9 @@
 
 from . import Diagnostic
 class StationComparison(Diagnostic):
-  @staticmethod
-  def add_args (parser, handled=[]):
-    super(StationComparison,StationComparison).add_args(parser)
+  @classmethod
+  def add_args (cls, parser, handled=[]):
+    super(StationComparison,cls).add_args(parser)
     if len(handled) > 0: return  # Only run once
     group = parser.add_argument_group('options for station comparisons')
     group.add_argument('--stations', action='store', metavar='StationA,StationB,...', help='Comma-separated list of stations to look at.  Only part of the station name is needed.  By default, all available stations are used.')
