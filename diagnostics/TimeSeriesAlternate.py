@@ -1,114 +1,44 @@
 # timeseries with difference plot
 
 
-from . import TimeVaryingDiagnostic, ImageDiagnostic
-class TimeseriesDiff(TimeVaryingDiagnostic,ImageDiagnostic):
+from .timeseries import Timeseries
+class TimeseriesDiff(Timeseries):
   """
   Difference between two datasets, sampled at obs locations.
   """
-  def __init__ (self, timefilter=None, **kwargs):
-    super(TimeseriesDiff,self).__init__(**kwargs)
-    self.timefilter = timefilter
-  def _input_combos (self, inputs):
-    from .timeseries_junk import find_applicable_obs, find_applicable_models
-    fieldname = self.fieldname
-    model_inputs = find_applicable_models(inputs, fieldname)
-    obs_inputs = find_applicable_obs(inputs, fieldname)
-    for obs in obs_inputs:
-      yield [obs] + list(model_inputs)
-
   def do (self, inputs):
-    # Do the diagnostic.
-    timeseries (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format, timefilter=self.timefilter, suffix=self.suffix)
-
-if True:
-
-  def timeseries (obs, models, fieldname, units, outdir, timefilter=None, format='png', suffix=""):
-
-    from .plot_shortcuts import plot, plot_stdfill
-    from .plot_wrapper import Multiplot, Legend, Overlay, Text, TwinX
-    import matplotlib.pyplot as pl
-    from pygeode.timeaxis import months
-    import pygeode as pyg
     import numpy as np
+    import matplotlib.pyplot as pl
     from os.path import exists
     import math
     from os import makedirs
+    from ..common import to_datetimes
 
-    from ..common import convert, select_surface
+    figwidth = 15
 
-    from .timeseries_junk import sample_model_at_obs
-
-    model_line_colours = [m.color for m in models]
-    obs_line_colour = obs.color
-
-    model_data = []
-    model_spread = []
-    for m in models:
-      field = sample_model_at_obs(m,obs,fieldname,units=units,suffix=suffix)
-      field = convert(field, units, context=fieldname)
-      model_data.append(field)
-      try:
-        field = sample_model_at_obs(m,obs,fieldname+'_ensemblespread',units=units,suffix=suffix)
-        field = convert(field, units, context=fieldname)
-        model_spread.append(field)
-      except KeyError:  # No ensemble spread for this model data
-        model_spread.append(None)
-
-    obs_data = obs.find_best(fieldname)
-    obs_data = select_surface(obs_data)
-    # Cache the observation data, for faster subsequent access
-    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False)
-
-    obs_data = convert(obs_data, units, context=fieldname)
-    try:
-      obs_stderr = obs.find_best(fieldname+'_std')
-      obs_stderr = select_surface(obs_stderr)
-      # Cache the observation data, for faster subsequent access
-      obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False)
-      obs_stderr = convert(obs_stderr, units, context=fieldname)
-    except KeyError:
-      obs_stderr = None
-
-    # Combine model and obs data together into one set
-    data = model_data + [obs_data]
-    spread = model_spread + [obs_stderr]
-    line_colours = model_line_colours[:len(model_data)] + [obs_line_colour]
-
-    # Use the first model data as a basis for the time axis.
-    timeaxis = (d.getaxis('time') for d in data).next()
-    # Limit the range to plot
-    times = timeaxis.get()
-    time1 = min(times)
-    time2 = max(times)
-
-    data = [d(time=(time1,time2)) for d in data]
-    spread = [None if s is None else s(time=(time1,time2)) for s in spread]
+    #Format image directory
+    outdir = self.outdir + '/TimeSeriesAlternate-images_%s_%s%s'%('_'.join(d.name for d in inputs),self.fieldname,self.suffix)
+    if not exists(outdir): makedirs(outdir)
 
     # Create plots of each location
-    xticks = []
-    xticklabels = []
+    # Plot 4 timeseries per figure
+    n = 4
+    station_axis = inputs[0].datasets[0].vars[0].station
+    time1 = inputs[0].datasets[0].vars[0].time.values[0]
+    time2 = inputs[0].datasets[0].vars[0].time.values[-1]
+    for i,location in enumerate(station_axis.values):
 
-    # Determine the frequency of day ticks, based on the number of months of data
-    nmonths = len(set(timeaxis.month))
-    if nmonths == 1:
-      daylist = range(1,32)
-    else:
-      daylist = (1,15)
-
-    # Set the ticks
-    for month in sorted(list(set(timeaxis.month))):
-      for day in daylist:
-        val = timeaxis(month=month,day=day,hour=0).get()
-        if len(val) == 0: continue
-        xticks.append(float(val[0]))
-        xticklabels.append("%s %d"%(months[month], day))
-
-    plots,diffs,DiffStats,DiffStds = [],[],[],[]
-    for location in data[0].station:
-      station_info = data[0](station=location).getaxis("station")
+      if i%n == 0:
+        fig = pl.figure(figsize=(figwidth,12))
+        stations_on_figure = []
+      pl.subplot(n,1,i%n+1)
+      station_info = station_axis(station=location)
       lat = station_info.lat[0]
       lon = station_info.lon[0]
+
+      if self.stations is not None:
+        s = self._lookup_station(location)
+        stations_on_figure.append(s)
 
       # Construct a title for the plot
       title = location + ' - (%4.2f'%abs(lat)
@@ -121,126 +51,105 @@ if True:
       if hasattr(station_info,'country'):
         title += ' - ' + station_info.country[0]
 
-      if lon < 0: lon += 360  # Model data is from longitudes 0 to 360
+      # Fix issue with certain characters in station names
+      title = title.decode('latin-1')
 
-      for i in data:
-        i.time.values = i.time.values + (int(lon)//15)*1.0/24.0    #Change to local time
+      for j,inp in enumerate(inputs):
+        var = inp.find_best(self.fieldname)
+        dates = to_datetimes(var.time)
+        values = var.get(station=location).flatten()
 
-
-      #------------Plot obs and model timeseries-----------
-      parts = []
-      for i in range(len(data)):
-        if spread[i] is not None:
-          parts.append(plot_stdfill(data[i](station=location),2*spread[i](station=location),color=line_colours[i]))
+        # Determine marker size based on the density of observations
+        timevalues = var(station=location).time.values
+        timevalues = timevalues[np.isfinite(values)]
+        dt = filter(None,np.diff(timevalues))
+        if len(dt) > 0:
+          # Choose a representative dt.
+          dt = sorted(dt)[len(dt)/2]
         else:
-          parts.append(plot(data[i](station=location),color=line_colours[i]))
+          dt = float('nan')
+        count = (time2-time1) / dt
+        # Size of marker (in points) for roughly no overlap
+        markersize = figwidth * 72.0 / count
+        markersize = max(markersize,1.0)
+        markersize = min(markersize,10.0)
+        if np.isnan(markersize):
+          markersize = 1.0
 
-      #-----------------------------------------------------
+        # Draw standard deviation?
+        if inp.have(self.fieldname+'_std'):
+          std = inp.find_best(self.fieldname+'_std').get(station=location).flatten()
+          fill_min = values - 2*std
+          fill_max = values + 2*std
+          fill_mask = np.isfinite(fill_max)
+          if inp.std_style == 'lines':
+            pl.plot(dates, fill_min, color=inp.color, linestyle='--')
+            pl.plot(dates, fill_max, color=inp.color, linestyle='--')
+          if inp.std_style == 'shade':
+            pl.fill_between(dates, fill_min, fill_max, where=fill_mask, color=inp.color, linewidth=0, alpha=0.5)
 
+        # Store some data for the difference plots further below.
+        if j == 0:
+          model_times = var.time
+          model_values = values
+        if j == len(inputs)-1:
+          obs_times = var.time
+          obs_values = values
 
-      Times = data[-1].time.get()    #Times where there are obs
-      Times = Times[~np.isnan(Times)]    #Remove nans
-      model = np.interp(Times,data[0].time.get(),data[0](station=location).squeeze().get())    #Interpolate model data to those points for comparison
+        # Plot the timeseries
+        pl.plot(dates, values, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
 
-      #Filter based on Day/Night (only affects difference line)
-      if timefilter is not None:
+      pl.title(title)
+      pl.ylabel('%s %s'%(self.fieldname,self.units))
 
-        param1,param2 = 99,99    #Impossible to trip values to serve as placeholders
-
-        hr = 1.0/24.0    #Conversion factor (Times is in days, filtering is written in hours)
-
-        if timefilter == 'Day': param1 = 14*hr
-        elif timefilter == 'Night' : param1 = 2*hr
-        elif timefilter == 'NightDay' : param1,param2 = 14*hr,2*hr
-
-        NewTimes=[]
-        for i in data[-1].time.hour:
-          q=i
-          if param1 - 2*hr <= i <= param1 + 2*hr :    #If time is within 2 hrs of target time, add it to the new time list
-            NewTimes.append(q)
-          elif param2 - 2*hr <= i <= param2 + 2*hr :
-            NewTimes.append(q)
-
-        NewModel=[]
-        #Grab the model times at the new times
-        for i,t in enumerate(model):
-          if Times[i] in NewTimes:
-            NewModel.append(t)
-        model = NewModel
-
-        obs_array = data[-1](station=location,l_time=NewTimes).squeeze().get()
-        Times=NewTimes
-      else:
-        obs_array = data[-1](station=location).squeeze().get()    #If not filtering, obs is just the default data[-1]
+      # ----- start of difference plot -----
+      model_interp = np.interp(obs_times.values,model_times.values,model_values)    #Interpolate model data to those points for comparison
 
       #------Difference Plot------
-      Difference = obs_array-model    #Difference data
+      Difference = obs_values-model_interp    #Difference data
 
-      TimesAx = pyg.NamedAxis(Times, 'time')    #Define an axis for Difference object
-
-      #Determine shift needed to put difference plot under timeseries
-      Shift = math.floor((np.nanmin(obs_array)-np.nanmax(Difference))/10.0)*10.0
+      TimesAx = to_datetimes(obs_times)
 
       # Determine Mean and Max difference, and standard deviation
       DiffMean = np.mean(Difference[~np.isnan(Difference)])
       DiffStd = np.std(Difference[~np.isnan(Difference)])
-      DiffStats.append('Mean Difference: %s | Max Difference: %s'%(round(DiffMean,1),round(np.nanmax(Difference),1)))
-      DiffStds.append('Difference Std: %s'%(round(DiffStd,1)))
+      pl.text(.01,.9,'Mean Difference: %s | Max Difference: %s'%(round(DiffMean,1),round(np.nanmax(Difference),1)),size=11)
+      pl.text(.01,.82,'Difference Std: %s'%(round(DiffStd,1)),size=11)
 
-      #Rewrite Difference as a pygeode object and plot with wrappers
-      Diff = pyg.Var([TimesAx],name = 'Diff', values=Difference)
-      parts.append(TwinX(plot(Diff,color='magenta')))
+      # Difference plot
+      pl.twinx()
+      pl.plot(TimesAx,Difference,color='magenta')
 
       #Black baseline representing x = 0 line for difference
-      Baseline = pyg.Var([pyg.NamedAxis([0,365],'time')],values=[0,0])
-      parts.append(plot(Baseline,color='black'))
+      times = to_datetimes(model_times)
+      times = [times[0], times[-1]]
+      pl.plot(times, [0,0], color='black')
 
       #Temporary lines for context (testing)
-      ContextLine = pyg.Var([pyg.NamedAxis([0,365],'time')],values=[10,10])
-      parts.append(plot(ContextLine,color='black',alpha=.25))
+      pl.plot(times,[10,10],color='black',alpha=.25)
+      pl.plot(times,[-10,-10],color='black',alpha=.25)
 
-      ContextLine = pyg.Var([pyg.NamedAxis([0,365],'time')],values=[-10,-10])
-      parts.append(plot(ContextLine,color='black',alpha=.25))
-      #---------------------------
+      # ----- end of difference plot -----
 
-      theplot = Overlay (*parts, title=title.decode('latin-1'),xlabel='', ylabel='%s %s'%(fieldname,units), xticks=xticks, xticklabels=xticklabels)
-      plots.append (theplot)
+      # Things to do one the last plot of the figure
+      if i%n == (n-1) or i == len(station_axis)-1:
+        # Put a legend on the last plot
+        labels = [d.title for d in inputs]
+        labels.append('Difference')
+        pl.legend(labels, prop={'size':11})
 
-    #Format image directory
-    outdir = outdir + '/TimeSeriesAlternate-images_%s_%s%s'%('_'.join(d.name for d in models+[obs]),fieldname,suffix)
-    if not exists(outdir): makedirs(outdir)
+        pl.tight_layout()
 
-    # Plot 4 timeseries per figure
-    n = 4
-    for i in range(0,len(plots),4):
-      fig = pl.figure(figsize=(15,12))
+        # Save as an image file.
+        if self.stations is not None:
+          fig_id = ','.join(stations_on_figure)
+        else:
+          fig_id = '%02d'%(i/n+1)
+        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix,self.image_format)
+        if not exists(outfile):
+          fig.savefig(outfile)
 
-      theplots = plots[i:i+4]
-      # Put a legend on the last plot
-      labels = [d.title for d in models+[obs]]
-      labels.append('Difference')
-      theplots[-1] = Legend(theplots[-1], labels,prop={'size':11})
-
-      #Add statistics to each plot
-      for j in range(len(theplots)):
-        theplots[j] = Text(theplots[j],.01,.9,DiffStats[j+i],size=11)
-        theplots[j] = Text(theplots[j],.01,.82,DiffStds[j+i],size=11)
-        #theplots[j] = Text(theplots[j],.01,.76,std
-
-      # Add placeholders where there aren't enough plots for the figure
-      theplots = (theplots+[None,None,None])[:4]
-
-      theplots = Multiplot([[p] for p in theplots])
-      theplots.render(figure=fig)
-      pl.tight_layout()    #Makes layout tighter - less clutter for 4 plots
-
-
-      outfile = "%s/%s_timeseries_%s_%02d%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1,suffix,format)
-      if not exists(outfile):
-        fig.savefig(outfile)
-
-    pl.close(fig)
-
+        pl.close(fig)
 
 from . import table
 table['timeseries-diff'] = TimeseriesDiff
