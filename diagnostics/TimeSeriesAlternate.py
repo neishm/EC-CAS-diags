@@ -131,7 +131,7 @@ class TimeseriesDiff(Timeseries):
 
       # ----- end of difference plot -----
 
-      # Things to do one the last plot of the figure
+      # Things to do on the last plot of the figure
       if i%n == (n-1) or i == len(station_axis)-1:
         # Put a legend on the last plot
         labels = [d.title for d in inputs]
