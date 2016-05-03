@@ -1,19 +1,7 @@
 # regional bar plots
 
-from .timeseries_junk import find_applicable_models
-
-if True:
-
-  def find_applicable_obs (inputs, fieldname):
-    from ..common import have_station_data
-    obs_inputs = []
-    for x in inputs:
-      if x.name == 'GAW-2014':
-        obs_inputs.append(x)
-    return obs_inputs
-
-from . import ImageDiagnostic
-class TimeseriesRBP(ImageDiagnostic):
+from .timeseries import Timeseries
+class TimeseriesRBP(Timeseries):
   """
   Bin data into regions (country or zone), and produce a histogram of the
   result.
@@ -22,103 +10,26 @@ class TimeseriesRBP(ImageDiagnostic):
     super(TimeseriesRBP,self).__init__(**kwargs)
     self.ymin = ymin
     self.ymax = ymax
+  # Only use very particular obs datasets, where we know the regions.
   def _input_combos (self, inputs):
-    fieldname = self.fieldname
-    model_inputs = find_applicable_models(inputs, fieldname)
-    obs_inputs = find_applicable_obs(inputs, fieldname)
-    for obs in obs_inputs:
-      yield [obs] + list(model_inputs)
+    for inputs in super(TimeseriesRBP,self)._input_combos(inputs):
+      if inputs[-1].name == 'GAW-2014-hourly':
+        yield inputs
   def do (self, inputs):
-    # Do the diagnostic.
-    Barplot (inputs[0], inputs[1:], fieldname=self.fieldname, units=self.units, outdir=self.outdir, ymin=self.ymin, ymax=self.ymax, format=self.image_format,suffix=self.suffix)
-
-if True:
-  def Barplot (obs, models, fieldname, units, outdir, ymin=350,ymax=420, format='png', suffix=""):
-
-    from .plot_shortcuts import plot, plot_stdfill
-    from .plot_wrapper import Multiplot, Legend, Overlay, Text
-    import matplotlib.pyplot as pl
-    import matplotlib as mpl
-    from pygeode.timeaxis import months
-    import pygeode as pyg
     import numpy as np
+    import matplotlib.pyplot as pl
     from os.path import exists
-    import math
 
-    from ..common import convert, select_surface
+    fig = pl.figure(figsize=(8,8))
 
-    from .timeseries_junk import sample_model_at_obs
+    #Format image directory
+    outdir = self.outdir + '/TimeSeriesRBP-images_%s_%s%s'%('_'.join(d.name for d in inputs),self.fieldname,self.suffix)
+    if not exists(outdir):
+      from os import makedirs
+      makedirs(outdir)
 
-    model_data = []
-    model_spread = []
-    for m in models:
-      field = sample_model_at_obs(m,obs,fieldname,units=units,suffix=suffix)
-      field = convert(field, units, context=fieldname)
-      model_data.append(field)
-      try:
-        field = sample_model_at_obs(m,obs,fieldname+'_ensemblespread',units=units,suffix=suffix)
-        field = convert(field, units, context=fieldname)
-        model_spread.append(field)
-      except KeyError:  # No ensemble spread for this model data
-        model_spread.append(None)
-
-    obs_data = obs.find_best(fieldname)
-    obs_data = select_surface(obs_data)
-    # Cache the observation data, for faster subsequent access
-    obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False)
-
-    obs_data = convert(obs_data, units, context=fieldname)
-    try:
-      obs_stderr = obs.find_best(fieldname+'_std')
-      obs_stderr = select_surface(obs_stderr)
-      # Cache the observation data, for faster subsequent access
-      obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False)
-      obs_stderr = convert(obs_stderr, units, context=fieldname)
-    except KeyError:
-      obs_stderr = None
-
-    # Combine model and obs data together into one set
-    data = model_data + [obs_data]
-    spread = model_spread + [obs_stderr]
-
-    # Use the first model data as a basis for the time axis.
-    timeaxis = (d.getaxis('time') for d in data).next()
-    # Limit the range to plot
-    times = timeaxis.get()
-    time1 = min(times)
-    time2 = max(times)
-
-    data = [d(time=(time1,time2)) for d in data]
-    spread = [None if s is None else s(time=(time1,time2)) for s in spread]
-
-    # Create plots of each location
-    xticks = []
-    xticklabels = []
-
-    # Determine the frequency of day ticks, based on the number of months of data
-    nmonths = len(set(timeaxis.month))
-    if nmonths == 1:
-      daylist = range(1,32)
-    else:
-      daylist = (1,15)
-
-    # Set the ticks
-    for month in sorted(list(set(timeaxis.month))):
-      for day in daylist:
-        val = timeaxis(month=month,day=day,hour=0).get()
-        if len(val) == 0: continue
-        xticks.append(float(val[0]))
-        xticklabels.append("%s %d"%(months[month], day))
-
-    #Creating the data structure
-    #Want to use array but needs to have non-fixed last dimension?
-    Zones = [[],[],[],[],[]]
-    Stds = [[],[],[],[],[]]
-
-    for q in models+[obs]:
-      for i in range(5):
-        Zones[i].append([])
-        Stds[i].append([])
+    Zones = np.zeros((5,len(inputs)))
+    Stds = np.zeros((5,len(inputs)))
 
     #List of stations within the two continents in question
     NorthAmList = ['Alert','Barrow','Candle Lake','Chibougamau','East Trout Lake','Egbert','Estevan Point','Fraserdale',
@@ -127,95 +38,78 @@ if True:
       'Puszcza Borecka/Diabla Gora','Schauinsland','Sonnblick','Westerland','Zeppelinfjellet (Ny-Alesund)','Zugspitze / Schneefernerhaus']
 
     #List for counting the number of stations in each group
-    Count = [0,0,0,0,0]
+    Count = np.zeros((5,len(inputs)),dtype=int)
 
-    for location in data[0].station:
-      station_info = data[0](station=location).getaxis("station")
+    station_axis = inputs[0].datasets[0].vars[0].station
+    for location in station_axis.values:
+
+      station_info = station_axis(station=location)
       lat = station_info.lat[0]
       lon = station_info.lon[0]
 
       #-----Record Data------
-      for i,d in enumerate(data):
-        d = d(station=location).squeeze().get()
-
+      for i,inp in enumerate(inputs):
+        d = inp.find_best(self.fieldname)(station=location).squeeze().get()
+        mean = np.mean(d[~np.isnan(d)])
+        std = np.std(d[~np.isnan(d)])
+        if np.isnan(mean): continue  # Check if there's any data to include
         #Average values and standard deviations of each station's timeseries
         if lat > 30:
           #Add 1 to the region count on first run through
-          if i == 0: Count[0]+=1
-          Zones[0][i].append(np.mean(d[~np.isnan(d)]))
-          Stds[0][i].append(np.std(d[~np.isnan(d)]))
+          Zones[0,i] += mean
+          Stds[0,i] += std
+          Count[0,i] += 1
         elif lat < -30:
-          if i == 0: Count[1]+=1
-          Zones[1][i].append(np.mean(d[~np.isnan(d)]))
-          Stds[1][i].append(np.std(d[~np.isnan(d)]))
+          Zones[1,i] += mean
+          Stds[1,i] += std
+          Count[1,i] += 1
         else:
-          if i == 0: Count[2]+=1
-          Zones[2][i].append(np.mean(d[~np.isnan(d)]))
-          Stds[2][i].append(np.std(d[~np.isnan(d)]))
+          Zones[2,i] += mean
+          Stds[2,i] += std
+          Count[2,i] += 1
 
         #Sort for Europe and NA stations
         if location in NorthAmList:
-          if i == 0: Count[3]+=1
-          Zones[3][i].append(np.mean(d[~np.isnan(d)]))
-          Stds[3][i].append(np.std(d[~np.isnan(d)]))
+          Zones[3,i] += mean
+          Stds[3,i] += std
+          Count[3,i] += 1
         elif location in EuropeList:
-          if i == 0: Count[4]+=1
-          Zones[4][i].append(np.mean(d[~np.isnan(d)]))
-          Stds[4][i].append(np.std(d[~np.isnan(d)]))
+          Zones[4,i] += mean
+          Stds[4,i] += std
+          Count[4,i] += 1
 
     #---------Process/Plot Data--------
 
-    fig = pl.figure(figsize = (8,8))
-
     #Average the values of each Zone's dataset's station average
-    for i in range(len(Zones)):
-      for t in range(len(Zones[i])):
-        d= np.array(Zones[i][t])
-        s= np.array(Stds[i][t])
-        Zones[i][t]= np.mean(d[~np.isnan(d)])
-        Stds[i][t] = np.mean(s[~np.isnan(s)])
+    Zones /= Count
+    Stds /= Count
+    rects = []
 
-    #-----------------------------
-    #Create colour and legend rectangle list such that the last value is green for observations
-    colourset = ['blue','red','cyan','magenta']
-    colours = []
-    rectangles = []
-    for i in range(len(data)-1):
-      colours.append(colourset[i])
-      rectangles.append(mpl.patches.Rectangle((0, 0), 1, 1, fc=colourset[i]))
-    colours.append('green')
-    rectangles.append(mpl.patches.Rectangle((0, 0), 1, 1, fc="g"))
-    #-----------------------------
+    for i in range(len(inputs)):
+
+      xvalues = np.arange(5)*(len(inputs)+1)+i
+
+      height = list(Zones[:,i])
+      yerr = list(Stds[:,i])
+
+      rect = pl.bar(xvalues,height,yerr = yerr,color = inputs[i].color, width = 1,lw = 2, ecolor= 'black',capsize = 5)
+      rects.append(rect)
 
     for i in range(len(Zones)):
+      pl.text(i*(len(inputs)+1)+len(inputs)-0.5,Zones[i,-2]-((Zones[i,-1]-self.ymin)/2.0),Count[i,0],horizontalalignment = 'center', color='white')
 
-      xvalues = np.arange(len(data)+1)+i*(len(data)+1)    #Format plot based on number of datasets
+    pl.xlim(-1,len(Zones)*(len(inputs)+1))
 
-      Zones[i].append(0)    #Add empty space between each region group
-      Stds[i].append(0)
-
-      pl.bar(xvalues,Zones[i],yerr = Stds[i],color = colours,width = 1,lw = 2, ecolor= 'black',capsize = 5)
-
-      pl.text(xvalues[-1]-.5,Zones[i][-2]-((Zones[i][-2]-ymin)/2.0),Count[i],horizontalalignment = 'center')
-
-    pl.xlim(-1,np.max(xvalues)+1)
-
-    pl.title('Average %s Concentrations'%(fieldname))
-    pl.ylim(ymin=ymin,ymax=ymax)
-    pl.ylabel('%s (%s)'%(fieldname,units))
-    pl.xticks(np.arange(5)*(len(data)+1)+len(data)/2.0,
+    pl.title('Average %s Concentrations'%(self.fieldname))
+    pl.ylim(ymin=self.ymin,ymax=self.ymax)
+    pl.ylabel('%s (%s)'%(self.fieldname,self.units))
+    pl.xticks(np.arange(5)*(len(inputs)+1)+len(inputs)/2.0,
       ['Northern\nHemisphere','Southern\nHemisphere','Tropics','North\nAmerica','Europe']
       ,horizontalalignment = 'center')
-    pl.legend(rectangles,[d.title for d in models+[obs]],prop={'size':12})
+    pl.legend(rects, [d.title for d in inputs],prop={'size':12})
     pl.text(.02,.96,'One standard deviation shown',transform = pl.gca().transAxes)
 
-    #Format image directory
-    outdir = outdir + '/TimeSeriesRBP-images_%s_%s%s'%('_'.join(d.name for d in models+[obs]),fieldname,suffix)
-    if not exists(outdir):
-      from os import makedirs
-      makedirs(outdir)
-
-    outfile = "%s/%s_timeseries_%s_%02d%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),fieldname,i/4+1,suffix,format)
+    outfile = "%s/%s_timeseries_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,self.suffix,self.image_format)
     if not exists(outfile):
       fig.savefig(outfile)
 
