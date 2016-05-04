@@ -47,7 +47,7 @@ try:
   input_data = []
   for intype, infiles in args.input.iteritems():
     if intype is None: raise ValueError("No type specified for files %s"%infiles)
-    input_data.extend(interfaces.table[intype](infiles))
+    input_data.extend(interfaces.table[intype](infiles,name='testdata'))
 
   input_data = DataInterface(input_data)
 

@@ -50,14 +50,14 @@ else:
 try:
 
   # Get the target grid
-  grid_data = interfaces.table[args.outtype](args.gridfiles)
+  grid_data = interfaces.table[args.outtype](args.gridfiles,name='grid_data')
 
   # Collect all the input data for various sources
   from eccas_diags.interfaces import DataInterface
   input_data = []
   for intype, infiles in args.input.iteritems():
     if intype is None: raise ValueError("No type specified for files %s"%infiles)
-    input_data.extend(interfaces.table[intype](infiles))
+    input_data.extend(interfaces.table[intype](infiles,name='input_data'))
 
   # Force the input data to be valid at the target grid time?
   if args.use_target_time:
