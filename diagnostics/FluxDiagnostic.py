@@ -1,12 +1,3 @@
-if True:
-
-  def find_applicable_models (inputs, fieldname):
-    from ..common import have_gridded_data
-    models = []
-    for x in inputs:
-      if any (fieldname+'_flux' in d and have_gridded_data(d) for d in x.datasets):
-        models.append(x)
-    return models
 
 from . import Diagnostic
 class FluxDiagnostic(Diagnostic):
@@ -18,31 +9,28 @@ class FluxDiagnostic(Diagnostic):
     super(FluxDiagnostic,self).__init__(**kwargs)
     self.timefilter = timefilter
     self.plottype = plottype
-  def _select_inputs(self, inputs):
-    inputs = super(FluxDiagnostic,self)._select_inputs(inputs)
-    return find_applicable_models(inputs, fieldname=self.fieldname)
 
   def do (self, inputs):
     movie_flux (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, timefilter=self.timefilter, plottype=self.plottype, suffix=self.suffix)
 
 if True:
   # Get a flux product for the given experiment and tracer name.
-  def get_flux (model, fieldname, suffix):
+  def get_flux (model, fieldname, units, suffix):
     from ..common import convert, number_of_timesteps, remove_repeated_longitude
 
     # Check if we already have the right units
     try:
-      data = model.find_best(fieldname+'_flux', maximize=number_of_timesteps)
-      data = convert(data,'mol m-2 s-1')
+      data = model.find_best(fieldname, maximize=number_of_timesteps)
+      data = convert(data,units)
     # Otherwise, assume we have integrated flux, need to divide by area
     except ValueError:
-      data, area = model.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
-      data = convert(data,'mol s-1')
+      data, area = model.find_best([fieldname,'cell_area'], maximize=number_of_timesteps)
+      data = convert(data,units+' m2')
       area = convert(area,'m2')
       data = data/area
 
     data.name = fieldname
-    data.atts['units'] = 'mol m-2 s-1'
+    data.atts['units'] = units
 
     # Strip out the extra longitude from the fluxes
     # (just for compatibility with Jake's code further below, which is hard-coded
@@ -50,7 +38,7 @@ if True:
     data = remove_repeated_longitude(data)
 
     # Cache the data (mainly to get the high/low stats)
-    data = model.cache.write(data, prefix=model.name+'_flux_'+fieldname+suffix)
+    data = model.cache.write(data, prefix=model.name+'_'+fieldname+suffix)
 
     return data
 
@@ -345,9 +333,9 @@ if True:
     assert len(models) > 0
     assert len(models) <= 3  # too many things to plot
 
-    imagedir=outdir+"/FluxDiag-%s-%s-images_%s_flux%s%s"%(plottype,timefilter,'_'.join(m.name for m in models), fieldname, suffix)
+    imagedir=outdir+"/FluxDiag-%s-%s-images_%s_%s%s"%(plottype,timefilter,'_'.join(m.name for m in models), fieldname, suffix)
 
-    fluxes = [get_flux(m,fieldname,suffix) for m in models]
+    fluxes = [get_flux(m,fieldname,units,suffix) for m in models]
 
     # Unit conversion
     #fluxes = [rescale(f,units) for f in fields]

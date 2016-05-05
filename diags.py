@@ -432,32 +432,32 @@ except Exception as e:
 FluxDiagnostic = diagnostics.table['flux-movie']
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2', units='ppm', timefilter='Monthly', plottype='BG', **kwargs).do_all(datasets)
+  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Monthly', plottype='BG', **kwargs).do_all(datasets)
 except Exception as e:
   failures.append(['Flux Diagnostic - Bar Graph', e])
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2', units='ppm', timefilter='Daily', plottype='BG', **kwargs).do_all(datasets)
+  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Daily', plottype='BG', **kwargs).do_all(datasets)
 except Exception as e:
   failures.append(['Flux Diagnostic - Bar Graph', e])
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2', units='ppm', timefilter='Monthly', plottype='Map', **kwargs).do_all(datasets)
+  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Monthly', plottype='Map', **kwargs).do_all(datasets)
 except Exception as e:
   failures.append(['Flux Diagnostic - Map', e])
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2', units='ppm', timefilter='Daily', plottype='Map', **kwargs).do_all(datasets)
+  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Daily', plottype='Map', **kwargs).do_all(datasets)
 except Exception as e:
   failures.append(['Flux Diagnostic - Map', e])
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2', units='ppm', timefilter='Monthly', plottype='MeanMap', **kwargs).do_all(datasets)
+  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Monthly', plottype='MeanMap', **kwargs).do_all(datasets)
 except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 try:
  if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2', units='ppm', timefilter='Daily', plottype='MeanMap', **kwargs).do_all(datasets)
+  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Daily', plottype='MeanMap', **kwargs).do_all(datasets)
 except Exception as e:
   failures.append(['Flux Diagnostic - Mean Map', e])
 
