@@ -425,7 +425,7 @@ from eccas_diags.diagnostics import concentration_v_height
 concentration_v_height = diagnostics.table['concentration-v-height']
 try:
  if 'concentration-v-height' in allowed_diagnostics:
-  concentration_v_height(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
+  concentration_v_height(fieldname='CO2', units='ppm', xlim=(375,395), **kwargs).do_all(datasets)
 except Exception as e:
   failures.append(['concentration vs. height', e])
 
