@@ -1,19 +1,31 @@
 
-from . import Diagnostic
-class ZonalMeanBG(Diagnostic):
+from .movie_zonal import ZonalMean
+class ZonalMeanBG(ZonalMean):
   """
   Samples data at a particular height, bins it into zones, and displays the
   result as a bargraph.
   """
   def __init__ (self, height, **kwargs):
+    # This diagnostic always uses geopotential height for the vertical.
+    kwargs['zaxis'] = 'gph'
     super(ZonalMeanBG,self).__init__(**kwargs)
     self.height = height
-  def _select_inputs (self, inputs):
-    from .movie_zonal import find_applicable_models
-    inputs = super(ZonalMeanBG,self)._select_inputs(inputs)
-    return find_applicable_models(inputs, self.fieldname, zaxis='gph')
+
   def do (self, inputs):
-    movie_bargraph(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, height=self.height, suffix=self.suffix)
+
+    prefix = "ZonalMeanBG-images_%s_%s%s"%('_'.join(inp.name for inp in inputs), self.fieldname, self.suffix)
+
+    fields = [inp.find_best(self.fieldname) for inp in inputs]
+    fields = [f(height=self.height) for f in fields]
+
+    title = '%s Concentration at %skm'%(self.fieldname,self.height)
+    subtitles = [inp.title for inp in inputs]
+
+    shape = (1,len(fields))
+
+    movie = BG_Movie (fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=1.4)
+
+    movie.save (outdir=self.outdir, prefix=prefix)
 
 
 from .movie import TiledMovie
@@ -72,31 +84,6 @@ class BG_Movie (TiledMovie):
     ax.plot((1.45,1.55),(min(N,S,Tr),min(N,S,Tr)),'b')
     ax.text(1.25,(max(N,S,Tr)+min(N,S,Tr))/2.0,round(max(N,S,Tr)-min(N,S,Tr),2),rotation='vertical')
 
-
-if True:
-
-
-  def movie_bargraph (models, fieldname, units, outdir, height, suffix=""):
-
-    from ..common import convert
-    from .movie_zonal import zonalmean_gph
-
-    prefix = "ZonalMeanBG-images_%s_%s%s"%('_'.join(m.name for m in models), fieldname, suffix)
-
-    fields = [zonalmean_gph(m,fieldname,units,typestat="mean",suffix=suffix) for m in models]
-    fields = [f(height=height) for f in fields]
-
-    # Unit conversion
-    fields = [convert(f,units) for f in fields]
-
-    title = '%s Concentration at %skm'%(fieldname,height)
-    subtitles = [m.title for m in models]
-
-    shape = (1,len(fields))
-
-    movie = BG_Movie (fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=1.4)
-
-    movie.save (outdir=outdir, prefix=prefix)
 
 from . import table
 table['zonal-bargraph'] = ZonalMeanBG
