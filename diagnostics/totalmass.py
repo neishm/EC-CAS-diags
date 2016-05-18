@@ -21,7 +21,22 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
   """
   def __init__ (self, normalize_air_mass=False, **kwargs):
     super(Totalmass,self).__init__(**kwargs)
+    self.require_fieldname = False # Will provide our own checks below.
     self.normalize_air_mass = normalize_air_mass
+  def _check_dataset(self,dataset):
+    from ..common import can_convert
+    if not super(Totalmass,self)._check_dataset(dataset):
+      return False
+    if self.fieldname in dataset and 'dp' in dataset and 'cell_area' in dataset:
+      return True
+    fluxname = self.fieldname+'_flux'
+    if fluxname in dataset:
+      if can_convert(dataset[fluxname],'g s-1'):
+        return True
+      if can_convert(dataset[fluxname],'g m-2 s-1') and 'cell_area' in dataset:
+        return True
+    return False
+
   def _select_inputs (self, inputs):
     inputs = super(Totalmass,self)._select_inputs(inputs)
     return find_applicable_models(inputs, self.fieldname)
