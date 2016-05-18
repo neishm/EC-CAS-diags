@@ -40,15 +40,14 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
   def _select_inputs (self, inputs):
     inputs = super(Totalmass,self)._select_inputs(inputs)
     return find_applicable_models(inputs, self.fieldname)
-  def do (self, inputs):
-    totalmass (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, normalize_air_mass=self.normalize_air_mass, format=self.image_format, suffix=self.suffix)
 
-
-if True:
 
   # Total mass (Pg)
-  def compute_totalmass (model, fieldname, suffix=""):
+  def _compute_totalmass (self, model, fieldname = None):
     from ..common import can_convert, convert, find_and_convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude
+    fieldname = fieldname or self.fieldname
+    suffix = self.suffix
+
     specie = None
 
     # Do we have the pressure change in the vertical?
@@ -102,8 +101,11 @@ if True:
     return model.cache.write(data,prefix=model.name+"_totalmass_"+fieldname+suffix, force_single_precision=False)
 
   # Integrated flux (moles per second)
-  def compute_totalflux (model, fieldname, suffix=""):
+  def _compute_totalflux (self, model):
     from ..common import convert, number_of_timesteps, remove_repeated_longitude
+
+    fieldname = self.fieldname
+    suffix = self.suffix
 
     # Check if we already have integrated flux (per grid cell)
     try:
@@ -129,8 +131,8 @@ if True:
     # Cache the data
     return model.cache.write(data,prefix=model.name+"_totalflux_"+fieldname+suffix, force_single_precision=False)
 
-
-  def doplot (outfile, title, fields, colours, styles, labels):
+  @staticmethod
+  def _doplot (outfile, title, fields, colours, styles, labels):
     from pygeode.plot import plotvar
     import matplotlib.pyplot as pl
 
@@ -143,27 +145,34 @@ if True:
 
     fig.savefig(outfile)
 
-  def totalmass (models, fieldname, units, outdir, normalize_air_mass=False, format='png', suffix=""):
+  def do (self, inputs):
     from os.path import exists
     from pygeode.var import Var
     from ..common import convert
     from pygeode import timeutils
 
+    fieldname = self.fieldname
+    units = self.units
+    outdir = self.outdir
+    normalize_air_mass = self.normalize_air_mass
+    format = self.image_format
+    suffix = self.suffix
+
     # Find common time period
     #TODO:  a method to query the time axis from the model without needing to grab an actual diagnostic field.
     t0 = []
     t1 = []
-    for m in models:
+    for inp in inputs:
       try:
-        t0.append(compute_totalmass(m,fieldname,suffix=suffix).time.values[0])
-        t1.append(compute_totalmass(m,fieldname,suffix=suffix).time.values[-1])
+        t0.append(self._compute_totalmass(inp).time.values[0])
+        t1.append(self._compute_totalmass(inp).time.values[-1])
       except Exception: pass
       try:
-        t0.append(compute_totalflux(m,fieldname,suffix=suffix).time.values[0])
-        t1.append(compute_totalflux(m,fieldname,suffix=suffix).time.values[-1])
+        t0.append(self._compute_totalflux(inp).time.values[0])
+        t1.append(self._compute_totalflux(inp).time.values[-1])
       except Exception: pass
     if len(t0) == 0 or len(t1) == 0:
-      raise ValueError("Unable to find any '%s' data in %s."%(fieldname,[m.name for m in models]))
+      raise ValueError("Unable to find any '%s' data in %s."%(fieldname,[inp.name for inp in inputs]))
     t0 = max(t0)
     t1 = min(t1)
 
@@ -173,19 +182,19 @@ if True:
     styles = []
     labels = []
 
-    for i,model in enumerate(models):
+    for i,model in enumerate(inputs):
       if model is None: continue
 
       # Check for 3D fields, compute total mass.
       try:
         # Get model air mass, if we are normalizing the tracer mass.
         if normalize_air_mass:
-          airmass = compute_totalmass(model,'dry_air',suffix=suffix)(time=(t0,t1)).load()
+          airmass = self._compute_totalmass(model,'dry_air')(time=(t0,t1)).load()
           airmass0 = float(airmass.values[0])
 
         # Total mass
         # Possibly change plot units (e.g. Pg CO2 -> Pg C)
-        mass = compute_totalmass(model,fieldname)
+        mass = self._compute_totalmass(model)
         mass = convert(mass, units)
         mass = mass(time=(t0,t1))   # Limit time period to plot
         if normalize_air_mass:
@@ -198,7 +207,7 @@ if True:
 
       # Total flux, integrated in time
       try:
-        totalflux = compute_totalflux(model,fieldname,suffix=suffix)
+        totalflux = self._compute_totalflux(model)
         flux_units = totalflux.atts['units']
         flux_specie = totalflux.atts['specie']
         time = totalflux.time
@@ -240,10 +249,10 @@ if True:
         labels.append('integrated flux')
       except (KeyError, IndexError): pass  # No flux and/or mass field available
 
-    outfile = outdir + "/%s_totalmass_%s%s%s.%s"%('_'.join(m.name for m in models),fieldname,suffix,'_normalized_by_dryair' if normalize_air_mass else '', format)
+    outfile = outdir + "/%s_totalmass_%s%s%s.%s"%('_'.join(inp.name for inp in inputs),fieldname,suffix,'_normalized_by_dryair' if normalize_air_mass else '', format)
     if not exists(outfile):
       title = "Total mass %s in %s"%(fieldname,units)
-      doplot (outfile, title, fields, colours, styles, labels)
+      self._doplot (outfile, title, fields, colours, styles, labels)
 
 from . import table
 table['totalmass'] = Totalmass
