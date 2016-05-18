@@ -9,12 +9,16 @@ class Diagnostic(object):
   # Attach the command-line arguments to this object for later use.
   def __init__ (self, fieldname, units, outdir, **kwargs):
     self.fieldname = fieldname
+    # Override this if you want to allow alternate fieldnames besides the
+    # given one (e.g. can derive a 'CO2' mass field from 'CO2_flux').
+    self.require_fieldname = True
     self.units = units
     self.outdir = outdir
 
   # Check preconditions for using some particular data.
   # Given a dataset, determine if we can use the data.
   def _check_dataset(self, dataset):
+    if not self.require_fieldname: return True
     # Check if we have the field required.
     return self.fieldname in dataset
 
