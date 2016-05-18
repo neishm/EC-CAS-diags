@@ -19,10 +19,9 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
   Compute the total mass budget for a field.  Show the time variation as a
   1D line plot.
   """
-  def __init__ (self, normalize_air_mass=False, **kwargs):
+  def __init__ (self, **kwargs):
     super(Totalmass,self).__init__(**kwargs)
     self.require_fieldname = False # Will provide our own checks below.
-    self.normalize_air_mass = normalize_air_mass
   def _check_dataset(self,dataset):
     from ..common import can_convert
     if not super(Totalmass,self)._check_dataset(dataset):
@@ -43,9 +42,9 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
 
 
   # Total mass (Pg)
-  def _compute_totalmass (self, model, fieldname = None):
+  def _compute_totalmass (self, model):
     from ..common import can_convert, convert, find_and_convert, grav as g, number_of_levels, number_of_timesteps, remove_repeated_longitude
-    fieldname = fieldname or self.fieldname
+    fieldname = self.fieldname
     suffix = self.suffix
 
     specie = None
@@ -154,7 +153,6 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
     fieldname = self.fieldname
     units = self.units
     outdir = self.outdir
-    normalize_air_mass = self.normalize_air_mass
     format = self.image_format
     suffix = self.suffix
 
@@ -187,18 +185,11 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
 
       # Check for 3D fields, compute total mass.
       try:
-        # Get model air mass, if we are normalizing the tracer mass.
-        if normalize_air_mass:
-          airmass = self._compute_totalmass(model,'dry_air')(time=(t0,t1)).load()
-          airmass0 = float(airmass.values[0])
-
         # Total mass
         # Possibly change plot units (e.g. Pg CO2 -> Pg C)
         mass = self._compute_totalmass(model)
         mass = convert(mass, units)
         mass = mass(time=(t0,t1))   # Limit time period to plot
-        if normalize_air_mass:
-          mass = mass / airmass * airmass0
         fields.append(mass)
         colours.append(model.color)
         styles.append(model.linestyle)
@@ -249,7 +240,7 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
         labels.append('integrated flux')
       except (KeyError, IndexError): pass  # No flux and/or mass field available
 
-    outfile = outdir + "/%s_totalmass_%s%s%s.%s"%('_'.join(inp.name for inp in inputs),fieldname,suffix,'_normalized_by_dryair' if normalize_air_mass else '', format)
+    outfile = outdir + "/%s_totalmass_%s%s.%s"%('_'.join(inp.name for inp in inputs),fieldname,suffix,format)
     if not exists(outfile):
       title = "Total mass %s in %s"%(fieldname,units)
       self._doplot (outfile, title, fields, colours, styles, labels)
