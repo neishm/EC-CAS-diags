@@ -169,57 +169,36 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
       data =  model.cache.write(data,prefix=model.name+"_totalflux_"+fieldname+suffix, force_single_precision=False)
     return data
 
-  @staticmethod
-  def _doplot (outfile, title, fields, colours, styles, labels):
-    from pygeode.plot import plotvar
+
+  def do (self, inputs):
     import matplotlib.pyplot as pl
+    from ..common import to_datetimes
+    from os.path import exists
 
     fig = pl.figure(figsize=(15,12))
     ax = pl.subplot(111)
-    for field, color, style in zip(fields, colours, styles):
-      plotvar (field, color=color, ax=ax, linestyle=style, hold=True)
-    ax.set_title(title)
-    pl.legend(labels, loc='best')
-
-    fig.savefig(outfile)
-
-  def do (self, inputs):
-    from os.path import exists
-
-    fieldname = self.fieldname
-    units = self.units
-    outdir = self.outdir
-    format = self.image_format
-    suffix = self.suffix
+    pl.title ("Total mass %s in %s"%(self.fieldname,self.units))
 
     # Find common time period
     t0 = []
     t1 = []
     for inp in inputs:
-      t0.append(inp.datasets[0].time.values[0])
-      t1.append(inp.datasets[0].time.values[-1])
+      t0.append(inp.find_best(self.fieldname).time.values[0])
+      t1.append(inp.find_best(self.fieldname).time.values[-1])
     t0 = max(t0)
     t1 = min(t1)
 
-    # Set up whatever plots we can do
-    fields = []
-    colours = []
-    styles = []
-    labels = []
+    for inp in inputs:
 
-    for i,model in enumerate(inputs):
+      mass = inp.find_best(self.fieldname)(time=(t0,t1))
+      dates = to_datetimes(mass.time)
+      pl.plot(dates, mass.get(), color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markeredgecolor=inp.color, label=inp.title)
+    pl.legend(loc='best')
 
-      mass = model.find_best(self.fieldname)
-      mass = mass(time=(t0,t1))   # Limit time period to plot
-      fields.append(mass)
-      colours.append(model.color)
-      styles.append(model.linestyle)
-      labels.append(model.title)
+    outfile = self.outdir + "/%s_totalmass_%s%s.%s"%('_'.join(inp.name for inp in inputs),self.fieldname,self.suffix,self.image_format)
 
-    outfile = outdir + "/%s_totalmass_%s%s.%s"%('_'.join(inp.name for inp in inputs),fieldname,suffix,format)
     if not exists(outfile):
-      title = "Total mass %s in %s"%(fieldname,units)
-      self._doplot (outfile, title, fields, colours, styles, labels)
+      fig.savefig(outfile)
 
 from . import table
 table['totalmass'] = Totalmass
