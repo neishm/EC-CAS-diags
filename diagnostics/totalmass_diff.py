@@ -16,37 +16,26 @@ class TotalmassDiff(Totalmass):
         yield inputs[i], inputs[j]
 
   def do (self, inputs):
-    totalmass_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format, suffix=self.suffix)
-
-
-if True:
-
-  def totalmass_diff (models, fieldname, units, outdir, format='png', suffix=""):
     from os.path import exists
-    from ..common import convert, same_times
+    from ..common import same_times, to_datetimes
     from matplotlib import pyplot as pl
-    from pygeode.plot import plotvar
 
-    if len(models) != 2:
-      raise ValueError ("Expected 2 datasets")
+    fig = pl.figure(figsize=(15,12))
+    ax = pl.subplot(111)
+    pl.title("%s total mass difference (%s-%s) in %s"%(self.fieldname,inputs[0].name,inputs[1].name,self.units))
 
-    fields = [m.find_best(fieldname) for m in models]
-
-    # Unit conversion
-    fields = [convert(f,units) for f in fields]
+    fields = [inp.find_best(self.fieldname) for inp in inputs]
 
     # Use only the common timesteps between the fields
     fields = same_times (*fields)
     diff = fields[0]-fields[1]
 
-    diff.name=fieldname+'_diff'
+    dates = to_datetimes(diff.time)
 
-    outfile = outdir + "/%s_totalmass_diff_%s%s.%s"%('_'.join(m.name for m in models),fieldname,suffix, format)
+    pl.plot(dates, diff.get())
+
+    outfile = self.outdir + "/%s_totalmass_diff_%s%s.%s"%('_'.join(inp.name for inp in inputs),self.fieldname,self.suffix, self.image_format)
     if not exists(outfile):
-      fig = pl.figure(figsize=(15,12))
-      ax = pl.subplot(111)
-      plotvar (diff, ax=ax)
-      ax.set_title("%s total mass difference (%s-%s)"%(fieldname,models[0].name,models[1].name))
       fig.savefig(outfile)
 
 from . import table
