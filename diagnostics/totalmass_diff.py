@@ -1,27 +1,27 @@
-from .totalmass import compute_totalmass
-from .xcol import find_applicable_models
 
-from . import TimeVaryingDiagnostic, ImageDiagnostic
-class TotalmassDiff(TimeVaryingDiagnostic,ImageDiagnostic):
+from .totalmass import Totalmass
+class TotalmassDiff(Totalmass):
   """
   Plot the difference in mass for the same field between two datasets.
   """
-  def __init__ (self, normalize_air_mass=False, **kwargs):
-    super(TotalmassDiff,self).__init__(**kwargs)
-    self.normalize_air_mass = normalize_air_mass
   def _input_combos (self, inputs):
-    models = find_applicable_models(inputs, self.fieldname)
-    n = len(models)
+    fieldname = self.fieldname
+    n = len(inputs)
     for i in range(n):
+      # Note: this will exclude integrated flux products, since they will have
+      # '_flux' appended to their name.
+      if not inputs[i].have(fieldname): continue
       for j in range(i+1,n):
-        yield models[i], models[j]
+        if not inputs[j].have(fieldname): continue
+        yield inputs[i], inputs[j]
+
   def do (self, inputs):
-    totalmass_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, normalize_air_mass = self.normalize_air_mass, format=self.image_format, suffix=self.suffix)
+    totalmass_diff(inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, format=self.image_format, suffix=self.suffix)
 
 
 if True:
 
-  def totalmass_diff (models, fieldname, units, outdir, normalize_air_mass=False, format='png', suffix=""):
+  def totalmass_diff (models, fieldname, units, outdir, format='png', suffix=""):
     from os.path import exists
     from ..common import convert, same_times
     from matplotlib import pyplot as pl
@@ -30,7 +30,7 @@ if True:
     if len(models) != 2:
       raise ValueError ("Expected 2 datasets")
 
-    fields = [compute_totalmass(m,fieldname,suffix=suffix) for m in models]
+    fields = [m.find_best(fieldname) for m in models]
 
     # Unit conversion
     fields = [convert(f,units) for f in fields]
@@ -39,16 +39,9 @@ if True:
     fields = same_times (*fields)
     diff = fields[0]-fields[1]
 
-    # Get model air mass, if we are normalizing the tracer mass.
-    if normalize_air_mass:
-      airmass = compute_totalmass(models[0],'air',suffix=suffix)
-      diff, airmass = same_times(diff,airmass)
-      airmass0 = float(airmass[0])
-      diff = diff / airmass * airmass0
-
     diff.name=fieldname+'_diff'
 
-    outfile = outdir + "/%s_totalmass_diff_%s%s%s.%s"%('_'.join(m.name for m in models),fieldname,suffix,'_normalized' if normalize_air_mass else '', format)
+    outfile = outdir + "/%s_totalmass_diff_%s%s.%s"%('_'.join(m.name for m in models),fieldname,suffix, format)
     if not exists(outfile):
       fig = pl.figure(figsize=(15,12))
       ax = pl.subplot(111)
