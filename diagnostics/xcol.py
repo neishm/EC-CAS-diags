@@ -11,19 +11,30 @@ class XCol(TimeVaryingDiagnostic):
   kernel is used in the average, it is simply weighted by air mass.
   """
   def _select_inputs (self, inputs):
-    from ..common import have_gridded_3d_data
     inputs = super(XCol,self)._select_inputs(inputs)
     selected = []
-    for x in inputs:
-      if any (have_gridded_3d_data(d) for d in x.datasets):
-        selected.append(x)
+    for inp in inputs:
+      # Use any inputs that we can successfully compute an avg column from.
+      try:
+        xcol = self._avgcolumn(inp,cache=False)
+        selected.append(inp)
+      except KeyError: pass
+
     return selected
 
+  def _transform_inputs (self, inputs):
+    from ..interfaces import DerivedProduct
+    inputs = super(XCol,self)._transform_inputs(inputs)
+    computed = []
+    for inp in inputs:
+      xcol = self._avgcolumn(inp)
+      computed.append(DerivedProduct(xcol,source=inp))
+    return computed
 
   # Compute total column of a tracer
   # (in kg/m2)
-  def totalcolumn (self, model):
-    from ..common import find_and_convert, grav as g, number_of_levels, number_of_timesteps
+  def _totalcolumn (self, model, cache=True):
+    from ..common import find_and_convert, grav as g, number_of_levels, number_of_timesteps, rotate_grid
     fieldname = self.fieldname
 
     c, dp = find_and_convert (model, [fieldname,'dp'], ['kg kg(air)-1', 'Pa'], maximize=(number_of_levels,number_of_timesteps))
@@ -37,12 +48,16 @@ class XCol(TimeVaryingDiagnostic):
       data.atts['specie'] = c.atts['specie']
 
     # Cache the data
-    return model.cache.write(data,prefix=model.name+"_totalcolumn_"+fieldname+self.suffix)
+    if cache:
+      data = model.cache.write(data,prefix=model.name+"_totalcolumn_"+fieldname+self.suffix)
+
+    data = rotate_grid(data)
+    return data
 
 
   # Compute average column of a tracer
-  def avgcolumn (self, model):
-    from ..common import find_and_convert, number_of_levels, number_of_timesteps
+  def _avgcolumn (self, model, cache=True):
+    from ..common import find_and_convert, number_of_levels, number_of_timesteps, rotate_grid
     fieldname = self.fieldname
 
     c, dp = find_and_convert(model, [fieldname,'dp'], [self.units,'Pa'], maximize=(number_of_levels,number_of_timesteps))
@@ -55,25 +70,12 @@ class XCol(TimeVaryingDiagnostic):
       data.atts['specie'] = c.atts['specie']
 
     # Cache the data
-    return model.cache.write(data,prefix=model.name+"_avgcolumn_"+fieldname+self.suffix)
+    if cache:
+      data = model.cache.write(data,prefix=model.name+"_avgcolumn_"+fieldname+self.suffix)
 
+    data = rotate_grid(data)
+    return data
 
-
-
-  # Get column average
-  def get_xcol (self, experiment):
-    from ..common import rotate_grid, convert
-
-    xcol = self.avgcolumn(experiment)
-
-    # Rotate the longitudes to 0,360
-    if xcol.lon[1] < 0:
-      xcol = rotate_grid(xcol)
-
-    # Convert to the required units
-    xcol = convert(xcol,self.units)
-
-    return xcol
 
 
   def do (self, inputs):
@@ -82,7 +84,7 @@ class XCol(TimeVaryingDiagnostic):
     plotname = 'X'+self.fieldname
     prefix = '_'.join(inp.name for inp in inputs) + '_' + plotname + self.suffix
 
-    fields = [self.get_xcol(inp) for inp in inputs]
+    fields = [inp.find_best(self.fieldname) for inp in inputs]
     subtitles = [inp.title for inp in inputs]
     title = '%s (in %s)'%(plotname,self.units)
 
