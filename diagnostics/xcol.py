@@ -33,9 +33,9 @@ class XCol(TimeVaryingDiagnostic):
 
   # Compute total column of a tracer
   # (in kg/m2)
-  def _totalcolumn (self, model, cache=True):
+  def _totalcolumn (self, model, fieldname=None, cache=True):
     from ..common import find_and_convert, grav as g, number_of_levels, number_of_timesteps, rotate_grid
-    fieldname = self.fieldname
+    fieldname = fieldname or self.fieldname
 
     c, dp = find_and_convert (model, [fieldname,'dp'], ['kg kg(air)-1', 'Pa'], maximize=(number_of_levels,number_of_timesteps))
 
@@ -56,9 +56,9 @@ class XCol(TimeVaryingDiagnostic):
 
 
   # Compute average column of a tracer
-  def _avgcolumn (self, model, cache=True):
+  def _avgcolumn (self, model, fieldname=None, cache=True):
     from ..common import find_and_convert, number_of_levels, number_of_timesteps, rotate_grid
-    fieldname = self.fieldname
+    fieldname = fieldname or self.fieldname
 
     c, dp = find_and_convert(model, [fieldname,'dp'], [self.units,'Pa'], maximize=(number_of_levels,number_of_timesteps))
 
