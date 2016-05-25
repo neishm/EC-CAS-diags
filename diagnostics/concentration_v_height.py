@@ -1,20 +1,37 @@
 
-from .movie_zonal import find_applicable_models
 
-from . import Diagnostic
-class Concentration_VS_Height(Diagnostic):
+from .movie_zonal import ZonalMean
+class Concentration_VS_Height(ZonalMean):
   """
   Vertial profiles, averaged by zonal region and animated in time.
   """
-  def do_all (self, inputs, fieldname, units, outdir):
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
+  def __init__ (self, xlim=None, **kwargs):
+    # This diagnostic always uses geopotential height for the vertical.
+    kwargs['zaxis'] = 'gph'
+    super(Concentration_VS_Height,self).__init__(**kwargs)
+    self.xlim = xlim
 
-    models = find_applicable_models(inputs, fieldname, zaxis='gph')
-    movie_CvH(models, fieldname, units, outdir)
+  def do (self, inputs):
+
+    prefix = '%s_CvH%s%s'%('_'.join(inp.name for inp in inputs), self.fieldname, self.suffix)
+
+    #Names of each model - For plot titles later
+    subtitles = ['Average %s Concentration - %s'%(self.fieldname,inp.name) for inp in inputs]
+
+    fields = [inp.find_best(self.fieldname) for inp in inputs]
+
+    shape = (1,len(fields))
+
+    movie = CvH_Movie(fields, xlim=self.xlim, title='CvH', subtitles=subtitles, shape=shape, aspect_ratio=1.5)
+
+    movie.save(outdir=self.outdir, prefix=prefix)
+
 
 from .movie import TiledMovie
 class CvH_Movie(TiledMovie):
+  def __init__ (self, fields, xlim, **kwargs):
+    self.xlim = xlim
+    TiledMovie.__init__(self,fields,**kwargs)
   def render_panel (self, ax, data, n):
 
     """This function handles the actual graphing mechanisms"""
@@ -50,35 +67,13 @@ class CvH_Movie(TiledMovie):
 
     #Plot aesthetics
     ax.set_title(self.subtitles[n])
-    ax.set_xlabel('CO$_{2}$ Concentration (ppm)')
+    ax.set_xlabel('%s Concentration (%s)'%(data.name,data.atts['units']))
     ax.set_ylabel('Height (km)')
     ax.grid(b=None, which='major', axis='both')
-    ax.set_xlim(375,395)
+    if self.xlim is not None:
+      ax.set_xlim(self.xlim)
     ax.legend([NL,SL,TrL], ['North Extratropics','South Extratropics','Tropics'],prop={'size':11})
 
-
-if True:
-
-  def movie_CvH (models, fieldname, units, outdir):
-
-    from ..common import convert
-    from .movie_zonal import zonalmean_gph
-
-    prefix = '%s_CvH%s'%('_'.join(m.name for m in models), fieldname)
-
-    #Names of each model - For plot titles later
-    subtitles = ['Average CO$_{2}$ Concentration - %s'%(m.name) for m in models]
-
-    fields = [zonalmean_gph(m,fieldname,units,typestat="mean") for m in models]
-
-    # Unit conversion
-    fields = [convert(f,units) for f in fields]
-
-    shape = (1,len(fields))
-
-    movie = CvH_Movie(fields, title='CvH', subtitles=subtitles, shape=shape, aspect_ratio=1.5)
-
-    movie.save(outdir=outdir, prefix=prefix)
 
 from . import table
 table['concentration-v-height'] = Concentration_VS_Height

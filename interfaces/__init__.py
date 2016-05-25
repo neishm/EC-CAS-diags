@@ -212,7 +212,7 @@ class DataProduct (DataInterface):
 
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
-  def __init__ (self, files, name, title='untitled', cache=None, rescan=False, color='black', linestyle='-', marker=None):
+  def __init__ (self, files, name, title='untitled', cache=None, rescan=False, color='black', linestyle='-', std_style='lines', marker=None):
     from .data_scanner import from_files
     from os.path import exists
     from os import remove
@@ -221,6 +221,7 @@ class DataProduct (DataInterface):
     self.cache = cache
     self.color = color
     self.linestyle = linestyle
+    self.std_style = std_style
     self.marker = marker
     if cache is not None:
       manifest = cache.full_path(name+"_manifest", writeable=True)
@@ -262,6 +263,7 @@ class DerivedProduct (DataProduct):
     self.cache = source.cache
     self.color = source.color
     self.linestyle = source.linestyle
+    self.std_style = source.std_style
     self.marker = source.marker
     if isinstance(datasets,Var):
       datasets = [Dataset([datasets])]

@@ -4,37 +4,38 @@
 # comparable to satellite observations.
 
 
-if True:
-
-  def find_applicable_models (inputs, fieldname):
-    from ..common import have_gridded_3d_data
-    models = []
-    for x in inputs:
-      if any (fieldname in d and have_gridded_3d_data(d) for d in x.datasets):
-        models.append(x)
-    if len(models) == 0:
-      raise ValueError("No inputs match the criteria.")
-    return models
-
-from . import Diagnostic
-class XCol(Diagnostic):
+from . import TimeVaryingDiagnostic
+class XCol(TimeVaryingDiagnostic):
   """
   Show the average column of a field, animated in time.  Note that no averaging
   kernel is used in the average, it is simply weighted by air mass.
   """
-  def do_all (self, inputs, fieldname, units, outdir):
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
+  def _select_inputs (self, inputs):
+    inputs = super(XCol,self)._select_inputs(inputs)
+    selected = []
+    for inp in inputs:
+      # Use any inputs that we can successfully compute an avg column from.
+      try:
+        xcol = self._avgcolumn(inp,cache=False)
+        selected.append(inp)
+      except KeyError: pass
 
-    models = find_applicable_models(inputs, fieldname)
-    xcol (models, fieldname, units, outdir)
+    return selected
 
-if True:
+  def _transform_inputs (self, inputs):
+    from ..interfaces import DerivedProduct
+    inputs = super(XCol,self)._transform_inputs(inputs)
+    computed = []
+    for inp in inputs:
+      xcol = self._avgcolumn(inp)
+      computed.append(DerivedProduct(xcol,source=inp))
+    return computed
 
   # Compute total column of a tracer
   # (in kg/m2)
-  def totalcolumn (model, fieldname):
-    from ..common import find_and_convert, grav as g, number_of_levels, number_of_timesteps
+  def _totalcolumn (self, model, fieldname=None, cache=True):
+    from ..common import find_and_convert, grav as g, number_of_levels, number_of_timesteps, rotate_grid
+    fieldname = fieldname or self.fieldname
 
     c, dp = find_and_convert (model, [fieldname,'dp'], ['kg kg(air)-1', 'Pa'], maximize=(number_of_levels,number_of_timesteps))
 
@@ -47,13 +48,19 @@ if True:
       data.atts['specie'] = c.atts['specie']
 
     # Cache the data
-    return model.cache.write(data,prefix=model.name+"_totalcolumn_"+fieldname)
+    if cache:
+      data = model.cache.write(data,prefix=model.name+"_totalcolumn_"+fieldname+self.suffix)
+
+    data = rotate_grid(data)
+    return data
 
 
   # Compute average column of a tracer
-  def avgcolumn (model, fieldname, units):
-    from ..common import find_and_convert, number_of_levels, number_of_timesteps
-    c, dp = find_and_convert(model, [fieldname,'dp'], [units,'Pa'], maximize=(number_of_levels,number_of_timesteps))
+  def _avgcolumn (self, model, fieldname=None, cache=True):
+    from ..common import find_and_convert, number_of_levels, number_of_timesteps, rotate_grid
+    fieldname = fieldname or self.fieldname
+
+    c, dp = find_and_convert(model, [fieldname,'dp'], [self.units,'Pa'], maximize=(number_of_levels,number_of_timesteps))
 
     data = (c*dp).sum('zaxis') / dp.sum('zaxis')
     data.name = fieldname
@@ -63,36 +70,23 @@ if True:
       data.atts['specie'] = c.atts['specie']
 
     # Cache the data
-    return model.cache.write(data,prefix=model.name+"_avgcolumn_"+fieldname)
+    if cache:
+      data = model.cache.write(data,prefix=model.name+"_avgcolumn_"+fieldname+self.suffix)
+
+    data = rotate_grid(data)
+    return data
 
 
 
-
-  # Get column average
-  def get_xcol (experiment, fieldname, units):
-    from ..common import rotate_grid, convert
-
-    xcol = avgcolumn(experiment, fieldname, units)
-
-    # Rotate the longitudes to 0,360
-    if xcol.lon[1] < 0:
-      xcol = rotate_grid(xcol)
-
-    # Convert to the required units
-    xcol = convert(xcol,units)
-
-    return xcol
-
-
-  def xcol (models, fieldname, units, outdir):
+  def do (self, inputs):
     from .movie import ContourMovie
 
-    plotname = 'X'+fieldname
-    prefix = '_'.join(m.name for m in models) + '_' + plotname
+    plotname = 'X'+self.fieldname
+    prefix = '_'.join(inp.name for inp in inputs) + '_' + plotname + self.suffix
 
-    fields = [get_xcol(m,fieldname,units) for m in models]
-    subtitles = [m.title for m in models]
-    title = '%s (in %s)'%(plotname,units)
+    fields = [inp.find_best(self.fieldname) for inp in inputs]
+    subtitles = [inp.title for inp in inputs]
+    title = '%s (in %s)'%(plotname,self.units)
 
     aspect_ratio = 0.4  # height / width for each panel
 
@@ -100,7 +94,7 @@ if True:
 
     movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio)
 
-    movie.save (outdir=outdir, prefix=prefix)
+    movie.save (outdir=self.outdir, prefix=prefix)
 
 from . import table
 table['xcol'] = XCol

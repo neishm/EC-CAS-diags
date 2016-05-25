@@ -1,14 +1,3 @@
-if True:
-
-  def find_applicable_models (inputs, fieldname):
-    from ..common import have_gridded_data
-    models = []
-    for x in inputs:
-      if any (fieldname+'_flux' in d and have_gridded_data(d) for d in x.datasets):
-        models.append(x)
-    if len(models) == 0:
-      raise ValueError("No inputs match the criteria.")
-    return models
 
 from . import Diagnostic
 class FluxDiagnostic(Diagnostic):
@@ -16,31 +5,32 @@ class FluxDiagnostic(Diagnostic):
   Various movies of input fluxes, plotted either on a map or binned into
   regions.
   """
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
+  def __init__ (self, timefilter=None, plottype='BG', **kwargs):
+    super(FluxDiagnostic,self).__init__(**kwargs)
+    self.timefilter = timefilter
+    self.plottype = plottype
 
-    models = find_applicable_models(inputs, fieldname)
-    movie_flux (models, fieldname, units, outdir, **kwargs)
+  def do (self, inputs):
+    movie_flux (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, timefilter=self.timefilter, plottype=self.plottype, suffix=self.suffix)
 
 if True:
   # Get a flux product for the given experiment and tracer name.
-  def get_flux (model, fieldname):
+  def get_flux (model, fieldname, units, suffix):
     from ..common import convert, number_of_timesteps, remove_repeated_longitude
 
     # Check if we already have the right units
     try:
-      data = model.find_best(fieldname+'_flux', maximize=number_of_timesteps)
-      data = convert(data,'mol m-2 s-1')
+      data = model.find_best(fieldname, maximize=number_of_timesteps)
+      data = convert(data,units)
     # Otherwise, assume we have integrated flux, need to divide by area
     except ValueError:
-      data, area = model.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
-      data = convert(data,'mol s-1')
+      data, area = model.find_best([fieldname,'cell_area'], maximize=number_of_timesteps)
+      data = convert(data,units+' m2')
       area = convert(area,'m2')
       data = data/area
 
     data.name = fieldname
-    data.atts['units'] = 'mol m-2 s-1'
+    data.atts['units'] = units
 
     # Strip out the extra longitude from the fluxes
     # (just for compatibility with Jake's code further below, which is hard-coded
@@ -48,7 +38,7 @@ if True:
     data = remove_repeated_longitude(data)
 
     # Cache the data (mainly to get the high/low stats)
-    data = model.cache.write(data, prefix=model.name+'_flux_'+fieldname)
+    data = model.cache.write(data, prefix=model.name+'_'+fieldname+suffix)
 
     return data
 
@@ -338,14 +328,14 @@ if True:
     pbar.update(100)
 
 
-  def movie_flux (models, fieldname, units, outdir, timefilter=None,plottype='BG'):
+  def movie_flux (models, fieldname, units, outdir, timefilter=None,plottype='BG', suffix=""):
 
     assert len(models) > 0
     assert len(models) <= 3  # too many things to plot
 
-    imagedir=outdir+"/FluxDiag-%s-%s-images_%s_flux%s"%(plottype,timefilter,'_'.join(m.name for m in models), fieldname)
+    imagedir=outdir+"/FluxDiag-%s-%s-images_%s_%s%s"%(plottype,timefilter,'_'.join(m.name for m in models), fieldname, suffix)
 
-    fluxes = [get_flux(m,fieldname) for m in models]
+    fluxes = [get_flux(m,fieldname,units,suffix) for m in models]
 
     # Unit conversion
     #fluxes = [rescale(f,units) for f in fields]
@@ -357,7 +347,7 @@ if True:
 
     plotOrganize(flux1=fluxes[0], flux2=fluxes[1], flux3=fluxes[2], names=Names,preview=False, outdir=imagedir,timefilter=timefilter,plottype=plottype)
 
-    moviefile = "%s/FluxDiag-%s-%s_%s_%s.avi"%(outdir, plottype, timefilter, '_'.join(m.name for m in models), fieldname)
+    moviefile = "%s/FluxDiag-%s-%s_%s_%s%s.avi"%(outdir, plottype, timefilter, '_'.join(m.name for m in models), fieldname, suffix)
 
     #If the timefilter is Monthly, don't bother making the movie - not enough frames
     if timefilter != 'Monthly':

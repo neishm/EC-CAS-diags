@@ -1,38 +1,58 @@
-if True:
 
-  def find_applicable_models (inputs, fieldname, zaxis):
-    from ..common import have_gridded_3d_data
-    models = []
-    other_fieldname = {'gph':'geopotential_height','plev':'air_pressure'}[zaxis]
-    for x in inputs:
-      if any (fieldname in d and other_fieldname in d and have_gridded_3d_data(d) for d in x.datasets):
-        models.append(x)
-    if len(models) == 0:
-      raise ValueError("No inputs match the criteria.")
-    return models
-
-from . import Diagnostic
-class ZonalMean(Diagnostic):
+from . import TimeVaryingDiagnostic
+class ZonalMean(TimeVaryingDiagnostic):
   """
   Zonal mean (or standard deviation) of a field, animated in time.
   """
-  def do_all (self, inputs, fieldname, units, outdir, **kwargs):
-    # Apply any pre-filtering to the input data.
-    inputs = self.filter_inputs(inputs)
+  #
+  """
+  @classmethod
+  def add_args (cls, parser, handled=[]):
+    super(ZonalMean,cls).add_args(parser)
+    if len(handled) > 0: return  # Only run once
+    parser.add_argument('--zaxis', action='store', choices=('gph','plev'), default='gph', help="The vertical coordinate to use for vertical interplation (e.g. for zonal mean plots).  Default is gph.")
+    handled.append(True)
+  """
+  def __init__ (self, zaxis='gph', typestat='mean', **kwargs):
+    super(ZonalMean,self).__init__(**kwargs)
+    self.zaxis = zaxis
+    self.typestat = typestat
+  def _check_dataset (self, dataset):
+    from ..common import have_gridded_3d_data
+    if super(ZonalMean,self)._check_dataset(dataset) is False:
+      return False
+    if self.fieldname not in dataset: return False
+    if 'lon' not in dataset: return False
+    if self.zaxis == 'gph' and 'geopotential_height' not in dataset:
+      return False
+    if self.zaxis == 'plev' and 'air_pressure' not in dataset:
+      return False
+    return have_gridded_3d_data(dataset)
+  def _transform_inputs (self, inputs):
+    from ..interfaces import DerivedProduct
+    inputs = super(ZonalMean,self)._transform_inputs(inputs)
+    transformed = []
+    for inp in inputs:
+      if self.zaxis == 'gph':
+        var = self._zonalmean_gph (inp)
+      elif self.zaxis == 'plev':
+        var = self._zonalmean_pres (inp)
+      else:
+        raise ValueError("Unhandled zaxis type '%s'"%self.zaxis)
+      transformed.append(DerivedProduct(var, source=inp))
+    return transformed
 
-    zaxis = kwargs.get('zaxis','gph')
-    models = find_applicable_models(inputs, fieldname, zaxis)
-    movie_zonal(models, fieldname, units, outdir, **kwargs)
-
-if True:
   # Convert zonal mean data (on height)
-  def zonalmean_gph (model, fieldname, units, typestat):
+  def _zonalmean_gph (self, model, typestat=None):
     from pygeode.interp import interpolate
     from pygeode.axis import Height
     from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
     import numpy as np
 
-    var, z = find_and_convert(model, [fieldname,'geopotential_height'], [units,'m'], maximize=(number_of_levels,number_of_timesteps))
+    fieldname = self.fieldname
+    typestat = typestat or self.typestat
+
+    var, z = find_and_convert(model, [fieldname,'geopotential_height'], [self.units,'m'], maximize=(number_of_levels,number_of_timesteps))
 
     height = Height(range(68), name='height')
 
@@ -57,7 +77,7 @@ if True:
       # Make sure the zonal mean gets cached before use in subsequent
       # calculations.
       # Otherwise, it could cause an O(n^2) slowdown of the diagnostics.
-      var_mean = zonalmean_gph (model, fieldname, units, typestat="mean")
+      var_mean = self.zonalmean_gph (model, typestat="mean")
 
     # Do a zonal standard deviation
     var_stdev = (var-var_mean).nanstdev('lon')
@@ -67,19 +87,22 @@ if True:
     if typestat == "mean" : var=var_mean
 
     # Cache the zonalmean data
-    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_gph_'+fieldname)
+    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_gph_'+fieldname+self.suffix)
 
     return var
 
 
   # Convert zonal mean data (on pressure levels)
-  def zonalmean_pres (model, fieldname, units, typestat):
+  def _zonalmean_pres (self, model, typestat=None):
     from pygeode.interp import interpolate
     from pygeode.axis import Pres
     from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
     import numpy as np
 
-    var, p = find_and_convert(model, [fieldname,'air_pressure'], [units,'hPa'], maximize=(number_of_levels,number_of_timesteps))
+    fieldname = self.fieldname
+    typestat = typestat or self.typestat
+
+    var, p = find_and_convert(model, [fieldname,'air_pressure'], [self.units,'hPa'], maximize=(number_of_levels,number_of_timesteps))
 
     pres = Pres(np.exp(np.linspace(np.log(1000),np.log(.1),100)), name='pressure')
 
@@ -104,7 +127,7 @@ if True:
       # Make sure the zonal mean gets cached before use in subsequent
       # calculations.
       # Otherwise, it could cause an O(n^2) slowdown of the diagnostics.
-      var_mean = zonalmean_gph (model, fieldname, units, typestat="mean")
+      var_mean = self.zonalmean_pres (model, typestat="mean")
 
     # Do a zonal standard deviation
     var_stdev = (var-var_mean).nanstdev('lon')
@@ -114,33 +137,24 @@ if True:
     if typestat == "mean" : var=var_mean
 
     # Cache the zonalmean data
-    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_pres_'+fieldname)
+    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_pres_'+fieldname+self.suffix)
 
     return var
 
 
-from .movie import ZonalMovie
-if True:
+  def do (self, inputs):
+    from .movie import ZonalMovie
 
-  def movie_zonal (models, fieldname, units, outdir, zaxis='gph', typestat='mean'):
-
-    assert zaxis in ('gph','plev')
-
-    prefix = '_'.join(m.name for m in models) + '_zonal'+typestat+'_'+fieldname+'_on_'+zaxis
-    title = 'Zonal %s %s (in %s)'%(typestat,fieldname,units)
+    prefix = '_'.join(inp.name for inp in inputs) + '_zonal'+self.typestat+'_'+self.fieldname+'_on_'+self.zaxis+self.suffix
+    title = 'Zonal %s %s (in %s)'%(self.typestat,self.fieldname,self.units)
     aspect_ratio = 1.0
-    shape = (1,len(models))
+    shape = (1,len(inputs))
 
-    if zaxis == 'gph':
-      fields = [zonalmean_gph(m,fieldname,units,typestat) for m in models]
-    else:
-      fields = [zonalmean_pres(m,fieldname,units,typestat) for m in models]
-
-    subtitles = [m.title for m in models]
-
+    subtitles = [inp.title for inp in inputs]
+    fields = [inp.find_best(self.fieldname) for inp in inputs]
     movie = ZonalMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=aspect_ratio)
 
-    movie.save (outdir=outdir, prefix=prefix)
+    movie.save (outdir=self.outdir, prefix=prefix)
 
 
 from . import table
