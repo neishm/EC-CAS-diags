@@ -40,6 +40,9 @@ class StationComparison(Diagnostic):
     # Sample at the station locations
     fields = []
     for var in model.vars:
+      # Ignore non-spatial fields
+      if not var.hasaxis('lat'): continue
+      if not var.hasaxis('lon'): continue
       fields.append(StationSample(var, obs.station))
     return Dataset(fields)
 
