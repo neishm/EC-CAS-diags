@@ -96,7 +96,11 @@ class TimeseriesRBP(Timeseries):
       rects.append(rect)
 
     for i in range(len(Zones)):
-      pl.text(i*(len(inputs)+1)+len(inputs)-0.5,Zones[i,-2]-((Zones[i,-1]-self.ymin)/2.0),Count[i,0],horizontalalignment = 'center', color='white')
+      for j in range(len(inputs)):
+        textx = i*(len(inputs)+1)+j+0.5
+        texty = (Zones[i,j]+self.ymin)/2.0
+        if np.isfinite(texty):
+          pl.text(textx,texty,Count[i,j],horizontalalignment = 'center', color='white')
 
     pl.xlim(-1,len(Zones)*(len(inputs)+1))
 
