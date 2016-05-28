@@ -69,6 +69,11 @@ class StationComparison(Diagnostic):
     # Loop over each obs product
     for obs in all_obs:
       if len(obs.datasets) == 0: continue
+      # Can't handle fields partitioned into multiple datasets
+      # (i.e. each station in a different dataset).
+      # Usually, this indicates we have a non-stationary obs (like aircraft)
+      # which we don't want to include here anyway.
+      if len(obs.datasets) > 1: continue
       # Loop over each model
       out_models = []
       for m in models:
