@@ -1,7 +1,7 @@
 # Aircraft profile diagnostic
 
-from . import ImageDiagnostic
-class AircraftProfiles(ImageDiagnostic):
+from . import TimeVaryingDiagnostic, ImageDiagnostic
+class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Mean vertical profiles, sampled at obs locations.
   """
