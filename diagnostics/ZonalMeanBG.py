@@ -51,9 +51,19 @@ class BG_Movie (TiledMovie):
     NA=NA[~np.isnan(NA)]
 
     #Take weighted average of each region
-    N=np.average(NA,weights=NAweights)
-    S=np.average(SA,weights=SAweights) 
-    Tr=np.average(TrA,weights=TrAweights) 
+    # Check if we have any data (otherwise np.averge fails).
+    if len(NA) > 0:
+      N=np.average(NA,weights=NAweights)
+    else:
+      N  = float('nan')
+    if len(SA) > 0:
+      S=np.average(SA,weights=SAweights)
+    else:
+      S  = float('nan')
+    if len(TrA) > 0:
+      Tr=np.average(TrA,weights=TrAweights)
+    else:
+      Tr = float('nan')
 
     #Yscale limits - high and low are slightly to constrictve
     yaxmin, yaxmax = self.global_range[data.name]
@@ -74,15 +84,22 @@ class BG_Movie (TiledMovie):
     yspan=yaxmax-yaxmin
 
     #Create CO2 value label above each bar
-    ax.text(0,N+yspan/200.0,round(N,2))
-    ax.text(2,Tr+yspan/200.0,round(Tr,2))
-    ax.text(4,S+yspan/200.0,round(S,2))
+    if np.isfinite(N):
+      ax.text(0,N+yspan/200.0,round(N,2))
+    if np.isfinite(Tr):
+      ax.text(2,Tr+yspan/200.0,round(Tr,2))
+    if np.isfinite(S):
+      ax.text(4,S+yspan/200.0,round(S,2))
 
     #Create and denote comparison bar
-    ax.plot((1.5,1.5),(max(N,S,Tr),min(N,S,Tr)),'b')
-    ax.plot((1.45,1.55),(max(N,S,Tr),max(N,S,Tr)),'b')
-    ax.plot((1.45,1.55),(min(N,S,Tr),min(N,S,Tr)),'b')
-    ax.text(1.25,(max(N,S,Tr)+min(N,S,Tr))/2.0,round(max(N,S,Tr)-min(N,S,Tr),2),rotation='vertical')
+    barvals = filter(np.isfinite,[N,S,Tr])
+    if len(barvals) > 0:
+      barmax = max(barvals)
+      barmin = min(barvals)
+      ax.plot((1.5,1.5),(barmax,barmin),'b')
+      ax.plot((1.45,1.55),(barmax,barmax),'b')
+      ax.plot((1.45,1.55),(barmin,barmin),'b')
+      ax.text(1.25,(barmax+barmin)/2.0,round(barmax-barmin,2),rotation='vertical')
 
 
 from . import table
