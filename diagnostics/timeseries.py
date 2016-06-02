@@ -36,14 +36,14 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
       # very well with the encoded station data.
       # Only cache if we have some data in this time period.
       if len(field.time) > 0:
-        field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False)
+        field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False, suffix=self.end_suffix)
       dataset.append(field)
       try:
         field = find_and_convert(m, fieldname+'_ensemblespread', units, maximize = (closeness_to_surface,number_of_timesteps))
         field = select_surface(field)
         field = field(time=(timeaxis.values[0],timeaxis.values[-1]))
         if len(field.time) > 0:
-          field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False)
+          field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False, suffix=self.end_suffix)
         dataset.append(field.rename(fieldname+'_std'))
       except KeyError:  # No ensemble spread for this model data
         pass
@@ -57,7 +57,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
     obs_data = obs_data(time=(timeaxis.values[0],timeaxis.values[-1]))
     # Cache obs data, but only  if we have some data in this time range.
     if len(obs_data.time) > 0:
-      obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False)
+      obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False, suffix=self.end_suffix)
     obs_data = convert(obs_data, units, context=fieldname)
     dataset.append(obs_data)
     # Cached the obs std. deviation (if it exists)
@@ -66,7 +66,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
       obs_stderr = select_surface(obs_stderr)
       obs_stderr = obs_stderr(time=(timeaxis.values[0],timeaxis.values[-1]))
       if len(obs_stderr.time) > 0:
-        obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False)
+        obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False, suffix=self.end_suffix)
       obs_stderr = convert(obs_stderr, units, context=fieldname)
       dataset.append(obs_stderr)
     except KeyError:
@@ -170,7 +170,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
           fig_id = ','.join(stations_on_figure)
         else:
           fig_id = '%02d'%(i/n+1)
-        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(self.outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix,self.image_format)
+        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(self.outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
         if not exists(outfile):
           fig.savefig(outfile)
 

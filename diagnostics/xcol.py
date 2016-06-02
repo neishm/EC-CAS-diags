@@ -49,7 +49,7 @@ class XCol(TimeVaryingDiagnostic):
 
     # Cache the data
     if cache:
-      data = model.cache.write(data,prefix=model.name+"_totalcolumn_"+fieldname+self.suffix)
+      data = model.cache.write(data,prefix=model.name+"_totalcolumn_"+fieldname+self.suffix, suffix=self.end_suffix)
 
     data = rotate_grid(data)
     return data
@@ -71,7 +71,7 @@ class XCol(TimeVaryingDiagnostic):
 
     # Cache the data
     if cache:
-      data = model.cache.write(data,prefix=model.name+"_avgcolumn_"+fieldname+self.suffix)
+      data = model.cache.write(data,prefix=model.name+"_avgcolumn_"+fieldname+self.suffix, suffix=self.end_suffix)
 
     data = rotate_grid(data)
     return data
@@ -82,7 +82,7 @@ class XCol(TimeVaryingDiagnostic):
     from .movie import ContourMovie
 
     plotname = 'X'+self.fieldname
-    prefix = '_'.join(inp.name for inp in inputs) + '_' + plotname + self.suffix
+    prefix = '_'.join(inp.name for inp in inputs) + '_' + plotname + self.suffix + self.end_suffix
 
     fields = [inp.find_best(self.fieldname) for inp in inputs]
     subtitles = [inp.title for inp in inputs]

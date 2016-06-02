@@ -34,7 +34,7 @@ class TotalmassDiff(Totalmass):
 
     pl.plot(dates, diff.get())
 
-    outfile = self.outdir + "/%s_totalmass_diff_%s%s.%s"%('_'.join(inp.name for inp in inputs),self.fieldname,self.suffix, self.image_format)
+    outfile = self.outdir + "/%s_totalmass_diff_%s%s.%s"%('_'.join(inp.name for inp in inputs),self.fieldname,self.suffix+self.end_suffix, self.image_format)
     if not exists(outfile):
       fig.savefig(outfile)
 

@@ -11,11 +11,11 @@ class FluxDiagnostic(Diagnostic):
     self.plottype = plottype
 
   def do (self, inputs):
-    movie_flux (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, timefilter=self.timefilter, plottype=self.plottype, suffix=self.suffix)
+    movie_flux (inputs, fieldname=self.fieldname, units=self.units, outdir=self.outdir, timefilter=self.timefilter, plottype=self.plottype, suffix=self.suffix, end_suffix=self.end_suffix)
 
 if True:
   # Get a flux product for the given experiment and tracer name.
-  def get_flux (model, fieldname, units, suffix):
+  def get_flux (model, fieldname, units, suffix, end_suffix):
     from ..common import convert, number_of_timesteps, remove_repeated_longitude
 
     # Check if we already have the right units
@@ -38,7 +38,7 @@ if True:
     data = remove_repeated_longitude(data)
 
     # Cache the data (mainly to get the high/low stats)
-    data = model.cache.write(data, prefix=model.name+'_'+fieldname+suffix)
+    data = model.cache.write(data, prefix=model.name+'_'+fieldname+suffix, suffix=end_suffix)
 
     return data
 
@@ -328,14 +328,14 @@ if True:
     pbar.update(100)
 
 
-  def movie_flux (models, fieldname, units, outdir, timefilter=None,plottype='BG', suffix=""):
+  def movie_flux (models, fieldname, units, outdir, timefilter=None,plottype='BG', suffix="", end_suffix=""):
 
     assert len(models) > 0
     assert len(models) <= 3  # too many things to plot
 
     imagedir=outdir+"/FluxDiag-%s-%s-images_%s_%s%s"%(plottype,timefilter,'_'.join(m.name for m in models), fieldname, suffix)
 
-    fluxes = [get_flux(m,fieldname,units,suffix) for m in models]
+    fluxes = [get_flux(m,fieldname,units,suffix,end_suffix) for m in models]
 
     # Unit conversion
     #fluxes = [rescale(f,units) for f in fields]

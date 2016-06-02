@@ -137,12 +137,12 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       # Disable time splitting for the cache file, since open_multi doesn't work
     # very well with the encoded station data.
     print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
-    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,fieldname,self.suffix), split_time=False)
-    gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,'geopotential_height',self.suffix), split_time=False)
+    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
+    gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,'geopotential_height',self.suffix), split_time=False, suffix=self.end_suffix)
 
     # Interpolate the model to the fixed vertical levels.
     outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
-    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_zinterp'%(obs.name,fieldname,self.suffix), split_time=False)
+    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_zinterp'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
 
     return [outfield]
 
@@ -190,7 +190,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
 
       fig = pl.figure(figsize=(6,6))
 
-      outfile = "%s/%s_profiles_%s%s_%s_%s.%s"%(self.outdir,'_'.join(d.name for d in models+[obs]),self.fieldname,self.suffix,season,year_string,self.image_format)
+      outfile = "%s/%s_profiles_%s%s_%s_%s.%s"%(self.outdir,'_'.join(d.name for d in models+[obs]),self.fieldname,self.suffix+self.end_suffix,season,year_string,self.image_format)
       if exists(outfile): continue
 
       # Placeholder profile for missing data

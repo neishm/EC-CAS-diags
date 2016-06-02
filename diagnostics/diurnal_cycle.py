@@ -75,7 +75,7 @@ class DiurnalCycle(Timeseries):
     # Compute the diurnal means and do the plot.
     for station in inputs[0].datasets[0].station.values:
       for year in years:
-        outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d%s.%s"%(self.outdir,'_'.join(d.name for d in inputs), self.fieldname, station.replace('/','^'), year, self.suffix, self.image_format)
+        outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d%s%s.%s"%(self.outdir,'_'.join(d.name for d in inputs), self.fieldname, station.replace('/','^'), year, self.suffix, self.end_suffix, self.image_format)
         if exists(outfile): continue
         fig = pl.figure(figsize=(10,10))
         title = "%s diurnal cycle at %s (%04d)"%(self.fieldname,station,year)

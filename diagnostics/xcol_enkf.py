@@ -45,7 +45,7 @@ class XColEnKF(XCol):
     model = inputs[0]
     fieldname = self.fieldname
 
-    prefix = model.name + '_' + 'X'+fieldname+self.suffix+'_stats'
+    prefix = model.name + '_' + 'X'+fieldname+self.suffix+self.end_suffix+'_stats'
 
     fields = model.find_best(fieldname,fieldname+'_ensemblespread')
     subtitles = ['X%s %s (%s)'%(fieldname,stat,model.name) for stat in 'mean','std dev.']

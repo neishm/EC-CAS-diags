@@ -30,7 +30,7 @@ class XColDiff(XCol):
     diff = fields[0]-fields[1]
     diff.name=self.fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_xcol_diff_'+inputs[1].name+'_'+self.fieldname+self.suffix)
+    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_xcol_diff_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
     diff = DerivedProduct(diff, source=inputs[0])
     diff.name = 'diff'
     diff.title = 'difference'
@@ -43,7 +43,7 @@ class XColDiff(XCol):
     from .movie import ContourMovie
 
     plotname = 'X'+self.fieldname
-    prefix = '_'.join(inp.name for inp in inputs) + plotname + self.suffix
+    prefix = '_'.join(inp.name for inp in inputs) + plotname + self.suffix + self.end_suffix
 
     fields = [inp.datasets[0].vars[0] for inp in inputs]
     subtitles = [inp.title for inp in inputs]

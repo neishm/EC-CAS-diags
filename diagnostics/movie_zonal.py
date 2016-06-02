@@ -87,7 +87,7 @@ class ZonalMean(TimeVaryingDiagnostic):
     if typestat == "mean" : var=var_mean
 
     # Cache the zonalmean data
-    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_gph_'+fieldname+self.suffix)
+    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_gph_'+fieldname+self.suffix, suffix=self.end_suffix)
 
     return var
 
@@ -137,7 +137,7 @@ class ZonalMean(TimeVaryingDiagnostic):
     if typestat == "mean" : var=var_mean
 
     # Cache the zonalmean data
-    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_pres_'+fieldname+self.suffix)
+    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_pres_'+fieldname+self.suffix, suffix=self.end_suffix)
 
     return var
 
@@ -145,7 +145,7 @@ class ZonalMean(TimeVaryingDiagnostic):
   def do (self, inputs):
     from .movie import ZonalMovie
 
-    prefix = '_'.join(inp.name for inp in inputs) + '_zonal'+self.typestat+'_'+self.fieldname+'_on_'+self.zaxis+self.suffix
+    prefix = '_'.join(inp.name for inp in inputs) + '_zonal'+self.typestat+'_'+self.fieldname+'_on_'+self.zaxis+self.suffix+self.end_suffix
     title = 'Zonal %s %s (in %s)'%(self.typestat,self.fieldname,self.units)
     aspect_ratio = 1.0
     shape = (1,len(inputs))

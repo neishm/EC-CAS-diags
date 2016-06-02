@@ -41,7 +41,7 @@ class HorzSliceDiff(TimeVaryingDiagnostic):
       c = rotate_grid(c)
 
       # Cache the data
-      c = inp.cache.write(c,prefix=inp.name+'_'+c.zaxis.name+self.level+"_"+self.fieldname+self.suffix)
+      c = inp.cache.write(c,prefix=inp.name+'_'+c.zaxis.name+self.level+"_"+self.fieldname+self.suffix, suffix=self.end_suffix)
 
       transformed.append(DerivedProduct(c, source=inp))
 
@@ -52,7 +52,7 @@ class HorzSliceDiff(TimeVaryingDiagnostic):
     diff = fields[0]-fields[1]
     diff.name=self.fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+self.fieldname+'_level'+self.level+"_diff_"+inputs[1].name+'_'+self.fieldname+self.suffix)
+    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+self.fieldname+'_level'+self.level+"_diff_"+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
     diff = DerivedProduct(diff, source=inputs[0])
     diff.name = 'diff'
     diff.title = 'difference'
@@ -65,7 +65,7 @@ class HorzSliceDiff(TimeVaryingDiagnostic):
     from .movie import ContourMovie
 
     plotname = self.fieldname+"_level"+self.level
-    prefix = '_'.join(inp.name for inp in inputs) + '_' + plotname + self.suffix
+    prefix = '_'.join(inp.name for inp in inputs) + '_' + plotname + self.suffix + self.end_suffix
 
     fields = [inp.datasets[0].vars[0] for inp in inputs]
     subtitles = [inp.title for inp in inputs]

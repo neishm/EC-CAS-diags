@@ -59,6 +59,9 @@ class Diagnostic(object):
   # Suffix to append to any output files
   suffix = ""
 
+  # Additional suffix to append to summary files (e.g. movies, plots).
+  end_suffix = ""
+
 # Diagnostics that deal with static figures (no movies).
 # Provides command-line arguments for controlling image output.
 class ImageDiagnostic(Diagnostic):
@@ -110,16 +113,20 @@ class TimeVaryingDiagnostic(Diagnostic):
       else:
         end = datetime(year=year+1,month=1,day=1) - timedelta(days=1)
     self.date_range = (start,end)
-    suffix = ""
-    if start is not None:
-      suffix = suffix + "_" + start.strftime("%Y%m%d-")
-    if end is not None:
-      if len(suffix) == 0: suffix = suffix + "_-"
-      suffix = suffix + end.strftime("%Y%m%d")
     self.hour0_only = hour0_only
+    end_suffix = []
+    datestr = ''
+    if start is not None:
+      datestr += start.strftime("%Y%m%d")
+    datestr += '-'
+    if end is not None:
+      datestr += end.strftime("%Y%m%d")
+    if datestr != '-':
+      end_suffix.append(datestr)
     if hour0_only is True:
-      suffix = suffix + "_hour0-only"
-    self.suffix = self.suffix + suffix
+      end_suffix.append("hour0-only")
+    if len(end_suffix) > 0:
+      self.end_suffix += '_' + '_'.join(end_suffix)
 
   def _check_dataset (self, dataset):
     if not super(TimeVaryingDiagnostic,self)._check_dataset(dataset):

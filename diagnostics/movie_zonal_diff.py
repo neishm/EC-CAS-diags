@@ -25,7 +25,7 @@ class ZonalMeanDiff(ZonalMean):
     diff = fields[0]-fields[1]
     diff.name=self.fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_zonal'+self.typestat+'_gph_diff_'+inputs[1].name+'_'+self.fieldname+self.suffix)
+    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_zonal'+self.typestat+'_gph_diff_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
     diff = DerivedProduct(diff, source=inputs[0])
     diff.name = 'diff'
     diff.title = 'difference'
@@ -35,7 +35,7 @@ class ZonalMeanDiff(ZonalMean):
   def do (self, inputs):
     from .movie import ZonalMovie
 
-    prefix = '_'.join(inp.name for inp in inputs) + '_zonal'+self.typestat+'_'+self.fieldname+'_on_'+self.zaxis+self.suffix
+    prefix = '_'.join(inp.name for inp in inputs) + '_zonal'+self.typestat+'_'+self.fieldname+'_on_'+self.zaxis+self.suffix+self.end_suffix
     title = 'Zonal %s %s (in %s)'%(self.typestat,self.fieldname,self.units)
     aspect_ratio = 1.0
     shape = (1,len(inputs))

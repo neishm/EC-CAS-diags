@@ -63,7 +63,7 @@ class Cache (object):
 
 
   # Write out the data
-  def write (self, var, prefix, split_time=True, force_single_precision=True, _dryrun=False):
+  def write (self, var, prefix, suffix='', split_time=True, force_single_precision=True, _dryrun=False):
     from os.path import exists
     from os import remove, mkdir
     from pygeode.formats import netcdf
@@ -91,9 +91,9 @@ class Cache (object):
     if not var.hasaxis('time'):
       from warnings import warn
       warn ("Untested case - no time axis in data")
-      filename = self.full_path(prefix + ".nc")
+      filename = self.full_path(prefix + suffix + ".nc")
       if not exists(filename):
-        filename = self.full_path(prefix + ".nc", writeable=True)
+        filename = self.full_path(prefix + suffix + ".nc", writeable=True)
         if _dryrun: return filename
         dataset = asdataset([var])
         for save_hook in self.save_hooks:
@@ -151,10 +151,10 @@ class Cache (object):
 
     # Check if we already have the data in the cache
     # (look for the one big file that gets generated in the last stage)
-    bigfile = self.full_path(prefix+"_"+datestrings[0]+"-"+datestrings[-1]+".nc")
+    bigfile = self.full_path(prefix+suffix+"_"+datestrings[0]+"-"+datestrings[-1]+".nc")
     if not exists(bigfile):
 
-      bigfile = self.full_path(prefix+"_"+datestrings[0]+"-"+datestrings[-1]+".nc", writeable=True)
+      bigfile = self.full_path(prefix+suffix+"_"+datestrings[0]+"-"+datestrings[-1]+".nc", writeable=True)
       if _dryrun: return bigfile
 
       # Split into 1 file per timestep?
@@ -163,7 +163,7 @@ class Cache (object):
 
         # Loop over each time, save into a cache file
         from pygeode.progress import PBar
-        pbar = PBar (message = "Caching %s"%prefix)
+        pbar = PBar (message = "Caching %s"%prefix+suffix)
         for i, datestring in enumerate(datestrings):
           pbar.update(i*100./len(datestrings))
 

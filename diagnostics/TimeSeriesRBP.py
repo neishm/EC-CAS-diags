@@ -113,7 +113,7 @@ class TimeseriesRBP(Timeseries):
     pl.legend(rects, [d.title for d in inputs],prop={'size':12})
     pl.text(.02,.96,'One standard deviation shown',transform = pl.gca().transAxes)
 
-    outfile = "%s/%s_timeseries_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,self.suffix,self.image_format)
+    outfile = "%s/%s_timeseries_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,self.suffix+self.end_suffix,self.image_format)
     if not exists(outfile):
       fig.savefig(outfile)
 

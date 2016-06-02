@@ -13,7 +13,7 @@ class ZonalMeanBG(ZonalMean):
 
   def do (self, inputs):
 
-    prefix = "ZonalMeanBG-images_%s_%s%s"%('_'.join(inp.name for inp in inputs), self.fieldname, self.suffix)
+    prefix = "ZonalMeanBG-images_%s_%s%s"%('_'.join(inp.name for inp in inputs), self.fieldname, self.suffix+self.end_suffix)
 
     fields = [inp.find_best(self.fieldname) for inp in inputs]
     fields = [f(height=self.height) for f in fields]

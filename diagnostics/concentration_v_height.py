@@ -13,7 +13,7 @@ class Concentration_VS_Height(ZonalMean):
 
   def do (self, inputs):
 
-    prefix = '%s_CvH%s%s'%('_'.join(inp.name for inp in inputs), self.fieldname, self.suffix)
+    prefix = '%s_CvH%s%s%s'%('_'.join(inp.name for inp in inputs), self.fieldname, self.suffix, self.end_suffix)
 
     #Names of each model - For plot titles later
     subtitles = ['Average %s Concentration - %s'%(self.fieldname,inp.name) for inp in inputs]

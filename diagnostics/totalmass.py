@@ -133,7 +133,7 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
 
     # Cache the data
     if cache:
-      data =  model.cache.write(data,prefix=model.name+"_totalmass_"+fieldname+suffix, force_single_precision=False)
+      data =  model.cache.write(data,prefix=model.name+"_totalmass_"+fieldname+suffix, force_single_precision=False, suffix=self.end_suffix)
     return data
 
   # Integrated flux (moles per second)
@@ -166,7 +166,7 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
 
     # Cache the data
     if cache:
-      data =  model.cache.write(data,prefix=model.name+"_totalflux_"+fieldname+suffix, force_single_precision=False)
+      data =  model.cache.write(data,prefix=model.name+"_totalflux_"+fieldname+suffix, force_single_precision=False, suffix=self.end_suffix)
     return data
 
 
@@ -195,7 +195,7 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
       pl.plot(dates, mass.get(), color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markeredgecolor=inp.color, label=inp.title)
     pl.legend(loc='best')
 
-    outfile = self.outdir + "/%s_totalmass_%s%s.%s"%('_'.join(inp.name for inp in inputs),self.fieldname,self.suffix,self.image_format)
+    outfile = self.outdir + "/%s_totalmass_%s%s.%s"%('_'.join(inp.name for inp in inputs),self.fieldname,self.suffix+self.end_suffix,self.image_format)
 
     if not exists(outfile):
       fig.savefig(outfile)
