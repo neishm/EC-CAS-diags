@@ -191,310 +191,86 @@ failures = []
 kwargs = vars(args)
 kwargs['outdir'] = outdir
 
-timeseries = diagnostics.table['timeseries']
-# CO2 Timeseries
-try:
- if 'timeseries' in allowed_diagnostics:
-  timeseries(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['CO2 timeseries', e])
-# CH4 Timeseries
-try:
- if 'timeseries' in allowed_diagnostics:
-  timeseries(fieldname='CH4', units='ppb', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['CH4 timeseries', e])
+# Helper method to invoke a diagnostic
+# (handle all the steps of looking up the diagnostic, running it, and catching
+# any exceptions).
+def diag (diagname, fieldname, units, **extra):
+  diagnostic = diagnostics.table[diagname]
+  if diagname not in allowed_diagnostics: return
+  try:
+    d = diagnostic(fieldname=fieldname, units=units, **dict(kwargs,**extra))
+    d.do_all(datasets)
+  except Exception as e:
+    failures.append([fieldname+' '+diagname, e])
+    if args.crash:
+      raise
 
-# Aircraft profiles
-profiles = diagnostics.table['aircraft-profiles']
-try:
- if 'aircraft-profiles' in allowed_diagnostics:
-  profiles(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['CO2 aircraft profiles', e])
+##################################################
+# Diagnostics
+##################################################
 
-# Diurnal cycle
-diurnal_cycle = diagnostics.table['diurnal-cycle']
-try:
- if 'diurnal-cycle' in allowed_diagnostics:
-  diurnal_cycle(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['CO2 diurnal cycle', e])
-try:
- if 'diurnal-cycle' in allowed_diagnostics:
-  diurnal_cycle(fieldname='CH4', units='ppb', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['CH4 diurnal cycle', e])
+diag ('timeseries', 'CO2', 'ppm')
+diag ('timeseries', 'CH4', 'ppb')
 
-movie_zonal = diagnostics.table['zonal-movie']
-# CO2 Zonal mean movies
-try:
- if 'zonal-movie' in allowed_diagnostics:
-  movie_zonal(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
-  movie_zonal(fieldname='CO2', units='ppm', typestat='stdev', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['CO2 movie_zonal', e])
-# CO2 Zonal mean of spread
-try:
- if 'zonal-movie' in allowed_diagnostics:
-  movie_zonal(fieldname='CO2_ensemblespread', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['CO2 movie_zonal spread', e])
-# CH4 Zonal mean movies
-try:
- if 'zonal-movie' in allowed_diagnostics:
-  movie_zonal(fieldname='CH4', units='ppb', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['CH4 movie_zonal', e])
+diag ('aircraft-profiles', 'CO2', 'ppm')
 
-movie_zonal_diff = diagnostics.table['zonal-mean-diff']
-# CO2 Zonal mean movies
-try:
- if 'zonal-mean-diff' in allowed_diagnostics:
-  movie_zonal_diff(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['CO2 movie_zonal_diff', e])
+diag ('diurnal-cycle', 'CO2', 'ppm')
+diag ('diurnal-cycle', 'CH4', 'ppb')
 
-"""
-# Count of CO2 'holes'
-try:
-  from eccas_diags.diagnostics.where_holes import where_holes
-  where_holes (experiment=experiment, outdir=outdir)
-except Exception as e:
-  failures.append(['where_holes', e])
+diag ('zonal-movie', 'CO2', 'ppm')
+diag ('zonal-movie', 'CO2_ensemblespread', 'ppm')
+diag ('zonal-movie', 'CH4', 'ppb')
+diag ('zonal-movie', 'CO2', 'ppm', typestat='stdev')
 
-# KT sensitivity check
-try:
-  from eccas_diags.diagnostics.shortexper_diffcheck import shortexper_diffcheck
-  shortexper_diffcheck (models=[experiment,control], obs=ec_obs, location="Toronto", outdir=outdir)
-except Exception as e:
-  failures.append(['diffcheck', e])
-"""
+diag ('zonal-mean-diff', 'CO2', 'ppm')
 
-xcol = diagnostics.table['xcol']
-xcol_enkf = diagnostics.table['xcol-enkf']
-xcol_diff = diagnostics.table['xcol-diff']
-# XCO2
-try:
- if 'xcol' in allowed_diagnostics:
-  xcol(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCO2', e])
-# XCO2 diff movies
-try:
- if 'xcol-diff' in allowed_diagnostics:
-  xcol_diff(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCO2_diff', e])
-# XH2O
-try:
- if 'xcol' in allowed_diagnostics:
-  xcol(fieldname='H2O', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XH2O', e])
-# Average column of stats
-try:
- if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCO2 enkf', e])
-# XCO2B
-try:
- if 'xcol' in allowed_diagnostics:
-  xcol(fieldname='CO2_background', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCO2B', e])
-# Average column of stats
-try:
- if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf(fieldname='CO2_background', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCO2B enkf', e])
-# XCLA
-try:
- if 'xcol' in allowed_diagnostics:
-  xcol(fieldname='CO2_bio', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCLA', e])
-# Average column of stats
-try:
- if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf(fieldname='CO2_bio', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCLA enkf', e])
-# XCOC
-try:
- if 'xcol' in allowed_diagnostics:
-  xcol(fieldname='CO2_ocean', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCOC', e])
-# Average column of stats
-try:
- if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf(fieldname='CO2_ocean', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCOC enkf', e])
-# XCFF
-try:
- if 'xcol' in allowed_diagnostics:
-  xcol(fieldname='CO2_fossil', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCFF', e])
-# Average column of stats
-try:
- if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf(fieldname='CO2_fossil', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCFF enkf', e])
-# XCBB
-try:
- if 'xcol' in allowed_diagnostics:
-  xcol(fieldname='CO2_fire', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCBB', e])
-# Average column of stats
-try:
- if 'xcol-enkf' in allowed_diagnostics:
-  xcol_enkf(fieldname='CO2_fire', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCBB enkf', e])
+diag ('xcol', 'CO2', 'ppm')
+diag ('xcol', 'CO2_background', 'ppm')
+diag ('xcol', 'CO2_bio', 'ppm')
+diag ('xcol', 'CO2_ocean', 'ppm')
+diag ('xcol', 'CO2_fossil', 'ppm')
+diag ('xcol', 'CO2_fire', 'ppm')
+diag ('xcol', 'CH4', 'ppb')
+diag ('xcol', 'H2O', 'ppm')
 
-# XCH4
-try:
- if 'xcol' in allowed_diagnostics:
-  xcol(fieldname='CH4', units='ppb', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCH4', e])
-try:
- if 'xcol-diff' in allowed_diagnostics:
-  xcol_diff(fieldname='CH4', units='ppb', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['XCH4_diff', e])
+diag ('xcol-diff', 'CO2', 'ppm')
+diag ('xcol-diff', 'CH4', 'ppb')
 
-totalmass = diagnostics.table['totalmass']
-# Total mass CO2
-try:
- if 'totalmass' in allowed_diagnostics:
-  totalmass(fieldname='CO2', units='Pg(C)', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['totalmass CO2', e])
-# Total mass CFF
-try:
- if 'totalmass' in allowed_diagnostics:
-  totalmass(fieldname='CO2_fossil', units='Pg(C)', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['totalmass CO2_fossil', e])
+diag ('xcol-enkf', 'CO2', 'ppm')
+diag ('xcol-enkf', 'CO2_background', 'ppm')
+diag ('xcol-enkf', 'CO2_bio', 'ppm')
+diag ('xcol-enkf', 'CO2_ocean', 'ppm')
+diag ('xcol-enkf', 'CO2_fossil', 'ppm')
+diag ('xcol-enkf', 'CO2_fire', 'ppm')
 
-totalmass_diff = diagnostics.table['totalmass-diff']
-# Total mass CO2 difference
-try:
- if 'totalmass-diff' in allowed_diagnostics:
-  totalmass_diff(fieldname='CO2', units='Pg(C)', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['totalmass_diff CO2', e])
-# Total mass CH4
-try:
- if 'totalmass' in allowed_diagnostics:
-  totalmass(fieldname='CH4', units='Pg', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['totalmass CH4', e])
-# Total mass air
-try:
- if 'totalmass' in allowed_diagnostics:
-  totalmass(fieldname='air', units='Pg', **kwargs).do_all(datasets)
-  totalmass(fieldname='dry_air', units='Pg', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['totalmass air', e])
-# Total mass H2O
-try:
- if 'totalmass' in allowed_diagnostics:
-  totalmass(fieldname='H2O', units='Pg', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['totalmass H2O', e])
+diag ('totalmass', 'CO2', 'Pg(C)')
+diag ('totalmass', 'CO2_fossil', 'Pg(C)')
+diag ('totalmass', 'CH4', 'Pg')
+diag ('totalmass', 'air', 'Pg')
+diag ('totalmass', 'dry_air', 'Pg')
+diag ('totalmass', 'H2O', 'Pg')
 
-# Horizontal slice movie
-horz_slice_diff = diagnostics.table['horz-slice-diff']
-try:
- if 'horz-slice-diff' in allowed_diagnostics:
-  horz_slice_diff(fieldname='CO2', units='ppm', level="1.0", **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['horz_slice_movie', e])
+diag ('totalmass-diff', 'CO2', 'Pg(C)')
 
-#-------------------Jake's Diags------------------------
+diag ('horz-slice-diff', 'CO2', 'ppm', level="1.0")
 
-from eccas_diags.diagnostics import concentration_v_height
-concentration_v_height = diagnostics.table['concentration-v-height']
-try:
- if 'concentration-v-height' in allowed_diagnostics:
-  concentration_v_height(fieldname='CO2', units='ppm', xlim=(375,395), **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['concentration vs. height', e])
+diag ('concentration-v-height', 'CO2', 'ppm', xlim=(375,395))
 
-FluxDiagnostic = diagnostics.table['flux-movie']
-try:
- if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Monthly', plottype='BG', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['Flux Diagnostic - Bar Graph', e])
-try:
- if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Daily', plottype='BG', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['Flux Diagnostic - Bar Graph', e])
-try:
- if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Monthly', plottype='Map', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['Flux Diagnostic - Map', e])
-try:
- if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Daily', plottype='Map', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['Flux Diagnostic - Map', e])
-try:
- if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Monthly', plottype='MeanMap', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['Flux Diagnostic - Mean Map', e])
-try:
- if 'flux-movie' in allowed_diagnostics:
-  FluxDiagnostic(fieldname='CO2_flux', units='mol m-2 s-1', timefilter='Daily', plottype='MeanMap', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['Flux Diagnostic - Mean Map', e])
+diag ('flux-movie', 'CO2_flux', 'mol m-2 s-1', timefilter='Monthly', plottype='BG')
+diag ('flux-movie', 'CO2_flux', 'mol m-2 s-1', timefilter='Daily', plottype='BG')
+diag ('flux-movie', 'CO2_flux', 'mol m-2 s-1', timefilter='Monthly', plottype='Map')
+diag ('flux-movie', 'CO2_flux', 'mol m-2 s-1', timefilter='Daily', plottype='Map')
+diag ('flux-movie', 'CO2_flux', 'mol m-2 s-1', timefilter='Monthly', plottype='MeanMap')
+diag ('flux-movie', 'CO2_flux', 'mol m-2 s-1', timefilter='Daily', plottype='MeanMap')
 
+diag ('timeseries-hist', 'CO2', 'ppm')
 
-TSH = diagnostics.table['timeseries-hist']
-try:
- if 'timeseries-hist' in allowed_diagnostics:
-  TSH(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['timeseries histogram', e])
+diag ('timeseries-diff', 'CO2', 'ppm')
 
-TSA = diagnostics.table['timeseries-diff']
-try:
- if 'timeseries-diff' in allowed_diagnostics:
-  TSA(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['time series alternate', e])
+diag ('regional-bargraph', 'CO2', 'ppm')
 
-TimeSeriesRBP = diagnostics.table['regional-bargraph']
-try:
- if 'regional-bargraph' in allowed_diagnostics:
-  TimeSeriesRBP(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['time series rbp', e])
-  raise
+diag ('zonal-bargraph', 'CO2', 'ppm', height=0)
 
-ZonalMeanBG = diagnostics.table['zonal-bargraph']
-try:
- if 'zonal-bargraph' in allowed_diagnostics:
-  ZonalMeanBG(fieldname='CO2', units='ppm', height=0, **kwargs).do_all(datasets)
-except Exception as e:
-  failures.append(['zonal mean bargraph', e])
-
-
-
-#----------------End of Jake's Diags--------------------
 
 # Report any diagnostics that failed to run
 if len(failures) > 0:
