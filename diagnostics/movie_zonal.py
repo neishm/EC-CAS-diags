@@ -37,6 +37,8 @@ class ZonalMean(TimeVaryingDiagnostic):
         var = self._zonalmean_gph (inp)
       elif self.zaxis == 'plev':
         var = self._zonalmean_pres (inp)
+      elif self.zaxis == 'model':
+        var = self._zonalmean_model_lev (inp)
       else:
         raise ValueError("Unhandled zaxis type '%s'"%self.zaxis)
       transformed.append(DerivedProduct(var, source=inp))
@@ -77,7 +79,7 @@ class ZonalMean(TimeVaryingDiagnostic):
       # Make sure the zonal mean gets cached before use in subsequent
       # calculations.
       # Otherwise, it could cause an O(n^2) slowdown of the diagnostics.
-      var_mean = self.zonalmean_gph (model, typestat="mean")
+      var_mean = self._zonalmean_gph (model, typestat="mean")
 
     # Do a zonal standard deviation
     var_stdev = (var-var_mean).nanstdev('lon')
@@ -91,6 +93,39 @@ class ZonalMean(TimeVaryingDiagnostic):
 
     return var
 
+  # Convert zonal mean data (on model levels)
+  def _zonalmean_model_lev (self, model, typestat=None):
+    from ..common import find_and_convert, number_of_levels, number_of_timesteps, remove_repeated_longitude
+    import numpy as np
+
+    fieldname = self.fieldname
+    typestat = typestat or self.typestat
+
+    var = find_and_convert(model, fieldname, self.units, maximize=(number_of_levels,number_of_timesteps))
+
+    # Remove any repeated longtiude (for global data)
+    var = remove_repeated_longitude(var)
+
+    # Do the zonal mean
+    if typestat == "mean":
+      var_mean = var.nanmean('lon')
+    else:
+      # Make sure the zonal mean gets cached before use in subsequent
+      # calculations.
+      # Otherwise, it could cause an O(n^2) slowdown of the diagnostics.
+      var_mean = self._zonalmean_model_lev (model, typestat="mean")
+
+    # Do a zonal standard deviation
+    var_stdev = (var-var_mean).nanstdev('lon')
+    var_stdev.name = fieldname
+  
+    if typestat == "stdev" : var=var_stdev   
+    if typestat == "mean" : var=var_mean
+
+    # Cache the zonalmean data
+    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_model_lev_'+fieldname+self.suffix)
+
+    return var
 
   # Convert zonal mean data (on pressure levels)
   def _zonalmean_pres (self, model, typestat=None):
@@ -127,7 +162,7 @@ class ZonalMean(TimeVaryingDiagnostic):
       # Make sure the zonal mean gets cached before use in subsequent
       # calculations.
       # Otherwise, it could cause an O(n^2) slowdown of the diagnostics.
-      var_mean = self.zonalmean_pres (model, typestat="mean")
+      var_mean = self._zonalmean_pres (model, typestat="mean")
 
     # Do a zonal standard deviation
     var_stdev = (var-var_mean).nanstdev('lon')
