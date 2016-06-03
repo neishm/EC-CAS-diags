@@ -26,6 +26,16 @@ class ObsPack_Aircraft_Data(SplitProduct):
     data = [v.extend(1, station) for v in data.vars]
     return data
 
+  # Decoding of the fields.
+  @classmethod
+  def decode (cls,dataset):
+    from . import SplitProduct
+    # Do generic decoding first
+    dataset = SplitProduct.decode.__func__(cls,dataset)
+    # Remove time variable, since we've wrapped it into a time axis.
+    dataset -= 'time'
+    return dataset
+
   # Method to find all files in the given directory, which can be accessed
   # through this interface.
   @staticmethod
