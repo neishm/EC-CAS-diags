@@ -230,8 +230,8 @@ movie_zonal = diagnostics.table['zonal-movie']
 # CO2 Zonal mean movies
 try:
  if 'zonal-movie' in allowed_diagnostics:
-  movie_zonal(fieldname='CO2', units='ppm', zaxis='model', **kwargs).do_all(datasets)
-  movie_zonal(fieldname='CO2', units='ppm', zaxis='model', typestat='stdev', **kwargs).do_all(datasets)
+  movie_zonal(fieldname='CO2', units='ppm', **kwargs).do_all(datasets)
+  movie_zonal(fieldname='CO2', units='ppm', typestat='stdev', **kwargs).do_all(datasets)
 except Exception as e:
   failures.append(['CO2 movie_zonal', e])
 # CO2 Zonal mean of spread

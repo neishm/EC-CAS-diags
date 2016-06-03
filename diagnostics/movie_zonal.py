@@ -4,15 +4,12 @@ class ZonalMean(TimeVaryingDiagnostic):
   """
   Zonal mean (or standard deviation) of a field, animated in time.
   """
-  #
-  """
   @classmethod
   def add_args (cls, parser, handled=[]):
     super(ZonalMean,cls).add_args(parser)
     if len(handled) > 0: return  # Only run once
-    parser.add_argument('--zaxis', action='store', choices=('gph','plev'), default='gph', help="The vertical coordinate to use for vertical interplation (e.g. for zonal mean plots).  Default is gph.")
+    parser.add_argument('--zonalmean-zaxis', dest='zaxis', action='store', choices=('gph','plev','model'), default='gph', help="The vertical coordinate to use for vertical interplation (e.g. for zonal mean plots).  Default is gph.")
     handled.append(True)
-  """
   def __init__ (self, zaxis='gph', typestat='mean', **kwargs):
     super(ZonalMean,self).__init__(**kwargs)
     self.zaxis = zaxis
