@@ -162,10 +162,15 @@ class TimeVaryingDiagnostic(Diagnostic):
           end = d.time.str_as_val(key=None,s=end.strftime("%d %b %Y"))
         d = d(time=(start,end))
         if self.hour0_only is True:
-          hour_float = min(set(reltime(d.time,units='hours')%24))
-          hour = int(floor(hour_float))
-          minute = int((hour_float-hour)*60)
-          d = d(hour=hour,minute=minute)
+          hours = set(reltime(d.time,units='hours')%24)
+          # Ignore empty datasets (e.g. datasets that don't fall in the
+          # above start & end dates).
+          # Also, ignore datasets where the hours don't fall on regular intervals.
+          if len(hours) > 0 and len(hours) < len(d.time):
+            hour_float = min(hours)
+            hour = int(floor(hour_float))
+            minute = int((hour_float-hour)*60)
+            d = d(hour=hour,minute=minute)
         # Use the same start date & units for all time axes.
         d = fix_timeaxis(d)
         out_datasets.append(d)
