@@ -70,6 +70,34 @@ def copy_var (var):
   var.atts = copy(var.atts)
   return var
 
+# Helper method - for the given field and units, determine what other fields
+# are needed to do the unit conversion.
+# Output: list of extra variable names, and list of exponents (+/-1) to apply
+# to the variables (+1 = multiply by that variable, -1 = divide by that variable).
+def _what_extra_fields (data, fieldname, units):
+  from itertools import product
+  from units import simplify, inverse
+  possible_extra_fields = ['dry_air', 'cell_area', 'dp']
+  possible_extra_units = ['kg(dry_air) kg(air)-1', 'm2', 'hPa(air)']
+  var = data.find_best(fieldname)
+  context = get_conversion_context(var)
+  # Try all combinations of extra fields, see what gives the expected units.
+  for exps in product(*[[-1,0,1]]*len(possible_extra_fields)):
+    test = var.atts['units']
+    for u,ex in zip(possible_extra_units, exps):
+      if ex == 0: continue
+      if ex == -1: u = inverse(u)
+      test = test + ' ' + u
+    # To check for a match, see if the only difference between the units is a
+    # scale factor
+    test = simplify(test + ' ' + inverse(units), global_context=context)
+    if test == '': test = '1'
+    try:
+      float(test)
+      return zip(*[(f,ex) for f,ex in zip(possible_extra_fields,exps) if ex!=0])
+    except ValueError: pass
+  raise ValueError ("Don't know how to convert '%s' to '%s'"%(fieldname, units))
+
 # Helper method - find the field in the dataset, and apply some unit conversion.
 # Handle some extra logic, such as going between dry and moist air.
 def _find_and_convert (product, fieldnames, units, **conditions):
