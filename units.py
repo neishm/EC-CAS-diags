@@ -276,6 +276,7 @@ def simplify (units, global_context=None, table=None):
 def inverse (units, global_context=None, table=None):
   canonical = _canonical_form(units, global_context, table)
   scale, terms = canonical
+  scale = 1./scale
   terms = [(n,c,-e) for n,c,e in terms]
   canonical = scale, terms
   return _string_form(canonical)
