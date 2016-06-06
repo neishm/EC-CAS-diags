@@ -150,18 +150,24 @@ def parse_units(s,table=None):
   # From Python regular expression documentation
   scale_pattern = r'[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?'
 
-  # Look for a scale factor at the start of the string
-  m = match(scale_pattern, s)
-  if m is not None:
-    yield (float(m.group(0)),None,1)
-    s = s[m.end():].lstrip()
-
   # Match a unit with an optional context and exponent
   # E.g. "m", "m2", "kg(CO2)"
   # First, get a list of all valid unit names (preferencing long names over short names)
   unit_names = sorted(table.iterkeys(), key=len, reverse=True)
   unit_pattern = r'(?P<name>%s)(\((?P<context>[^()]*)\))?(?P<exponent>-?[0-9]+)? *'%('|'.join(unit_names))
-  while len(s) > 0:
+
+  while True:
+    s = s.lstrip()
+    if len(s) == 0: break
+
+    # Look for a scale factor
+    m = match(scale_pattern, s)
+    if m is not None:
+      yield (float(m.group(0)),None,1)
+      s = s[m.end():]
+      continue
+
+    # Look for a unit
     m = match(unit_pattern, s)
     if m is None:
       raise ValueError ("Unable to parse unit substring '%s'"%s)
