@@ -77,10 +77,12 @@ def copy_var (var):
 def _what_extra_fields (data, fieldname, units):
   from itertools import product
   from units import simplify, inverse
-  possible_extra_fields = ['dry_air', 'cell_area', 'dp']
-  possible_extra_units = ['kg(dry_air) kg(air)-1', 'm2', 'hPa(air)']
+  possible_extra_fields = ['dry_air', 'cell_area', 'dp', 'gravity']
+  possible_extra_units = ['kg(dry_air) kg(air)-1', 'm2', 'kg(air) m-1 s-2', 'm s-2']
   var = data.find_best(fieldname)
+  # Apply proper context to the target units
   context = get_conversion_context(var)
+  units = simplify(units, global_context=context)
   # Try all combinations of extra fields, see what gives the expected units.
   for exps in product(*[[-1,0,1]]*len(possible_extra_fields)):
     test = var.atts['units']
@@ -90,7 +92,12 @@ def _what_extra_fields (data, fieldname, units):
       test = test + ' ' + u
     # To check for a match, see if the only difference between the units is a
     # scale factor
-    test = simplify(test + ' ' + inverse(units), global_context=context)
+    # First, reduce out all context-free units
+    test = simplify(test + ' ' + inverse(units))
+    # Then, apply the variable context to the remaining units, and see if
+    # anything else cancels out.
+    test = simplify(test, global_context=context)
+    # See if this reduces to a scalar number (or nothing at all).
     if test == '': test = '1'
     try:
       float(test)
