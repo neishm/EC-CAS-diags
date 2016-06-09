@@ -115,6 +115,12 @@ class DataProduct (DataInterface):
         var.atts['units'] = units
         dataset[new_name] = var
 
+    # Extra fields (not from the dataset, but useful for conversions)
+    from ..common import grav
+    from pygeode.var import Var
+    if 'gravity' not in dataset:
+      dataset['gravity'] = Var(axes=(), name='gravity', atts={'units':'kg(air) m-1 s-2'}, values=grav)
+
     # Make sure the variables have the appropriate names
     for name, var in dataset.iteritems():  var.name = name
 
