@@ -74,15 +74,16 @@ def copy_var (var):
 # are needed to do the unit conversion.
 # Output: list of extra variable names, and list of exponents (+/-1) to apply
 # to the variables (+1 = multiply by that variable, -1 = divide by that variable).
-def _what_extra_fields (data, fieldname, units):
+def _what_extra_fields (data, fieldname, units, table):
   from itertools import product
   from units import simplify, inverse
   possible_extra_fields = ['dry_air', 'cell_area', 'dp', 'gravity']
   possible_extra_units = ['kg(dry_air) kg(air)-1', 'm2', 'kg(air) m-1 s-2', 'm s-2']
   var = data.find_best(fieldname)
+  errmsg = "Don't know how to convert '%s' from '%s' to '%s'"%(fieldname, var.atts['units'], units)
   # Apply proper context to the target units
   context = get_conversion_context(var)
-  units = simplify(units, global_context=context)
+  units = simplify(units, global_context=context, table=table)
   # Try all combinations of extra fields, see what gives the expected units.
   for exps in product(*[[-1,0,1]]*len(possible_extra_fields)):
     test = var.atts['units']
@@ -93,17 +94,17 @@ def _what_extra_fields (data, fieldname, units):
     # To check for a match, see if the only difference between the units is a
     # scale factor
     # First, reduce out all context-free units
-    test = simplify(test + ' ' + inverse(units))
+    test = simplify(test + ' ' + inverse(units), table=table)
     # Then, apply the variable context to the remaining units, and see if
     # anything else cancels out.
-    test = simplify(test, global_context=context)
+    test = simplify(test, global_context=context, table=table)
     # See if this reduces to a scalar number (or nothing at all).
     if test == '': test = '1'
     try:
       float(test)
       return zip(*[(f,ex) for f,ex in zip(possible_extra_fields,exps) if ex!=0])
     except ValueError: pass
-  raise ValueError ("Don't know how to convert '%s' to '%s'"%(fieldname, units))
+  raise ValueError (errmsg)
 
 # Helper method - find the field in the dataset, and apply some unit conversion.
 # Handle some extra logic, such as going between dry and moist air.
