@@ -116,10 +116,17 @@ class DataProduct (DataInterface):
         dataset[new_name] = var
 
     # Extra fields (not from the dataset, but useful for conversions)
-    from ..common import grav
+    from ..common import grav, get_area
     from pygeode.var import Var
+    # Earth's gravitational constant
     if 'gravity' not in dataset:
       dataset['gravity'] = Var(axes=(), name='gravity', atts={'units':'kg(air) m-1 s-2'}, values=grav)
+    # Grid cell area
+    if 'cell_area' not in dataset:
+      for var in dataset.values():
+        if var.hasaxis('lat') and var.hasaxis('lon'):
+          dataset['cell_area'] = get_area(var.lat,var.lon)
+          break
 
     # Make sure the variables have the appropriate names
     for name, var in dataset.iteritems():  var.name = name
