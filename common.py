@@ -102,7 +102,9 @@ def _what_extra_fields (data, fieldname, units, table):
     if test == '': test = '1'
     try:
       float(test)
-      return zip(*[(f,ex) for f,ex in zip(possible_extra_fields,exps) if ex!=0])
+      out = zip(*[(f,ex) for f,ex in zip(possible_extra_fields,exps) if ex!=0])
+      if len(out) > 0: return out
+      return [], []
     except ValueError: pass
   raise ValueError (errmsg)
 
