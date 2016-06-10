@@ -79,8 +79,14 @@ def copy_var (var):
 def _what_extra_fields (data, fieldname, units, table):
   from itertools import product
   from units import simplify, inverse
-  possible_extra_fields = ['dry_air', 'cell_area', 'dp', 'gravity']
-  possible_extra_units = ['kg(dry_air) kg(air)-1', 'm2', 'kg(air) m-1 s-2', 'm s-2']
+  possible_extra_fields = []
+  possible_extra_units = []
+  for f in ['dry_air', 'cell_area', 'dp', 'gravity']:
+    try:
+      v = data.find_best(f)
+      possible_extra_fields.append(f)
+      possible_extra_units.append(v.atts['units'])
+    except KeyError: pass
   var = data.find_best(fieldname)
   errmsg = "Don't know how to convert '%s' from '%s' to '%s'"%(fieldname, var.atts['units'], units)
   # Apply proper context to the target units
