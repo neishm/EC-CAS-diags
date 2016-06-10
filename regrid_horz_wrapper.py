@@ -149,94 +149,43 @@ def horzregrid (source, target_lat, target_lon):
 
 # Do the horizontal regridding step
 def do_horizontal_regridding (input_data, grid_data):
-  from common import can_convert, convert, first_timestep
+  from common import find_and_convert, have_gridded_data
   from interfaces import DataInterface
-  from pygeode.var import copy_meta
   import logging
   logger = logging.getLogger(__name__)
-  source_datasets = list(input_data.datasets)
-  target_datasets = []
-  for source_dataset in source_datasets:
-    target_dataset = []
-    for var in source_dataset.vars:
-      # Don't interpolate variables with no lat/lon.
-      if not var.hasaxis('lat') or not var.hasaxis('lon'):
-        target_dataset.append(var)
+  regridded_dataset = []
+  #TODO: handle multiple target grids
+  for dataset in grid_data:
+    for var in dataset:
+      if var.hasaxis('lat') and var.hasaxis('lon'):
+        target_grid = var
+
+  varnames = sorted(set(v.name for d in input_data.datasets for v in d))
+
+  for varname in varnames:
+
+    # Prepare the variables into the appropriate units for mass-conservative
+    # regridding.
+
+    ##################################################################
+    # Case 1: flux
+    ##################################################################
+    try:
+      var = find_and_convert (input_data, varname, 'g m-2 s-1', requirement=have_gridded_data)
+    except ValueError:
+      ##################################################################
+      # Case 2: tracer field
+      ##################################################################
+      try:
+        var = find_and_convert (input_data, varname, 'g m-2', requirement=have_gridded_data)
+      except ValueError as e:
+        logger.debug('Dropping field "%s" - %s', varname, e.message)
         continue
 
-      # Find the appropriate target grid.
-      # If this variable is defined in the grid file, then use that specific grid.
-      ##################################################################
-      # Case 1: flux data (mass / m2 / s)
-      ##################################################################
-      if can_convert(var, 'kg m-2 s-1') or can_convert(var, 'kg m-2'):
-        try:
-          dummy_target = grid_data.find_best(var.name)
-        # If the variable is not in the grid file, use a default.
-        except KeyError:
-          dummy_target = grid_data.datasets[0].vars[0]
-        var = horzregrid(var, dummy_target.lat, dummy_target.lon)
+    # Regrid the variable
+    var = horzregrid(var, target_grid.lat, target_grid.lon)
+    regridded_dataset.append(var)
 
-      ##################################################################
-      # Case 2: flux data (mass / s)
-      ##################################################################
-      elif can_convert(var, 'kg s-1') or can_convert(var, 'kg'):
-        if 'cell_area' not in source_dataset:
-          logger.info('Dropping field "%s" - no grid area information available.', var.name)
-          continue
-        source_area = convert(source_dataset['cell_area'],'m2')
-        try:
-          # Try to find a grid area that has the same domain as the variable
-          # (if the variable is defined in the target grid file).
-          dummy_target, target_area = grid_data.find_best([var.name,'cell_area'])
-        except KeyError:
-          # Otherwise, look for any cell area information in the target grid.
-          target_area = grid_data.find_best('cell_area')
-          dummy_target = target_area
-
-        target_area = convert(target_area, 'm2')
-        target_area = first_timestep(target_area)
-        orig = var
-        var = var / source_area
-        var = horzregrid(var, dummy_target.lat, dummy_target.lon)
-        var = var * target_area
-        copy_meta (orig, var)
-
-      ##################################################################
-      # Case 3: mixing ratio
-      ##################################################################
-      elif can_convert(var, 'molefraction'):
-        # Find an appropriate target grid.
-        # If this field is defined in the grid file, then use that definition.
-        # Otherwise, find some other field with grid data (like 'dp').
-        try:
-          dummy_target = grid_data.find_best(var.name)
-        except KeyError:
-          dummy_target = grid_data.find_best('dp')
-        # Do the regridding
-        var = horzregrid(var, dummy_target.lat, dummy_target.lon)
-
-      ##################################################################
-      # Case 4: concentration
-      ##################################################################
-      elif can_convert(var, 'mol m-3'):
-        try:
-          dummy_target = grid_data.find_best(var.name)
-        except KeyError:
-          dummy_target = grid_data.find_best('dp')
-
-        var = horzregrid(var, dummy_target.lat, dummy_target.lon)
-
-      ##################################################################
-      # Unhandled case
-      ##################################################################
-      else:
-        logger.debug('Dropping field "%s" - unhandled units "%s"', var.name, var.atts['units'])
-        continue
-
-      target_dataset.append(var)
-    target_datasets.append(target_dataset)
-
-  return DataInterface(target_datasets)
+  return DataInterface([regridded_dataset])
 
 
