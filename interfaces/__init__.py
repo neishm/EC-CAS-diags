@@ -120,7 +120,7 @@ class DataProduct (DataInterface):
     from pygeode.var import Var
     # Earth's gravitational constant
     if 'gravity' not in dataset:
-      dataset['gravity'] = Var(axes=(), name='gravity', atts={'units':'kg(air) m-1 s-2'}, values=grav)
+      dataset['gravity'] = Var(axes=(), name='gravity', atts={'units':'m s-2'}, values=grav)
     # Grid cell area
     if 'cell_area' not in dataset:
       for var in dataset.values():
