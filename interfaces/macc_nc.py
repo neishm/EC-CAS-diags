@@ -133,12 +133,8 @@ class MACC_Data(DataProduct):
       dP.atts['units'] = 'Pa'
       data['dp'] = dP
 
-
-    # Grid cell areas
-    # Pick some arbitrary (but deterministic) variable to get the lat/lon
-    var = sorted(data.values())[0]
-    from ..common import get_area
-    data['cell_area'] = get_area(var.lat,var.lon,flat=True)
+    # Add extra fields that will be useful for the diagnostics.
+    cls._add_extra_fields(data)
 
     # General cleanup stuff
 

@@ -54,17 +54,14 @@ class CCCMA_Data(DataProduct):
       P.atts['units'] = 'Pa'
       data['air_pressure'] = P
 
-    # Grid cell areas
-    from ..common import get_area
-    if 'surface_pressure' in data:
-      Ps = data['surface_pressure']
-      data['cell_area'] = get_area(Ps.lat,Ps.lon)
-
     # Remove variables with no lat/lon extent.
     # (they break things in the regridding routines)
     for varname, var in data.items():
       if not var.hasaxis('lat') or not var.hasaxis('lon'):
         del data[varname]
+
+    # Add extra fields that will be useful for the diagnostics.
+    cls._add_extra_fields(data)
 
     # General cleanup stuff
 

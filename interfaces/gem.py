@@ -80,6 +80,9 @@ class GEM_Data(DataProduct):
       if var.hasaxis('lat') and var.hasaxis('lon'):
         data['cell_area'] = get_area(var.lat,var.lon,flat=True).extend(0,var.time, var.forecast)
 
+    # Add extra fields that will be useful for the diagnostics.
+    cls._add_extra_fields(data)
+
     # General cleanup stuff
 
     # Make sure the variables have the appropriate names

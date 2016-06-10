@@ -118,6 +118,9 @@ class GEOSCHEM_Data(DataProduct):
       bb.atts['specie'] = 'CO2'
       data['CO2_fire_flux'] = bb
 
+    # Add extra fields that will be useful for the diagnostics.
+    cls._add_extra_fields(data)
+
     # General cleanup stuff
 
     # Make sure the variables have the appropriate names

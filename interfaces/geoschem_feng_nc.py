@@ -114,11 +114,8 @@ class GEOSCHEM_Data(DataProduct):
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
 
-    # Grid cell areas
-    # Pick some arbitrary (but deterministic) variable to get the lat/lon
-    var = sorted(data.values())[0]
-    from ..common import get_area
-    data['cell_area'] = get_area(var.lat,var.lon)
+    # Add extra fields that will be useful for the diagnostics.
+    cls._add_extra_fields(data)
 
     # General cleanup stuff
 

@@ -93,11 +93,8 @@ class TM5_Data(DataProduct):
       dP.atts['units'] = 'Pa'
       data['dp'] = dP
 
-
-    # Grid cell areas
-    from ..common import get_area
-    if lat is not None and lon is not None:
-      data['cell_area'] = get_area(lat,lon)
+    # Add extra fields that will be useful for the diagnostics.
+    cls._add_extra_fields(data)
 
     # General cleanup stuff
 
