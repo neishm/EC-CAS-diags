@@ -212,8 +212,8 @@ def fix_timeaxis (data):
   time = data.time
   time = StandardTime(units='days', startdate=startdate, **time.auxarrays)
   if isinstance(data,Dataset):
-    data = Dataset([v.replace_axes(time=time) for v in data], atts=data.atts)
-  else:
+    data = Dataset([v.replace_axes(time=time) if v.hasaxis('time') else v for v in data], atts=data.atts)
+  elif data.hasaxis('time'):
     data = data.replace_axes(time=time)
   return data
 
