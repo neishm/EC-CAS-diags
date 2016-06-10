@@ -121,6 +121,22 @@ class DataProduct (DataInterface):
     dataset = asdataset(dataset.values())
     return dataset
 
+  # Extra fields (not from the dataset, but useful for conversions).
+  # Needs to be explicitly called by each interface.
+  # Expects 'dataset' to be a dictionary.
+  @staticmethod
+  def _add_extra_fields (dataset):
+    from ..common import grav, get_area
+    from pygeode.var import Var
+    # Earth's gravitational constant
+    if 'gravity' not in dataset:
+      dataset['gravity'] = Var(axes=(), name='gravity', atts={'units':'m s-2'}, values=grav)
+    # Grid cell area
+    if 'cell_area' not in dataset:
+      for var in dataset.values():
+        if var.hasaxis('lat') and var.hasaxis('lon'):
+          dataset['cell_area'] = get_area(var.lat,var.lon)
+          break
 
   # Method to find all files in the given directory, which can be accessed
   # through this interface.

@@ -29,15 +29,14 @@ define_conversion ('mol(H2O)', '18.01528 g(H2O)')
 
 # The following is a hack to get mass in terms of carbon atoms
 # I.e. to allow converting mass to Pg(C)
-define_unit ('C_atoms_per_molecule', 'Carbon atoms in the molecule')
-define_conversion ('g(C)', repr(1/12.01) + 'C_atoms_per_molecule mol')
-define_conversion ('C_atoms_per_molecule(CO2)', '1')
-define_conversion ('C_atoms_per_molecule(CH4)', '1')
+define_conversion ('g(CO2)', repr(12.01/44.01) + ' g(C)')
 
 # For the purpose of these diagnostics, assume mole fractions are always with
 # respect to air.
 define_conversion ('molefraction', 'mol mol(dry_air)-1')
 
+# Also, assume pressure is air pressure.
+define_conversion ('Pa', 'kg(air) m-1 s-2')
 
 # Helper method - get unit conversion context
 def get_conversion_context (var, context=None):
@@ -73,10 +72,54 @@ def copy_var (var):
   var.atts = copy(var.atts)
   return var
 
+# Helper method - for the given field and units, determine what other fields
+# are needed to do the unit conversion.
+# Output: list of extra variable names, and list of exponents (+/-1) to apply
+# to the variables (+1 = multiply by that variable, -1 = divide by that variable).
+def _what_extra_fields (data, fieldname, units, table):
+  from itertools import product
+  from units import simplify, inverse
+  possible_extra_fields = []
+  possible_extra_units = []
+  for f in ['dry_air', 'cell_area', 'dp', 'gravity']:
+    try:
+      v = data.find_best(f)
+      possible_extra_fields.append(f)
+      possible_extra_units.append(v.atts['units'])
+    except KeyError: pass
+  var = data.find_best(fieldname)
+  errmsg = "Don't know how to convert %s %s from '%s' to '%s'.  Extra fields tried: %s"%(data.name, fieldname, var.atts['units'], units, possible_extra_fields)
+  # Apply proper context to the target units
+  context = get_conversion_context(var)
+  units = simplify(units, global_context=context, table=table)
+  # Try all combinations of extra fields, see what gives the expected units.
+  for exps in product(*[[-1,0,1]]*len(possible_extra_fields)):
+    test = var.atts['units']
+    for u,ex in zip(possible_extra_units, exps):
+      if ex == 0: continue
+      if ex == -1: u = inverse(u)
+      test = test + ' ' + u
+    # To check for a match, see if the only difference between the units is a
+    # scale factor
+    # First, reduce out all context-free units
+    test = simplify(test + ' ' + inverse(units), table=table)
+    # Then, apply the variable context to the remaining units, and see if
+    # anything else cancels out.
+    test = simplify(test, global_context=context, table=table)
+    # See if this reduces to a scalar number (or nothing at all).
+    if test == '': test = '1'
+    try:
+      float(test)
+      out = zip(*[(f,ex) for f,ex in zip(possible_extra_fields,exps) if ex!=0])
+      if len(out) > 0: return out
+      return [], []
+    except ValueError: pass
+  raise ValueError (errmsg)
+
 # Helper method - find the field in the dataset, and apply some unit conversion.
 # Handle some extra logic, such as going between dry and moist air.
 def _find_and_convert (product, fieldnames, units, **conditions):
-  from units import _canonical_form, copy_default_table, define_conversion
+  from units import copy_default_table, define_conversion, parse_units, simplify, inverse
 
   return_list = True
 
@@ -85,92 +128,66 @@ def _find_and_convert (product, fieldnames, units, **conditions):
     return_list = False
   if isinstance(units,str): units = [units]*len(fieldnames)
 
-  # Simple case - we can do a trivial conversion of all fields
-  vars = product.find_best(fieldnames, **conditions)
-  if all(can_convert(v, unit) for v,unit in zip(vars,units)):
-    out = [convert(v, unit) for v,unit in zip(vars,units)]
-    if return_list: return out
-    else: return out[0]
-
-  # Make a copy of the var, and its attributes
-  # (so we don't clobber the units in the original version).
-  vars = [copy_var(v) for v in vars]
-
-  contexts = [get_conversion_context(v) for v in vars]
-
-  var_terms = [_canonical_form (v.atts['units'], context)[1] for v,context in zip(vars,contexts)]
-
-  # Evaluate output units to some semi-canonical form (but not reducing
-  # units with dry_air context).
-  table = copy_default_table()
-  del table['mol'].conversions['dry_air']
-  out_terms = [_canonical_form(unit, context, table=table)[1] for unit,context in zip(units,contexts)]
-  del table
-
   # Create a separate unit table for each variable, to handle things like
   # semi-dry air uniquely.
-  tables = [copy_default_table() for v in vars]
+  tables = [copy_default_table() for fieldname in fieldnames]
 
   # Convert semi-dry air based on the type of output units
-  for terms, table in zip(out_terms, tables):
+  for unit, table in zip(units, tables):
+    terms = list(parse_units(unit))
+    reduced_terms = list(parse_units(simplify(unit)))
+    # Molefraction w.r.t. dry air => assume that's what we already have
     if ('mol', 'dry_air', -1) in terms:
       define_conversion ('mol(semidry_air)', 'mol(dry_air)', table=table)
-    elif ('g', 'air', -1) in terms:
+    # Mass units => assume we have dry-air for the purpose of converting
+    # molefractions to a mass mixing ratio, but then assume we actually have
+    # a moist mixing ration after the conversion.
+    elif 'g' in zip(*reduced_terms)[0]:
       define_conversion ('mol(semidry_air)', 'mol(dry_air) g(dry_air)-1 g(air)', table=table)
 
-  # See if this is enough to resolve the unit conversions
-  if all(can_convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)):
-    out = [convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)]
-    if return_list: return out
-    else: return out[0]
+  # Find out what extra fields are needed for the conversions
+  extra_fields = []
+  exponents = []  # +1 = multiply, -1 = divide
+  for fieldname, unit, table in zip(fieldnames,units,tables):
+    f, exp = _what_extra_fields(product, fieldname, unit, table=table)
+    extra_fields.extend(f)
+    exponents.extend(exp)
 
-  # Do we need to extract specific humidity as well?
-  need_q = False
-  for var_term, out_term, context, table in zip(var_terms,out_terms,contexts,tables):
+  # Reduce to a unique set of extra fields
+  if len(extra_fields) > 0:
+    extra_fields, exponents = zip(*set(zip(extra_fields,exponents)))
 
-    missing_factor = list(out_term)
-    for (n,c,e) in var_term:
-      missing_factor.append((n,c,-e))
-    scale, missing_factor = _canonical_form(missing_factor, context, table=table)
+  # Get all fields (original and extra)
+  vars = product.find_best(list(fieldnames)+list(extra_fields), **conditions)
 
-    if set(missing_factor) == set([('g','dry_air',1),('g','air',-1)]) or set(missing_factor) == set([('g','dry_air',-1),('g','air',1)]):
-      need_q = True
+  # Split into the two categories
+  vars, extra_vars = vars[:len(fieldnames)], vars[len(fieldnames):]
 
-  if need_q:
+  # Apply the extra fields
+  for i,fieldname in enumerate(fieldnames):
+    F, exp = _what_extra_fields(product, fieldname, units[i], table=tables[i])
+    extra = [extra_vars[extra_fields.index(f)] for f in F]
+    for v, e in zip(extra,exp):
+      unit = vars[i].atts['units']
+      specie = vars[i].atts.get('specie',None)
+      assert e in (1,-1), "Unhandled exponent %d"%e
+      if e == 1:
+        vars[i] *= v
+        vars[i].atts['units'] = unit + ' ' + v.atts['units']
+      elif e == -1:
+        vars[i] /= v
+        vars[i].atts['units'] = unit + ' ' + inverse(v.atts['units'])
+      vars[i].name = fieldname
+      if specie is not None:
+        vars[i].atts['specie'] = specie
 
-    new_vars = product.find_best(fieldnames+['specific_humidity'], **conditions)
-    vars = [copy_var(v) for v in new_vars[:-1]]
-    q = convert(new_vars[-1],'kg(H2O) kg(air)-1')
+  # Do any remaining unit conversions.
+  vars = [convert(v, unit, table=table) for v,unit,table in zip(vars,units,tables)]
 
-  for i,(var,out_units,context,table) in enumerate(zip(vars,units,contexts,tables)):
-    name = var.name
-    specie = var.atts.get('specie',None)
-    var_units = var.atts['units']
-
-    test_units = var_units + ' kg(dry_air) kg(air)-1'
-    if _canonical_form(test_units,context,table)[1] == _canonical_form(out_units,context)[1]:
-      var *= (1-q)
-      var.atts['units'] = test_units
-    test_units = var_units + ' kg(air) kg(dry_air)-1'
-    if _canonical_form(test_units,context,table)[1] == _canonical_form(out_units,context)[1]:
-      var /= (1-q)
-      var.atts['units'] = test_units
-
-    var.name = name
-    if specie is not None:
-      var.atts['specie'] = specie
-
-    vars[i] = var
-
-  # NOW is this enough?!
-  if all(can_convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)):
-    out = [convert(v, unit, context, table) for v,unit,context,table in zip(vars,units,contexts,tables)]
-    if return_list: return out
-    else: return out[0]
-
-
-  raise ValueError ("Don't know how to convert one or more of %s to units of %s, in '%s'"%(fieldnames,units,product.name))
-
+  if return_list:
+    return vars
+  else:
+    return vars[0]
 
 # Cached version of the above function
 def find_and_convert (product, fieldnames, units, cache=False, **conditions):
@@ -195,8 +212,8 @@ def fix_timeaxis (data):
   time = data.time
   time = StandardTime(units='days', startdate=startdate, **time.auxarrays)
   if isinstance(data,Dataset):
-    data = Dataset([v.replace_axes(time=time) for v in data], atts=data.atts)
-  else:
+    data = Dataset([v.replace_axes(time=time) if v.hasaxis('time') else v for v in data], atts=data.atts)
+  elif data.hasaxis('time'):
     data = data.replace_axes(time=time)
   return data
 

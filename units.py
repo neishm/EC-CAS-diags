@@ -150,18 +150,24 @@ def parse_units(s,table=None):
   # From Python regular expression documentation
   scale_pattern = r'[-+]?(\d+(\.\d*)?|\.\d+)([eE][-+]?\d+)?'
 
-  # Look for a scale factor at the start of the string
-  m = match(scale_pattern, s)
-  if m is not None:
-    yield (float(m.group(0)),None,1)
-    s = s[m.end():].lstrip()
-
   # Match a unit with an optional context and exponent
   # E.g. "m", "m2", "kg(CO2)"
   # First, get a list of all valid unit names (preferencing long names over short names)
   unit_names = sorted(table.iterkeys(), key=len, reverse=True)
   unit_pattern = r'(?P<name>%s)(\((?P<context>[^()]*)\))?(?P<exponent>-?[0-9]+)? *'%('|'.join(unit_names))
-  while len(s) > 0:
+
+  while True:
+    s = s.lstrip()
+    if len(s) == 0: break
+
+    # Look for a scale factor
+    m = match(scale_pattern, s)
+    if m is not None:
+      yield (float(m.group(0)),None,1)
+      s = s[m.end():]
+      continue
+
+    # Look for a unit
     m = match(unit_pattern, s)
     if m is None:
       raise ValueError ("Unable to parse unit substring '%s'"%s)
@@ -246,6 +252,34 @@ def _canonical_form (unit, global_context=None, table=None):
   terms = [(n,c,e) for (n,c),e in sorted(unit_exp.items()) if e != 0]
   return scale, terms
 
+# Convert canonical form back to a string representation
+def _string_form (canonical):
+  scale, terms = canonical
+  out = []
+  if scale != 1.0:
+    out.append(repr(scale))
+  for n,c,e in terms:
+    s = n
+    if c is not None:
+      s += '('+c+')'
+    if e != 1:
+      s += '%d'%e
+    out.append(s)
+  return ' '.join(out)
+
+# Return a simplified version of a unit (reducing wherever possible)
+def simplify (units, global_context=None, table=None):
+  canonical = _canonical_form(units, global_context, table)
+  return _string_form(canonical)
+
+# Return the inverse units
+def inverse (units, global_context=None, table=None):
+  canonical = _canonical_form(units, global_context, table)
+  scale, terms = canonical
+  scale = 1./scale
+  terms = [(n,c,-e) for n,c,e in terms]
+  canonical = scale, terms
+  return _string_form(canonical)
 
 def conversion_factor (from_units, to_units, context=None, table=None):
   '''

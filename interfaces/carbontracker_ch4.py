@@ -120,15 +120,8 @@ class CTCH4_Data(DataProduct):
       dp.atts['units'] = 'Pa'
       data['dp'] = dp
 
-
-    # Compute grid cell area
-    from ..common import get_area
-    if 'CH4' in data:
-      x = data['CH4'].squeeze(lev=1)
-    else:
-      raise Exception ("This should not happen")
-    data['cell_area'] = get_area(x.lat, x.lon).extend(0,x.time)
-
+    # Add extra fields that will be useful for the diagnostics.
+    cls._add_extra_fields(data)
 
     # General cleanup stuff
 

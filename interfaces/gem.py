@@ -44,7 +44,7 @@ class GEM_Data(DataProduct):
     if 'specific_humidity' in data:
       data['H2O'] = data['specific_humidity'].rename('H2O')
       data['dry_air'] = 1-data['specific_humidity']
-      data['dry_air'].atts.update(units='kg kg(air)-1')
+      data['dry_air'].atts.update(units='kg(dry_air) kg(air)-1')
 
     # Compute a pressure field.
     # Also, compute a dp field (vertical change in pressure within a gridbox).
@@ -79,6 +79,9 @@ class GEM_Data(DataProduct):
       # Make sure this is gridded GEM data (not profile / timeseries data).
       if var.hasaxis('lat') and var.hasaxis('lon'):
         data['cell_area'] = get_area(var.lat,var.lon,flat=True).extend(0,var.time, var.forecast)
+
+    # Add extra fields that will be useful for the diagnostics.
+    cls._add_extra_fields(data)
 
     # General cleanup stuff
 

@@ -114,11 +114,8 @@ class GEOS5_Weird_Format(DataProduct):
       data['surface_pressure'] = Ps
 #      print 'mean Ps ??', Ps.mean()
 
-    # Grid cell areas
-    # Pick some arbitrary (but deterministic) variable to get the lat/lon
-    if lat is not None and lon is not None:
-      from ..common import get_area
-      data['cell_area'] = get_area(lat,lon)
+    # Add extra fields that will be useful for the diagnostics.
+    cls._add_extra_fields(data)
 
     # General cleanup stuff
 

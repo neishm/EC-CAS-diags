@@ -131,17 +131,8 @@ class CT_Data(DataProduct):
       dp.atts['units'] = 'Pa'
       data['dp'] = dp
 
-
-    # Compute grid cell area
-    # NOTE: will be different for fluxes and 3D mole fractions
-    from ..common import get_area
-    if 'CO2' in data:
-      x = data['CO2'].squeeze(level=1)
-    elif 'CO2_bio' in data:
-      x = data['CO2_bio'].squeeze(level=1)
-    else:
-      x = data['CO2_flux']
-    data['cell_area'] = get_area(x.lat, x.lon).extend(0,x.time)
+    # Add extra fields that will be useful for the diagnostics.
+    cls._add_extra_fields(data)
 
 
     # General cleanup stuff
