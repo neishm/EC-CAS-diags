@@ -88,7 +88,7 @@ def _what_extra_fields (data, fieldname, units, table):
       possible_extra_units.append(v.atts['units'])
     except KeyError: pass
   var = data.find_best(fieldname)
-  errmsg = "Don't know how to convert '%s' from '%s' to '%s'"%(fieldname, var.atts['units'], units)
+  errmsg = "Don't know how to convert %s %s from '%s' to '%s'.  Extra fields tried: %s"%(data.name, fieldname, var.atts['units'], units, possible_extra_fields)
   # Apply proper context to the target units
   context = get_conversion_context(var)
   units = simplify(units, global_context=context, table=table)
