@@ -35,6 +35,8 @@ define_conversion ('g(CO2)', repr(12.01/44.01) + ' g(C)')
 # respect to air.
 define_conversion ('molefraction', 'mol mol(dry_air)-1')
 
+# Also, assume pressure is air pressure.
+define_conversion ('Pa', 'kg(air) m-1 s-2')
 
 # Helper method - get unit conversion context
 def get_conversion_context (var, context=None):
