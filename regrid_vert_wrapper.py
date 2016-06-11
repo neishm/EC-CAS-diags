@@ -139,68 +139,52 @@ del Var
 # Do the vertical regridding step
 def do_vertical_regridding (input_data, grid_data):
 
-  from pygeode.axis import ZAxis
   from interfaces import DataInterface
-  from common import compute_pressure, compute_dp
+  from common import compute_pressure, compute_dp, have_gridded_3d_data
   import logging
   logger = logging.getLogger(__name__)
+  regridded_dataset = []
+  #TODO: handle multiple target grids
+  for dataset in grid_data:
+    for var in dataset:
+      if var.hasaxis('zaxis'):
+        target_grid = var
 
-  source_datasets = list(input_data.datasets)
-  target_datasets = []
-  for source_dataset in source_datasets:
-    target_dataset = []
-    target_p = target_dp = None  # Generated further below
-    for var in source_dataset.vars:
-      # Don't interpolate 2D variables, just copy them.
-      if not var.hasaxis('zaxis'):
-        target_dataset.append(var)
-        continue
+  varnames = sorted(set(v.name for d in input_data.datasets for v in d))
 
-      # Skip pressure-related variables (they will be re-generated)
-      if var.name in ('air_pressure', 'dp'): continue
+  for varname in varnames:
 
-      #TODO: check units
+    # Don't interpolate 2D variables, just copy them.
+    if not var.hasaxis('zaxis'):
+      regridded_dataset.append(input_data.find_best(varname))
+      continue
 
-      if 'surface_pressure' not in source_dataset or 'air_pressure' not in source_dataset or 'dp' not in source_dataset:
-        logger.debug('Dropping field "%s" - no pressure information available to do the vertical interpolation.', var.name)
-        continue
-      p0 = source_dataset['surface_pressure']
-      source_p = source_dataset['air_pressure']
-      source_dp = source_dataset['dp']
-      # Find the appropriate target grid.
-      # If this variable is defined in the grid file, then use that specific grid.
-      try:
-        dummy_target = grid_data.find_best(var.name)
-      # If the variable is not in the grid file, use a default.
-      except KeyError:
-#        dummy_target = grid_data.find_best('air_pressure')
-        dummy_target = grid_data.find_best('dp')
+    try:
+      var, source_dp, source_p0, source_p = find_and_convert (input_data, [varname,'dp','surface_pressure','air_pressure'], ['g g(air)-1','Pa','Pa','Pa'], requirement=have_gridded_3d_data)
+    except ValueError as e:
+      logger.debug('Dropping field "%s" - %s', varname, e.message)
+      continue
 
       # Compute the dp for the target grid (forcing the source surface pressure)
       try:
-        target_p = compute_pressure(dummy_target.zaxis, p0)
-        target_dp = compute_dp(dummy_target.zaxis, p0)
+        target_p = compute_pressure(target_grid.zaxis, source_p0)
+        target_dp = compute_dp(target_grid.zaxis, source_p0)
         assert target_p.zaxis == target_dp.zaxis
       except ValueError:
         logger.debug("Skipping %s - unable to get pressure levels and/or dp", var.name)
-        target_p = target_dp = None
         continue
 
-      if var.hasaxis('lat') and var.hasaxis('lon'):
-        var = VertRegrid(p0, source_p, source_dp, target_p, target_dp, var)
-        target_dataset.append(var)
-      else:
-        logger.debug("Skipping %s - no spatial dimensions.", var.name)
+      # Regrid the variable
+      var = VertRegrid(source_p0, source_p, source_dp, target_p, target_dp, var)
+      target_dataset.append(var)
 
     # Add some pressure information back in
     # (regenerated on appropriate grid).
-    if target_p is not None and target_dp is not None:
-      # Use the pressure info from the last converted variable
-      target_dataset.extend([target_p, target_dp])
+    try:
+      regridded_dataset.append(target_dp)
+    except NameError: pass
 
-    target_datasets.append(target_dataset)
-
-  return DataInterface(target_datasets)
+  return DataInterface([regridded_dataset])
 
 # Alternative method - does a simple linear interpolation
 def do_vertical_interpolation (input_data, grid_data):
