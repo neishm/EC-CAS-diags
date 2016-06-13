@@ -180,36 +180,23 @@ class DataProduct (DataInterface):
   @classmethod
   def encode (cls, dataset):
     from pygeode.dataset import asdataset
-    from ..common import convert
+    from ..common import find_and_convert
     from warnings import warn
 
-    # Convert to a dictionary (for referencing by variable name)
-    data = dict((var.name,var) for var in dataset)
+    # Warn about fields that aren't on the list (and won't be encoded)
+    for var in dataset:
+      if all(var.name != standard_name for local_name, standard_name, units in cls.field_list):
+        warn ("Not encoding unrecognized field '%s'"%var.name)
 
-    # Convert the field names and units
+    # Convert to the expected units and rename
+    data = []
     for local_name, standard_name, units in cls.field_list:
-      if standard_name in data:
-        var = data.pop(standard_name)
+      if standard_name in dataset:
         try:
-          var = convert(var, units)
+          var = find_and_convert(dataset, standard_name, units)
+          data.append(var.rename(local_name))
         except ValueError as e:
           warn ("Unable to encode '%s' to '%s': %s"%(standard_name, local_name, e))
-          continue
-        data[local_name] = var
-
-    # Check for any stragglers, remove them
-    for varname in data.keys():
-      if all(varname != name for name, n, u in cls.field_list):
-        warn ("Dropping unrecognized field '%s'"%varname)
-        data.pop(varname)
-
-    # General cleanup stuff
-
-    # Make sure the variables have the appropriate names
-    for name, var in data.iteritems():  var.name = name
-
-    # Convert to a list
-    data = list(data.values())
 
     return data
 
