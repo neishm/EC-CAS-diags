@@ -119,7 +119,18 @@ def _what_extra_fields (data, fieldname, units, table):
 # Helper method - find the field in the dataset, and apply some unit conversion.
 # Handle some extra logic, such as going between dry and moist air.
 def _find_and_convert (product, fieldnames, units, **conditions):
+  from pygeode.dataset import Dataset
+  from pygeode.var import Var
+  from eccas_diags.interfaces import DataInterface
   from units import copy_default_table, define_conversion, parse_units, simplify, inverse
+
+  # Allow a list of variables to be passed in.
+  if isinstance(product,list) and isinstance(product[0],Var):
+    product = Dataset(product)
+
+  # Allow a single Dataset to be passed in.
+  if isinstance(product,Dataset):
+    product = DataInterface([product])
 
   return_list = True
 
