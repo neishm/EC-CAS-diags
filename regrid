@@ -84,11 +84,8 @@ try:
     data = do_vertical_interpolation (data, grid_data)
 
   # Horizontal regridding
-  from eccas_diags.regrid_horz_wrapper import do_horizontal_regridding, do_horizontal_interpolation
-  if args.conserve_mass:
-    data = do_horizontal_regridding (data, grid_data)
-  else:
-    data = do_horizontal_interpolation (data, grid_data)
+  from eccas_diags.regrid_horz_wrapper import do_horizontal_regridding
+  data = do_horizontal_regridding (data, grid_data, conserve_mass=args.conserve_mass)
 
   # Apply a global adjustment to conserve mass
   from eccas_diags.regrid_fix_mass import global_scale
