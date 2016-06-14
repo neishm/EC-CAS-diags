@@ -196,3 +196,53 @@ def do_horizontal_regridding (input_data, grid_data):
   return DataInterface([regridded_dataset])
 
 
+# Alternative approach - don't force mass conservation (use original units).
+def do_horizontal_interpolation (input_data, grid_data):
+  from common import find_and_convert, have_gridded_data
+  from interfaces import DataInterface
+  import logging
+  logger = logging.getLogger(__name__)
+  regridded_dataset = []
+  #TODO: handle multiple target grids
+  for dataset in grid_data:
+    for var in dataset:
+      if var.hasaxis('lat') and var.hasaxis('lon'):
+        target_grid = var
+
+  varnames = sorted(set(v.name for d in input_data.datasets for v in d))
+
+  for varname in varnames:
+
+    # Skip non-spatial fields
+    var_test = input_data.find_best(varname)
+    if not var_test.hasaxis('lat') or not var_test.hasaxis('lon'):
+      continue
+
+    # Skip pressure fields
+    if varname == 'air_pressure' or varname == 'dp' or varname == 'surface_pressure':
+      continue
+
+    # Skip cell area
+    if varname == 'cell_area':
+      continue
+
+    try:
+      var = input_data.find_best(varname,requirement=have_gridded_data)
+    except ValueError:
+      logger.debug('Dropping field "%s" - %s', varname, e.message)
+      continue
+
+    # Regrid the variable
+    var = horzregrid(var, target_grid.lat, target_grid.lon)
+    regridded_dataset.append(var)
+
+  # Add extra fields from the grid file that will be needed for future
+  # unit conversions
+  for extra_field in ['dp', 'gravity', 'cell_area', 'dry_air']:
+    try:
+      regridded_dataset.append(grid_data.find_best(extra_field))
+    except KeyError: pass
+
+  return DataInterface([regridded_dataset])
+
+
