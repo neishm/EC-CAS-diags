@@ -140,7 +140,7 @@ del Var
 def do_vertical_regridding (input_data, grid_data):
 
   from interfaces import DataInterface
-  from common import compute_pressure, compute_dp, have_gridded_3d_data
+  from common import compute_pressure, compute_dp, have_gridded_3d_data, find_and_convert
   import logging
   logger = logging.getLogger(__name__)
   regridded_dataset = []
@@ -155,8 +155,9 @@ def do_vertical_regridding (input_data, grid_data):
   for varname in varnames:
 
     # Don't interpolate 2D variables, just copy them.
-    if not var.hasaxis('zaxis'):
-      regridded_dataset.append(input_data.find_best(varname))
+    var_test = input_data.find_best(varname)
+    if not var_test.hasaxis('zaxis'):
+      regridded_dataset.append(var_test)
       continue
 
     try:
@@ -165,24 +166,24 @@ def do_vertical_regridding (input_data, grid_data):
       logger.debug('Dropping field "%s" - %s', varname, e.message)
       continue
 
-      # Compute the dp for the target grid (forcing the source surface pressure)
-      try:
-        target_p = compute_pressure(target_grid.zaxis, source_p0)
-        target_dp = compute_dp(target_grid.zaxis, source_p0)
-        assert target_p.zaxis == target_dp.zaxis
-      except ValueError:
-        logger.debug("Skipping %s - unable to get pressure levels and/or dp", var.name)
-        continue
-
-      # Regrid the variable
-      var = VertRegrid(source_p0, source_p, source_dp, target_p, target_dp, var)
-      target_dataset.append(var)
-
-    # Add some pressure information back in
-    # (regenerated on appropriate grid).
+    # Compute the dp for the target grid (forcing the source surface pressure)
     try:
-      regridded_dataset.append(target_dp)
-    except NameError: pass
+      target_p = compute_pressure(target_grid.zaxis, source_p0)
+      target_dp = compute_dp(target_grid.zaxis, source_p0)
+      assert target_p.zaxis == target_dp.zaxis
+    except ValueError:
+      logger.debug("Skipping %s - unable to get pressure levels and/or dp", var.name)
+      continue
+
+    # Regrid the variable
+    var = VertRegrid(source_p0, source_p, source_dp, target_p, target_dp, var)
+    regridded_dataset.append(var)
+
+  # Add some pressure information back in
+  # (regenerated on appropriate grid).
+  try:
+    regridded_dataset.append(target_dp)
+  except NameError: pass
 
   return DataInterface([regridded_dataset])
 
