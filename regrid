@@ -77,11 +77,8 @@ try:
   data = input_data
 
   # Vertical regridding (keeping source surface pressure)
-  from eccas_diags.regrid_vert_wrapper import do_vertical_regridding, do_vertical_interpolation
-  if args.conserve_mass:
-    data = do_vertical_regridding (data, grid_data)
-  else:
-    data = do_vertical_interpolation (data, grid_data)
+  from eccas_diags.regrid_vert_wrapper import do_vertical_regridding
+  data = do_vertical_regridding (data, grid_data, conserve_mass=args.conserve_mass)
 
   # Horizontal regridding
   from eccas_diags.regrid_horz_wrapper import do_horizontal_regridding

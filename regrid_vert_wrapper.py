@@ -137,58 +137,7 @@ del Var
 
 
 # Do the vertical regridding step
-def do_vertical_regridding (input_data, grid_data):
-
-  from interfaces import DataInterface
-  from common import compute_pressure, compute_dp, have_gridded_3d_data, find_and_convert
-  import logging
-  logger = logging.getLogger(__name__)
-  regridded_dataset = []
-  #TODO: handle multiple target grids
-  for dataset in grid_data:
-    for var in dataset:
-      if var.hasaxis('zaxis'):
-        target_grid = var
-
-  varnames = sorted(set(v.name for d in input_data.datasets for v in d))
-
-  for varname in varnames:
-
-    # Don't interpolate 2D variables, just copy them.
-    var_test = input_data.find_best(varname)
-    if not var_test.hasaxis('zaxis'):
-      regridded_dataset.append(var_test)
-      continue
-
-    try:
-      var, source_dp, source_p0, source_p = find_and_convert (input_data, [varname,'dp','surface_pressure','air_pressure'], ['g g(air)-1','Pa','Pa','Pa'], requirement=have_gridded_3d_data)
-    except ValueError as e:
-      logger.debug('Dropping field "%s" - %s', varname, e.message)
-      continue
-
-    # Compute the dp for the target grid (forcing the source surface pressure)
-    try:
-      target_p = compute_pressure(target_grid.zaxis, source_p0)
-      target_dp = compute_dp(target_grid.zaxis, source_p0)
-      assert target_p.zaxis == target_dp.zaxis
-    except ValueError:
-      logger.debug("Skipping %s - unable to get pressure levels and/or dp", var.name)
-      continue
-
-    # Regrid the variable
-    var = VertRegrid(source_p0, source_p, source_dp, target_p, target_dp, var)
-    regridded_dataset.append(var)
-
-  # Add some pressure information back in
-  # (regenerated on appropriate grid).
-  try:
-    regridded_dataset.append(target_dp)
-  except NameError: pass
-
-  return DataInterface([regridded_dataset])
-
-# Alternative method - does a simple linear interpolation
-def do_vertical_interpolation (input_data, grid_data):
+def do_vertical_regridding (input_data, grid_data, conserve_mass):
 
   from pygeode.interp import interpolate
   from interfaces import DataInterface
@@ -216,13 +165,16 @@ def do_vertical_interpolation (input_data, grid_data):
     if var.name in ('air_pressure', 'dp'): continue
 
     try:
-      var_units = input_data.find_best(varname).atts['units']
-      var, source_p0, source_p = find_and_convert (input_data, [varname,'surface_pressure','air_pressure'], [var_units,'Pa','Pa'], requirement=have_gridded_3d_data)
+      if conserve_mass:
+        var, source_dp, source_p0, source_p = find_and_convert (input_data, [varname,'dp','surface_pressure','air_pressure'], ['g g(air)-1','Pa','Pa','Pa'], requirement=have_gridded_3d_data)
+      else:
+        var_units = input_data.find_best(varname).atts['units']
+        var, source_p0, source_p = find_and_convert (input_data, [varname,'surface_pressure','air_pressure'], [var_units,'Pa','Pa'], requirement=have_gridded_3d_data)
     except ValueError as e:
       logger.debug('Dropping field "%s" - %s', varname, e.message)
       continue
 
-    # Compute the pressure for the target grid (forcing the source surface pressure)
+    # Compute the dp for the target grid (forcing the source surface pressure)
     try:
       target_p = compute_pressure(target_grid.zaxis, source_p0)
       target_dp = compute_dp(target_grid.zaxis, source_p0)
@@ -232,9 +184,12 @@ def do_vertical_interpolation (input_data, grid_data):
       continue
 
     # Regrid the variable
-    inx = convert(source_p,'Pa').log()
-    outx = convert(target_p,'Pa').log()
-    var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx,outx=outx, interp_type='linear', d_below=1.0, d_above=1.0)
+    if conserve_mass:
+      var = VertRegrid(source_p0, source_p, source_dp, target_p, target_dp, var)
+    else:
+      inx = convert(source_p,'Pa').log()
+      outx = convert(target_p,'Pa').log()
+      var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx, outx=outx, interp_type='linear', d_below=1.0, d_above=1.0)
     regridded_dataset.append(var)
 
   # Add some pressure information back in
@@ -244,5 +199,4 @@ def do_vertical_interpolation (input_data, grid_data):
   except NameError: pass
 
   return DataInterface([regridded_dataset])
-
 
