@@ -118,7 +118,7 @@ def _what_extra_fields (data, fieldname, units, table):
 
 # Helper method - find the field in the dataset, and apply some unit conversion.
 # Handle some extra logic, such as going between dry and moist air.
-def _find_and_convert (product, fieldnames, units, **conditions):
+def find_and_convert (product, fieldnames, units, **conditions):
   from pygeode.dataset import Dataset
   from pygeode.var import Var
   from eccas_diags.interfaces import DataInterface
@@ -200,17 +200,6 @@ def _find_and_convert (product, fieldnames, units, **conditions):
     return vars
   else:
     return vars[0]
-
-# Cached version of the above function
-def find_and_convert (product, fieldnames, units, cache=False, **conditions):
-  from pygeode.var import Var
-  out = _find_and_convert (product, fieldnames, units, **conditions)
-  if cache:
-    if isinstance(out,Var):
-      out = product.cache.write(out, prefix=product.name+'_'+out.name)
-    else:
-      out = [product.cache.write(v, prefix=product.name+'_'+v.name) for v in out]
-  return out
 
 
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
