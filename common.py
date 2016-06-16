@@ -88,7 +88,7 @@ def _what_extra_fields (data, fieldname, units, table):
       possible_extra_units.append(v.atts['units'])
     except KeyError: pass
   var = data.find_best(fieldname)
-  errmsg = "Don't know how to convert %s %s from '%s' to '%s'.  Extra fields tried: %s"%(data.name, fieldname, var.atts['units'], units, possible_extra_fields)
+  errmsg = "Don't know how to convert %s %s from '%s' to '%s'.  Extra fields tried: %s"%(getattr(data,'name',''), fieldname, var.atts['units'], units, possible_extra_fields)
   # Apply proper context to the target units
   context = get_conversion_context(var)
   units = simplify(units, global_context=context, table=table)
@@ -119,7 +119,18 @@ def _what_extra_fields (data, fieldname, units, table):
 # Helper method - find the field in the dataset, and apply some unit conversion.
 # Handle some extra logic, such as going between dry and moist air.
 def _find_and_convert (product, fieldnames, units, **conditions):
+  from pygeode.dataset import Dataset
+  from pygeode.var import Var
+  from eccas_diags.interfaces import DataInterface
   from units import copy_default_table, define_conversion, parse_units, simplify, inverse
+
+  # Allow a list of variables to be passed in.
+  if isinstance(product,list) and isinstance(product[0],Var):
+    product = Dataset(product)
+
+  # Allow a single Dataset to be passed in.
+  if isinstance(product,Dataset):
+    product = DataInterface([product])
 
   return_list = True
 
@@ -133,9 +144,10 @@ def _find_and_convert (product, fieldnames, units, **conditions):
   tables = [copy_default_table() for fieldname in fieldnames]
 
   # Convert semi-dry air based on the type of output units
-  for unit, table in zip(units, tables):
-    terms = list(parse_units(unit))
-    reduced_terms = list(parse_units(simplify(unit)))
+  for fieldname, out_units, table in zip(fieldnames, units, tables):
+    in_units = product.find_best(fieldname).atts['units']
+    terms = list(parse_units(in_units)) + list(parse_units(out_units))
+    reduced_terms = list(parse_units(simplify(in_units))) + list(parse_units(simplify(out_units)))
     # Molefraction w.r.t. dry air => assume that's what we already have
     if ('mol', 'dry_air', -1) in terms:
       define_conversion ('mol(semidry_air)', 'mol(dry_air)', table=table)

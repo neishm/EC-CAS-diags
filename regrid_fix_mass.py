@@ -1,133 +1,87 @@
 # Apply a global scale factor to the target 3D data, in order to have the
 # same mass as the source data.
 
-# Put the mass scaling into a PyGeode operator, to speed it up.
-# Otherwise, will end up calculating the (pre-scaled) target mixing ratios
-# twice.
-# Modified from VertRegrid.
+# Put the scaled field into a PyGeode operator, to speed it up.
+# Otherwise, will end up calculating things multiple times.
 from pygeode.var import Var
-class GlobalScale (Var):
-  def __init__ (self, var_before, airmass_before, var_after, airmass_after):
+class CachedVar (Var):
+  def __init__ (self, var, desc):
     from pygeode.var import Var, copy_meta
-    from common import have_repeated_longitude
-    assert var_before.axes == airmass_before.axes
-    assert var_after.axes == airmass_after.axes
-    assert var_before.time == var_after.time
-    self._repeated_source_lon = have_repeated_longitude(var_before)
-    self._repeated_target_lon = have_repeated_longitude(var_after)
-    self._var_before = var_before
-    self._airmass_before = airmass_before
-    self._var_after = var_after
-    self._airmass_after = airmass_after
+    self._var = var
+    self._desc = desc
     self._cache = [None,None]  # Store info on last data request
-    Var.__init__(self, var_after.axes, dtype=var_after.dtype)
-    copy_meta (var_after, self)
+    Var.__init__(self, var.axes, dtype=var.dtype)
+    copy_meta (var, self)
   def getview (self, view, pbar):
     import numpy as np
     import logging
     logger = logging.getLogger(__name__)
 
-    # Un-slice the lat,lon,z axes of the target (get the whole domain)
-    #NOTE: assuming the order of dimensions is identical before/after
-    latdim = self.whichaxis('lat')
-    latslice = view.slices[latdim]
-    londim = self.whichaxis('lon')
-    lonslice = view.slices[londim]
-    zdim = self.whichaxis('zaxis')
-    zslice = view.slices[zdim]
-    view = view.unslice(latdim,londim,zdim)
-
     # Use cached values?
     last_key, cached_data = self._cache
     key = tuple(map(tuple, view.integer_indices))
     if key == last_key:
-      target = cached_data
+      return cached_data
 
     else:
 
-      source_view = view.replace_axis(latdim,self._var_before.lat).replace_axis(londim,self._var_before.lon).replace_axis(zdim,self._var_before.zaxis)
-      var_before = source_view.get(self._var_before)
-      airmass_before = source_view.get(self._airmass_before)
-      mass_before = (var_before*airmass_before)
-      if self._repeated_source_lon:
-        sl = [slice(None)] * self.naxes
-        sl[londim] = slice(None,-1,None)
-        mass_before = mass_before[sl]
-      for dim in sorted([latdim,londim,zdim], reverse=True):
-        mass_before = mass_before.sum(dim)
-      del var_before, airmass_before
-
-      var_after = view.get(self._var_after)
-      airmass_after = view.get(self._airmass_after)
-      mass_after = (var_after*airmass_after)
-      if self._repeated_target_lon:
-        sl = [slice(None)] * self.naxes
-        sl[londim] = slice(None,-1,None)
-        mass_after = mass_after[sl]
-      for dim in sorted([latdim,londim,zdim], reverse=True):
-        mass_after = mass_after.sum(dim)
-      del airmass_after
-
-      #NOTE: assuming that the time axis is the leftmost axis
-      logger.info ("%s global scale factor to conserve mass: %s", self.name, (mass_before/mass_after))
-      target = np.array(var_after)
-      target *= (mass_before/mass_after)
-      del var_after
-      self._cache[:] = key, target
+      var = view.get(self._var)
+      logger.info(self._desc+": "+str(var.flatten()[0]))
+      self._cache[:] = key, var
 
     pbar.update(100)
 
-    # Apply the final slicing
-    slices = [slice(None)]*self.naxes
-    slices[latdim] = latslice
-    slices[londim] = lonslice
-    slices[zdim] = zslice
-    return target[slices]
+    return var
 
 
 del Var
 
 def global_scale (data, original_data, grid_data):
-  from common import can_convert, convert, same_times, first_timestep, remove_repeated_longitude
+  from pygeode.var import copy_meta
+  from common import find_and_convert, remove_repeated_longitude
   from interfaces import DataInterface
   import logging
   logger = logging.getLogger(__name__)
-  input_datasets = list(data.datasets)
-  output_datasets = []
-  for input_dataset in input_datasets:
-    output_dataset = []
-    for var in input_dataset.vars:
+  scaled_dataset = []
+  varnames = sorted(set(v.name for d in data.datasets for v in d))
 
-      if not can_convert(var, 'molefraction'):
-        logger.debug("Not scaling mass of '%s', since it's not a mixing ratio.", var.name)
-        output_dataset.append(var)
-        continue
+  for varname in varnames:
 
-      dp, area = grid_data.find_best(['dp','cell_area'])
-      dp = convert(dp,'Pa')
-      area = convert(area,'m2')
-      airmass = dp * area
+    var_test = data.find_best(varname)
+    try:
+      if varname in ('dry_air','dp','cell_area','gravity'):
+        raise ValueError("need to keep this intact for proper unit conversion.")
+      original_mass = find_and_convert (original_data, varname, 'Pg')
+      original_mass = remove_repeated_longitude(original_mass)
+      original_mass = original_mass.sum('lat','lon','zaxis')
+      original_mass = CachedVar(original_mass, "Expected %s mass"%varname)
+      current_mass = find_and_convert (data, varname, 'Pg')
+      current_mass = remove_repeated_longitude(current_mass)
+      current_mass = current_mass.sum('lat','lon','zaxis')
+      current_mass = CachedVar(current_mass, "Uncorrected %s mass"%varname)
+      airmass = find_and_convert (data, 'dry_air', 'Pg')
+      airmass = remove_repeated_longitude(airmass)
+      airmass = airmass.sum('lat','lon','zaxis')
+      airmass = CachedVar(airmass, "Target air mass")
+    except KeyError as e:
+      logger.debug("Skipping '%s', since it's not in the original data.", varname)
+      continue
+    except ValueError as e:
+      logger.info("Not scaling '%s' - %s", varname, e)
+      scaled_dataset.append(var_test)
+      continue
 
-      try:
-        original_var, original_dp, original_area = original_data.find_best([var.name,'dp','cell_area'])
-      except KeyError:
-        logger.info('Not scaling mass of "%s" - original layer thickness and/or area information is unavailable.', var.name)
-        output_dataset.append(var)
-        continue
+    # Calculate the mass error, and distribute it equally in the atmosphere.
+    offset = (current_mass-original_mass)/airmass
+    copy_meta (var_test, offset)
+    offset.atts['units'] = 'Pg Pg(dry_air)-1'
+    # Convert this offset to the original units of the variable.
+    offset = find_and_convert(list(data.datasets[0]-offset.name)+[offset], offset.name, var_test.atts['units'])
+    # Apply the offset.
+    var = var_test - offset
+    copy_meta (var_test, var)
+    scaled_dataset.append(var)
 
-      original_dp = convert(original_dp,'Pa')
-      original_area = convert(original_area,'m2')
-      original_airmass = original_dp * original_area
-
-      # Need the timesteps to be consistent for all fields.
-      var, airmass, original_var, original_airmass = same_times(var, airmass, original_var, original_airmass)
-
-      # Do the scaling
-      var = GlobalScale (original_var, original_airmass, var, airmass)
-
-      output_dataset.append(var)
-    output_datasets.append(output_dataset)
-
-  return DataInterface(output_datasets)
+  return DataInterface([scaled_dataset])
 
 
