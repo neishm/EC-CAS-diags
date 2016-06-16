@@ -144,9 +144,10 @@ def _find_and_convert (product, fieldnames, units, **conditions):
   tables = [copy_default_table() for fieldname in fieldnames]
 
   # Convert semi-dry air based on the type of output units
-  for unit, table in zip(units, tables):
-    terms = list(parse_units(unit))
-    reduced_terms = list(parse_units(simplify(unit)))
+  for fieldname, out_units, table in zip(fieldnames, units, tables):
+    in_units = product.find_best(fieldname).atts['units']
+    terms = list(parse_units(in_units)) + list(parse_units(out_units))
+    reduced_terms = list(parse_units(simplify(in_units))) + list(parse_units(simplify(out_units)))
     # Molefraction w.r.t. dry air => assume that's what we already have
     if ('mol', 'dry_air', -1) in terms:
       define_conversion ('mol(semidry_air)', 'mol(dry_air)', table=table)
