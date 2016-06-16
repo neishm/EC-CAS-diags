@@ -210,13 +210,6 @@ def do_horizontal_regridding (input_data, grid_data, conserve_mass):
     var = horzregrid(var, target_grid.lat, target_grid.lon)
     regridded_dataset.append(var)
 
-  # Add extra fields from the grid file that will be needed for future
-  # unit conversions
-  for extra_field in ['dp', 'gravity', 'cell_area', 'dry_air']:
-    try:
-      regridded_dataset.append(grid_data.find_best(extra_field))
-    except KeyError: pass
-
   return DataInterface([regridded_dataset])
 
 
