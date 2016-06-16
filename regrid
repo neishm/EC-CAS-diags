@@ -83,16 +83,19 @@ try:
   from eccas_diags.regrid_horz_wrapper import do_horizontal_regridding
   data = do_horizontal_regridding (data, grid_data, conserve_mass=args.conserve_local_mass)
 
+  # Add some mass-related fields from the grid file (for unit conversion).
+  dataset = data.datasets[0]
+  for varname in 'dry_air', 'dp', 'cell_area', 'gravity':
+    if grid_data.have(varname):
+      dataset += grid_data.find_best(varname)
+    else:
+      logging.debug("Can't find '%s' in grid file.", varname)
+  data = DataInterface([dataset])
+
   # Apply a global adjustment to conserve mass
   from eccas_diags.regrid_fix_mass import global_scale
   if args.conserve_global_mass:
     data = global_scale (data, input_data, grid_data)
-
-  # Hack in dry-air mmr, which may be needed for final unit conversion.
-  try:
-    data.datasets = tuple([data.datasets[0]+grid_data.find_best('dry_air')])
-  except KeyError as e:
-   logging.debug("Can't find dry-air field in the grid file, so not attaching to the output file.")
 
   # Write the data out.
   out_interface.write(data, args.outdir)
