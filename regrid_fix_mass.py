@@ -5,9 +5,10 @@
 # Otherwise, will end up calculating things multiple times.
 from pygeode.var import Var
 class CachedVar (Var):
-  def __init__ (self, var):
+  def __init__ (self, var, desc):
     from pygeode.var import Var, copy_meta
     self._var = var
+    self._desc = desc
     self._cache = [None,None]  # Store info on last data request
     Var.__init__(self, var.axes, dtype=var.dtype)
     copy_meta (var, self)
@@ -24,8 +25,8 @@ class CachedVar (Var):
 
     else:
 
-      print '::: Scanning %s'%self._var.name
       var = view.get(self._var)
+      logger.info(self._desc+": "+str(var.flatten()[0]))
       self._cache[:] = key, var
 
     pbar.update(100)
@@ -48,34 +49,34 @@ def global_scale (data, original_data, grid_data):
 
     var_test = data.find_best(varname)
     try:
+      if varname in ('dry_air','dp','cell_area','gravity'):
+        raise ValueError("need to keep this intact for proper unit conversion.")
       original_mass = find_and_convert (original_data, varname, 'Pg')
       original_mass = remove_repeated_longitude(original_mass)
       original_mass = original_mass.sum('lat','lon','zaxis')
-      original_mass = CachedVar(original_mass)
+      original_mass = CachedVar(original_mass, "Expected %s mass"%varname)
       current_mass = find_and_convert (data, varname, 'Pg')
       current_mass = remove_repeated_longitude(current_mass)
       current_mass = current_mass.sum('lat','lon','zaxis')
-      current_mass = CachedVar(current_mass)
+      current_mass = CachedVar(current_mass, "Uncorrected %s mass"%varname)
       airmass = find_and_convert (data, 'dry_air', 'Pg')
       airmass = remove_repeated_longitude(airmass)
       airmass = airmass.sum('lat','lon','zaxis')
-      airmass = CachedVar(airmass)
+      airmass = CachedVar(airmass, "Target air mass")
     except KeyError as e:
       logger.debug("Skipping '%s', since it's not in the original data.", varname)
       continue
     except ValueError as e:
-      logger.debug("Not scaling '%s' - %s", varname, e)
+      logger.info("Not scaling '%s' - %s", varname, e)
       scaled_dataset.append(var_test)
       continue
-    logger.info ("Original mass of %s (Pg): %s", varname, original_mass.get(i_time=0))
-    logger.info ("Uncorrected mass of target %s (Pg): %s", varname, current_mass.get(i_time=0))
 
     # Calculate the mass error, and distribute it equally in the atmosphere.
     offset = (current_mass-original_mass)/airmass
     copy_meta (var_test, offset)
     offset.atts['units'] = 'Pg Pg(dry_air)-1'
     # Convert this offset to the original units of the variable.
-    offset = find_and_convert(list(grid_data.datasets[0].vars)+[offset], offset.name, var_test.atts['units'])
+    offset = find_and_convert(list(data.datasets[0]-offset.name)+[offset], offset.name, var_test.atts['units'])
     # Apply the offset.
     var = var_test - offset
     copy_meta (var_test, var)
