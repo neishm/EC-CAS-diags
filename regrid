@@ -87,10 +87,17 @@ try:
   dataset = data.datasets[0]
   for varname in 'dry_air', 'dp', 'cell_area', 'gravity':
     if grid_data.have(varname):
+      assert varname not in data
       dataset += grid_data.find_best(varname)
     else:
       logging.debug("Can't find '%s' in grid file.", varname)
   data = DataInterface([dataset])
+
+  # Strip out any semi-dry air references.
+  # Otherwise, we calculate the uncorrected mass the wrong way
+  # (using moist-air units instead of dry-air).
+  for var in data.datasets[0]:
+    var.atts['units'] = var.atts['units'].replace('(semidry_air)','(dry_air)')
 
   # Apply a global adjustment to conserve mass
   from eccas_diags.regrid_fix_mass import global_scale
