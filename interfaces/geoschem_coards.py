@@ -129,6 +129,9 @@ class GEOSCHEM_Data(DataProduct):
         var.name = 'CO_anthropogenic_flux'
         var.atts['specie'] = 'CO'
         var.atts['units'] = 'molecules cm-2 s-1'
+      if var.name == 'PORL_L_S__PCH4':
+        var.name = 'CO_production'
+        var.atts['units'] = 'molecules cm-3 s-1'
       if var.name.endswith('_PSURF') or var.name.endswith('_PS') or var.name.startswith('PEDGE_S'):
         # Special case: actually have 3D pressure (erroneously encoded?)
         if var.hasaxis('lev'):
