@@ -183,6 +183,8 @@ class DataProduct (DataInterface):
     from ..common import find_and_convert
     from warnings import warn
 
+    dataset = asdataset(dataset)
+
     # Warn about fields that aren't on the list (and won't be encoded)
     for var in dataset:
       if all(var.name != standard_name for local_name, standard_name, units in cls.field_list):
