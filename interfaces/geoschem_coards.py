@@ -130,6 +130,14 @@ class GEOSCHEM_Data(DataProduct):
         var.atts['specie'] = 'CO'
         var.atts['units'] = 'molecules cm-2 s-1'
       if var.name.endswith('_PSURF') or var.name.endswith('_PS') or var.name.startswith('PEDGE_S'):
+        # Special case: actually have 3D pressure (erroneously encoded?)
+        if var.hasaxis('lev'):
+          # Exception: data is not filled in
+          # (e.g. GEOS-Chem_CO_CH4_source_2010.nc)
+          if var[0,-1,0,0] == 0: continue
+          var.name = 'air_pressure'
+          var.atts['units'] = 'hPa'
+          continue
         if var.name.startswith('GMAO_'):
            var.atts['units'] = 'hPa'
         var.name = 'surface_pressure'
