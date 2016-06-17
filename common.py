@@ -26,6 +26,7 @@ define_conversion ('mol(CO2)', '44.01 g(CO2)')
 define_conversion ('mol(CH4)', '16.04 g(CH4)')
 define_conversion ('mol(dry_air)', '28.97 g(dry_air)')
 define_conversion ('mol(H2O)', '18.01528 g(H2O)')
+define_conversion ('mol(CO)', '28.010 g(CO)')
 
 # The following is a hack to get mass in terms of carbon atoms
 # I.e. to allow converting mass to Pg(C)
