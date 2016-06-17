@@ -119,6 +119,12 @@ class GEOSCHEM_Data(DataProduct):
           var.atts['units'] = "mol mol(dry_air)-1"
         else:  # From experiment output?
           var.atts['units'] = '1E-9 mol mol(dry_air)-1'
+      if var.name.endswith('_CO'):
+        var.name = 'CO'
+        if var.atts['units'] == "v/v":  # From restart file?
+          var.atts['units'] = "mol mol(dry_air)-1"
+        else:  # From experiment output?
+          var.atts['units'] = '1E-9 mol mol(dry_air)-1'
       if var.name.endswith('_PSURF') or var.name.endswith('_PS') or var.name.startswith('PEDGE_S'):
         if var.name.startswith('GMAO_'):
            var.atts['units'] = 'hPa'
