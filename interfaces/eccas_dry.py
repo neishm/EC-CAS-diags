@@ -16,6 +16,7 @@ class ECCAS_Data(GEM_Data):
     ('CHOC', 'CH4_ocean', 'ug kg(dry_air)-1'),
     ('CHNA', 'CH4_natural', 'ug kg(dry_air)-1'),
     ('CHAG', 'CH4_agriculture', 'ug kg(dry_air)-1'),
+    ('CO', 'CO', 'ug kg(dry_air)-1'),
     ('OH', 'OH', 'molecules m-3'),
     ('KTN', 'eddy_diffusivity', 'm2 s-1'),
   )
@@ -45,6 +46,8 @@ class ECCAS_Data(GEM_Data):
         data[varname].atts['specie'] = 'CO2'
       elif varname.startswith('CH4'):
         data[varname].atts['specie'] = 'CH4'
+      elif varname.startswith('CO'):
+        data[varname].atts['specie'] = 'CO'
 
 
     # Convert froma dictionary back to a list
