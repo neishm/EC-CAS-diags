@@ -37,6 +37,8 @@ class EC_Station_Data(StationObsProduct):
     ('CO2_std',  'CO2_std', 'ppm'),
     ('CH4_mean', 'CH4',     'ppb'),
     ('CH4_std',  'CH4_std', 'ppb'),
+    ('CO_mean',  'CO',      'ppb'),
+    ('CO_std',   'CO_std',  'ppb'),
   )
 
 
