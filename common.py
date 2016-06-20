@@ -144,19 +144,30 @@ def find_and_convert (product, fieldnames, units, **conditions):
   # semi-dry air uniquely.
   tables = [copy_default_table() for fieldname in fieldnames]
 
+  # Test table, with no entry for dry air.
+  # So we can partially reduce the units without going from moles to mass.
+  test_table = copy_default_table()
+  del test_table['mol'].conversions['dry_air']
+
   # Convert semi-dry air based on the type of output units
   for fieldname, out_units, table in zip(fieldnames, units, tables):
     in_units = product.find_best(fieldname).atts['units']
-    terms = list(parse_units(in_units)) + list(parse_units(out_units))
-    reduced_terms = list(parse_units(simplify(in_units))) + list(parse_units(simplify(out_units)))
-    # Molefraction w.r.t. dry air => assume that's what we already have
-    if ('mol', 'dry_air', -1) in terms:
+    in_units = simplify(in_units,table=test_table)
+    out_units = simplify(out_units,table=test_table)
+    all_units = in_units.split() + out_units.split()
+    # If looking at molefractions, treat as dry air.
+    if 'mol(semidry_air)-1' in all_units and 'mol(dry_air)-1' in all_units:
       define_conversion ('mol(semidry_air)', 'mol(dry_air)', table=table)
-    # Mass units => assume we have dry-air for the purpose of converting
-    # molefractions to a mass mixing ratio, but then assume we actually have
-    # a moist mixing ration after the conversion.
-    elif 'g' in zip(*reduced_terms)[0]:
+    # If converting molefractions to mass, then treat as dry air for the
+    # purpose of getting mass, then redefine it as moist air afterwards.
+    elif 'mol(semidry_air)-1' in all_units and 'g(air)-1' in all_units:
       define_conversion ('mol(semidry_air)', 'mol(dry_air) g(dry_air)-1 g(air)', table=table)
+    # If looking at mass, then treat as moist air.
+    elif 'g(semidry_air)-1' in all_units and 'g(air)-1' in all_units:
+      define_conversion ('g(semidry_air)', 'g(air)', table=table)
+    # If converting mass to mixing ratio, then treat as dry air.
+    elif 'g(semidry_air)-1' in all_units and 'mol(dry_air)-1' in all_units:
+      define_conversion ('g(semidry_air)', 'g(dry_air)', table=table)
 
   # Find out what extra fields are needed for the conversions
   extra_fields = []
