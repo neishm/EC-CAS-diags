@@ -256,6 +256,7 @@ diag ('totalmass', 'CO', 'Pg')
 
 diag ('totalmass-diff', 'CO2', 'Pg(C)')
 
+diag ('horz-slice', 'CO', 'ppb', level="1.0")
 diag ('horz-slice-diff', 'CO2', 'ppm', level="1.0")
 
 diag ('concentration-v-height', 'CO2', 'ppm', xlim=(375,395))
