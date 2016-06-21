@@ -62,9 +62,13 @@ class DataInterface (object):
       # Will be sorted by increasing order, so need to reverse the cost
       # functions here.
       maximize = lambda x,F=maximize: [-f(x) for f in F]
+    elif maximize is not None:
+      # Always need to invert the sign to get the maximum value first.
+      maximize = lambda x,f=maximize: -f(x)
 
     if isinstance(minimize,tuple):
       minimize = lambda x,F=minimize: [f(x) for f in F]
+
 
     # Sort by the criteria (higher value is better)
     if maximize is not None:
