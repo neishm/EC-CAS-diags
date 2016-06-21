@@ -626,6 +626,15 @@ def have_gridded_3d_data (varlist):
     if var.hasaxis(Lat) and var.hasaxis(Lon) and var.hasaxis(ZAxis): return True
   return False
 
+# Check if we have a particular vertical level
+def have_level (level):
+  def have_the_level (dataset):
+    for var in dataset:
+      if var.hasaxis('zaxis') and level in var.getaxis('zaxis').values:
+        return True
+    return False
+  return have_the_level
+
 # Check if we have station data.
 def have_station_data (varlist):
   for var in varlist:

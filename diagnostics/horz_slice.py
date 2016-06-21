@@ -14,13 +14,13 @@ class HorzSlice(TimeVaryingDiagnostic):
     super(HorzSlice,self).__init__(**kwargs)
     self.level = level
   def _transform_inputs (self, inputs):
-    from ..common import number_of_levels, number_of_timesteps, rotate_grid, find_and_convert, same_times
+    from ..common import number_of_timesteps, have_level, rotate_grid, find_and_convert
     from ..interfaces import DerivedProduct
 
     inputs = super(HorzSlice,self)._transform_inputs(inputs)
     transformed = []
     for inp in inputs:
-      c = find_and_convert(inp, self.fieldname, self.units, maximize=(number_of_levels,number_of_timesteps))
+      c = find_and_convert(inp, self.fieldname, self.units, maximize=number_of_timesteps, requirement=have_level(float(self.level)))
 
       # Apply the slice
       c = c(zaxis=float(self.level))
