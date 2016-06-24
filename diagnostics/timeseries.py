@@ -26,11 +26,24 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
       dataset = []
       field = find_and_convert(m, fieldname, units, maximize = (closeness_to_surface,number_of_timesteps))
       field = select_surface(field)
-      # Apply time axis subsetting
+      # Apply time axis subsetting, but only if start or end are unspecified.
       if timeaxis is None:
         timeaxis = field.getaxis('time')
+
+      start, end = self.date_range
+
+      if start is None:
+        start = timeaxis.values[0]
       else:
-        field = field(time=(timeaxis.values[0],timeaxis.values[-1]))
+        start = timeaxis.str_as_val(key=None,s=start.strftime("%d %b %Y"))
+
+      if end is None:
+        end = timeaxis.values[-1]
+      else:
+        end = timeaxis.str_as_val(key=None,s=end.strftime("%d %b %Y"))
+
+      field = field(time=(start,end))
+
       # Cache the data for faster subsequent access.
       # Disable time splitting for the cache file, since open_multi doesn't work
       # very well with the encoded station data.
@@ -54,7 +67,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
     dataset = []
     obs_data = obs.find_best(fieldname)
     obs_data = select_surface(obs_data)
-    obs_data = obs_data(time=(timeaxis.values[0],timeaxis.values[-1]))
+    obs_data = obs_data(time=(start,end))
     # Cache obs data, but only  if we have some data in this time range.
     if len(obs_data.time) > 0:
       obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False, suffix=self.end_suffix)
@@ -64,7 +77,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
     try:
       obs_stderr = obs.find_best(fieldname+'_std')
       obs_stderr = select_surface(obs_stderr)
-      obs_stderr = obs_stderr(time=(timeaxis.values[0],timeaxis.values[-1]))
+      obs_stderr = obs_stderr(time=(start,end))
       if len(obs_stderr.time) > 0:
         obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False, suffix=self.end_suffix)
       obs_stderr = convert(obs_stderr, units, context=fieldname)
@@ -117,9 +130,17 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
       # Fix issue with certain characters in station names
       title = title.decode('latin-1')
 
+      mindate = maxdate = None
       for inp in inputs:
         var = inp.find_best(self.fieldname)
         dates = to_datetimes(var.time)
+        # Keep track of min/max date range. (To force it at the end of this
+        # iteration)
+        if mindate is None: mindate = dates[0]
+        if maxdate is None: maxdate = dates[-1]
+        mindate = min(mindate,dates[0])
+        maxdate = max(maxdate,dates[0])
+
         values = var.get(station=location).flatten()
 
         # Determine marker size based on the density of observations
@@ -153,6 +174,9 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
 
         # Plot the timeseries
         pl.plot(dates, values, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
+        # Work around issue where pyplot autoscale ignores points with missing
+        # data.
+        pl.xlim(mindate,maxdate)
 
       pl.title(title)
       pl.ylabel('%s %s'%(self.fieldname,self.units))
