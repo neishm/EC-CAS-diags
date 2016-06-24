@@ -9,14 +9,10 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
   # Further modify the station sampling logic to select only surface level
   # (and cache the data).
   def _transform_inputs (self, inputs):
-    from ..common import find_and_convert, closeness_to_surface, number_of_timesteps, select_surface, convert, fix_timeaxis
+    from ..common import find_and_convert, closeness_to_surface, number_of_timesteps, select_surface, convert
     from ..interfaces import DerivedProduct
     from pygeode.timeutils import reltime
     inputs = super(Timeseries,self)._transform_inputs(inputs)
-
-    # First, need consistent time axis values across all inputs.
-    inputs = [DerivedProduct(map(fix_timeaxis,inp), source=inp) for inp in inputs]
-
     fieldname = self.fieldname
     units = self.units
     suffix = self.suffix
