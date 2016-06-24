@@ -9,7 +9,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
   # Further modify the station sampling logic to select only surface level
   # (and cache the data).
   def _transform_inputs (self, inputs):
-    from ..common import find_and_convert, closeness_to_surface, number_of_timesteps, select_surface, convert
+    from ..common import find_and_convert, closeness_to_surface, number_of_timesteps, select_surface, convert, detect_gaps
     from ..interfaces import DerivedProduct
     from pygeode.timeutils import reltime
     inputs = super(Timeseries,self)._transform_inputs(inputs)
@@ -50,6 +50,8 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
       # Only cache if we have some data in this time period.
       if len(field.time) > 0:
         field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False, suffix=self.end_suffix)
+      # Check for missing data (so we don't connect this region with a line)
+      field = detect_gaps(field)
       dataset.append(field)
       try:
         field = find_and_convert(m, fieldname+'_ensemblespread', units, maximize = (closeness_to_surface,number_of_timesteps))
@@ -57,6 +59,8 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
         field = field(time=(timeaxis.values[0],timeaxis.values[-1]))
         if len(field.time) > 0:
           field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False, suffix=self.end_suffix)
+        # Check for missing data (so we don't connect this region with a line)
+        field = detect_gaps(field)
         dataset.append(field.rename(fieldname+'_std'))
       except KeyError:  # No ensemble spread for this model data
         pass

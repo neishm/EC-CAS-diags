@@ -269,6 +269,26 @@ def to_datetimes(taxis):
   values = taxis.values
   return [ref+timedelta(**{units:v}) for v in values]
 
+# Detect regularly-spaced data, and "fill in" the gaps with NaN values.
+# Note: loads ALL the data into memory, so use with caution.
+def detect_gaps(var):
+  import numpy as np
+  from collections import Counter
+  from pygeode.var import Var, copy_meta
+  dt, count = Counter(np.diff(var.time.values)).most_common(1)[0]
+  start = var.time.values[0]
+  stop = var.time.values[-1]
+  n = int(round((stop-start)/dt)) + 1
+  full_time = np.linspace(start, stop, n)
+  full_values = np.empty((len(full_time),)+var.shape[1:],dtype=var.dtype)
+  full_values[:] = float('nan')
+  indices = np.asarray(np.round((var.time.values-start)/dt),dtype=int)
+  full_values[indices,...] = var.get()
+  taxis = type(var.time)(startdate=var.time.startdate, units=var.time.units, values=full_time)
+  outvar = Var(axes=(taxis,)+var.axes[1:], values=full_values)
+  copy_meta (var, outvar)
+  return outvar
+
 # Adjust a lat/lon grid from -180,180 to 0,360
 def rotate_grid (data):
   from pygeode.axis import Lon
