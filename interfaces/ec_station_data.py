@@ -67,27 +67,57 @@ class EC_Station_Data(StationObsProduct):
     # Read the data and put each column into an array.
     with open(filename, "r") as f:
       header = f.readline()
-      # Skip certain sites with non-standard file format
-      if header.startswith('REM'): return asdataset([])
 
-      data = zip(*[line.rstrip('\n').split(',') for line in f])
+      # Case 1: comma-separate data format
+      if header.startswith('DecimalYear'):
+        data = zip(*[line.rstrip('\n').split(',') for line in f])
+        # Skip files with no data.
+        if len(data) == 0:
+           print "Warning: ec-station-obs: %s has no data."%station
+           return asdataset([])
+
+        year    = np.array ([int(x) for x in data[1]])
+        month   = np.ones (len(year),dtype=int)
+        # This is actually day-of-year, but will get auto-wrapped when the
+        # timeaxis is created.
+        day     = np.array ([int(x) for x in data[2]])
+        hourend = np.array ([int(x) for x in data[3]])
+        mean    = np.array ([float(x) for x in data[4]])
+        maxval  = np.array ([float(x) for x in data[5]])
+        minval  = np.array ([float(x) for x in data[6]])
+        std     = np.array ([float(x) for x in data[7]])
+        nval    = np.array ([int(x) for x in data[8]])
+
+      # Case 2: alternate format with 25 comment lines then space-separated
+      # data
+      elif header.startswith('REM'):
+        while not header.startswith('REM25'):
+          header = f.readline()
+        data = zip(*[line.rstrip('\n').split() for line in f])
+
+        year    = np.array ([int(x) for x in data[0]])
+        month   = np.array ([int(x) for x in data[1]])
+        day     = np.array ([int(x) for x in data[2]])
+        hourend = np.array ([int(x) for x in data[3]])
+        # Don't have mean/max/min, just a single value?
+        mean    = np.array ([float(x) for x in data[4]])
+        maxval  = mean
+        minval  = mean
+        std     = np.array ([float(x) for x in data[7]])
+        nval    = np.array ([int(x) for x in data[6]])
+
+      else:
+        print "Warning: ec-station-obs: %s has unrecognized format."%station
+        return asdataset([])
 
     # Skip files with no data.
-    if len(data) == 0: return asdataset([])
-
-    decyear = np.array ([float(x) for x in data[0]])
-    year    = np.array ([int(x) for x in data[1]])
-    doy     = np.array ([int(x) for x in data[2]])
-    hourend = np.array ([int(x) for x in data[3]])
-    mean    = np.array ([float(x) for x in data[4]])
-    maxval  = np.array ([float(x) for x in data[5]])
-    minval  = np.array ([float(x) for x in data[6]])
-    std     = np.array ([float(x) for x in data[7]])
-    nval    = np.array ([int(x) for x in data[8]])
+    if len(mean) == 0:
+      print "Warning: ec-station-obs: %s has no data."%station
+      return asdataset([])
 
     # Define the time axis.  Use a consistent start date, so the various
     # station records can be more easily compared.
-    taxis = StandardTime (year=year, month=np.ones(len(year)), day=doy, hour=hourend, units='hours', startdate={'year':1980,'month':1,'day':1})
+    taxis = StandardTime (year=year, month=month, day=day, hour=hourend, units='hours', startdate={'year':1980,'month':1,'day':1})
     taxis = StandardTime (values=taxis.values, units=taxis.units, startdate=taxis.startdate)
 
     # Build the variables.
