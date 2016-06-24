@@ -17,15 +17,21 @@ obs_locations = dict(
   Behchoko        = (62.797934, -115.918255,   160, 'Canada'),
   Churchill       = (58.737902,  -93.820581,    29, 'Canada'),
   Cambridge_Bay   = (69.128401, -105.057707,    35, 'Canada'),
-  Abbotsford      = (49.011313, -122.335505,  60.3, 'Canada'),
+  Abbotsford      = (49.011111, -122.335833,    60, 'Canada'),
   Inuvik          = (68.317817, -133.534232,   113, 'Canada'),
   Turkey_Point    = (42.636451,  -80.554695,   231, 'Canada'),
-  Chapais         = (49.822317,  -74.975274,   381, 'Canada'),
-  Baker_Lake      = (64.331665,  -96.010433,  94.8, 'Canada'),
-  Fort_McKay      = (57.187925, -111.642723,   250, 'Canada'),
-  AMS13           = (57.149167, -111.6425,     250, 'Canada'),
-  UofT            = (43.660465,  -79.398274, 109.8, 'Canada'),
+  Chapais         = (49.822317,  -74.975274,   391, 'Canada'),
+  Baker_Lake      = (64.331665,  -96.010433,    95, 'Canada'),
+  Fort_McKay      = (57.187925, -111.642723,   250, 'Canada'), # not in database
+  AMS13           = (57.149167, -111.6425,     250, 'Canada'), # gone?
+  UofT            = (43.660465,  -79.398274,   110, 'Canada'),
+  Fort_McKay_South= (57.14908,  -111.64262,    250, 'Canada'),
+  Fort_Nelson     = (58.841231, -122.573671,   361, 'Canada'),
+  Hanlans_Point   = (43.612137,  -79.3861666,   87, 'Canada'),
 )
+obs_locations['WMO-Lac_La_Biche'] = obs_locations['Lac_La_Biche'] = obs_locations['Lac_Labiche']
+obs_locations['Downsview'] = obs_locations['Toronto']
+obs_locations['TAO'] = obs_locations['UofT']
 
 from . import StationObsProduct
 class EC_Station_Data(StationObsProduct):
@@ -73,7 +79,7 @@ class EC_Station_Data(StationObsProduct):
         data = zip(*[line.rstrip('\n').split(',') for line in f])
         # Skip files with no data.
         if len(data) == 0:
-           print "Warning: ec-station-obs: %s has no data."%station
+           print "Warning: ec-station-obs: %s has no data for %s."%(station,tracer)
            return asdataset([])
 
         year    = np.array ([int(x) for x in data[1]])
@@ -112,7 +118,7 @@ class EC_Station_Data(StationObsProduct):
 
     # Skip files with no data.
     if len(mean) == 0:
-      print "Warning: ec-station-obs: %s has no data."%station
+      print "Warning: ec-station-obs: %s has no data for %s."%(station,tracer)
       return asdataset([])
 
     # Define the time axis.  Use a consistent start date, so the various
