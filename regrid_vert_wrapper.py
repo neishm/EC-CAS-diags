@@ -146,11 +146,17 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass):
   logger = logging.getLogger(__name__)
   regridded_dataset = []
   #TODO: handle multiple target grids
+  # Find all z-axes
+  lev_test = []
   for dataset in grid_data:
     for var in dataset:
       if var.hasaxis('zaxis'):
-        target_grid = var
-  del var
+        z = var.getaxis('zaxis')
+        lev_test.append((len(z),var))
+        break
+  del dataset, var
+  # Pick the z-axis with the most number of levels.
+  nlev, target_grid = max(lev_test)
 
   varnames = sorted(set(v.name for d in input_data.datasets for v in d))
 
