@@ -165,11 +165,16 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass):
     # Skip pressure-related variables (they will be re-generated)
     if varname in ('air_pressure', 'dp'): continue
 
+    # Skip fields with no unit information
+    if 'units' not in var_test.atts:
+      logger.debug("Skipping %s - no units found.", varname)
+      continue
+
     try:
       if conserve_mass:
         var, source_dp, source_p0, source_p = find_and_convert (input_data, [varname,'dp','surface_pressure','air_pressure'], ['g g(air)-1','Pa','Pa','Pa'], requirement=have_gridded_3d_data)
       else:
-        var_units = input_data.find_best(varname).atts['units']
+        var_units = var_test.atts['units']
         var, source_p0, source_p = find_and_convert (input_data, [varname,'surface_pressure','air_pressure'], [var_units,'Pa','Pa'], requirement=have_gridded_3d_data)
     except ValueError as e:
       logger.debug('Dropping field "%s" - %s', varname, e.message)
