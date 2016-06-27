@@ -150,6 +150,7 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass):
     for var in dataset:
       if var.hasaxis('zaxis'):
         target_grid = var
+  del var
 
   varnames = sorted(set(v.name for d in input_data.datasets for v in d))
 
@@ -162,7 +163,7 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass):
       continue
 
     # Skip pressure-related variables (they will be re-generated)
-    if var.name in ('air_pressure', 'dp'): continue
+    if varname in ('air_pressure', 'dp'): continue
 
     try:
       if conserve_mass:
