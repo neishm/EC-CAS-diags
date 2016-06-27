@@ -137,7 +137,7 @@ del Var
 
 
 # Do the vertical regridding step
-def do_vertical_regridding (input_data, grid_data, conserve_mass):
+def do_vertical_regridding (input_data, grid_data, conserve_mass, sample_field=None):
 
   from pygeode.interp import interpolate
   from interfaces import DataInterface
@@ -146,17 +146,20 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass):
   logger = logging.getLogger(__name__)
   regridded_dataset = []
   #TODO: handle multiple target grids
-  # Find all z-axes
-  lev_test = []
-  for dataset in grid_data:
-    for var in dataset:
-      if var.hasaxis('zaxis'):
-        z = var.getaxis('zaxis')
-        lev_test.append((len(z),var))
-        break
-  del dataset, var
-  # Pick the z-axis with the most number of levels.
-  nlev, target_grid = max(lev_test)
+  if sample_field is not None:
+    target_grid = grid_data.find_best(sample_field)
+  else:
+    # Find all z-axes
+    lev_test = []
+    for dataset in grid_data:
+      for var in dataset:
+        if var.hasaxis('zaxis'):
+          z = var.getaxis('zaxis')
+          lev_test.append((len(z),var))
+          break
+    del dataset, var
+    # Pick the z-axis with the most number of levels.
+    nlev, target_grid = max(lev_test)
 
   varnames = sorted(set(v.name for d in input_data.datasets for v in d))
 
