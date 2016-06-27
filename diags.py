@@ -243,6 +243,8 @@ diag ('xcol-enkf', 'CO2_ocean', 'ppm')
 diag ('xcol-enkf', 'CO2_fossil', 'ppm')
 diag ('xcol-enkf', 'CO2_fire', 'ppm')
 
+diag ('lat-dist', 'CO2', 'ppm')
+
 diag ('totalmass', 'CO2', 'Pg(C)')
 diag ('totalmass', 'CO2_fossil', 'Pg(C)')
 diag ('totalmass', 'CH4', 'Pg')

@@ -597,6 +597,7 @@ def number_of_levels (varlist):
   for var in varlist:
     if var.hasaxis(ZAxis):
       return len(var.getaxis(ZAxis))
+  return 0  # No levels found
 
 # Check if we have data on a lat/lon grid.
 # To be used in the find_best() method.
