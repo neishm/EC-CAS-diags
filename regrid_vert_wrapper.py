@@ -212,7 +212,7 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass, sample_field=N
     else:
       inx = convert(source_p,'Pa').log()
       outx = convert(target_p,'Pa').log()
-      var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx, outx=outx, interp_type='linear', d_below=1.0, d_above=1.0)
+      var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx, outx=outx, interp_type='linear', d_below=0, d_above=0)
       # Restore density units after possible extrapolation.
       if var_units == "molecules cm-3":
         var *= target_p
