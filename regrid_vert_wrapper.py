@@ -137,7 +137,7 @@ del Var
 
 
 # Do the vertical regridding step
-def do_vertical_regridding (input_data, grid_data, conserve_mass):
+def do_vertical_regridding (input_data, grid_data, conserve_mass, sample_field=None):
 
   from pygeode.interp import interpolate
   from interfaces import DataInterface
@@ -146,10 +146,20 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass):
   logger = logging.getLogger(__name__)
   regridded_dataset = []
   #TODO: handle multiple target grids
-  for dataset in grid_data:
-    for var in dataset:
-      if var.hasaxis('zaxis'):
-        target_grid = var
+  if sample_field is not None:
+    target_grid = grid_data.find_best(sample_field)
+  else:
+    # Find all z-axes
+    lev_test = []
+    for dataset in grid_data:
+      for var in dataset:
+        if var.hasaxis('zaxis'):
+          z = var.getaxis('zaxis')
+          lev_test.append((len(z),var))
+          break
+    del dataset, var
+    # Pick the z-axis with the most number of levels.
+    nlev, target_grid = max(lev_test)
 
   varnames = sorted(set(v.name for d in input_data.datasets for v in d))
 
@@ -162,14 +172,27 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass):
       continue
 
     # Skip pressure-related variables (they will be re-generated)
-    if var.name in ('air_pressure', 'dp'): continue
+    if varname in ('air_pressure', 'dp'): continue
+
+    # Skip fields with no unit information
+    if 'units' not in var_test.atts:
+      logger.debug("Skipping %s - no units found.", varname)
+      continue
 
     try:
       if conserve_mass:
         var, source_dp, source_p0, source_p = find_and_convert (input_data, [varname,'dp','surface_pressure','air_pressure'], ['g g(air)-1','Pa','Pa','Pa'], requirement=have_gridded_3d_data)
       else:
-        var_units = input_data.find_best(varname).atts['units']
+        var_units = var_test.atts['units']
         var, source_p0, source_p = find_and_convert (input_data, [varname,'surface_pressure','air_pressure'], [var_units,'Pa','Pa'], requirement=have_gridded_3d_data)
+        # Special case: density should be normalized to a pseudo mass mixing
+        # ratio.  Otherwise, extrapolation above the source lid can have
+        # unrealistic values.
+        #TODO: generalize this to all density units.
+        if var_units == "molecules cm-3":
+          var_specie = var.atts.get('specie',None)
+          var /= source_p
+
     except ValueError as e:
       logger.debug('Dropping field "%s" - %s', varname, e.message)
       continue
@@ -189,7 +212,14 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass):
     else:
       inx = convert(source_p,'Pa').log()
       outx = convert(target_p,'Pa').log()
-      var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx, outx=outx, interp_type='linear', d_below=1.0, d_above=1.0)
+      var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx, outx=outx, interp_type='linear', d_below=0, d_above=0)
+      # Restore density units after possible extrapolation.
+      if var_units == "molecules cm-3":
+        var *= target_p
+        var.name = varname
+        var.atts['units'] = var_units
+        if var_specie is not None: var.atts['specie'] = var_specie
+
     regridded_dataset.append(var)
 
   # Add some pressure information back in

@@ -29,6 +29,7 @@ parser.add_argument ("--intype", help="The type of input data to read.", choices
 parser.add_argument ("--infiles", help="The input file(s), or an input directory.", nargs='+', required=True, action=append_dictvalue, metavar="FILE", dest="input")
 parser.add_argument ("--outtype", help="The type of output data to write.", choices=valid_types, required=True, metavar="TYPE")
 parser.add_argument ("--gridfiles", help="File(s) or directory that contains the target grid to convert the data to.  Should be in the same format as the output.", nargs='+', required=True, metavar="FILE")
+parser.add_argument ("--sample-field", help="If multiple grids are defined in the grid files, then use the one for the specified field name.", metavar="NAME")
 parser.add_argument ("--outdir", help="The directory to write the output files.", required=True)
 parser.add_argument ("--use-target-time", help="Treat the input data as being valid at the first time in the target grid file.  Useful for generating initial conditions with data that comes from a different time period.", action="store_true")
 parser.add_argument ("--conserve-local-mass", help="Does a locally mass-conservative regridding.", action="store_true")
@@ -77,11 +78,11 @@ try:
 
   # Vertical regridding (keeping source surface pressure)
   from eccas_diags.regrid_vert_wrapper import do_vertical_regridding
-  data = do_vertical_regridding (data, grid_data, conserve_mass=args.conserve_local_mass)
+  data = do_vertical_regridding (data, grid_data, conserve_mass=args.conserve_local_mass, sample_field=args.sample_field)
 
   # Horizontal regridding
   from eccas_diags.regrid_horz_wrapper import do_horizontal_regridding
-  data = do_horizontal_regridding (data, grid_data, conserve_mass=args.conserve_local_mass)
+  data = do_horizontal_regridding (data, grid_data, conserve_mass=args.conserve_local_mass, sample_field=args.sample_field)
 
   # Add some mass-related fields from the grid file (for unit conversion).
   dataset = data.datasets[0]

@@ -148,17 +148,21 @@ def horzregrid (source, target_lat, target_lon):
 
 
 # Do the horizontal regridding step
-def do_horizontal_regridding (input_data, grid_data, conserve_mass):
+def do_horizontal_regridding (input_data, grid_data, conserve_mass, sample_field=None):
   from common import find_and_convert, have_gridded_data
   from interfaces import DataInterface
   import logging
   logger = logging.getLogger(__name__)
   regridded_dataset = []
-  #TODO: handle multiple target grids
-  for dataset in grid_data:
-    for var in dataset:
-      if var.hasaxis('lat') and var.hasaxis('lon'):
-        target_grid = var
+  if sample_field is not None:
+    target_grid = grid_data.find_best(sample_field)
+  else:
+    #TODO: handle multiple target grids
+    for dataset in grid_data:
+      for var in dataset:
+        if var.hasaxis('lat') and var.hasaxis('lon'):
+          target_grid = var
+    del dataset, var
 
   varnames = sorted(set(v.name for d in input_data.datasets for v in d))
 
