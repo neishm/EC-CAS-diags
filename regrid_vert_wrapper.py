@@ -185,6 +185,14 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass, sample_field=N
       else:
         var_units = var_test.atts['units']
         var, source_p0, source_p = find_and_convert (input_data, [varname,'surface_pressure','air_pressure'], [var_units,'Pa','Pa'], requirement=have_gridded_3d_data)
+        # Special case: density should be normalized to a pseudo mass mixing
+        # ratio.  Otherwise, extrapolation above the source lid can have
+        # unrealistic values.
+        #TODO: generalize this to all density units.
+        if var_units == "molecules cm-3":
+          var_specie = var.atts.get('specie',None)
+          var /= source_p
+
     except ValueError as e:
       logger.debug('Dropping field "%s" - %s', varname, e.message)
       continue
@@ -205,6 +213,13 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass, sample_field=N
       inx = convert(source_p,'Pa').log()
       outx = convert(target_p,'Pa').log()
       var = interpolate (var, inaxis=source_p.zaxis, outaxis=target_p.zaxis, inx=inx, outx=outx, interp_type='linear', d_below=1.0, d_above=1.0)
+      # Restore density units after possible extrapolation.
+      if var_units == "molecules cm-3":
+        var *= target_p
+        var.name = varname
+        var.atts['units'] = var_units
+        if var_specie is not None: var.atts['specie'] = var_specie
+
     regridded_dataset.append(var)
 
   # Add some pressure information back in
