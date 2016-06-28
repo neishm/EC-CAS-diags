@@ -17,15 +17,21 @@ obs_locations = dict(
   Behchoko        = (62.797934, -115.918255,   160, 'Canada'),
   Churchill       = (58.737902,  -93.820581,    29, 'Canada'),
   Cambridge_Bay   = (69.128401, -105.057707,    35, 'Canada'),
-  Abbotsford      = (49.011313, -122.335505,  60.3, 'Canada'),
+  Abbotsford      = (49.011111, -122.335833,    60, 'Canada'),
   Inuvik          = (68.317817, -133.534232,   113, 'Canada'),
   Turkey_Point    = (42.636451,  -80.554695,   231, 'Canada'),
-  Chapais         = (49.822317,  -74.975274,   381, 'Canada'),
-  Baker_Lake      = (64.331665,  -96.010433,  94.8, 'Canada'),
-  Fort_McKay      = (57.187925, -111.642723,   250, 'Canada'),
-  AMS13           = (57.149167, -111.6425,     250, 'Canada'),
-  UofT            = (43.660465,  -79.398274, 109.8, 'Canada'),
+  Chapais         = (49.822317,  -74.975274,   391, 'Canada'),
+  Baker_Lake      = (64.331665,  -96.010433,    95, 'Canada'),
+  Fort_McKay      = (57.187925, -111.642723,   250, 'Canada'), # not in database
+  AMS13           = (57.149167, -111.6425,     250, 'Canada'), # gone?
+  UofT            = (43.660465,  -79.398274,   110, 'Canada'),
+  Fort_McKay_South= (57.14908,  -111.64262,    250, 'Canada'),
+  Fort_Nelson     = (58.841231, -122.573671,   361, 'Canada'),
+  Hanlans_Point   = (43.612137,  -79.3861666,   87, 'Canada'),
 )
+obs_locations['WMO-Lac_La_Biche'] = obs_locations['Lac_La_Biche'] = obs_locations['Lac_Labiche']
+obs_locations['Downsview'] = obs_locations['Toronto']
+obs_locations['TAO'] = obs_locations['UofT']
 
 from . import StationObsProduct
 class EC_Station_Data(StationObsProduct):
@@ -37,6 +43,8 @@ class EC_Station_Data(StationObsProduct):
     ('CO2_std',  'CO2_std', 'ppm'),
     ('CH4_mean', 'CH4',     'ppb'),
     ('CH4_std',  'CH4_std', 'ppb'),
+    ('CO_mean',  'CO',      'ppb'),
+    ('CO_std',   'CO_std',  'ppb'),
   )
 
 
@@ -65,27 +73,57 @@ class EC_Station_Data(StationObsProduct):
     # Read the data and put each column into an array.
     with open(filename, "r") as f:
       header = f.readline()
-      # Skip certain sites with non-standard file format
-      if header.startswith('REM'): return asdataset([])
 
-      data = zip(*[line.rstrip('\n').split(',') for line in f])
+      # Case 1: comma-separate data format
+      if header.startswith('DecimalYear'):
+        data = zip(*[line.rstrip('\n').split(',') for line in f])
+        # Skip files with no data.
+        if len(data) == 0:
+           print "Warning: ec-station-obs: %s has no data for %s."%(station,tracer)
+           return asdataset([])
+
+        year    = np.array ([int(x) for x in data[1]])
+        month   = np.ones (len(year),dtype=int)
+        # This is actually day-of-year, but will get auto-wrapped when the
+        # timeaxis is created.
+        day     = np.array ([int(x) for x in data[2]])
+        hourend = np.array ([int(x) for x in data[3]])
+        mean    = np.array ([float(x) for x in data[4]])
+        maxval  = np.array ([float(x) for x in data[5]])
+        minval  = np.array ([float(x) for x in data[6]])
+        std     = np.array ([float(x) for x in data[7]])
+        nval    = np.array ([int(x) for x in data[8]])
+
+      # Case 2: alternate format with 25 comment lines then space-separated
+      # data
+      elif header.startswith('REM'):
+        while not header.startswith('REM25'):
+          header = f.readline()
+        data = zip(*[line.rstrip('\n').split() for line in f])
+
+        year    = np.array ([int(x) for x in data[0]])
+        month   = np.array ([int(x) for x in data[1]])
+        day     = np.array ([int(x) for x in data[2]])
+        hourend = np.array ([int(x) for x in data[3]])
+        # Don't have mean/max/min, just a single value?
+        mean    = np.array ([float(x) for x in data[4]])
+        maxval  = mean
+        minval  = mean
+        std     = np.array ([float(x) for x in data[7]])
+        nval    = np.array ([int(x) for x in data[6]])
+
+      else:
+        print "Warning: ec-station-obs: %s has unrecognized format."%station
+        return asdataset([])
 
     # Skip files with no data.
-    if len(data) == 0: return asdataset([])
-
-    decyear = np.array ([float(x) for x in data[0]])
-    year    = np.array ([int(x) for x in data[1]])
-    doy     = np.array ([int(x) for x in data[2]])
-    hourend = np.array ([int(x) for x in data[3]])
-    mean    = np.array ([float(x) for x in data[4]])
-    maxval  = np.array ([float(x) for x in data[5]])
-    minval  = np.array ([float(x) for x in data[6]])
-    std     = np.array ([float(x) for x in data[7]])
-    nval    = np.array ([int(x) for x in data[8]])
+    if len(mean) == 0:
+      print "Warning: ec-station-obs: %s has no data for %s."%(station,tracer)
+      return asdataset([])
 
     # Define the time axis.  Use a consistent start date, so the various
     # station records can be more easily compared.
-    taxis = StandardTime (year=year, month=np.ones(len(year)), day=doy, hour=hourend, units='hours', startdate={'year':1980,'month':1,'day':1})
+    taxis = StandardTime (year=year, month=month, day=day, hour=hourend, units='hours', startdate={'year':1980,'month':1,'day':1})
     taxis = StandardTime (values=taxis.values, units=taxis.units, startdate=taxis.startdate)
 
     # Build the variables.

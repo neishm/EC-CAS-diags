@@ -8,6 +8,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
     ('ECFF', 'CO2_fossil_flux', 'g(C) s-1'),
     ('ECOC', 'CO2_ocean_flux', 'g(C) s-1'),
     ('ECLA', 'CO2_bio_flux', 'g(C) s-1'),
+    ('ECO', 'CO_anthropogenic_flux', 'g(CO) s-1'),
   )
 
 

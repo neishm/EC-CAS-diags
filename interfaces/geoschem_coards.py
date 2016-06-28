@@ -119,7 +119,28 @@ class GEOSCHEM_Data(DataProduct):
           var.atts['units'] = "mol mol(dry_air)-1"
         else:  # From experiment output?
           var.atts['units'] = '1E-9 mol mol(dry_air)-1'
+      if var.name.endswith('_CO'):
+        var.name = 'CO'
+        if var.atts['units'] == "v/v":  # From restart file?
+          var.atts['units'] = "mol mol(dry_air)-1"
+        else:  # From experiment output?
+          var.atts['units'] = '1E-9 mol mol(dry_air)-1'
+      if var.name == 'CO__SRCE__COanth':
+        var.name = 'CO_anthropogenic_flux'
+        var.atts['specie'] = 'CO'
+        var.atts['units'] = 'molecules cm-2 s-1'
+      if var.name == 'PORL_L_S__PCH4':
+        var.name = 'CO_production'
+        var.atts['units'] = 'molecules cm-3 s-1'
       if var.name.endswith('_PSURF') or var.name.endswith('_PS') or var.name.startswith('PEDGE_S'):
+        # Special case: actually have 3D pressure (erroneously encoded?)
+        if var.hasaxis('lev'):
+          # Exception: data is not filled in
+          # (e.g. GEOS-Chem_CO_CH4_source_2010.nc)
+          if var[0,-1,0,0] == 0: continue
+          var.name = 'air_pressure'
+          var.atts['units'] = 'hPa'
+          continue
         if var.name.startswith('GMAO_'):
            var.atts['units'] = 'hPa'
         var.name = 'surface_pressure'

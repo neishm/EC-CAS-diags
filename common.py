@@ -26,6 +26,7 @@ define_conversion ('mol(CO2)', '44.01 g(CO2)')
 define_conversion ('mol(CH4)', '16.04 g(CH4)')
 define_conversion ('mol(dry_air)', '28.97 g(dry_air)')
 define_conversion ('mol(H2O)', '18.01528 g(H2O)')
+define_conversion ('mol(CO)', '28.010 g(CO)')
 
 # The following is a hack to get mass in terms of carbon atoms
 # I.e. to allow converting mass to Pg(C)
@@ -143,19 +144,30 @@ def find_and_convert (product, fieldnames, units, **conditions):
   # semi-dry air uniquely.
   tables = [copy_default_table() for fieldname in fieldnames]
 
+  # Test table, with no entry for dry air.
+  # So we can partially reduce the units without going from moles to mass.
+  test_table = copy_default_table()
+  del test_table['mol'].conversions['dry_air']
+
   # Convert semi-dry air based on the type of output units
   for fieldname, out_units, table in zip(fieldnames, units, tables):
     in_units = product.find_best(fieldname).atts['units']
-    terms = list(parse_units(in_units)) + list(parse_units(out_units))
-    reduced_terms = list(parse_units(simplify(in_units))) + list(parse_units(simplify(out_units)))
-    # Molefraction w.r.t. dry air => assume that's what we already have
-    if ('mol', 'dry_air', -1) in terms:
+    in_units = simplify(in_units,table=test_table)
+    out_units = simplify(out_units,table=test_table)
+    all_units = in_units.split() + out_units.split()
+    # If looking at molefractions, treat as dry air.
+    if 'mol(semidry_air)-1' in all_units and 'mol(dry_air)-1' in all_units:
       define_conversion ('mol(semidry_air)', 'mol(dry_air)', table=table)
-    # Mass units => assume we have dry-air for the purpose of converting
-    # molefractions to a mass mixing ratio, but then assume we actually have
-    # a moist mixing ration after the conversion.
-    elif 'g' in zip(*reduced_terms)[0]:
+    # If converting molefractions to mass, then treat as dry air for the
+    # purpose of getting mass, then redefine it as moist air afterwards.
+    elif 'mol(semidry_air)-1' in all_units and 'g(air)-1' in all_units:
       define_conversion ('mol(semidry_air)', 'mol(dry_air) g(dry_air)-1 g(air)', table=table)
+    # If looking at mass, then treat as moist air.
+    elif 'g(semidry_air)-1' in all_units and 'g(air)-1' in all_units:
+      define_conversion ('g(semidry_air)', 'g(air)', table=table)
+    # If converting mass to mixing ratio, then treat as dry air.
+    elif 'g(semidry_air)-1' in all_units and 'mol(dry_air)-1' in all_units:
+      define_conversion ('g(semidry_air)', 'g(dry_air)', table=table)
 
   # Find out what extra fields are needed for the conversions
   extra_fields = []
@@ -256,6 +268,26 @@ def to_datetimes(taxis):
   units = taxis.units
   values = taxis.values
   return [ref+timedelta(**{units:v}) for v in values]
+
+# Detect regularly-spaced data, and "fill in" the gaps with NaN values.
+# Note: loads ALL the data into memory, so use with caution.
+def detect_gaps(var):
+  import numpy as np
+  from collections import Counter
+  from pygeode.var import Var, copy_meta
+  dt, count = Counter(np.diff(var.time.values)).most_common(1)[0]
+  start = var.time.values[0]
+  stop = var.time.values[-1]
+  n = int(round((stop-start)/dt)) + 1
+  full_time = np.linspace(start, stop, n)
+  full_values = np.empty((len(full_time),)+var.shape[1:],dtype=var.dtype)
+  full_values[:] = float('nan')
+  indices = np.asarray(np.round((var.time.values-start)/dt),dtype=int)
+  full_values[indices,...] = var.get()
+  taxis = type(var.time)(startdate=var.time.startdate, units=var.time.units, values=full_time)
+  outvar = Var(axes=(taxis,)+var.axes[1:], values=full_values)
+  copy_meta (var, outvar)
+  return outvar
 
 # Adjust a lat/lon grid from -180,180 to 0,360
 def rotate_grid (data):
@@ -614,6 +646,15 @@ def have_gridded_3d_data (varlist):
   for var in varlist:
     if var.hasaxis(Lat) and var.hasaxis(Lon) and var.hasaxis(ZAxis): return True
   return False
+
+# Check if we have a particular vertical level
+def have_level (level):
+  def have_the_level (dataset):
+    for var in dataset:
+      if var.hasaxis('zaxis') and level in var.getaxis('zaxis').values:
+        return True
+    return False
+  return have_the_level
 
 # Check if we have station data.
 def have_station_data (varlist):

@@ -37,6 +37,16 @@ class GEM_Data(DataProduct):
     # Apply fieldname conversions
     dataset = DataProduct.decode.__func__(cls,dataset)
 
+    # Remove top thermodynamic level from GEM 4.6 output (diagnostic level).
+    zaxis = None
+    for var in dataset:
+      if var.hasaxis(fstd.LogHybrid):
+        zaxis = var.getaxis(fstd.LogHybrid)
+    if zaxis is not None and zaxis.atts['kind'] == 5 and zaxis.atts['version'] == 2:
+      # Check if we have the problematic level in our data.
+      if zaxis.A[0] == zaxis.atts['a_t'][0]:
+        dataset = [var(i_zaxis=(1,len(zaxis))) if var.hasaxis(fstd.LogHybrid) else var for var in dataset]
+
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
 

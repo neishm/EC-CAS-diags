@@ -211,16 +211,19 @@ def diag (diagname, fieldname, units, **extra):
 
 diag ('timeseries', 'CO2', 'ppm')
 diag ('timeseries', 'CH4', 'ppb')
+diag ('timeseries', 'CO', 'ppb')
 
 diag ('aircraft-profiles', 'CO2', 'ppm')
 
 diag ('diurnal-cycle', 'CO2', 'ppm')
 diag ('diurnal-cycle', 'CH4', 'ppb')
+diag ('diurnal-cycle', 'CO', 'ppb')
 
 diag ('zonal-movie', 'CO2', 'ppm')
 diag ('zonal-movie', 'CO2_ensemblespread', 'ppm')
 diag ('zonal-movie', 'CH4', 'ppb')
 diag ('zonal-movie', 'CO2', 'ppm', typestat='stdev')
+diag ('zonal-movie', 'CO', 'ppb', zaxis='model')
 
 diag ('zonal-mean-diff', 'CO2', 'ppm')
 
@@ -251,9 +254,11 @@ diag ('totalmass', 'CH4', 'Pg')
 diag ('totalmass', 'air', 'Pg')
 diag ('totalmass', 'dry_air', 'Pg')
 diag ('totalmass', 'H2O', 'Pg')
+diag ('totalmass', 'CO', 'Pg')
 
 diag ('totalmass-diff', 'CO2', 'Pg(C)')
 
+diag ('horz-slice', 'CO', 'ppb', level="1.0")
 diag ('horz-slice-diff', 'CO2', 'ppm', level="1.0")
 
 diag ('concentration-v-height', 'CO2', 'ppm', xlim=(375,395))

@@ -104,14 +104,8 @@ class TimeVaryingDiagnostic(Diagnostic):
       end = datetime.strptime(end, self.date_format)
     # Apply year filter
     if year is not None:
-      if start is not None:
-        start = start.replace(year=year)
-      else:
-        start = datetime(year=year,month=1,day=1)
-      if end is not None:
-        end = end.replace(year=year)
-      else:
-        end = datetime(year=year+1,month=1,day=1) - timedelta(days=1)
+      start = datetime(year=year,month=1,day=1)
+      end = datetime(year=year+1,month=1,day=1) - timedelta(days=1)
     self.date_range = (start,end)
     self.hour0_only = hour0_only
     end_suffix = []
