@@ -46,6 +46,7 @@ _unprefixable_units = [
   ('ppt', 'parts per trillion', '1E-12 molefraction'),
   ('h', 'hours', '3600 s'),
   ('day', 'days', '24 h'),
+  ('K', 'Kelvin', ''),
 ]
 
 # Container for defining a unit
