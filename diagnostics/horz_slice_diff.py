@@ -4,7 +4,8 @@
 # This is/was used for checking the effects of adding convection to tracers.
 
 from .horz_slice import HorzSlice
-class HorzSliceDiff(HorzSlice):
+from .diff import Diff
+class HorzSliceDiff(Diff,HorzSlice):
   """
   Difference between two data products, sampled at a particular vertical level.
   """

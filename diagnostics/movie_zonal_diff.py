@@ -1,5 +1,6 @@
 from .movie_zonal import ZonalMean
-class ZonalMeanDiff(ZonalMean):
+from .diff import Diff
+class ZonalMeanDiff(Diff,ZonalMean):
   """
   Difference between two zonal mean fields, animated in time.
   """

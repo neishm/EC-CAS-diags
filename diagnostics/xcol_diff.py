@@ -5,7 +5,8 @@
 
 
 from .xcol import XCol
-class XColDiff(XCol):
+from .diff import Diff
+class XColDiff(Diff,XCol):
   """
   Compute the difference of two fields, after taking the avarage column of
   each.
