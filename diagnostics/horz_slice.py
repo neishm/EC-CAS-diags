@@ -13,27 +13,23 @@ class HorzSlice(TimeVaryingDiagnostic):
   def __init__ (self, level, **kwargs):
     super(HorzSlice,self).__init__(**kwargs)
     self.level = level
-  def _transform_inputs (self, inputs):
+  def _transform_input (self, input):
     from ..common import number_of_timesteps, have_level, rotate_grid, find_and_convert
     from ..interfaces import DerivedProduct
 
-    inputs = super(HorzSlice,self)._transform_inputs(inputs)
-    transformed = []
-    for inp in inputs:
-      c = find_and_convert(inp, self.fieldname, self.units, maximize=number_of_timesteps, requirement=have_level(float(self.level)))
+    input = super(HorzSlice,self)._transform_input(input)
+    c = find_and_convert(input, self.fieldname, self.units, maximize=number_of_timesteps, requirement=have_level(float(self.level)))
 
-      # Apply the slice
-      c = c(zaxis=float(self.level))
+    # Apply the slice
+    c = c(zaxis=float(self.level))
 
-      # Rotate the longitudes to 0,360
-      c = rotate_grid(c)
+    # Rotate the longitudes to 0,360
+    c = rotate_grid(c)
 
-      # Cache the data
-      c = inp.cache.write(c,prefix=inp.name+'_'+c.zaxis.name+self.level+"_"+self.fieldname+self.suffix, suffix=self.end_suffix)
+    # Cache the data
+    c = input.cache.write(c,prefix=input.name+'_'+c.zaxis.name+self.level+"_"+self.fieldname+self.suffix, suffix=self.end_suffix)
 
-      transformed.append(DerivedProduct(c, source=inp))
-
-    return transformed
+    return DerivedProduct(c, source=input)
 
 
   def do (self, inputs):

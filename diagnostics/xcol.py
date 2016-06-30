@@ -22,14 +22,11 @@ class XCol(TimeVaryingDiagnostic):
 
     return selected
 
-  def _transform_inputs (self, inputs):
+  def _transform_input (self, input):
     from ..interfaces import DerivedProduct
-    inputs = super(XCol,self)._transform_inputs(inputs)
-    computed = []
-    for inp in inputs:
-      xcol = self._avgcolumn(inp)
-      computed.append(DerivedProduct(xcol,source=inp))
-    return computed
+    input = super(XCol,self)._transform_input(input)
+    xcol = self._avgcolumn(input)
+    return DerivedProduct(xcol,source=input)
 
   # Compute total column of a tracer
   # (in kg/m2)
