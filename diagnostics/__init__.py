@@ -1,6 +1,13 @@
 # Generic interface for a diagnostic, to be sub-classed by each particular
 # diagnostic.
 class Diagnostic(object):
+
+  # String representation of the diagnostic (for filenames, etc.)
+  # Note: doesn't include fieldname or particular inputs.
+  def __str__(self):
+    # Default is the name of the class itself.
+    return self.__class__.__name__.lower()
+
   @classmethod
   # Method to add extra command-line arguments needed for this diagnostic.
   def add_args (cls, parser):
