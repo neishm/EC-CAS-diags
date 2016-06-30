@@ -4,6 +4,10 @@ class ZonalMean(TimeVaryingDiagnostic):
   """
   Zonal mean (or standard deviation) of a field, animated in time.
   """
+
+  def __str__ (self):
+    return 'zonal'+self.typestat+'_'+self.typestat
+
   @classmethod
   def add_args (cls, parser, handled=[]):
     super(ZonalMean,cls).add_args(parser)
@@ -180,7 +184,9 @@ class ZonalMean(TimeVaryingDiagnostic):
     shape = (1,len(inputs))
 
     subtitles = [inp.title for inp in inputs]
-    fields = [inp.find_best(self.fieldname) for inp in inputs]
+
+    fields = [inp.datasets[0].vars[0] for inp in inputs]
+
     movie = ZonalMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=aspect_ratio)
 
     movie.save (outdir=self.outdir, prefix=prefix)

@@ -81,7 +81,7 @@ class XCol(TimeVaryingDiagnostic):
     plotname = 'X'+self.fieldname
     prefix = '_'.join(inp.name for inp in inputs) + '_' + plotname + self.suffix + self.end_suffix
 
-    fields = [inp.find_best(self.fieldname) for inp in inputs]
+    fields = [inp.datasets[0].vars[0] for inp in inputs]
     subtitles = [inp.title for inp in inputs]
     title = '%s (in %s)'%(plotname,self.units)
 

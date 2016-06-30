@@ -5,6 +5,10 @@ class HorzSlice(TimeVaryingDiagnostic):
   """
   Sample data at a particular vertical level.
   """
+
+  def __str__ (self):
+    return 'level'+self.level
+
   def _check_dataset (self, dataset):
     from ..common import have_gridded_3d_data
     if super(HorzSlice,self)._check_dataset(dataset) is False:
