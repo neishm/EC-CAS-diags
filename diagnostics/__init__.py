@@ -35,17 +35,22 @@ class Diagnostic(object):
         selected.append(DerivedProduct(datasets,source=i))
     return selected
 
+  # Apply a transformation to an individual input.
+  def _transform_input (self, input):
+    return input  # By default, nothing to transform.
+
   # Split the data into batches to be fed into the diagnostic.
   def _input_combos (self, inputs):
     yield inputs  # By default, use all the inputs at the same time.
 
-  # Transform the data into a form needed by the diagnostic.
+  # Further transformations across a series of input combos.
   def _transform_inputs (self, inputs):
     return inputs  # Nothing to transform at this level of abstraction.
 
   # Apply the diagnostic to all valid input combos.
   def do_all (self, inputs):
     inputs = self._select_inputs(inputs)
+    inputs = map(self._transform_input,inputs)
     for current_inputs in self._input_combos(inputs):
       current_inputs = self._transform_inputs(current_inputs)
       if len(current_inputs) == 0: continue
