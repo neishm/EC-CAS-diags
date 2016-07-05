@@ -25,6 +25,29 @@ class ECCAS_EnKF_Data(ECCAS_Data):
 
     return dataset
 
+  # Method to decode an opened dataset (standardize variable names, and add any
+  # extra info needed (pressure values, cell area, etc.)
+  @classmethod
+  def decode (cls,dataset):
+    from .eccas_dry import ECCAS_Data
+    from pygeode.dataset import Dataset
+    # Detect ensemble spread fields
+    dataset = list(dataset)
+    for var in dataset:
+      if var.name.endswith('_ensemblespread'):
+        var.name = var.name.rstrip('_ensemblespread')
+        var.atts['ensemble_op'] = 'spread'
+
+    # Do EC-CAS field decoding
+    dataset = ECCAS_Data.decode.__func__(cls,dataset)
+
+    # Add back ensemble spread suffix.
+    dataset = list(dataset)
+    for var in dataset:
+      if var.atts.get('ensemble_op') == 'spread':
+        var.name += '_ensemblespread'
+
+    return dataset
 
   # For our EnKF cycles, we need to hard-code the ig1/ig2 of the tracers.
   # This is so we match the ip1/ip2 of the EnKF initial file we're injecting
