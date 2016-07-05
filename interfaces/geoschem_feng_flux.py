@@ -120,16 +120,13 @@ class GEOSCHEM_Data(DataProduct):
       bb.atts['specie'] = 'CO2'
       data['CO2_fire_flux'] = bb
 
-    # Add extra fields that will be useful for the diagnostics.
-    cls._add_extra_fields(data)
-
     # General cleanup stuff
 
     # Make sure the variables have the appropriate names
     for name, var in data.iteritems():  var.name = name
 
-    # Convert to a list
-    data = list(data.values())
+    # Add extra fields that will be useful for the diagnostics.
+    data = cls._add_extra_fields(data)
 
     # Remove degenenerate vertical axis
     for i, var in enumerate(data):

@@ -125,15 +125,23 @@ class DataProduct (DataInterface):
   def _add_extra_fields (dataset):
     from ..common import grav, get_area
     from pygeode.var import Var
+    if isinstance(dataset,dict):
+      dataset = dataset.items()
+    varnames = [var.name for var in dataset]
     # Earth's gravitational constant
-    if 'gravity' not in dataset:
-      dataset['gravity'] = Var(axes=(), name='gravity', atts={'units':'m s-2'}, values=grav)
+    if 'gravity' not in varnames:
+      gravity = Var(axes=(), name='gravity', atts={'units':'m s-2'}, values=grav)
+      dataset.append(gravity)
     # Grid cell area
-    if 'cell_area' not in dataset:
-      for var in dataset.values():
-        if var.hasaxis('lat') and var.hasaxis('lon'):
-          dataset['cell_area'] = get_area(var.lat,var.lon)
-          break
+    if 'cell_area' not in varnames:
+      latlon = [var for var in dataset if var.hasaxis('lat') and var.hasaxis('lon')]
+      if len(latlon) > 0:
+        var = latlon[0]
+        cell_area = get_area(var.lat,var.lon)
+        cell_area.name = 'cell_area'
+        dataset.append('cell_area')
+
+    return dataset
 
   # Method to find all files in the given directory, which can be accessed
   # through this interface.
