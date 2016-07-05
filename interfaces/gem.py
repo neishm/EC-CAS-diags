@@ -47,66 +47,69 @@ class GEM_Data(DataProduct):
       if zaxis.A[0] == zaxis.atts['a_t'][0]:
         dataset = [var(i_zaxis=(1,len(zaxis))) if var.hasaxis(fstd.LogHybrid) else var for var in dataset]
 
-    # Convert to a dictionary (for referencing by variable name)
-    data = dict((var.name,var) for var in dataset)
+    for var in list(dataset):
+      varname = var.name
 
-    # Add a water tracer, if we have humidity
-    if 'specific_humidity' in data:
-      data['H2O'] = data['specific_humidity'].rename('H2O')
-      data['dry_air'] = 1-data['specific_humidity']
-      data['dry_air'].atts.update(units='kg(dry_air) kg(air)-1')
+      # Add a water tracer, if we have humidity
+      if varname == 'specific_humidity':
+        dataset.append(var.rename('H2O'))
+        dry_air = (1-var)
+        dry_air.name = 'dry_air'
+        dry_air.atts.update(units='kg(dry_air) kg(air)-1')
+        dataset.append(dry_air)
 
-    # Compute a pressure field.
-    # Also, compute a dp field (vertical change in pressure within a gridbox).
-    if 'surface_pressure' in data:
-      Ps = data['surface_pressure']
-      for var in data.itervalues():
-        if var.hasaxis('zaxis'):
-          zaxis = var.getaxis('zaxis')
-          # We might not be able to do this, e.g. for Hybrid axes or GZ levels
-          try:
-            data['air_pressure'] = compute_pressure(zaxis, Ps)
-            data['dp'] = compute_dp(zaxis, Ps)
-          except (TypeError, ValueError): pass
-          break
-    # Special case - already on pressure levels?
-    else:
-      for var in data.itervalues():
-        if var.hasaxis('pres'):
-          p = var.pres
-          paxis = var.whichaxis('pres')
-          p = p.extend(0,var.axes[:paxis])
-          p = p.extend(paxis+1, var.axes[paxis+1:])
-          p.atts['units'] = var.pres.units
-          data['air_pressure'] = p
-          break
+      # Compute a pressure field.
+      # Also, compute a dp field (vertical change in pressure within a gridbox).
+      if varname == 'surface_pressure':
+        Ps = var
+        for v in list(dataset):
+          if var.hasaxis('zaxis'):
+            zaxis = v.getaxis('zaxis')
+            # We might not be able to do this, e.g. for Hybrid axes or GZ levels
+            try:
+              air_pressure = compute_pressure(zaxis, Ps)
+              air_pressure.name = 'air_pressure'
+              dataset.append(air_pressure)
+              dp = compute_dp(zaxis, Ps)
+              dp.name = 'dp'
+              dataset.append(dp)
+            except (TypeError, ValueError): pass
+            break
 
     # Grid cell areas
-    if 'cell_area' not in data:
-      # Pick some arbitrary (but deterministic) variable to get the lat/lon
-      var = sorted(data.values())[0]
+    if not any(var.name == 'cell_area' for var in dataset):
+      # Pick some arbitrary variable to get the lat/lon
+      latlon = [var for var in dataset if var.hasaxis('lat') and var.hasaxis('lon')]
       from ..common import get_area
       # Make sure this is gridded GEM data (not profile / timeseries data).
-      if var.hasaxis('lat') and var.hasaxis('lon'):
-        data['cell_area'] = get_area(var.lat,var.lon,flat=True).extend(0,var.time, var.forecast)
+      if len(latlon) > 0:
+        var = latlon[0]
+        cell_area = get_area(var.lat,var.lon,flat=True).extend(0,var.time, var.forecast)
+        cell_area.name = 'cell_area'
+        dataset.append(cell_area)
+
+    # Special case - already on pressure levels?
+    # Can append a degenerate pressure field for the diagnostics.
+    for var in list(dataset):
+      if v.hasaxis('pres'):
+        p = var.pres
+        paxis = var.whichaxis('pres')
+        p = p.extend(0,var.axes[:paxis])
+        p = p.extend(paxis+1, var.axes[paxis+1:])
+        p.atts['units'] = var.pres.units
+        p.name = 'air_pressure'
+        dataset.append(p)
+        break
 
     # Add extra fields that will be useful for the diagnostics.
-    cls._add_extra_fields(data)
-
-    # General cleanup stuff
-
-    # Make sure the variables have the appropriate names
-    for name, var in data.iteritems():  var.name = name
-
-    # Convert to a list
-    data = list(data.values())
+    dataset = cls._add_extra_fields(dataset)
 
     # Remove the forecast axis before returning the data
     # (not needed for any current diagnostics).
     from ..common import squash_forecasts
-    data = map(squash_forecasts,data)
+    dataset = map(squash_forecasts,dataset)
 
-    return data
+    return dataset
 
 
   # Method to find all files in the given directory, which can be accessed

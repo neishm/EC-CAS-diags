@@ -31,27 +31,24 @@ class ECCAS_Data(GEM_Data):
     # Do generic GEM field decoding
     dataset = GEM_Data.decode.__func__(cls,dataset)
 
-    # Convert to a dictionary (for referencing by variable name)
-    data = dict((var.name,var) for var in dataset)
-
-    # Offset the ocean and land fields by 100ppm
-    if 'CO2_ocean' in data:
-      data['CO2_ocean'] -= conversion_factor('100 ppm', 'ug(C) kg(dry_air)-1', context='CO2')
-    if 'CO2_bio' in data:
-      data['CO2_bio'] -= conversion_factor('100 ppm', 'ug(C) kg(dry_air)-1', context='CO2')
-
-    # Add species name for all products (to assist in things like unit conversion)
-    for varname in data:
+    for var in dataset:
+      # Offset the ocean and land fields by 100ppm
+      varname = var.name
+      if varname == 'CO2_ocean':
+        var -= conversion_factor('100 ppm', 'ug(C) kg(dry_air)-1', context='CO2')
+      if varname == 'CO2_bio':
+        var -= conversion_factor('100 ppm', 'ug(C) kg(dry_air)-1', context='CO2')
+  
+      # Add species name for all products (to assist in things like unit conversion)
       if varname.startswith('CO2'):
-        data[varname].atts['specie'] = 'CO2'
+        var.atts['specie'] = 'CO2'
       elif varname.startswith('CH4'):
-        data[varname].atts['specie'] = 'CH4'
+        var.atts['specie'] = 'CH4'
       elif varname.startswith('CO'):
-        data[varname].atts['specie'] = 'CO'
+        var.atts['specie'] = 'CO'
 
-
-    # Convert froma dictionary back to a list
-    dataset = list(data.values())
+      # Fix any name clobbering from doing math on the fields.
+      var.name = varname
 
     return dataset
 

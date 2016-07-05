@@ -60,16 +60,13 @@ class CCCMA_Data(DataProduct):
       if not var.hasaxis('lat') or not var.hasaxis('lon'):
         del data[varname]
 
-    # Add extra fields that will be useful for the diagnostics.
-    cls._add_extra_fields(data)
-
     # General cleanup stuff
 
     # Make sure the variables have the appropriate names
     for name, var in data.iteritems():  var.name = name
 
-    # Convert to a list
-    data = list(data.values())
+    # Add extra fields that will be useful for the diagnostics.
+    data = cls._add_extra_fields(data)
 
     return data
 

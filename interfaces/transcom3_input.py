@@ -72,7 +72,7 @@ class Transcom3(object):
       var.atts['units'] = 'kg(C) m-2 s-1'
       var.atts['specie'] = 'CO2'
 
-    return Dataset(outdata)
+    return outdata
 
 # Add this interface to the table.
 from . import table

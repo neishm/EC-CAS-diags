@@ -6,25 +6,60 @@ class ECCAS_EnKF_Data(ECCAS_Data):
   @staticmethod
   def open_file (filename):
     from pygeode.formats import fstd
+    # Ugly hack to force the PyGeode FSTD interface to always associate the
+    # !! record with the fields (override the IG*/IP* pairing).
+    orig_attach_vertical_axes = fstd.attach_vertical_axes
+    def hacked_attach_vertical_axes (varlist, vertical_records):
+      vertical_records['ip1'] = varlist[0].atts['ig1']
+      vertical_records['ip2'] = varlist[0].atts['ig2']
+      vertical_records['ip3'] = varlist[0].atts['ig3']
+      return orig_attach_vertical_axes (varlist, vertical_records)
+
+    # Apply the hack, read the data, then remove the hack after we're done.
+    fstd.attach_vertical_axes = hacked_attach_vertical_axes
     dataset = fstd.open(filename, raw_list=True)
+    fstd.attache_vertical_axes = orig_attach_vertical_axes
 
     # We need to rename the CO2 field from the ensemble spread  file, so it
     # doesn't get mixed up with the ensemble mean data (also called CO2).
 
     # Determine if we have ensemble spread data from EC-CAS
-    chmstd = False
-    for var in dataset:
-      if var.atts.get('etiket') == 'STDDEV':
-        chmstd = True
-
     # Add a suffix to the variable names, if we have ensemble spread data.
-    if chmstd:
-      for var in dataset:
+    for var in dataset:
+      etiket = var.atts.get('etiket')
+      if etiket in ('STDDEV','E2090KFN192'):
         var.name += "_ensemblespread"
-
+      elif etiket in ('MEAN','E2AVGANNALL'):
+        pass # No name clobbering for ensemble mean
+      else:
+        from warnings import warn
+        warn ("Unable to determine if etiket '%s' is mean or spread.  Assuming mean."%etiket)
 
     return dataset
 
+  # Method to decode an opened dataset (standardize variable names, and add any
+  # extra info needed (pressure values, cell area, etc.)
+  @classmethod
+  def decode (cls,dataset):
+    from .eccas_dry import ECCAS_Data
+    from pygeode.dataset import Dataset
+    # Detect ensemble spread fields
+    dataset = list(dataset)
+    for var in dataset:
+      if var.name.endswith('_ensemblespread'):
+        var.name = var.name.rstrip('_ensemblespread')
+        var.atts['ensemble_op'] = 'spread'
+
+    # Do EC-CAS field decoding
+    dataset = ECCAS_Data.decode.__func__(cls,dataset)
+
+    # Add back ensemble spread suffix.
+    dataset = list(dataset)
+    for var in dataset:
+      if var.atts.get('ensemble_op') == 'spread':
+        var.name += '_ensemblespread'
+
+    return dataset
 
   # For our EnKF cycles, we need to hard-code the ig1/ig2 of the tracers.
   # This is so we match the ip1/ip2 of the EnKF initial file we're injecting

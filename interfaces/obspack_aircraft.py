@@ -33,7 +33,7 @@ class ObsPack_Aircraft_Data(SplitProduct):
     # Do generic decoding first
     dataset = SplitProduct.decode.__func__(cls,dataset)
     # Remove time variable, since we've wrapped it into a time axis.
-    dataset -= 'time'
+    dataset = [v for v in dataset if v.name != 'time']
     return dataset
 
   # Method to find all files in the given directory, which can be accessed
