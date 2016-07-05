@@ -91,7 +91,7 @@ class GEM_Data(DataProduct):
     # Special case - already on pressure levels?
     # Can append a degenerate pressure field for the diagnostics.
     for var in list(dataset):
-      if v.hasaxis('pres'):
+      if var.hasaxis('pres'):
         p = var.pres
         paxis = var.whichaxis('pres')
         p = p.extend(0,var.axes[:paxis])
