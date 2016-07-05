@@ -6,7 +6,19 @@ class ECCAS_EnKF_Data(ECCAS_Data):
   @staticmethod
   def open_file (filename):
     from pygeode.formats import fstd
+    # Ugly hack to force the PyGeode FSTD interface to always associate the
+    # !! record with the fields (override the IG*/IP* pairing).
+    orig_attach_vertical_axes = fstd.attach_vertical_axes
+    def hacked_attach_vertical_axes (varlist, vertical_records):
+      vertical_records['ip1'] = varlist[0].atts['ig1']
+      vertical_records['ip2'] = varlist[0].atts['ig2']
+      vertical_records['ip3'] = varlist[0].atts['ig3']
+      return orig_attach_vertical_axes (varlist, vertical_records)
+
+    # Apply the hack, read the data, then remove the hack after we're done.
+    fstd.attach_vertical_axes = hacked_attach_vertical_axes
     dataset = fstd.open(filename, raw_list=True)
+    fstd.attache_vertical_axes = orig_attach_vertical_axes
 
     # We need to rename the CO2 field from the ensemble spread  file, so it
     # doesn't get mixed up with the ensemble mean data (also called CO2).
