@@ -99,6 +99,7 @@ class ECCAS_EnKF_Data(ECCAS_Data):
 
     files.extend(glob(model_dir+"/[0-9]*_[0-9]*chmmean"))
     files.extend(glob(model_dir+"/[0-9]*_[0-9]*chmstd"))
+    files.extend(glob(model_dir+"/[0-9]*_[0-9]*analrms"))
     # Omit 0h forecasts
     files = [f for f in files if not f.endswith('_000') and not f.endswith('_000h')]
 
