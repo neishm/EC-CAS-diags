@@ -106,23 +106,16 @@ class DataProduct (DataInterface):
   # extra info needed (pressure values, cell area, etc.)
   @classmethod
   def decode (cls,dataset):
-    from pygeode.dataset import asdataset
-    dataset = asdataset(dataset)
 
-    # Convert to a dictionary (for referencing by variable name)
-    dataset = dict((var.name,var) for var in dataset)
-
+    dataset = list(dataset)
     # Do the fieldname / units conversions
-    for old_name, new_name, units in cls.field_list:
-      if old_name in dataset:
-        var = dataset.pop(old_name)
+    lookup = dict((old_name,(new_name,units)) for old_name, new_name, units in cls.field_list)
+    for var in dataset:
+      if var.name in lookup:
+        new_name, units = lookup[var.name]
+        var.name = new_name
         var.atts['units'] = units
-        dataset[new_name] = var
 
-    # Make sure the variables have the appropriate names
-    for name, var in dataset.iteritems():  var.name = name
-
-    dataset = asdataset(dataset.values())
     return dataset
 
   # Extra fields (not from the dataset, but useful for conversions).
@@ -225,6 +218,7 @@ class DataProduct (DataInterface):
     from .data_scanner import from_files
     from os.path import exists
     from os import remove
+    from pygeode.dataset import asdataset
     self.name = name
     self.title = title
     self.cache = cache
@@ -247,6 +241,7 @@ class DataProduct (DataInterface):
       data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axis)
     # Decode the data (get standard field names, etc.)
     data = map(self.decode, data)
+    data = map(asdataset, data)
     # Store the data in this object.
     DataInterface.__init__(self,data)
 

@@ -80,9 +80,11 @@ class GEOSCHEM_Data(DataProduct):
   @classmethod
   def decode (cls,dataset):
     import numpy as np
+    from pygeode.dataset import asdataset
 
     # Apply fieldname conversions
     data = DataProduct.decode.__func__(cls,dataset)
+    data = asdataset(data)
 
     # Detect climatologies (had to add a fake year in the file opener)
     if 'CO2_shipping_flux' in data:
