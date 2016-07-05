@@ -12,16 +12,16 @@ class ECCAS_EnKF_Data(ECCAS_Data):
     # doesn't get mixed up with the ensemble mean data (also called CO2).
 
     # Determine if we have ensemble spread data from EC-CAS
-    chmstd = False
-    for var in dataset:
-      if var.atts.get('etiket') == 'STDDEV':
-        chmstd = True
-
     # Add a suffix to the variable names, if we have ensemble spread data.
-    if chmstd:
-      for var in dataset:
+    for var in dataset:
+      etiket = var.atts.get('etiket')
+      if etiket in ('STDDEV','E2090KFN192'):
         var.name += "_ensemblespread"
-
+      elif etiket in ('MEAN','E2AVGANNALL'):
+        pass # No name clobbering for ensemble mean
+      else:
+        from warnings import warn
+        warn ("Unable to determine if etiket '%s' is mean or spread.  Assuming mean."%etiket)
 
     return dataset
 
