@@ -31,12 +31,29 @@ class Diff(Diagnostic):
           if type(ax1) != type(ax2): match = False
           # Don't need the time axis to match (will subset it later).
           if isinstance(ax1,Time): continue
-          # Otherwise, need the axes to match
-          if ax1 != ax2: match = False
+          # Otherwise, need the axes to match if we're not doing interpolation
+          if (not self.interp_diff) and (ax1 != ax2):
+            match = False
         # If all criteria on the axes are met, we can do a difference on these
         # fields.
         if match:
           yield inputs[i], inputs[j]
+
+  # Helper method to do the interpolation.
+  @staticmethod
+  def _interp (field, target):
+    from pygeode.interp import interpolate
+    # Keep track of axis order, since PyGeode 1.0.x changes the order
+    # after an interpolation.
+    order = [type(a) for a in field.axes]
+    for i,axistype in enumerate(order):
+      axis1 = field.axes[i]
+      axis2 = target.axes[i]
+      # Check if interpolation is needed
+      if axis1 == axis2: continue
+      field = interpolate(field, inaxis=axistype, outaxis=target.getaxis(axistype))
+      field = field.transpose(*order)
+    return field
 
   # Do the differencel
   def _transform_inputs (self, inputs):
@@ -45,8 +62,13 @@ class Diff(Diagnostic):
     inputs = super(Diff,self)._transform_inputs(inputs)
     # Plot a difference field as well.
     fields = [inp.find_best(self.fieldname) for inp in inputs]
-    # Use only the common timesteps between the fields
-    fields = same_times (*fields)
+    # Interpolate the second field to the first field?
+    if self.interp_diff:
+      fields[1] = nearesttime(fields[1], fields[0].time)
+      fields[1] = self._interp(fields[1],fields[0])
+    else:
+      # Use only the common timesteps between the fields
+      fields = same_times (*fields)
     diff = fields[0]-fields[1]
     diff.name=self.fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
@@ -56,4 +78,30 @@ class Diff(Diagnostic):
     diff.title = 'difference'
     inputs.append(diff)
     return inputs
+
+# Helper object - get nearest matches between two different time axes
+from pygeode.var import Var
+class NearestTime(Var):
+  def __init__ (self, var, taxis):
+    from pygeode.var import Var, copy_meta
+    self.var = var
+    # Normalize the time axis values so they're compatable with the source data
+    taxis = type(taxis)(startdate=var.time.startdate, units=var.time.units, **taxis.auxarrays)
+    # Output variable uses this new axis.
+    axes = list(var.axes)
+    axes[var.whichaxis('time')] = taxis
+    Var.__init__(self, axes, dtype=var.dtype)
+    copy_meta (var, self)
+  def getview (self, view, pbar):
+    import numpy as np
+    itime = self.whichaxis('time')
+    ind = view.integer_indices[itime]
+    target_times = self.time.values[ind]
+    source_taxis = self.var.axes[itime]
+    source_ind = [np.argmin(abs(source_taxis.values-t)) for t in target_times]
+    inview = view.replace_axis(itime, source_taxis, source_ind)
+    return inview.get(self.var)
+def nearesttime (var, taxis):
+  return NearestTime(var,taxis)
+del Var
 
