@@ -76,6 +76,7 @@ class Diff(Diagnostic):
     diff = DerivedProduct(diff, source=inputs[0])
     diff.name = 'diff'
     diff.title = 'difference'
+    diff.cmap = 'bwr'
     inputs.append(diff)
     return inputs
 

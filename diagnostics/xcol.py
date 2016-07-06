@@ -89,7 +89,9 @@ class XCol(TimeVaryingDiagnostic):
 
     shape = (len(fields),1)
 
-    movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio)
+    cmaps = [inp.cmap for inp in inputs]
+
+    movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio, cmaps=cmaps)
 
     movie.save (outdir=self.outdir, prefix=prefix)
 

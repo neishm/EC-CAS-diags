@@ -187,7 +187,9 @@ class ZonalMean(TimeVaryingDiagnostic):
 
     fields = [inp.datasets[0].vars[0] for inp in inputs]
 
-    movie = ZonalMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=aspect_ratio)
+    cmaps = [inp.cmap for inp in inputs]
+
+    movie = ZonalMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=aspect_ratio, cmaps=cmaps)
 
     movie.save (outdir=self.outdir, prefix=prefix)
 

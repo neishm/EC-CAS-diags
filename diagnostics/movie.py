@@ -161,6 +161,12 @@ class TiledMovie(Movie):
 class ContourMovie(TiledMovie):
   def __init__ (self, *args, **kwargs):
     from .contouring import get_contours
+    from matplotlib.pyplot import cm
+    # Get the colormaps for the contour plots
+    cmaps = kwargs.pop('cmaps')
+    cmaps = [cm.get_cmap(c) for c in cmaps]
+    self.cmaps = cmaps
+    # Send the rest of the arguments to the parent class init.
     TiledMovie.__init__(self, *args, **kwargs)
     # Determine the best contour intervals to use for the plots.
     self.clevs = {}
@@ -170,7 +176,7 @@ class ContourMovie(TiledMovie):
   def render_panel (self, axis, field, n):
     from pygeode.plot import plotvar
     clevs = self.clevs[field.name]
-    plotvar (field, ax=axis, clevs=clevs, title=self.subtitles[n])
+    plotvar (field, ax=axis, clevs=clevs, title=self.subtitles[n], cmap=self.cmaps[n])
 
 class ZonalMovie (ContourMovie):
   # Modify the panel rendering to show the y-axis on the first panel,
