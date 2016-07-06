@@ -73,6 +73,11 @@ class Diff(Diagnostic):
     diff.name=self.fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
     diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+str(self)+'_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
+    # Use symmetric range for the difference.
+    x = max(abs(diff.atts['low']),abs(diff.atts['high']))
+    diff.atts['low'] = -x
+    diff.atts['high'] = x
+    # Wrap into a data product.
     diff = DerivedProduct(diff, source=inputs[0])
     diff.name = 'diff'
     diff.title = 'difference'
