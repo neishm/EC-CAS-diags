@@ -69,10 +69,10 @@ class Diff(Diagnostic):
     else:
       # Use only the common timesteps between the fields
       fields = same_times (*fields)
-    diff = fields[0]-fields[1]
+    diff = fields[1]-fields[0]
     diff.name=self.fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+str(self)+'_diff_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
+    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+str(self)+'_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
     diff = DerivedProduct(diff, source=inputs[0])
     diff.name = 'diff'
     diff.title = 'difference'
