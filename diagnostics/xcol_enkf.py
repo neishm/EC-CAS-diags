@@ -55,8 +55,9 @@ class XColEnKF(XCol):
     shape = (len(fields),1)
 
     cmaps = [inp.cmap for inp in inputs]
+    cap_extremes = [getattr(inp,'cap_extremes',False) for inp in inputs]
 
-    movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio, cmaps=cmaps)
+    movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio, cmaps=cmaps, cap_extremes=cap_extremes)
 
     movie.save (outdir=self.outdir, prefix=prefix)
 

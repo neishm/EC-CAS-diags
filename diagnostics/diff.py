@@ -82,6 +82,8 @@ class Diff(Diagnostic):
     diff.name = 'diff'
     diff.title = 'difference'
     diff.cmap = 'bwr'
+    # Colour out-of-range values instead of making them white.
+    diff.cap_extremes = True
     inputs.append(diff)
     return inputs
 
