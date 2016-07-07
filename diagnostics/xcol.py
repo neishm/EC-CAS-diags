@@ -22,14 +22,11 @@ class XCol(TimeVaryingDiagnostic):
 
     return selected
 
-  def _transform_inputs (self, inputs):
+  def _transform_input (self, input):
     from ..interfaces import DerivedProduct
-    inputs = super(XCol,self)._transform_inputs(inputs)
-    computed = []
-    for inp in inputs:
-      xcol = self._avgcolumn(inp)
-      computed.append(DerivedProduct(xcol,source=inp))
-    return computed
+    input = super(XCol,self)._transform_input(input)
+    xcol = self._avgcolumn(input)
+    return DerivedProduct(xcol,source=input)
 
   # Compute total column of a tracer
   # (in kg/m2)
@@ -84,7 +81,7 @@ class XCol(TimeVaryingDiagnostic):
     plotname = 'X'+self.fieldname
     prefix = '_'.join(inp.name for inp in inputs) + '_' + plotname + self.suffix + self.end_suffix
 
-    fields = [inp.find_best(self.fieldname) for inp in inputs]
+    fields = [inp.datasets[0].vars[0] for inp in inputs]
     subtitles = [inp.title for inp in inputs]
     title = '%s (in %s)'%(plotname,self.units)
 
@@ -92,7 +89,10 @@ class XCol(TimeVaryingDiagnostic):
 
     shape = (len(fields),1)
 
-    movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio)
+    cmaps = [inp.cmap for inp in inputs]
+    cap_extremes = [getattr(inp,'cap_extremes',False) for inp in inputs]
+
+    movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio, cmaps=cmaps, cap_extremes=cap_extremes)
 
     movie.save (outdir=self.outdir, prefix=prefix)
 

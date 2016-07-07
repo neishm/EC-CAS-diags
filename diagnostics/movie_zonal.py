@@ -4,6 +4,10 @@ class ZonalMean(TimeVaryingDiagnostic):
   """
   Zonal mean (or standard deviation) of a field, animated in time.
   """
+
+  def __str__ (self):
+    return 'zonal'+self.typestat+'_'+self.typestat
+
   @classmethod
   def add_args (cls, parser, handled=[]):
     super(ZonalMean,cls).add_args(parser)
@@ -25,21 +29,18 @@ class ZonalMean(TimeVaryingDiagnostic):
     if self.zaxis == 'plev' and 'air_pressure' not in dataset:
       return False
     return have_gridded_3d_data(dataset)
-  def _transform_inputs (self, inputs):
+  def _transform_input (self, input):
     from ..interfaces import DerivedProduct
-    inputs = super(ZonalMean,self)._transform_inputs(inputs)
-    transformed = []
-    for inp in inputs:
-      if self.zaxis == 'gph':
-        var = self._zonalmean_gph (inp)
-      elif self.zaxis == 'plev':
-        var = self._zonalmean_pres (inp)
-      elif self.zaxis == 'model':
-        var = self._zonalmean_model_lev (inp)
-      else:
-        raise ValueError("Unhandled zaxis type '%s'"%self.zaxis)
-      transformed.append(DerivedProduct(var, source=inp))
-    return transformed
+    input = super(ZonalMean,self)._transform_input(input)
+    if self.zaxis == 'gph':
+      var = self._zonalmean_gph (input)
+    elif self.zaxis == 'plev':
+      var = self._zonalmean_pres (input)
+    elif self.zaxis == 'model':
+      var = self._zonalmean_model_lev (input)
+    else:
+      raise ValueError("Unhandled zaxis type '%s'"%self.zaxis)
+    return DerivedProduct(var, source=input)
 
   # Convert zonal mean data (on height)
   def _zonalmean_gph (self, model, typestat=None):
@@ -183,8 +184,13 @@ class ZonalMean(TimeVaryingDiagnostic):
     shape = (1,len(inputs))
 
     subtitles = [inp.title for inp in inputs]
-    fields = [inp.find_best(self.fieldname) for inp in inputs]
-    movie = ZonalMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=aspect_ratio)
+
+    fields = [inp.datasets[0].vars[0] for inp in inputs]
+
+    cmaps = [inp.cmap for inp in inputs]
+    cap_extremes = [getattr(inp,'cap_extremes',False) for inp in inputs]
+
+    movie = ZonalMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=aspect_ratio, cmaps=cmaps, cap_extremes=cap_extremes)
 
     movie.save (outdir=self.outdir, prefix=prefix)
 

@@ -25,12 +25,11 @@ class XColEnKF(XCol):
   # Inject ensemble spread calculation
   #TODO: make it easier to specify multiple fields, instead of having the
   # diagnostics always assume there's 1 field of interest?
-  def _transform_inputs (self, inputs):
-    computed = super(XCol,self)._transform_inputs(inputs)
-    for i,inp in enumerate(inputs):
-      spread = self._avgcolumn(inp,fieldname=self.fieldname+'_ensemblespread')
-      # Add this spread to the dataset in-place.
-      computed[i].datasets[0] += spread
+  def _transform_input (self, input):
+    computed = super(XCol,self)._transform_input(input)
+    spread = self._avgcolumn(input,fieldname=self.fieldname+'_ensemblespread')
+    # Add this spread to the dataset in-place.
+    computed.datasets[0] += spread
     return computed
 
   # Only look at one dataset at a time.
@@ -55,7 +54,10 @@ class XColEnKF(XCol):
 
     shape = (len(fields),1)
 
-    movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio)
+    cmaps = [inp.cmap for inp in inputs]
+    cap_extremes = [getattr(inp,'cap_extremes',False) for inp in inputs]
+
+    movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio, cmaps=cmaps, cap_extremes=cap_extremes)
 
     movie.save (outdir=self.outdir, prefix=prefix)
 

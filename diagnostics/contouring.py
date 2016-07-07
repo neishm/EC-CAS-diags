@@ -3,6 +3,9 @@ def get_contours(low,high):
   from math import log10, ceil, floor
   import numpy as np
 
+  symmetric = (low == -high)
+#  print '?? symmetric:', symmetric
+
   true_low = low
   true_high = high
 
@@ -27,14 +30,23 @@ def get_contours(low,high):
   # Want a range that's divisible into a reasonable number of contours
   min_contours = 16
   max_contours = 24
-  valid_contours = range(min_contours,max_contours+1)
+  if symmetric:
+    valid_contours = range(min_contours,max_contours+2,2)
+  else:
+    valid_contours = range(min_contours,max_contours+1)
+
   while not any(count%n == 0 for n in valid_contours):
     # Which end should we extend?
-    if abs(low-true_low) < abs(high-true_high):
+    if symmetric:
       low -= 10**digits / 10.
+      high += 10**digits / 10.
+      count += 2
+    elif abs(low-true_low) < abs(high-true_high):
+      low -= 10**digits / 10.
+      count += 1
     else:
       high += 10**digits / 10.
-    count += 1
+      count += 1
 #  print '?? count:', count
 #  print '?? low/high:', low, high
 
