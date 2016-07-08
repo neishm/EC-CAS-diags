@@ -139,7 +139,7 @@ class DataProduct (DataInterface):
         var = latlon[0]
         cell_area = get_area(var.lat,var.lon)
         cell_area.name = 'cell_area'
-        dataset.append('cell_area')
+        dataset.append(cell_area)
 
     return dataset
 
