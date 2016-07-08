@@ -126,7 +126,7 @@ class DataProduct (DataInterface):
     from ..common import grav, get_area
     from pygeode.var import Var
     if isinstance(dataset,dict):
-      dataset = dataset.items()
+      dataset = dataset.values()
     varnames = [var.name for var in dataset]
     # Earth's gravitational constant
     if 'gravity' not in varnames:
