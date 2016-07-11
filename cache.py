@@ -89,8 +89,6 @@ class Cache (object):
 
     # Special case - no time axis
     if not var.hasaxis('time'):
-      from warnings import warn
-      warn ("Untested case - no time axis in data")
       filename = self.full_path(prefix + suffix + ".nc")
       if not exists(filename):
         filename = self.full_path(prefix + suffix + ".nc", writeable=True)
