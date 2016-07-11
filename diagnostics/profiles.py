@@ -153,7 +153,11 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     import matplotlib.pyplot as pl
     import numpy as np
     from os.path import exists
+    from os import mkdir
     from ..common import convert, select_surface, to_datetimes
+
+    outdir = self.outdir + '/aircraft-profiles'
+    if not exists(outdir): mkdir(outdir)
 
     models = inputs[:-1]
     obs = inputs[-1]
@@ -190,7 +194,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
 
       fig = pl.figure(figsize=(6,6))
 
-      outfile = "%s/%s_profiles_%s%s_%s_%s.%s"%(self.outdir,'_'.join(d.name for d in models+[obs]),self.fieldname,self.suffix+self.end_suffix,season,year_string,self.image_format)
+      outfile = "%s/%s_profiles_%s%s_%s_%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),self.fieldname,self.suffix+self.end_suffix,season,year_string,self.image_format)
       if exists(outfile): continue
 
       # Placeholder profile for missing data
