@@ -6,7 +6,7 @@ class ZonalMean(TimeVaryingDiagnostic):
   """
 
   def __str__ (self):
-    return 'zonal'+self.typestat+'_'+self.typestat
+    return 'zonal'+self.typestat+'_'+self.zaxis
 
   @classmethod
   def add_args (cls, parser, handled=[]):
