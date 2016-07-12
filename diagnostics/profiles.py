@@ -5,6 +5,13 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Mean vertical profiles, sampled at obs locations.
   """
+  @classmethod
+  def add_args (cls, parser, handled=[]):
+    super(AircraftProfiles,cls).add_args(parser)
+    if len(handled) > 0: return  # Only run once
+    group = parser.add_argument_group('options for aircraft diagnostics')
+    group.add_argument('--at-aircraft-times', action='store_true', help="Sample the model data at the aircraft times before computing the profiles.")
+    handled.append(True)
   def __init__ (self, **kwargs):
     super(AircraftProfiles,self).__init__(**kwargs)
     # The fixed height levels to interpolate the model data to
