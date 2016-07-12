@@ -113,45 +113,40 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       if sum(field.time.year==y) > 10: years.add(y)
     years = sorted(years)
 
-    # Concatenate all the available station locations into a single coordinate.
-    station_names = []
-    auxarrays = {}
+    # Loop over each obs dataset, and extract data at that location.
     for obsfield in self._find_obs(obs,fieldname):
-      station_names.extend(obsfield.station.values)
-      for key, value in obsfield.station.auxarrays.iteritems():
-        auxarrays.setdefault(key,[]).extend(value)
+      # Assuming we're looking at only one station at a time
+      assert len(obsfield.station) == 1
+      station = obsfield.station.values[0]
+      country = obsfield.station.country[0]
 
-    # Use only continental US/Canada sites
-    keep = [False]*len(station_names)
-    for i in range(len(station_names)):
-      if auxarrays['country'][i] in ('United States','Canada'):
-        keep[i] = True
-      if 'Hawaii' in station_names[i]:
-        keep[i] = False
-    station_names = [s for k,s in zip(keep,station_names) if k]
-    auxarrays = dict((key,[v for k,v in zip(keep,values) if k]) for key,values in auxarrays.iteritems())
+      # Use only continental US/Canada sites
+      if country not in ('United States','Canada'):
+        print "Skipping non-continential site:", station
+        continue
+      if 'Hawaii' in station:
+        print "Skipping Hawaii:", station
+        continue
 
-    stations = Station(values=station_names, **auxarrays)
+      # Sample the model at the station locations
+      outfield = StationSample(field, obsfield.station)
+      gph = StationSample(gph_field, obsfield.station)
 
-    # Sample the model at the station locations
-    outfield = StationSample(field, stations)
-    gph = StationSample(gph_field, stations)
+      outfield = outfield(l_year=years)
+      gph = gph(l_year=years)
 
-    outfield = outfield(l_year=years)
-    gph = gph(l_year=years)
-
-    # Cache the data for faster subsequent access.
+      # Cache the data for faster subsequent access.
       # Disable time splitting for the cache file, since open_multi doesn't work
-    # very well with the encoded station data.
-    print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
-    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
-    gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,'geopotential_height',self.suffix), split_time=False, suffix=self.end_suffix)
+      # very well with the encoded station data.
+      print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
+      outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
+      gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,'geopotential_height',self.suffix), split_time=False, suffix=self.end_suffix)
 
-    # Interpolate the model to the fixed vertical levels.
-    outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
-    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_zinterp'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
+      # Interpolate the model to the fixed vertical levels.
+      outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
+      outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_zinterp'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
 
-    return [outfield]
+      yield outfield
 
 
   def do (self, inputs):
