@@ -574,6 +574,24 @@ def squash_forecasts(var):
   return SquashForecasts(var)
 
 
+# Make a field positive (remove negative values)
+from pygeode.var import Var
+class Positive(Var):
+  def __init__ (self, var):
+    from pygeode.var import Var, copy_meta
+    Var.__init__(self, var.axes, dtype=var.dtype)
+    copy_meta(var, self)
+    self._var = var
+  def getview (self, view, pbar):
+    import numpy as np
+    out = np.array(view.get(self._var))
+    out[out<0] = 0
+    pbar.update(100)
+    return out
+del Var
+
+def positive(var): return Positive(var)
+
 
 # Get a keyword / value that can be used to select a surface level for the
 # givem vertical axis.
