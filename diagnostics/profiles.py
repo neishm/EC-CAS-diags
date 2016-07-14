@@ -158,7 +158,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     from os import mkdir
     from ..common import convert, select_surface, to_datetimes
 
-    outdir = self.outdir + '/aircraft-profiles'
+    outdir = self.outdir + '/aircraft-profiles' + self.suffix + self.end_suffix
     if not exists(outdir): mkdir(outdir)
 
     models = inputs[:-1]
