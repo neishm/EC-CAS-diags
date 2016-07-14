@@ -12,11 +12,14 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     group = parser.add_argument_group('options for aircraft diagnostics')
     group.add_argument('--at-aircraft-times', action='store_true', help="Sample the model data at the aircraft times before computing the profiles.")
     handled.append(True)
-  def __init__ (self, **kwargs):
+  def __init__ (self, at_aircraft_times, **kwargs):
     super(AircraftProfiles,self).__init__(**kwargs)
     # The fixed height levels to interpolate the model data to
     self.z_levels =   [1000.,2000.,3000.,4000.,5000.,6000.]
     self.z_bounds = [500.,1500.,2500.,3500.,4500.,5500.,6500.]
+    self.obstimes = at_aircraft_times
+    if self.obstimes:
+      self.suffix += '_obstimes'
 
   def _find_applicable_obs (self, inputs):
     from ..common import have_station_data
@@ -132,6 +135,17 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       outfield = StationSample(field, obsfield.station)
       gph = StationSample(gph_field, obsfield.station)
 
+      # Interpolate to obs times
+      assert obsfield.time.units == outfield.time.units
+      assert obsfield.time.startdate == outfield.time.startdate
+      if self.obstimes:
+        from pygeode.interp import interpolate
+        outfield = interpolate(outfield,'time',obsfield.time,interp_type='linear')
+        gph = interpolate(gph,'time',obsfield.time,interp_type='linear')
+        outfield = outfield.transpose('time','station','zaxis')
+        gph = gph.transpose('time','station','zaxis')
+
+      # Subset the data for the years of interest.
       outfield = outfield(l_year=years)
       gph = gph(l_year=years)
 
@@ -139,6 +153,9 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       # Disable time splitting for the cache file, since open_multi doesn't work
       # very well with the encoded station data.
       print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
+      if len(outfield.time) == 0:
+        print "Skipping - no obs times during this period."
+        continue
       outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
       gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,'geopotential_height',self.suffix), split_time=False, suffix=self.end_suffix)
 
