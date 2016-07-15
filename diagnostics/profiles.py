@@ -100,6 +100,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     from pygeode.interp import interpolate
     from ..station_data import Station
     from .station import StationSample
+    from ..common import fix_timeaxis
 
     fieldname = self.fieldname
 
@@ -136,9 +137,12 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       gph = StationSample(gph_field, obsfield.station)
 
       # Interpolate to obs times
-      assert obsfield.time.units == outfield.time.units
-      assert obsfield.time.startdate == outfield.time.startdate
       if self.obstimes:
+        obsfield = fix_timeaxis(obsfield)
+        outfield = fix_timeaxis(outfield)
+        gph = fix_timeaxis(gph)
+        assert obsfield.time.units == outfield.time.units
+        assert obsfield.time.startdate == outfield.time.startdate
         from pygeode.interp import interpolate
         outfield = interpolate(outfield,'time',obsfield.time,interp_type='linear')
         gph = interpolate(gph,'time',obsfield.time,interp_type='linear')
