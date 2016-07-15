@@ -18,8 +18,6 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     self.z_levels =   [1000.,2000.,3000.,4000.,5000.,6000.]
     self.z_bounds = [500.,1500.,2500.,3500.,4500.,5500.,6500.]
     self.obstimes = at_aircraft_times
-    if self.obstimes:
-      self.suffix += '_obstimes'
 
   def _find_applicable_obs (self, inputs):
     from ..common import have_station_data
@@ -160,6 +158,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
         from pygeode.interp import interpolate
         outfield = interpolate(outfield,'time',obsfield.time,interp_type='linear')
         outfield = outfield.transpose('time','station','zaxis')
+        outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_obstimes'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
 
 
 
@@ -213,7 +212,9 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
 
       fig = pl.figure(figsize=(6,6))
 
-      outfile = "%s/%s_profiles_%s%s_%s_%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),self.fieldname,self.suffix+self.end_suffix,season,year_string,self.image_format)
+      obstimes = '_obstimes' if self.obstimes else ''
+
+      outfile = "%s/%s_profiles_%s%s_%s_%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),self.fieldname,self.suffix+self.end_suffix+obstimes,season,year_string,self.image_format)
       if exists(outfile): continue
 
       # Placeholder profile for missing data
