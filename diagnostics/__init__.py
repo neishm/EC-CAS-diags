@@ -142,47 +142,46 @@ class TimeVaryingDiagnostic(Diagnostic):
 
 
   # Limit the time range for the data.
-  def _transform_inputs (self, models):
+  def _transform_input (self, model):
     from ..interfaces import DerivedProduct
     from ..common import fix_timeaxis
     from pygeode.timeutils import reltime
     from math import floor
-    models = super(TimeVaryingDiagnostic,self)._transform_inputs(models)
+    model = super(TimeVaryingDiagnostic,self)._transform_input(model)
     # Don't need to do anything if no time modifiers are used.
     if self.date_range == (None,None) and self.hour0_only is False:
-      return models
+      return model
     date_range = self.date_range
-    out_models = []
-    for m in models:
-      out_datasets = []
-      for d in m.datasets:
-        start = date_range[0]
-        if start is None:
-          start = d.time.values[0]
-        else:
-          start = d.time.str_as_val(key=None,s=start.strftime("%d %b %Y"))
-        end = date_range[1]
-        if end is None:
-          end = d.time.values[-1]
-        else:
-          end = d.time.str_as_val(key=None,s=end.strftime("%d %b %Y"))
-        d = d(time=(start,end))
-        if self.hour0_only is True:
-          hours = set(reltime(d.time,units='hours')%24)
-          # Ignore empty datasets (e.g. datasets that don't fall in the
-          # above start & end dates).
-          # Also, ignore datasets where the hours don't fall on regular intervals.
-          if len(hours) > 0 and len(hours) < len(d.time):
-            hour_float = min(hours)
-            hour = int(floor(hour_float))
-            minute = int((hour_float-hour)*60)
-            d = d(hour=hour,minute=minute)
-        # Use the same start date & units for all time axes.
-        d = fix_timeaxis(d)
-        out_datasets.append(d)
-      m = DerivedProduct(out_datasets, source=m)
-      out_models.append(m)
-    return out_models
+
+    out_datasets = []
+    for d in model.datasets:
+      start = date_range[0]
+      if start is None:
+        start = d.time.values[0]
+      else:
+        start = d.time.str_as_val(key=None,s=start.strftime("%d %b %Y"))
+      end = date_range[1]
+      if end is None:
+        end = d.time.values[-1]
+      else:
+        end = d.time.str_as_val(key=None,s=end.strftime("%d %b %Y"))
+      d = d(time=(start,end))
+      if self.hour0_only is True:
+        hours = set(reltime(d.time,units='hours')%24)
+        # Ignore empty datasets (e.g. datasets that don't fall in the
+        # above start & end dates).
+        # Also, ignore datasets where the hours don't fall on regular intervals.
+        if len(hours) > 0 and len(hours) < len(d.time):
+          hour_float = min(hours)
+          hour = int(floor(hour_float))
+          minute = int((hour_float-hour)*60)
+          d = d(hour=hour,minute=minute)
+      # Use the same start date & units for all time axes.
+      d = fix_timeaxis(d)
+      out_datasets.append(d)
+    model = DerivedProduct(out_datasets, source=model)
+
+    return model
 
 # Find all available diagnostics
 table = {}

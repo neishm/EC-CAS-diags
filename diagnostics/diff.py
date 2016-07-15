@@ -84,7 +84,7 @@ class Diff(Diagnostic):
     diff.cmap = 'bwr'
     # Colour out-of-range values instead of making them white.
     diff.cap_extremes = True
-    inputs.append(diff)
+    inputs = list(inputs) + [diff]
     return inputs
 
 # Helper object - get nearest matches between two different time axes
