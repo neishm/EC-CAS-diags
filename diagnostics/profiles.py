@@ -93,7 +93,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
 
   # Interpolate model data directly to aircraft site locations
   def _sample_model_at_obs (self, model, obs):
-    from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert
+    from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert, fix_timeaxis
     from pygeode.axis import Height
     from pygeode.interp import interpolate
     from ..station_data import Station
@@ -114,6 +114,40 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       if sum(field.time.year==y) > 10: years.add(y)
     years = sorted(years)
 
+    # Subset the data for the years of interest.
+    field = field(l_year=years)
+    gph_field = gph_field(l_year=years)
+    if len(field.time) == 0:
+      print "No significant %s data during this period."%(model.name)
+      return
+
+    # Concatenate all the available station locations into a single coordinate.
+    station_names = []
+    auxarrays = {}
+    for obsfield in self._find_obs(obs,fieldname):
+      station_names.extend(obsfield.station.values)
+      for key, value in obsfield.station.auxarrays.iteritems():
+        auxarrays.setdefault(key,[]).extend(value)
+
+    stations = Station(values=station_names, **auxarrays)
+
+    # Sample the model at the station locations
+    outfield = StationSample(field, stations)
+    gph = StationSample(gph_field, stations)
+
+    # Cache the data for faster subsequent access.
+    # Disable time splitting for the cache file, since open_multi doesn't wor
+    # very well with the encoded station data.
+    print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
+    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
+    gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,'geopotential_height',self.suffix), split_time=False, suffix=self.end_suffix)
+
+    # Interpolate the model to the fixed vertical levels.
+    outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
+    outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_zinterp'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
+
+
+    #######################
     # Loop over each obs dataset, and extract data at that location.
     for obsfield in self._find_obs(obs,fieldname):
       # Assuming we're looking at only one station at a time
@@ -130,39 +164,28 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
         continue
 
       # Sample the model at the station locations
-      outfield = StationSample(field, obsfield.station)
-      gph = StationSample(gph_field, obsfield.station)
-
-      # Subset the data for the years of interest.
-      outfield = outfield(l_year=years)
-      gph = gph(l_year=years)
-
-      # Cache the data for faster subsequent access.
-      # Disable time splitting for the cache file, since open_multi doesn't work
-      # very well with the encoded station data.
-      print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
-      if len(outfield.time) == 0:
-        print "Skipping - no obs times during this period."
-        continue
-      outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
-      gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,'geopotential_height',self.suffix), split_time=False, suffix=self.end_suffix)
-
-      # Interpolate the model to the fixed vertical levels.
-      outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
-      outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_zinterp'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
+      sample = outfield(station=station)
 
       # Interpolate to obs times
       if self.obstimes:
-        assert obsfield.time.units == outfield.time.units
-        assert obsfield.time.startdate == outfield.time.startdate
+        sample = fix_timeaxis(sample)
+        obsfield = fix_timeaxis(obsfield)
+        assert obsfield.time.units == sample.time.units
+        assert obsfield.time.startdate == sample.time.startdate
         from pygeode.interp import interpolate
-        outfield = interpolate(outfield,'time',obsfield.time,interp_type='linear')
-        outfield = outfield.transpose('time','station','zaxis')
-        outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_obstimes'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
+        # Only use obs times that fall within the range of model data.
+        # Otherwise, we either have to extrapolate or filter missing values.
+        t1 = min(sample.time.values)
+        t2 = max(sample.time.values)
+        times = obsfield(time=(t1,t2)).time
+        if len(times) == 0:
+          print "Skipping %s - no obs during this period."%(station)
+          continue
+        sample = interpolate(sample,'time',times,interp_type='linear')
+        sample = sample.transpose('time','station','zaxis')
+        sample = model.cache.write(sample, prefix=model.name+'_at_%s_%s_%s%s_obstimes'%(obs.name,station,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
 
-
-
-      yield outfield
+      yield sample
 
 
   def do (self, inputs):
