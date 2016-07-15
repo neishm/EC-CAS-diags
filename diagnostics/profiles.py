@@ -144,8 +144,13 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
         assert obsfield.time.units == outfield.time.units
         assert obsfield.time.startdate == outfield.time.startdate
         from pygeode.interp import interpolate
-        outfield = interpolate(outfield,'time',obsfield.time,interp_type='linear')
-        gph = interpolate(gph,'time',obsfield.time,interp_type='linear')
+        # Only use obs times that fall within the range of model data.
+        # Otherwise, we either have to extrapolate or filter missing values.
+        t1 = min(outfield.time.values)
+        t2 = max(outfield.time.values)
+        times = obsfield(time=(t1,t2)).time
+        outfield = interpolate(outfield,'time',times,interp_type='linear')
+        gph = interpolate(gph,'time',times,interp_type='linear')
         outfield = outfield.transpose('time','station','zaxis')
         gph = gph.transpose('time','station','zaxis')
 
