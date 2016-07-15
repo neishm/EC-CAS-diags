@@ -63,7 +63,7 @@ class GEM_Data(DataProduct):
       if varname == 'surface_pressure':
         Ps = var
         for v in list(dataset):
-          if var.hasaxis('zaxis'):
+          if v.hasaxis('zaxis'):
             zaxis = v.getaxis('zaxis')
             # We might not be able to do this, e.g. for Hybrid axes or GZ levels
             try:
