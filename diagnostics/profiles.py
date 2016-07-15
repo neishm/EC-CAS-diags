@@ -100,7 +100,6 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     from pygeode.interp import interpolate
     from ..station_data import Station
     from .station import StationSample
-    from ..common import fix_timeaxis
 
     fieldname = self.fieldname
 
@@ -136,24 +135,6 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       outfield = StationSample(field, obsfield.station)
       gph = StationSample(gph_field, obsfield.station)
 
-      # Interpolate to obs times
-      if self.obstimes:
-        obsfield = fix_timeaxis(obsfield)
-        outfield = fix_timeaxis(outfield)
-        gph = fix_timeaxis(gph)
-        assert obsfield.time.units == outfield.time.units
-        assert obsfield.time.startdate == outfield.time.startdate
-        from pygeode.interp import interpolate
-        # Only use obs times that fall within the range of model data.
-        # Otherwise, we either have to extrapolate or filter missing values.
-        t1 = min(outfield.time.values)
-        t2 = max(outfield.time.values)
-        times = obsfield(time=(t1,t2)).time
-        outfield = interpolate(outfield,'time',times,interp_type='linear')
-        gph = interpolate(gph,'time',times,interp_type='linear')
-        outfield = outfield.transpose('time','station','zaxis')
-        gph = gph.transpose('time','station','zaxis')
-
       # Subset the data for the years of interest.
       outfield = outfield(l_year=years)
       gph = gph(l_year=years)
@@ -171,6 +152,16 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       # Interpolate the model to the fixed vertical levels.
       outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
       outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_zinterp'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
+
+      # Interpolate to obs times
+      if self.obstimes:
+        assert obsfield.time.units == outfield.time.units
+        assert obsfield.time.startdate == outfield.time.startdate
+        from pygeode.interp import interpolate
+        outfield = interpolate(outfield,'time',obsfield.time,interp_type='linear')
+        outfield = outfield.transpose('time','station','zaxis')
+
+
 
       yield outfield
 
