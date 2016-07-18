@@ -9,8 +9,8 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
   def add_args (cls, parser, handled=[]):
     super(AircraftProfiles,cls).add_args(parser)
     if len(handled) > 0: return  # Only run once
-    group = parser.add_argument_group('options for aircraft diagnostics')
-    group.add_argument('--at-aircraft-times', action='store_true', help="Sample the model data at the aircraft times before computing the profiles.")
+    group = parser.add_argument_group('options for time sampling')
+    group.add_argument('--at-obs-times', action='store_true', help="Sample the model data at the observation times before computing the diagnostic.  Currently only implemented for aircraft profile comparisons.")
     handled.append(True)
   def __init__ (self, at_aircraft_times, **kwargs):
     super(AircraftProfiles,self).__init__(**kwargs)
