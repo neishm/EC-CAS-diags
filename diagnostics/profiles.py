@@ -12,12 +12,12 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     group = parser.add_argument_group('options for time sampling')
     group.add_argument('--at-obs-times', action='store_true', help="Sample the model data at the observation times before computing the diagnostic.  Currently only implemented for aircraft profile comparisons.")
     handled.append(True)
-  def __init__ (self, at_aircraft_times, **kwargs):
+  def __init__ (self, at_obs_times, **kwargs):
     super(AircraftProfiles,self).__init__(**kwargs)
     # The fixed height levels to interpolate the model data to
     self.z_levels =   [1000.,2000.,3000.,4000.,5000.,6000.]
     self.z_bounds = [500.,1500.,2500.,3500.,4500.,5500.,6500.]
-    self.obstimes = at_aircraft_times
+    self.obstimes = at_obs_times
 
   def _find_applicable_obs (self, inputs):
     from ..common import have_station_data
