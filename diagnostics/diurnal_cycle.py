@@ -64,7 +64,7 @@ class DiurnalCycle(Timeseries):
     from os.path import exists
     from os import mkdir
 
-    outdir = self.outdir + '/diurnal-cycle'
+    outdir = self.outdir + '/diurnal-cycle' + self.suffix + self.end_suffix
     if not exists(outdir): mkdir(outdir)
 
     # Determine years for comparisons

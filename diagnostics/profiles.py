@@ -5,11 +5,19 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Mean vertical profiles, sampled at obs locations.
   """
-  def __init__ (self, **kwargs):
+  @classmethod
+  def add_args (cls, parser, handled=[]):
+    super(AircraftProfiles,cls).add_args(parser)
+    if len(handled) > 0: return  # Only run once
+    group = parser.add_argument_group('options for time sampling')
+    group.add_argument('--at-obs-times', action='store_true', help="Sample the model data at the observation times before computing the diagnostic.  Currently only implemented for aircraft profile comparisons.")
+    handled.append(True)
+  def __init__ (self, at_aircraft_times, **kwargs):
     super(AircraftProfiles,self).__init__(**kwargs)
     # The fixed height levels to interpolate the model data to
     self.z_levels =   [1000.,2000.,3000.,4000.,5000.,6000.]
     self.z_bounds = [500.,1500.,2500.,3500.,4500.,5500.,6500.]
+    self.obstimes = at_aircraft_times
 
   def _find_applicable_obs (self, inputs):
     from ..common import have_station_data
@@ -85,7 +93,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
 
   # Interpolate model data directly to aircraft site locations
   def _sample_model_at_obs (self, model, obs):
-    from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert
+    from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert, fix_timeaxis
     from pygeode.axis import Height
     from pygeode.interp import interpolate
     from ..station_data import Station
@@ -106,6 +114,13 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       if sum(field.time.year==y) > 10: years.add(y)
     years = sorted(years)
 
+    # Subset the data for the years of interest.
+    field = field(l_year=years)
+    gph_field = gph_field(l_year=years)
+    if len(field.time) == 0:
+      print "No significant %s data during this period."%(model.name)
+      return
+
     # Concatenate all the available station locations into a single coordinate.
     station_names = []
     auxarrays = {}
@@ -114,27 +129,14 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       for key, value in obsfield.station.auxarrays.iteritems():
         auxarrays.setdefault(key,[]).extend(value)
 
-    # Use only continental US/Canada sites
-    keep = [False]*len(station_names)
-    for i in range(len(station_names)):
-      if auxarrays['country'][i] in ('United States','Canada'):
-        keep[i] = True
-      if 'Hawaii' in station_names[i]:
-        keep[i] = False
-    station_names = [s for k,s in zip(keep,station_names) if k]
-    auxarrays = dict((key,[v for k,v in zip(keep,values) if k]) for key,values in auxarrays.iteritems())
-
     stations = Station(values=station_names, **auxarrays)
 
     # Sample the model at the station locations
     outfield = StationSample(field, stations)
     gph = StationSample(gph_field, stations)
 
-    outfield = outfield(l_year=years)
-    gph = gph(l_year=years)
-
     # Cache the data for faster subsequent access.
-      # Disable time splitting for the cache file, since open_multi doesn't work
+    # Disable time splitting for the cache file, since open_multi doesn't wor
     # very well with the encoded station data.
     print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
     outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
@@ -144,7 +146,46 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     outfield = interpolate(outfield, inaxis='zaxis', outaxis=z, inx=gph)
     outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_zinterp'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
 
-    return [outfield]
+
+    #######################
+    # Loop over each obs dataset, and extract data at that location.
+    for obsfield in self._find_obs(obs,fieldname):
+      # Assuming we're looking at only one station at a time
+      assert len(obsfield.station) == 1
+      station = obsfield.station.values[0]
+      country = obsfield.station.country[0]
+
+      # Use only continental US/Canada sites
+      if country not in ('United States','Canada'):
+        print "Skipping non-continential site:", station
+        continue
+      if 'Hawaii' in station:
+        print "Skipping Hawaii:", station
+        continue
+
+      # Sample the model at the station locations
+      sample = outfield(station=station)
+
+      # Interpolate to obs times
+      if self.obstimes:
+        sample = fix_timeaxis(sample)
+        obsfield = fix_timeaxis(obsfield)
+        assert obsfield.time.units == sample.time.units
+        assert obsfield.time.startdate == sample.time.startdate
+        from pygeode.interp import interpolate
+        # Only use obs times that fall within the range of model data.
+        # Otherwise, we either have to extrapolate or filter missing values.
+        t1 = min(sample.time.values)
+        t2 = max(sample.time.values)
+        times = obsfield(time=(t1,t2)).time
+        if len(times) == 0:
+          print "Skipping %s - no obs during this period."%(station)
+          continue
+        sample = interpolate(sample,'time',times,interp_type='linear')
+        sample = sample.transpose('time','station','zaxis')
+        sample = model.cache.write(sample, prefix=model.name+'_at_%s_%s_%s%s_obstimes'%(obs.name,station,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
+
+      yield sample
 
 
   def do (self, inputs):
@@ -156,7 +197,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     from os import mkdir
     from ..common import convert, select_surface, to_datetimes
 
-    outdir = self.outdir + '/aircraft-profiles'
+    outdir = self.outdir + '/aircraft-profiles' + self.suffix + self.end_suffix
     if not exists(outdir): mkdir(outdir)
 
     models = inputs[:-1]
@@ -194,7 +235,9 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
 
       fig = pl.figure(figsize=(6,6))
 
-      outfile = "%s/%s_profiles_%s%s_%s_%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),self.fieldname,self.suffix+self.end_suffix,season,year_string,self.image_format)
+      obstimes = '_obstimes' if self.obstimes else ''
+
+      outfile = "%s/%s_profiles_%s%s_%s_%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),self.fieldname,self.suffix+self.end_suffix+obstimes,season,year_string,self.image_format)
       if exists(outfile): continue
 
       # Placeholder profile for missing data
