@@ -72,14 +72,32 @@ class ECCAS_Data(GEM_Data):
   # into the "analysis" files.
   @staticmethod
   def _fstd_tweak_records (records):
+    import numpy as np
+
     # Select non-coordinate records (things that aren't already using IP2)
     ind = (records['ip2'] == 0)
-    # Hard code the ig1 / ig2
-    records['ig1'][ind] = 88320
-    records['ig2'][ind] = 57863
-    # Update the coordinate records to be consistent.
-    records['ip1'][~ind] = 88320
-    records['ip2'][~ind] = 57863
+
+    # First check for uniform latitudes
+    lat = records['nomvar'] == '^^  '
+    lat = records[lat]['data_func'][0]()
+    dlat = np.diff(lat)
+    if np.allclose(dlat,0.9):
+      # Hard code the ig1 / ig2
+      records['ig1'][ind] = 38992
+      records['ig2'][ind] = 45710
+      # Update the coordinate records to be consistent.
+      records['ip1'][~ind] = 38992
+      records['ip2'][~ind] = 45710
+
+    # Otherwise, assume gaussian
+    else:
+      # Hard code the ig1 / ig2
+      records['ig1'][ind] = 88320
+      records['ig2'][ind] = 57863
+      # Update the coordinate records to be consistent.
+      records['ip1'][~ind] = 88320
+      records['ip2'][~ind] = 57863
+
     # Just for completion, set the typvar and deet as well.
     records['typvar'][ind] = 'A'
     records['deet'][ind] = 0
