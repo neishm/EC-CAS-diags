@@ -19,6 +19,8 @@ class ECCAS_Data(GEM_Data):
     ('CO', 'CO', 'ug kg(dry_air)-1'),
     ('OH', 'OH', 'molecules m-3'),
     ('KTN', 'eddy_diffusivity', 'm2 s-1'),
+    ('XCO2', 'XCO2', 'ug(C) kg(dry_air)-1'),
+    ('XCH4', 'XCH4', 'ug kg(dry_air)-1'),
   )
 
   # Method to decode an opened dataset (standardize variable names, and add any
