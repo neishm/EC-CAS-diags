@@ -16,7 +16,7 @@ class ECCAS_Data(GEM_Data):
     ('CHOC', 'CH4_ocean', 'ug kg(dry_air)-1'),
     ('CHNA', 'CH4_natural', 'ug kg(dry_air)-1'),
     ('CHAG', 'CH4_agriculture', 'ug kg(dry_air)-1'),
-    ('CO', 'CO', 'ug kg(dry_air)-1'),
+    ('TCO', 'CO', 'ug kg(dry_air)-1'),
     ('OH', 'OH', 'molecules m-3'),
     ('KTN', 'eddy_diffusivity', 'm2 s-1'),
     ('XCO2', 'XCO2', 'ug(C) kg(dry_air)-1'),
