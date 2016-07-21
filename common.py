@@ -669,8 +669,10 @@ def have_gridded_3d_data (varlist):
 def have_level (level):
   def have_the_level (dataset):
     for var in dataset:
-      if var.hasaxis('zaxis') and level in var.getaxis('zaxis').values:
-        return True
+      if var.hasaxis('zaxis'):
+        levels = var.getaxis('zaxis').values
+        if any(l>= level*0.9 and l<=level*1.1 for l in levels):
+          return True
     return False
   return have_the_level
 
