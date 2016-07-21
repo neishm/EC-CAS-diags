@@ -10,10 +10,10 @@ class HorzSlice(TimeVaryingDiagnostic):
     return 'level'+self.level
 
   def _check_dataset (self, dataset):
-    from ..common import have_gridded_3d_data
+    from ..common import have_gridded_3d_data, have_level
     if super(HorzSlice,self)._check_dataset(dataset) is False:
       return False
-    return have_gridded_3d_data(dataset)
+    return have_gridded_3d_data(dataset) and have_level(float(self.level))(dataset)
   def __init__ (self, level, **kwargs):
     super(HorzSlice,self).__init__(**kwargs)
     self.level = level
