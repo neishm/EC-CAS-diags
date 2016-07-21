@@ -235,6 +235,7 @@ diag ('xcol', 'CO2_fossil', 'ppm')
 diag ('xcol', 'CO2_fire', 'ppm')
 diag ('xcol', 'CH4', 'ppb')
 diag ('xcol', 'H2O', 'ppm')
+diag ('xcol', 'CO', 'ppb')
 
 diag ('xcol-diff', 'CO2', 'ppm')
 diag ('xcol-diff', 'CH4', 'ppb')
