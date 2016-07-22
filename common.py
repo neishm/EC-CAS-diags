@@ -275,6 +275,9 @@ def detect_gaps(var):
   import numpy as np
   from collections import Counter
   from pygeode.var import Var, copy_meta
+  # If no time values, do nothing.
+  if len(var.time) <= 1: return var
+
   dt, count = Counter(np.diff(var.time.values)).most_common(1)[0]
   start = var.time.values[0]
   stop = var.time.values[-1]
