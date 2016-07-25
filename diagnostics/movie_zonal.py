@@ -22,8 +22,6 @@ class ZonalMean(TimeVaryingDiagnostic):
     from ..common import have_gridded_3d_data
     if super(ZonalMean,self)._check_dataset(dataset) is False:
       return False
-    if self.fieldname not in dataset: return False
-    if 'lon' not in dataset: return False
     if self.zaxis == 'gph' and 'geopotential_height' not in dataset:
       return False
     if self.zaxis == 'plev' and 'air_pressure' not in dataset:
