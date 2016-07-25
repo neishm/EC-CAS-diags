@@ -10,6 +10,7 @@ class GEOSCHEM_Data(DataProduct):
   field_list = (
     ('Center_pressure', 'air_pressure', 'hPa'),
     ('CO2_mixing_ratio', 'CO2', '1E-6 mol mol(semidry_air)-1'),
+    ('CO_mixing_ratio', 'CO', '1E-9 mol mol(semidry_air)-1'),
   )
 
 
@@ -75,6 +76,21 @@ class GEOSCHEM_Data(DataProduct):
     p0.name = 'surface_pressure'
     p0.atts['units'] = 'hPa'
     data = data + p0
+
+    # Geopotential height (if available)
+    if 'Edge_gpHeight' in data:
+      h = data['Edge_gpHeight'].replace_axes(edge_level=ZAxis) # Make z-axis (so there aren't multiple NCDim axes going into the works)
+      zdim = h.whichaxis('edge_level')
+      upper_slice = [slice(None)]*h.naxes
+      upper_slice[zdim] = slice(1,None)
+      lower_slice = [slice(None)]*h.naxes
+      lower_slice[zdim] = slice(0,-1)
+      h_upper = h.slice[upper_slice].replace_axes(edge_level=data.layer, keep_old_name=False)
+      h_lower = h.slice[lower_slice].replace_axes(edge_level=data.layer, keep_old_name=False)
+      h = (h_upper+h_lower)/2
+      h.name = 'geopotential_height'
+      h.atts['units'] = 'm'
+      data = data + h
 
     # Need to define the time axis
     # (not fully defined in the netcdf file).
