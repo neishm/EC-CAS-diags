@@ -223,9 +223,12 @@ diag ('zonal-movie', 'CO2', 'ppm')
 diag ('zonal-movie', 'CO2_ensemblespread', 'ppm')
 diag ('zonal-movie', 'CH4', 'ppb')
 diag ('zonal-movie', 'CO2', 'ppm', typestat='stdev')
+diag ('zonal-movie', 'CO', 'ppb')
 diag ('zonal-movie', 'CO', 'ppb', zaxis='model')
 
 diag ('zonal-mean-diff', 'CO2', 'ppm')
+diag ('zonal-mean-diff', 'CH4', 'ppb')
+diag ('zonal-mean-diff', 'CO', 'ppb')
 
 diag ('xcol', 'CO2', 'ppm')
 diag ('xcol', 'CO2_background', 'ppm')
@@ -239,6 +242,7 @@ diag ('xcol', 'CO', 'ppb')
 
 diag ('xcol-diff', 'CO2', 'ppm')
 diag ('xcol-diff', 'CH4', 'ppb')
+diag ('xcol-diff', 'CO', 'ppb')
 
 diag ('xcol-enkf', 'CO2', 'ppm')
 diag ('xcol-enkf', 'CO2_background', 'ppm')
@@ -248,6 +252,8 @@ diag ('xcol-enkf', 'CO2_fossil', 'ppm')
 diag ('xcol-enkf', 'CO2_fire', 'ppm')
 
 diag ('lat-dist', 'CO2', 'ppm')
+diag ('lat-dist', 'CH4', 'ppb')
+diag ('lat-dist', 'CO', 'ppb')
 
 diag ('totalmass', 'CO2', 'Pg(C)')
 diag ('totalmass', 'CO2_fossil', 'Pg(C)')
@@ -258,6 +264,8 @@ diag ('totalmass', 'H2O', 'Pg')
 diag ('totalmass', 'CO', 'Pg')
 
 diag ('totalmass-diff', 'CO2', 'Pg(C)')
+diag ('totalmass-diff', 'CH4', 'Pg')
+diag ('totalmass-diff', 'CO', 'Pg')
 
 diag ('horz-slice', 'CO', 'ppb', level="1.0")
 diag ('horz-slice-diff', 'CO2', 'ppm', level="1.0")
