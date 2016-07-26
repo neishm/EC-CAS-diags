@@ -23,11 +23,20 @@ class StationComparison(Diagnostic):
     if self.stations is None: return obs
     out_datasets = []
     for dataset in obs.datasets:
-      matches = [self._lookup_station(s) for s in dataset.station]
-      matches = filter(None,matches)
+      # Determine which stations were selected by the user
+      matches = []
+      names = []
+      for s in dataset.station:
+        name = self._lookup_station(s)
+        if name is not None:
+          matches.append(s)
+          names.append(name)
       if len(matches) == 0: continue
+#      print "?? want to match:", matches
+      # Subset at these stations
       out_datasets.append(dataset(l_station=matches))
-      final_list.extend(matches)
+#      print "?? result:", dataset(l_station=matches)
+      final_list.extend(names)
     obs = DerivedProduct(out_datasets, source=obs)
     obs.name = obs.name + '_'+','.join(s for s in final_list)
     return obs

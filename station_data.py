@@ -25,14 +25,20 @@ class Station (Axis):
     return s
   # Override get_slice to allow indexing by station name
   def get_slice (self, kwargs, ignore_mismatch=False):
-    from pygeode.axis import Axis
     import numpy as np
+    stations = list(self.values)
     for key in kwargs.iterkeys():
       if key.startswith('i_'):
         indices = kwargs.pop(key)
         key = key[2:]
         if not self.has_alias(key): continue
         return indices
+        continue
+      if key.startswith('l_'):
+        names = kwargs.pop(key)
+        key = key[2:]
+        if not self.has_alias(key): continue
+        return [stations.index(n) for n in names]
         continue
       if not self.has_alias(key): continue
       station = kwargs.pop(key)
