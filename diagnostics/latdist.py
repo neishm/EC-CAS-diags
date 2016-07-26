@@ -37,7 +37,7 @@ class LatDistMovie(Movie):
 
     for field,inp in zip(fields,self.inputs):
       pl.plot (field.lat.values, field.get().flatten(), color=inp.color, linestyle=inp.linestyle, label=inp.title)
-    pl.legend(loc='best')
+    pl.legend(loc='upper left')
     # Use contour logic to pick a good range.
     low, high = self.global_range[fields[0].name]
     clevs = get_contours(low,high)
