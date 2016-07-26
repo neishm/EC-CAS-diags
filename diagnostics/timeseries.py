@@ -114,15 +114,10 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
 
       if i%n == 0:
         fig = pl.figure(figsize=(figwidth,12))
-        stations_on_figure = []
       pl.subplot(n,1,i%n+1)
       station_info = station_axis(station=location)
       lat = station_info.lat[0]
       lon = station_info.lon[0]
-
-      if self.stations is not None:
-        s = self._lookup_station(location)
-        stations_on_figure.append(s)
 
       # Construct a title for the plot
       title = location + ' - (%4.2f'%abs(lat)
@@ -198,10 +193,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
         pl.tight_layout()
 
         # Save as an image file.
-        if self.stations is not None:
-          fig_id = ','.join(stations_on_figure)
-        else:
-          fig_id = '%02d'%(i/n+1)
+        fig_id = '%02d'%(i/n+1)
         outfile = "%s/%s_timeseries_%s_%s%s.%s"%(self.outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
         if not exists(outfile):
           fig.savefig(outfile)
