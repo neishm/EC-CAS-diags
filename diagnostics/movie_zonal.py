@@ -119,7 +119,7 @@ class ZonalMean(TimeVaryingDiagnostic):
     if typestat == "mean" : var=var_mean
 
     # Cache the zonalmean data
-    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_model_lev_'+fieldname+self.suffix)
+    var = model.cache.write(var, prefix=model.name+'_zonal'+typestat+'_model_lev_'+fieldname+self.suffix, suffix=self.end_suffix)
 
     return var
 
