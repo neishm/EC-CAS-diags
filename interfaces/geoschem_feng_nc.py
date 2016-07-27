@@ -47,6 +47,21 @@ class GEOSCHEM_Data(DataProduct):
     0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00
   ]
 
+  # Model levels
+  # http://acmg.seas.harvard.edu/geos/doc/man/appendix_3.html#GEOS-5_reduced
+  eta = [0.000028, 0.000127, 0.000399, 0.001109,
+         0.002816, 0.006588, 0.014342, 0.023755,
+         0.033814, 0.047641, 0.066559, 0.084313,
+         0.099191, 0.116695, 0.137287, 0.161513,
+         0.190061, 0.223772, 0.263587, 0.309854,
+         0.353349, 0.390927, 0.428528, 0.466153,
+         0.503795, 0.541449, 0.579115, 0.616790,
+         0.654471, 0.685878, 0.711006, 0.736134,
+         0.761265, 0.786400, 0.809021, 0.826616,
+         0.841698, 0.856781, 0.871864, 0.886948,
+         0.902031, 0.917116, 0.932200, 0.947285,
+         0.962370, 0.977456, 0.992500          ][::-1]
+
 
   # Method to open a single file
   @staticmethod
@@ -110,11 +125,18 @@ class GEOSCHEM_Data(DataProduct):
   @classmethod
   def decode (cls,dataset):
     import numpy as np
-    from pygeode.axis import ZAxis
+    from pygeode.axis import ZAxis, Hybrid
 
+    # Hard-code the hybrid levels (needed for doing zonal mean plots on native
+    # model coordinates).
+    A_interface = np.array(cls.A_interface)
+    B_interface = np.array(cls.B_interface)
+    A = (A_interface[:-1] + A_interface[1:])/2
+    B = (B_interface[:-1] + B_interface[1:])/2
+    layer = Hybrid(cls.eta, A=A, B=B, name='layer')
     # Need to make the z-axis the right type (since there's no metadata hints
     # in the file to indicate the type)
-    dataset = dataset.replace_axes(layer=ZAxis, edge_level=ZAxis)
+    dataset = dataset.replace_axes(layer=layer, edge_level=ZAxis)
     if 'layer' in dataset:
       zaxis = dataset.layer
     elif 'edge_level' in dataset:
