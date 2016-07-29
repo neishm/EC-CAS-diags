@@ -37,7 +37,7 @@ class TotalmassDiff(Totalmass):
 
     dates = to_datetimes(diff.time)
 
-    pl.plot(dates, diff.get())
+    pl.plot(dates, diff.get(), color=inputs[0].color, linestyle=inputs[0].linestyle, marker=inputs[0].marker, markeredgecolor=inputs[0].color)
 
     outfile = self.outdir + "/%s_totalmass_diff_%s%s.%s"%('_'.join(inp.name for inp in inputs),self.fieldname,self.suffix+self.end_suffix, self.image_format)
     if not exists(outfile):
