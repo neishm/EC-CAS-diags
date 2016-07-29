@@ -14,6 +14,11 @@ class TotalmassDiff(Totalmass):
       for j in range(i+1,n):
         if not inputs[j].have(fieldname): continue
         yield inputs[i], inputs[j]
+    # Compare associated totalmass and integrated flux products.
+    for i in range(n-1):
+      if inputs[i].have(fieldname):
+        if inputs[i+1].have(fieldname+'_flux'):
+          yield inputs[i], inputs[i+1]
 
   def do (self, inputs):
     from os.path import exists
