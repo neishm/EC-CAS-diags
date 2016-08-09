@@ -521,8 +521,13 @@ def _get_domains (manifest, axis_manager, force_common_axis=None):
 
   # Reduce this to a minimal number of domains for data coverage
   domains = _get_prime_domains(domains)
-  domains = _merge_all_domains(domains)
-  domains = _cleanup_subdomains(domains)
+  # Try merging domains together in different ways to get different coverage.
+  # Continue until we found all the unique combinations.
+  while True:
+    old_ndomains = len(domains)
+    domains = _merge_all_domains(domains)
+    domains = _cleanup_subdomains(domains)
+    if len(domains) == old_ndomains: break
   return domains
 
 
