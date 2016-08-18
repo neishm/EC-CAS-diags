@@ -46,6 +46,7 @@ def make_parser(add_help=True):
   parser.add_argument('--rescan', action='store_true', help="Force the input files to be re-scanned.  Useful if the interfaces have changed since the last time the script was run.")
   parser.add_argument('--list-diagnostics', action='store_true', help="List all the available diagnostics, then exit.")
   parser.add_argument('--diagnostics', action='store', metavar="diagname1,diagname2,...", help="Comma-separated list of diagnostics to run.  By default, all available diagnostics are run.")
+  parser.add_argument('--fields', action='store', metavar="fieldname1,fieldname2,...", help="Comma-separated list of fields to examine.  By default, all applicable fields are considered for the diagnostics.")
   parser.add_argument('--crash', action='store_true', help="If there's an unexpected error when doing a diagnostic, terminate with a full stack trace.  The default behaviour is to continue on to the next diagnostic, and print a short warning message at the end.")
   return parser
 
@@ -70,6 +71,15 @@ else:
 for d in sorted(allowed_diagnostics):
   if d not in diagnostics.table:
     parser.error("Unknown diagnostic '%s'.  Use the '--list-diagnostics' option to see all available diagnostics."%d)
+
+# Determine which fields to run the diagnostics on.
+if args.fields is not None:
+  allowed_fields = args.fields.split(',')
+else:
+  allowed_fields = 'all'
+# Keep track of which fields were considered, so we can report on any fields
+# that were never mentioned (could indicate a typo).
+handled_fields = set()
 
 # Add diagnostic-specific command-line arguments.
 for diagname,diagclass in sorted(diagnostics.table.items()):
@@ -198,7 +208,12 @@ kwargs['outdir'] = outdir
 # (handle all the steps of looking up the diagnostic, running it, and catching
 # any exceptions).
 def diag (diagname, fieldname, units, **extra):
+  handled_fields.add(fieldname)
+  if fieldname != 'all':
+    # Skip fields that aren't requested by the user.
+    if fieldname not in allowed_fields: return
   diagnostic = diagnostics.table[diagname]
+  # Skip diagnostics that aren't requested by the user.
   if diagname not in allowed_diagnostics: return
   try:
     d = diagnostic(fieldname=fieldname, units=units, **dict(kwargs,**extra))
@@ -290,6 +305,13 @@ diag ('regional-bargraph', 'CO2', 'ppm')
 
 diag ('zonal-bargraph', 'CO2', 'ppm', height=0)
 
+
+# Report any fields that the user requested, but we have no diagnostics for.
+if allowed_fields != 'all':
+  unhandled_fields = [f for f in allowed_fields if f not in handled_fields]
+  if len(unhandled_fields) > 0:
+    print "WARNING:"
+    print "There are no diagnostics defined for "+','.join(unhandled_fields)
 
 # Report any diagnostics that failed to run
 if len(failures) > 0:
