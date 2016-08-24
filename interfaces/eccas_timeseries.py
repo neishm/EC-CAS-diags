@@ -4,6 +4,9 @@
 from . import eccas_dry, fstd_timeseries
 
 class ECCAS_Timeseries(fstd_timeseries.FSTD_Timeseries, eccas_dry.ECCAS_Data):
+  """
+  EC-CAS model output (timeseries output at select locations).
+  """
 
   # Method to find all files in the given directory, which can be accessed
   # through this interface.

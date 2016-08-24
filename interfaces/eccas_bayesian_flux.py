@@ -11,5 +11,5 @@ class ECCAS_Bayesian_Flux(ECCAS_Flux_Data):
 
 # Add this interface to the table.
 from . import table
-table['eccas-bayesian-flux'] = ECCAS_Bayesian_Flux
+#table['eccas-bayesian-flux'] = ECCAS_Bayesian_Flux
 

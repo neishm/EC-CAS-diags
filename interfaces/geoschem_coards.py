@@ -4,6 +4,9 @@
 
 from . import DataProduct
 class GEOSCHEM_Data(DataProduct):
+  """
+  GEOS-Chem data (converted to netCDF using the BPCH2COARDS utility).
+  """
 
   # A and B interface values (for vertical coordinate)
   A_interface = dict()

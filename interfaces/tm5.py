@@ -1,6 +1,10 @@
 
 from . import DataProduct
 class TM5_Data(DataProduct):
+  """
+  Data from the TM5 model.  Currently only handles the OH field that was used
+  for methane loss in the TransCom CH4 intercomparison protocol.
+  """
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)

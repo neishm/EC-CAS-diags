@@ -4,6 +4,9 @@
 
 from . import DataProduct
 class GEOSCHEM_Data(DataProduct):
+  """
+  GEOS-Chem tracer data, converted to netCDF by Feng Deng (UofT).
+  """
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)

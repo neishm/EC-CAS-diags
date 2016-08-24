@@ -2,6 +2,10 @@
 
 from . import SplitProduct
 class ObsPack_Aircraft_Data(SplitProduct):
+  """
+  Aircraft measurements of tracers from the ObsPack dataset.
+  http://www.esrl.noaa.gov/gmd/ccgg/obspack/
+  """
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)

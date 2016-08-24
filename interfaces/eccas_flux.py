@@ -1,6 +1,9 @@
 from .eccas_dry import ECCAS_Data
 
 class ECCAS_Flux_Data(ECCAS_Data):
+  """
+  Flux input files for EC-CAS experiments (RPN format).
+  """
 
   field_list = (
     ('ECO2', 'CO2_flux', 'g(C) s-1'),

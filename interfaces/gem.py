@@ -1,6 +1,9 @@
 
 from . import DataProduct
 class GEM_Data(DataProduct):
+  """
+  GEM model output (in RPN format).
+  """
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)

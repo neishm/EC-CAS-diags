@@ -17,6 +17,9 @@ def read_array (f, axes, name):
   return Var(axes, values=data, name=name)
 
 class Transcom3(object):
+  """
+  Input fluxes for the TransCom3 protocol.
+  """
 
   @staticmethod
   def open_file (filename):

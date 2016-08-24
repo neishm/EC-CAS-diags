@@ -13,6 +13,10 @@ def ct_file2date(filename):
 
 from . import DataProduct
 class CTCH4_Data(DataProduct):
+  """
+  CarbonTracker-CH4 (netCDF files)
+  http://www.esrl.noaa.gov/gmd/ccgg/carbontracker-ch4
+  """
 
   # Invariant data
   import numpy as np

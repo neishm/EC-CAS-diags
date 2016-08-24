@@ -1,6 +1,10 @@
 from .gem import GEM_Data
 
 class ECCAS_Data(GEM_Data):
+  """
+  EC-CAS model output for forward runs (no assimilation).
+  For recent experiments, where tracers are defined w.r.t. dry air.
+  """
 
   field_list = GEM_Data.field_list + (
     ('CO2', 'CO2', 'ug(C) kg(dry_air)-1'),

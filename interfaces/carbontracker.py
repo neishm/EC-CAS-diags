@@ -2,6 +2,10 @@
 
 from . import DataProduct
 class CT_Data(DataProduct):
+  """
+  CarbonTracker CO2 products (molefractions, fluxes).
+  http://carbontracker.noaa.gov
+  """
 
   # Invariant data
   import numpy as np

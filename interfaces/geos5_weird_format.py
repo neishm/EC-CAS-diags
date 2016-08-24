@@ -6,6 +6,11 @@ class Altitude(ZAxis): pass
 
 from . import DataProduct
 class GEOS5_Weird_Format(DataProduct):
+  """
+  A strange format encountered with some GEOS5 data.  It's in netCDF, but the
+  axes are non-standard.  For instance, the time axis is 'tau0', which either
+  represents the month number, or the number of hours since Jan 1, 1985.
+  """
 
   field_list = (
     ('OH', 'OH', 'molecules cm-3'),

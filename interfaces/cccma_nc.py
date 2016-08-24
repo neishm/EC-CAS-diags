@@ -1,6 +1,9 @@
 
 from . import DataProduct
 class CCCMA_Data(DataProduct):
+  """
+  Data from CCCma model output, converted to netCDF.
+  """
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)

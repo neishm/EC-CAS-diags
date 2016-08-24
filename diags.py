@@ -45,6 +45,7 @@ def make_parser(add_help=True):
   parser.add_argument('--tmpdir', help="where to put any intermediate files that get generated, if they can't be stored in their usual location.  THIS SHOULD NOT BE IN YOUR HOME DIRECTORY.")
   parser.add_argument('--rescan', action='store_true', help="Force the input files to be re-scanned.  Useful if the interfaces have changed since the last time the script was run.")
   parser.add_argument('--list-diagnostics', action='store_true', help="List all the available diagnostics, then exit.")
+  parser.add_argument('--list-interfaces', action='store_true', help="List all the available data interfaces, then exit.")
   parser.add_argument('--diagnostics', action='store', metavar="diagname1,diagname2,...", help="Comma-separated list of diagnostics to run.  By default, all available diagnostics are run.")
   parser.add_argument('--fields', action='store', metavar="fieldname1,fieldname2,...", help="Comma-separated list of fields to examine.  By default, all applicable fields are considered for the diagnostics.")
   parser.add_argument('--crash', action='store_true', help="If there's an unexpected error when doing a diagnostic, terminate with a full stack trace.  The default behaviour is to continue on to the next diagnostic, and print a short warning message at the end.")
@@ -58,7 +59,13 @@ parser = make_parser(add_help=True)
 if args.list_diagnostics:
   print "Available diagnostics:\n"
   for diagname, diagclass in sorted(diagnostics.table.items()):
-    print '%s%s'%(diagname,diagclass.__doc__ or '\n  ???')
+    print '%s%s'%(diagname,diagclass.__doc__ or '\n  ???\n')
+  quit()
+
+if args.list_interfaces:
+  print "Available interfaces:\n"
+  for interface_name, interface_class in sorted(interfaces.table.items()):
+    print '%s%s'%(interface_name,interface_class.__doc__ or '\n  ???\n')
   quit()
 
 # Determine which diagnostics will be considered from running.

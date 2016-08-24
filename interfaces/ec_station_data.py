@@ -35,6 +35,9 @@ obs_locations['TAO'] = obs_locations['UofT']
 
 from . import StationObsProduct
 class EC_Station_Data(StationObsProduct):
+  """
+  Greenhouse gas measurements from Environment Canada stations.
+  """
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)

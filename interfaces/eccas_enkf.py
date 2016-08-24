@@ -1,6 +1,9 @@
 from .eccas_dry import ECCAS_Data
 
 class ECCAS_EnKF_Data(ECCAS_Data):
+  """
+  EC-CAS model output for Ensemble Kalman Filter experiments.
+  """
 
   # Method to open a single file
   @staticmethod

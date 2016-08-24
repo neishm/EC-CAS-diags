@@ -11,5 +11,5 @@ class ECCAS_Bayesian(ECCAS_Data):
 
 # Add this interface to the table.
 from . import table
-table['eccas-bayesian'] = ECCAS_Bayesian
+#table['eccas-bayesian'] = ECCAS_Bayesian
 

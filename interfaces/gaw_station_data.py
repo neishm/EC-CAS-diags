@@ -2,6 +2,9 @@
 
 from . import StationObsProduct
 class GAW_Station_Data(StationObsProduct):
+  """
+  Greenhouse gas measurments from the GAW network.
+  """
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)

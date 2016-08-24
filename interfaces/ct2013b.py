@@ -4,7 +4,9 @@
 
 from .carbontracker import CT_Data
 class CT2013B_Data(CT_Data):
-
+  """
+  CarbonTracker CO2 products (molefractions, fluxes) from CT2013B and later.
+  """
 
   # Method to open a single file
   @staticmethod

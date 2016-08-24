@@ -1,6 +1,9 @@
 
 from . import DataProduct
 class MACC_Data(DataProduct):
+  """
+  Model data from the ECMWF MACC project (netCDF).
+  """
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
