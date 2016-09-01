@@ -82,16 +82,17 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
     obs_data = convert(obs_data, units, context=fieldname)
     dataset.append(obs_data)
     # Cached the obs std. deviation (if it exists)
-    try:
-      obs_stderr = obs.find_best(fieldname+'_std')
+    obs_stderr = None
+    for errname in (fieldname+'_std', fieldname+'_uncertainty'):
+      if obs.have(errname):
+        obs_stderr = obs.find_best(errname)
+    if obs_stderr is not None:
       obs_stderr = select_surface(obs_stderr)
       obs_stderr = obs_stderr(time=(start,end))
       if len(obs_stderr.time) > 0:
         obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False, suffix=self.end_suffix)
       obs_stderr = convert(obs_stderr, units, context=fieldname)
       dataset.append(obs_stderr)
-    except KeyError:
-      pass
     cached_obs = DerivedProduct(dataset, source=obs)
 
     return list(cached_models)+[cached_obs]
