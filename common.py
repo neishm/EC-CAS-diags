@@ -643,6 +643,17 @@ def number_of_timesteps (varlist):
     if var.hasaxis(TAxis):
       return len(var.getaxis(TAxis))
 
+# Rank a dataset based on the time duration.
+def length_of_time (varlist):
+  from pygeode.axis import TAxis
+  from pygeode.timeutils import reltime
+  for var in varlist:
+    if var.hasaxis(TAxis):
+      taxis = var.getaxis(TAxis)
+      tvals = reltime(taxis,units='hours')
+      if len(tvals) == 0: return 0
+      return tvals[-1] - tvals[0]
+
 # Rank a dataset based on the number of levels available.
 # To be used in the find_best() method.
 def number_of_levels (varlist):
