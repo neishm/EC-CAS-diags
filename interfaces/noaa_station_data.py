@@ -1,7 +1,7 @@
 # NOAA station data
 
-from . import StationObsProduct
-class NOAA_Station_Data(StationObsProduct):
+from . import SplitProduct
+class NOAA_Station_Data(SplitProduct):
   """
   Greenhouse gas measurments from NOAA.
   """

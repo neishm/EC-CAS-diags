@@ -33,8 +33,8 @@ obs_locations['WMO-Lac_La_Biche'] = obs_locations['Lac_La_Biche'] = obs_location
 obs_locations['Downsview'] = obs_locations['Toronto']
 obs_locations['TAO'] = obs_locations['UofT']
 
-from . import StationObsProduct
-class EC_Station_Data(StationObsProduct):
+from . import SplitProduct
+class EC_Station_Data(SplitProduct):
   """
   Greenhouse gas measurements from Environment Canada stations.
   """

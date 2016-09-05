@@ -1,7 +1,7 @@
 # GAW station data
 
-from . import StationObsProduct
-class GAW_Station_Data(StationObsProduct):
+from . import SplitProduct
+class GAW_Station_Data(SplitProduct):
   """
   Greenhouse gas measurments from the GAW network.
   """
