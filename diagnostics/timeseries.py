@@ -9,7 +9,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
   # Further modify the station sampling logic to select only surface level
   # (and cache the data).
   def _transform_inputs (self, inputs):
-    from ..common import find_and_convert, closeness_to_surface, number_of_timesteps, select_surface, convert, detect_gaps, fix_timeaxis
+    from ..common import find_and_convert, convert, detect_gaps, fix_timeaxis
     from ..interfaces import DerivedProduct
     from pygeode.timeutils import reltime
     inputs = super(Timeseries,self)._transform_inputs(inputs)
@@ -27,54 +27,48 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
     timeaxis = None
     cached_models = []
     for m in models:
-      dataset = []
-      field = find_and_convert(m, fieldname, units, maximize = (closeness_to_surface,number_of_timesteps))
-      field = select_surface(field)
-      # Apply time axis subsetting, but only if start or end are unspecified.
-      if timeaxis is None:
-        timeaxis = field.getaxis('time')
+      datasets = []
+      # Assuming obs and models have 1:1 mapping of datasets
+      # (should be the case for the current implementation of
+      # StationComparison, which we're deriving from).
+      for od, md in zip(obs.datasets, md.datasets):
+        field = md[fieldname]
+        field = convert(field, units)
 
-      start, end = self.date_range
+        # Apply time axis subsetting, but only if start or end are unspecified.
+        if timeaxis is None:
+          timeaxis = field.getaxis('time')
 
-      if start is None:
-        start = timeaxis.values[0]
-      else:
-        start = timeaxis.str_as_val(key=None,s=start.strftime("%d %b %Y"))
+        start, end = self.date_range
 
-      if end is None:
-        end = timeaxis.values[-1]
-      else:
-        end = timeaxis.str_as_val(key=None,s=end.strftime("%d %b %Y"))
+        if start is None:
+          start = timeaxis.values[0]
+        else:
+          start = timeaxis.str_as_val(key=None,s=start.strftime("%d %b %Y"))
 
-      field = field(time=(start,end))
+        if end is None:
+          end = timeaxis.values[-1]
+        else:
+          end = timeaxis.str_as_val(key=None,s=end.strftime("%d %b %Y"))
 
-      # Cache the data for faster subsequent access.
-      # Disable time splitting for the cache file, since open_multi doesn't work
-      # very well with the encoded station data.
-      # Only cache if we have some data in this time period.
-      if len(field.time) > 0:
-        field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False, suffix=self.end_suffix)
-      # Check for missing data (so we don't connect this region with a line)
-      field = detect_gaps(field)
-      dataset.append(field)
-      try:
-        field = find_and_convert(m, fieldname+'_ensemblespread', units, maximize = (closeness_to_surface,number_of_timesteps))
-        field = select_surface(field)
-        field = field(time=(timeaxis.values[0],timeaxis.values[-1]))
+        field = field(time=(start,end))
+
+        # Cache the data for faster subsequent access.
+        # Disable time splitting for the cache file, since open_multi doesn't work
+        # very well with the encoded station data.
+        # Only cache if we have some data in this time period.
         if len(field.time) > 0:
           field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False, suffix=self.end_suffix)
         # Check for missing data (so we don't connect this region with a line)
         field = detect_gaps(field)
-        dataset.append(field.rename(fieldname+'_std'))
-      except KeyError:  # No ensemble spread for this model data
-        pass
-      m = DerivedProduct(dataset, source=m)
+        datasets.append(Dataset(field))
+      m = DerivedProduct(datasets, source=m)
       cached_models.append(m)
 
     # Cache the obs data
+    #XXX
     dataset = []
     obs_data = obs.find_best(fieldname)
-    obs_data = select_surface(obs_data)
     obs_data = obs_data(time=(start,end))
     # Cache obs data, but only  if we have some data in this time range.
     if len(obs_data.time) > 0:
@@ -87,7 +81,6 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
       if obs.have(errname):
         obs_stderr = obs.find_best(errname)
     if obs_stderr is not None:
-      obs_stderr = select_surface(obs_stderr)
       obs_stderr = obs_stderr(time=(start,end))
       if len(obs_stderr.time) > 0:
         obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False, suffix=self.end_suffix)

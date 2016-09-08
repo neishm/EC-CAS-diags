@@ -67,6 +67,7 @@ class StationComparison(Diagnostic):
   # interpolate model data directly to station locations.
   def _input_combos (self, inputs):
     from ..interfaces import DerivedProduct
+    from ..common import closeness_to_surface, number_of_timesteps, select_surface
     from pygeode.dataset import Dataset
     all_obs = [m for m in inputs if any(self._has_station_axis(d) for d in m.datasets)]
     models = [m for m in inputs if m not in all_obs]
@@ -78,15 +79,17 @@ class StationComparison(Diagnostic):
     for obs in all_obs:
       if len(obs.datasets) == 0: continue
       # Find the obs for each station.
-      datasets = [Dataset([var]) for var in obs.find(self.fieldname)]
+      datasets = [Dataset([select_surface(var)]) for var in obs.find(self.fieldname)]
       obs = DerivedProduct(datasets, source=obs)
       # Loop over each model
       out_models = []
       for m in models:
         datasets = []
         for od in obs.datasets:
-          for md in m.datasets:
-            datasets.append(self._sample_dataset_at_obs(od,md))
+          var = m.find_best(self.fieldname, maximize = (closeness_to_surface,number_of_timesteps))
+          var = select_surface(var)
+          dataset = Dataset([var])
+          datasets.append(self._sample_dataset_at_obs(od,dataset))
         if len(datasets) == 0: continue  # Ignore non-applicable models.
         m = DerivedProduct(datasets,source=m)
         out_models.append(m)
