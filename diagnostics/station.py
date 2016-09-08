@@ -77,10 +77,9 @@ class StationComparison(Diagnostic):
     # Loop over each obs product
     for obs in all_obs:
       if len(obs.datasets) == 0: continue
-      # If we have multiple datasets, use the one with the largest amount
-      # of data we're interested in.
-      field = obs.find_best(self.fieldname)
-      obs = DerivedProduct(field, source=obs)
+      # Find the obs for each station.
+      datasets = [Dataset([var]) for var in obs.find(self.fieldname)]
+      obs = DerivedProduct(datasets, source=obs)
       # Loop over each model
       out_models = []
       for m in models:
