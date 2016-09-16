@@ -31,7 +31,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
       # Assuming obs and models have 1:1 mapping of datasets
       # (should be the case for the current implementation of
       # StationComparison, which we're deriving from).
-      for od, md in zip(obs.datasets, md.datasets):
+      for md in m.datasets:
         field = md[fieldname]
         field = convert(field, units)
 
@@ -61,32 +61,28 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
           field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False, suffix=self.end_suffix)
         # Check for missing data (so we don't connect this region with a line)
         field = detect_gaps(field)
-        datasets.append(Dataset(field))
+        datasets.append(Dataset([field]))
       m = DerivedProduct(datasets, source=m)
       cached_models.append(m)
 
     # Cache the obs data
-    #XXX
-    dataset = []
-    obs_data = obs.find_best(fieldname)
-    obs_data = obs_data(time=(start,end))
-    # Cache obs data, but only  if we have some data in this time range.
-    if len(obs_data.time) > 0:
-      obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False, suffix=self.end_suffix)
-    obs_data = convert(obs_data, units, context=fieldname)
-    dataset.append(obs_data)
-    # Cached the obs std. deviation (if it exists)
-    obs_stderr = None
-    for errname in (fieldname+'_std', fieldname+'_uncertainty'):
-      if obs.have(errname):
-        obs_stderr = obs.find_best(errname)
-    if obs_stderr is not None:
-      obs_stderr = obs_stderr(time=(start,end))
-      if len(obs_stderr.time) > 0:
-        obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False, suffix=self.end_suffix)
-      obs_stderr = convert(obs_stderr, units, context=fieldname)
-      dataset.append(obs_stderr)
-    cached_obs = DerivedProduct(dataset, source=obs)
+    datasets = []
+    for od in obs.datasets:
+      varlist = []
+
+      # Cached the obs values and std. deviation (if it exists)
+      for errname in (fieldname, fieldname+'_std', fieldname+'_uncertainty'):
+        if errname in od:
+          field = od[errname]
+          field = convert(field, units, context=fieldname)
+          field = field(time=(start,end))
+          # Cache obs data, but only  if we have some data in this time range.
+          if len(field.time) > 0:
+            field = obs.cache.write(field, prefix=obs.name+'_sfc_%s%s'%(errname,suffix), split_time=False, suffix=self.end_suffix)
+        varlist.append(field)
+
+      datasets.append(Dataset(varlist))
+    cached_obs = DerivedProduct(datasets, source=obs)
 
     return list(cached_models)+[cached_obs]
 
