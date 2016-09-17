@@ -67,15 +67,16 @@ class StationComparison(Diagnostic):
   # station axis).
   # TODO: remove this some Dataset objects include a hasaxis routine.
   @staticmethod
-  def _has_station_axis (dataset):
-    for var in dataset.vars:
-      if var.hasaxis('station'): return True
+  def _has_station_axis (product):
+    for dataset in product.datasets:
+      for var in dataset.vars:
+        if var.hasaxis('station'): return True
     return False
 
   # For each observation dataset,
   # interpolate model data directly to station locations.
   def _input_combos (self, inputs):
-    all_obs = [m for m in inputs if any(self._has_station_axis(d) for d in m.datasets)]
+    all_obs = [m for m in inputs if self._has_station_axis(m)]
     models = [m for m in inputs if m not in all_obs]
     # Subset the obs locations (if particular locations were given on the
     # command-line).
