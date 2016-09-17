@@ -2,7 +2,7 @@
 
 from . import TimeVaryingDiagnostic, ImageDiagnostic
 from .station import StationComparison
-class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
+class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Sample data at surface obs locations, and plot the result as a 1D line plot.
   """

@@ -43,16 +43,25 @@ class StationComparison(Diagnostic):
   # Helper method - given an obs dataset, filter model data onto the same
   # points.
   @staticmethod
-  def _sample_dataset_at_obs (obs, model):
+  def _sample_model_at_obs (model, obs):
     from pygeode.dataset import Dataset
-    # Sample at the station locations
-    fields = []
-    for var in model.vars:
-      # Ignore non-spatial fields
-      if not var.hasaxis('lat'): continue
-      if not var.hasaxis('lon'): continue
-      fields.append(StationSample(var, obs.station))
-    return Dataset(fields)
+    from ..common import closeness_to_surface, number_of_timesteps, select_surface
+
+    sampled_datasets = []
+    for obs_dataset = obs.datasetse:
+      sampled_dataset = []
+      for var in obs_dataset:
+        if not m.have(var.name): continue
+        var = m.find_best(var.name, maximize = (closeness_to_surface,number_of_timesteps))
+        var = select_surface(var)
+
+        sampled_dataset.append(StationSample(var, obs.station))
+      sampled_dataset = Dataset(sampled_dataset)
+      sampled_datasets.append(sampled_dataset)
+    out = DerivedProduct(sampled_datasets,source=model)
+    #TODO: cache!
+    return out
+
 
   # Helper method - determine if a dataset is in obs space (i.e., has a
   # station axis).
@@ -66,9 +75,6 @@ class StationComparison(Diagnostic):
   # For each observation dataset,
   # interpolate model data directly to station locations.
   def _input_combos (self, inputs):
-    from ..interfaces import DerivedProduct
-    from ..common import closeness_to_surface, number_of_timesteps, select_surface
-    from pygeode.dataset import Dataset
     all_obs = [m for m in inputs if any(self._has_station_axis(d) for d in m.datasets)]
     models = [m for m in inputs if m not in all_obs]
     # Subset the obs locations (if particular locations were given on the
@@ -78,20 +84,12 @@ class StationComparison(Diagnostic):
     # Loop over each obs product
     for obs in all_obs:
       if len(obs.datasets) == 0: continue
-      # Find the obs for each station.
-      datasets = [Dataset([select_surface(var)]) for var in obs.find(self.fieldname)]
-      obs = DerivedProduct(datasets, source=obs)
       # Loop over each model
       out_models = []
       for m in models:
-        datasets = []
-        for od in obs.datasets:
-          var = m.find_best(self.fieldname, maximize = (closeness_to_surface,number_of_timesteps))
-          var = select_surface(var)
-          dataset = Dataset([var])
-          datasets.append(self._sample_dataset_at_obs(od,dataset))
-        if len(datasets) == 0: continue  # Ignore non-applicable models.
-        m = DerivedProduct(datasets,source=m)
+        # Sample model dataset at each applicable obs dataset.
+        m = self._sample_model_at_obs(m,obs)
+        if len(m.datasets) == 0: continue  # Ignore non-applicable models.
         out_models.append(m)
       if len(out_models) == 0: continue  # Don't do obs-only diagnostic.
       yield out_models + [obs]
