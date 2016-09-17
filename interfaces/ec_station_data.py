@@ -147,7 +147,7 @@ class EC_Station_Data(SplitProduct):
     files = glob(dirname+'/*-*-Hourly.DAT')
     # Exclude extra files in methane directory (e.g. Lac_Labiche2-CH4-Hourly.DAT)
     files = [f for f in files if '2-CH4' not in f]
-    return files
+    return sorted(files)
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.

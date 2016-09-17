@@ -60,7 +60,7 @@ class NOAA_Station_Data(SplitProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+'/surface/*_event.txt')
+    return sorted(glob(dirname+'/surface/*_event.txt'))
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.

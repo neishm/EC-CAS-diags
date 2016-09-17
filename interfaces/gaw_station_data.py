@@ -131,7 +131,7 @@ class GAW_Station_Data(SplitProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+'/*.dat')
+    return sorted(glob(dirname+'/*.dat'))
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.
