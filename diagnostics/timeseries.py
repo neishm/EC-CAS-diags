@@ -64,9 +64,9 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
     for od in obs.datasets:
       varlist = []
 
-      for errname in (fieldname, fieldname+'_std', fieldname+'_uncertainty'):
-        if errname in od:
-          field = od[errname]
+      for varname in (fieldname, fieldname+'_std', fieldname+'_uncertainty'):
+        if varname in od:
+          field = od[varname]
           field = convert(field, units, context=fieldname)
           field = field(time=(start,end))
         varlist.append(field)
@@ -87,10 +87,15 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
     # Create plots of each location
     # Plot 4 timeseries per figure
     n = 4
-    station_axis = inputs[0].datasets[0].vars[0].station
+
     time1 = inputs[0].datasets[0].vars[0].time.values[0]
     time2 = inputs[0].datasets[0].vars[0].time.values[-1]
-    for i,location in enumerate(station_axis.values):
+
+    # Loop over individual stations
+    for i in len(inputs[0].datasets):
+      station_axis = inputs[0].datasets[i].vars[0].station
+      assert len(station_axis) == 1, "Unable to handle multi-station datasets"
+      location = station_axis.station[0]
 
       if i%n == 0:
         fig = pl.figure(figsize=(figwidth,12))
@@ -115,7 +120,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
 
       mindate = maxdate = None
       for inp in inputs:
-        var = inp.find_best(self.fieldname)
+        var = inp.datasets[i][self.fieldname]
         dates = to_datetimes(var.time)
         # Keep track of min/max date range. (To force it at the end of this
         # iteration)
@@ -124,10 +129,10 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
         mindate = min(mindate,dates[0])
         maxdate = max(maxdate,dates[0])
 
-        values = var.get(station=location).flatten()
+        values = var.get().flatten()
 
         # Determine marker size based on the density of observations
-        timevalues = var(station=location).time.values
+        timevalues = var.time.values
         timevalues = timevalues[np.isfinite(values)]
         dt = filter(None,np.diff(timevalues))
         if len(dt) > 0:
@@ -144,8 +149,9 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
           markersize = 1.0
 
         # Draw standard deviation?
-        if inp.have(self.fieldname+'_std'):
-          std = inp.find_best(self.fieldname+'_std').get(station=location).flatten()
+        for errame in (self.fieldname+'_std', self.fieldname+'_uncertainty'):
+         if errname in inp.datasets[i]:
+          std = inp.datasets[i][errname].get().flatten()
           fill_min = values - 2*std
           fill_max = values + 2*std
           fill_mask = np.isfinite(fill_max)
