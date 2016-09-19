@@ -6,8 +6,8 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Sample data at surface obs locations, and plot the result as a 1D line plot.
   """
-  # Further modify the station sampling logic to select only surface level
-  # (and cache the data).
+  # Select a common time period for the data products, and convert to the
+  # right units.  Also, pick out the field of interest.
   def _transform_inputs (self, inputs):
     from ..common import find_and_convert, convert, detect_gaps, fix_timeaxis
     from ..interfaces import DerivedProduct
@@ -22,10 +22,10 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
     suffix = self.suffix
     models = inputs[:-1]
     obs = inputs[-1]
-    # Cache the model data
+    # Get common time period for model data.
     # Use the first model timeaxis as the range for plotting.
     timeaxis = None
-    cached_models = []
+    out_models = []
     for m in models:
       datasets = []
       # Assuming obs and models have 1:1 mapping of datasets
@@ -53,38 +53,28 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
 
         field = field(time=(start,end))
 
-        # Cache the data for faster subsequent access.
-        # Disable time splitting for the cache file, since open_multi doesn't work
-        # very well with the encoded station data.
-        # Only cache if we have some data in this time period.
-        if len(field.time) > 0:
-          field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False, suffix=self.end_suffix)
         # Check for missing data (so we don't connect this region with a line)
         field = detect_gaps(field)
         datasets.append(Dataset([field]))
       m = DerivedProduct(datasets, source=m)
-      cached_models.append(m)
+      out_models.append(m)
 
-    # Cache the obs data
+    # Subset the obs times.
     datasets = []
     for od in obs.datasets:
       varlist = []
 
-      # Cached the obs values and std. deviation (if it exists)
       for errname in (fieldname, fieldname+'_std', fieldname+'_uncertainty'):
         if errname in od:
           field = od[errname]
           field = convert(field, units, context=fieldname)
           field = field(time=(start,end))
-          # Cache obs data, but only  if we have some data in this time range.
-          if len(field.time) > 0:
-            field = obs.cache.write(field, prefix=obs.name+'_sfc_%s%s'%(errname,suffix), split_time=False, suffix=self.end_suffix)
         varlist.append(field)
 
       datasets.append(Dataset(varlist))
-    cached_obs = DerivedProduct(datasets, source=obs)
+    out_obs = DerivedProduct(datasets, source=obs)
 
-    return list(cached_models)+[cached_obs]
+    return list(out_models)+[out_obs]
 
   def do (self, inputs):
     import numpy as np

@@ -40,26 +40,53 @@ class StationComparison(Diagnostic):
     obs.name = obs.name + '_'+','.join(s for s in final_list)
     return obs
 
-  # Helper method - given an obs dataset, filter model data onto the same
+  # Helper method - given an obs dataset, sample model data at the same
   # points.
-  @staticmethod
-  def _sample_model_at_obs (model, obs):
+  def _sample_model_at_obs (self, model, obs):
     from pygeode.dataset import Dataset
+    from pygeode.axis import concat
     from ..common import closeness_to_surface, number_of_timesteps, select_surface
 
-    sampled_datasets = []
-    for obs_dataset = obs.datasetse:
-      sampled_dataset = []
-      for var in obs_dataset:
-        if not m.have(var.name): continue
-        var = m.find_best(var.name, maximize = (closeness_to_surface,number_of_timesteps))
-        var = select_surface(var)
+    # Lookup table for keeping track of what stations are sampled for each
+    # variable.
+    var_stations = dict()
 
-        sampled_dataset.append(StationSample(var, obs.station))
-      sampled_dataset = Dataset(sampled_dataset)
-      sampled_datasets.append(sampled_dataset)
-    out = DerivedProduct(sampled_datasets,source=model)
-    #TODO: cache!
+    # Figure out what needs to be sampled.
+    for obs_dataset in obs.datasets:
+      for var in obs_dataset:
+        if model.have(var.name):
+          var_stations.setdefault(var.name,[]).append(obs.station)
+
+    # Sample the data at all needed locations, and cache it.
+    sampled_dataset = []
+    for varname, stationlist in var_stations.iteritems():
+      var = model.find_best(varname, maximize = (closeness_to_surface,number_of_timesteps))
+      var = select_surface(var)
+      stations = concat(stationlist)
+      var = StationSample(var, stations)
+      # Cache the data for faster subsequent access.
+      # Disable time splitting for the cache file, since open_multi doesn't work
+      # very well with the encoded station data.
+      # Only cache if we have some data in this time period.
+      if len(var.time) > 0:
+        var = model.cache.write(var, prefix=model.name+'_at_%s_%s%s'%(obs.name,var.name,self.suffix), split_time=False, suffix=self.end_suffix)
+      sampled_dataset.append(var)
+    sampled_dataset = Dataset(sampled_dataset)
+
+    # Extract what we need from the cached data.
+    out_datasets = []
+    for obs_dataset in obs.datasets:
+      out_dataset = []
+      for obs_var in obs_dataset:
+        if obs_var.name in sampled_dataset:
+          sampled_var= sampled_dataset[obs_var.name]
+          out_var = sampled_var(l_station=obs_var.station.station)
+          out_dataset.append(out_var)
+      out_dataset = Dataset(out_dataset)
+      out_datasets.append(out_dataset)
+
+    # Wrap it up as a DataProduct, and we're done.
+    out = DerivedProduct(out_datasets,source=model)
     return out
 
 
