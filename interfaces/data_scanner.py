@@ -111,7 +111,7 @@ class Manifest(object):
 
   # Save the data back to disk, if it's been modified.
   # This is called once the manifest is no longer in use.
-  def __del__ (self):
+  def save (self):
     from os.path import exists, getatime, getmtime, normpath
     from os import utime
     import gzip
@@ -586,6 +586,8 @@ def from_files (filelist, interface, filename=None, force_common_axis=None):
   manifest.scan_files(filelist, interface)
   # Get the final table of available data.
   table = manifest.get_table()
+  # Flush the manifest back to disk (if there were any updates).
+  manifest.save()
   domains = _get_domains(table, axis_manager, force_common_axis=force_common_axis)
   # Find all variable attributes that are consistent throughout all files.
   # Also, invert the table so the lookup key is the varname (value is a list
