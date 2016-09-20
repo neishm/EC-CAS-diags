@@ -243,11 +243,11 @@ class DataProduct (DataInterface):
 
     expanded_files = self.expand_files(files)
     if self._per_file:
-      data = [from_files([f], type(self), manifest=manifest, force_common_axis=self._common_axis) for f in expanded_files]
+      data = [from_files([f], type(self), filename=manifest, force_common_axis=self._common_axis) for f in expanded_files]
       # Flatten into a single list
       data = sum(data,[])
     else:
-      data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axis)
+      data = from_files(expanded_files, type(self), filename=manifest, force_common_axis=self._common_axis)
     # Decode the data (get standard field names, etc.)
     data = map(self.decode, data)
     data = map(asdataset, data)

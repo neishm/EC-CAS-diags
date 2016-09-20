@@ -6,94 +6,127 @@
 # is re-generated.
 MANIFEST_VERSION="2"
 
-# Scan through all the given files, produce a manifest of all data available.
-def scan_files (files, interface, manifest=None, axis_manager=None):
-  from os.path import exists, getatime, getmtime, normpath
-  from os import utime
-  import gzip
-  import cPickle as pickle
-  from pygeode.progress import PBar
+# Interface for creating / reading a manifest file.
+class Manifest(object):
 
-  # Special case: no files given
-  if len(files) == 0: return dict()
+  # Start using a manifest file (and read the existing entries if available).
+  def __init__(self, filename=None, axis_manager=None):
+    from os.path import exists, getmtime
+    import gzip
+    import cPickle as pickle
 
-  # Strip out extra separators, etc. from the filenames.
-  # Otherwise, if the files are scanned a second time with different
-  # separators, it may cause the same file to be included more than once.
-  files = [normpath(f) for f in files]
+    self.filename = filename
 
+    # If there's already a manifest file on disk, read it.
+    if filename is not None and exists(filename):
+      with gzip.open(filename,'r') as f:
+        version = pickle.load(f)
+        table = f.read()
+        try:
+          self.table = pickle.loads(table)
+        except (ImportError, AttributeError, EOFError):
+          version = None  # Unable to read the symbols, so treat this as an
+                          # incompatible version
+      # Use the modification time for the manifest to determine if a data file
+      # has been updated since last time we saved the manifest.
+      self.mtime = getmtime(filename)
+    # If we don't have an existing file, or it's the wrong version, then we
+    # start with an empty table.
+    if filename is None or not exists(filename) or version != MANIFEST_VERSION:
+      self.table = {}
+      self.mtime = 0
 
-  # If an old manifest already exists, start with that.
-  if manifest is not None and exists(manifest):
-    with gzip.open(manifest,'r') as f:
-      version = pickle.load(f)
-      table = f.read()
-      try:
-        table = pickle.loads(table)
-      except (ImportError, AttributeError, EOFError):
-        version = None  # Unable to read the symbols, so treat this as an
-                        # incompatible version
-    mtime = getmtime(manifest)
-  if manifest is None or not exists(manifest) or version != MANIFEST_VERSION:
-    table = {}
-    mtime = 0
+    # Collect the axes from the manifest, so we can re-use the objects where
+    # possible for new files.
+    if axis_manager is not None:
+      self.axis_manager = axis_manager
+    else:
+      self.axis_manager = AxisManager()
 
-  # Re-use axis objects wherever possible.
-  # Use a global axis manager if available, otherwise use a local one here.
-  if axis_manager is None:
-    axis_manager = AxisManager()
-  for filename, (_interface,entries) in table.iteritems():
-    for varname, axes, atts in entries:
-      axis_manager.register_axes(axes)
+    for filename, (_interface,entries) in self.table.iteritems():
+      for varname, axes, atts in entries:
+        self.axis_manager.register_axes(axes)
 
-  if manifest is not None:
-    pbar = PBar (message = "Generating %s"%manifest)
-  else:
-    pbar = PBar (message = "Scanning files")
+    # We haven't done anything new with the table yet.
+    self.modified_table = False
 
-  modified_table = False
+    # No data files have been selected yet (even if we have files listed in
+    # an existing manifest, we don't yet know if the user wants those
+    # particular files included in their query).
+    self.selected_files = []
 
-  # Construct / add to the table
-  for i,f in enumerate(files):
-    pbar.update(i*100./len(files))
-    if f in table:
-      # File has changed since last time?
-      if int(getmtime(f)) > mtime:
-        # Remove existing info
-        del table[f]
-      else:
-        # Otherwise, we've already dealt with the file, so skip it.
-        continue
-    # Always use the latest modification time to represent the valid time of
-    # the whole table.
-    mtime = max(mtime,int(getmtime(f)))
+  # Scan through all the given files, add the info to the manifest.
+  def scan_files (self, files, interface):
+    from os.path import getmtime, normpath
+    from pygeode.progress import PBar
 
-    # Record all variables from the file.
-    entries = []
-    table[f] = interface, entries
-    for var in interface.open_file(f):
+    table = self.table
 
-      axes = axis_manager.lookup_axes(var.axes)
-      entries.append((var.name, axes, var.atts))
+    # Special case: no files given
+    if len(files) == 0: return
 
-    modified_table = True
+    self.selected_files.extend(files)
 
+    # Strip out extra separators, etc. from the filenames.
+    # Otherwise, if the files are scanned a second time with different
+    # separators, it may cause the same file to be included more than once.
+    files = [normpath(f) for f in files]
 
-  if modified_table and manifest is not None:
-    with gzip.open(manifest,'w') as f:
-      pickle.dump(MANIFEST_VERSION, f)
-      blob = pickle.dumps(table)
-      f.write(blob)
-    # Set the modification time to the latest file that was used.
-    atime = getatime(manifest)
-    utime(manifest,(atime,mtime))
+    if self.filename is not None:
+      pbar = PBar (message = "Scanning files for %s"%self.filename)
+    else:
+      pbar = PBar (message = "Scanning files")
 
-  pbar.update(100)
+    # Construct / add to the table
+    for i,f in enumerate(files):
+      pbar.update(i*100./len(files))
+      if f in table:
+        # File has changed since last time?
+        if int(getmtime(f)) > self.mtime:
+          # Remove existing info
+          del table[f]
+        else:
+          # Otherwise, we've already dealt with the file, so skip it.
+          continue
+      # Always use the latest modification time to represent the valid time of
+      # the whole table.
+      self.mtime = max(self.mtime,int(getmtime(f)))
 
-  # Limit the results to the files that were requested.
-  # Ignore the rest of the manifest.
+      # Record all variables from the file.
+      entries = []
+      table[f] = interface, entries
+      for var in interface.open_file(f):
 
-  return dict((f,table[f]) for f in files)
+        axes = self.axis_manager.lookup_axes(var.axes)
+        entries.append((var.name, axes, var.atts))
+
+      self.modified_table = True
+
+    pbar.update(100)
+
+  # Get the relevant entries from the manifest (only files that were previously
+  # specified in scan_files).
+  def get_table (self):
+    return dict((f,self.table[f]) for f in self.selected_files)
+
+  # Save the data back to disk, if it's been modified.
+  # This is called once the manifest is no longer in use.
+  def __del__ (self):
+    from os.path import exists, getatime, getmtime, normpath
+    from os import utime
+    import gzip
+    import cPickle as pickle
+    from pygeode.progress import PBar
+
+    if self.modified_table is True and self.filename is not None:
+      with gzip.open(self.filename,'w') as f:
+        pickle.dump(MANIFEST_VERSION, f)
+        blob = pickle.dumps(self.table)
+        f.write(blob)
+      # Set the modification time to the latest file that was used.
+      atime = getatime(self.filename)
+      utime(self.filename,(atime,self.mtime))
+
 
 # A list of variables (acts like an "axis" for the purpose of domain
 # aggregating).
@@ -545,11 +578,19 @@ def get_var_info(manifest):
   return atts, table
 
 # Create a dataset from a set of files and an interface class
-def from_files (filelist, interface, manifest=None, force_common_axis=None):
+def from_files (filelist, interface, filename=None, force_common_axis=None):
   axis_manager = AxisManager()
-  manifest = scan_files (filelist, interface, manifest, axis_manager)
-  domains = _get_domains(manifest, axis_manager, force_common_axis=force_common_axis)
-  atts, table = get_var_info(manifest)
+  # Start a manifest (optionally, associate it with a file on disk).
+  manifest = Manifest(filename, axis_manager)
+  # Scan the given data files, and add them to the table.
+  manifest.scan_files(filelist, interface)
+  # Get the final table of available data.
+  table = manifest.get_table()
+  domains = _get_domains(table, axis_manager, force_common_axis=force_common_axis)
+  # Find all variable attributes that are consistent throughout all files.
+  # Also, invert the table so the lookup key is the varname (value is a list
+  # of all filenames that contain it).
+  atts, table = get_var_info(table)
   datasets = [_domain_as_dataset(d,atts,table,axis_manager) for d in domains]
   return datasets
 
