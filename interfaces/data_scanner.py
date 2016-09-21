@@ -522,36 +522,14 @@ def _cleanup_subdomains (domains):
   return domains - junk_domains
 
 
-# Get a common axis
-# Note: assume the values are all intercomparable.
-def _get_common_axis (manifest, axis_name, axis_manager):
-  import numpy as np
-  sample = None
-  values = []
-  for interface, entries in manifest.itervalues():
-    for var, axes, atts in entries:
-      for axis in axes:
-        if axis.name != axis_name: continue
-        if sample is None: sample = axis
-        values.append(axis_manager.settify_axis(axis))
-  values = frozenset.union(*values)
-  common_axis = axis_manager.unsettify_axis(sample, values)
-  return common_axis
 
 # Scan a file manifest, return all possible domains available.
-def _get_domains (manifest, axis_manager, force_common_axis=None):
-
-  # Fetch a common axis?
-  if force_common_axis is not None:
-    common_axis = _get_common_axis(manifest, axis_name=force_common_axis, axis_manager=axis_manager)
+def _get_domains (manifest, axis_manager):
 
   # Start by adding all domain pieces to the list
   domains = set()
   for interface, entries in manifest.itervalues():
     for var, axes, atts in entries:
-      # Apply the common axis?
-      if force_common_axis:
-        axes = tuple(common_axis if a.name == force_common_axis else a for a in axes)
       # Map each entry to a domain.
       axes = (Varlist.singlevar(var),)+axes
       axis_values = map(axis_manager.settify_axis, axes)
@@ -583,7 +561,7 @@ def get_var_info(manifest):
   return atts, table
 
 # Create a dataset from a set of files and an interface class
-def from_files (filelist, interface, manifest=None, force_common_axis=None):
+def from_files (filelist, interface, manifest=None):
 
   # If we're given a filename, then wrap it in a Manifest object.
   # If we're not given any filename, then create a new Manifest with no file
@@ -599,7 +577,7 @@ def from_files (filelist, interface, manifest=None, force_common_axis=None):
   # Done with these files.
   manifest.unselect_all()
 
-  domains = _get_domains(table, axis_manager, force_common_axis=force_common_axis)
+  domains = _get_domains(table, axis_manager)
   # Find all variable attributes that are consistent throughout all files.
   # Also, invert the table so the lookup key is the varname (value is a list
   # of all filenames that contain it).

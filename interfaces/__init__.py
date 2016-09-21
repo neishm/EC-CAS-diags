@@ -212,11 +212,6 @@ class DataProduct (DataInterface):
   def write (datasets, dirname):
     raise NotImplementedError
 
-
-  # Any axis that should be common among datasets.
-  # Final values will be superset of values from all variables.
-  _common_axis = None
-
   # Indicates that the domains should not cross file boundaries.
   _per_file = False
 
@@ -250,7 +245,7 @@ class DataProduct (DataInterface):
       # Flatten into a single list
       data = sum(data,[])
     else:
-      data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axis)
+      data = from_files(expanded_files, type(self), manifest=manifest)
 
     # Flush the manifest back to disk (if there were any updates).
     manifest.save()
@@ -260,11 +255,6 @@ class DataProduct (DataInterface):
     data = map(asdataset, data)
     # Store the data in this object.
     DataInterface.__init__(self,data)
-
-
-# A sub-class to handle station obs data.
-class StationObsProduct(DataProduct):
-  _common_axis = 'time'
 
 
 # A sub-class to handle data that should be treated independently for each
