@@ -109,6 +109,11 @@ class Manifest(object):
   def get_table (self):
     return dict((f,self.table[f]) for f in self.selected_files)
 
+  # Reset the list of selected files (so we can scan a new batch and produce
+  # a new table).
+  def unselect_all (self):
+    self.selected_files = []
+
   # Save the data back to disk, if it's been modified.
   # This is called once the manifest is no longer in use.
   def save (self):
@@ -578,16 +583,15 @@ def get_var_info(manifest):
   return atts, table
 
 # Create a dataset from a set of files and an interface class
-def from_files (filelist, interface, filename=None, force_common_axis=None):
-  axis_manager = AxisManager()
-  # Start a manifest (optionally, associate it with a file on disk).
-  manifest = Manifest(filename, axis_manager)
+def from_files (filelist, interface, manifest, force_common_axis=None):
+  axis_manager = manifest.axis_manager
   # Scan the given data files, and add them to the table.
   manifest.scan_files(filelist, interface)
   # Get the final table of available data.
   table = manifest.get_table()
-  # Flush the manifest back to disk (if there were any updates).
-  manifest.save()
+  # Done with these files.
+  manifest.unselect_all()
+
   domains = _get_domains(table, axis_manager, force_common_axis=force_common_axis)
   # Find all variable attributes that are consistent throughout all files.
   # Also, invert the table so the lookup key is the varname (value is a list
