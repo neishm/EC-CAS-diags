@@ -583,7 +583,14 @@ def get_var_info(manifest):
   return atts, table
 
 # Create a dataset from a set of files and an interface class
-def from_files (filelist, interface, manifest, force_common_axis=None):
+def from_files (filelist, interface, manifest=None, force_common_axis=None):
+
+  # If we're given a filename, then wrap it in a Manifest object.
+  # If we're not given any filename, then create a new Manifest with no file
+  # association.
+  if isinstance(manifest,str) or manifest is None:
+    manifest = Manifest(filename=manifest)
+
   axis_manager = manifest.axis_manager
   # Scan the given data files, and add them to the table.
   manifest.scan_files(filelist, interface)
