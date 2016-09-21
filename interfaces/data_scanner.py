@@ -161,11 +161,8 @@ class AxisManager (object):
     self._id_lookup = {}  # Reverse-lookup of an axis by id
     self._all_axes = []   # List of encountered axes (so the ids don't get
                           # recycled)
-    # For flattening / unflattening axes
-    self._flattened_axes = {}
-    self._unflattened_axes = {}
 
-    # For axes that are flattened and subsequently converted to a set
+    # For axes that are converted to/from a set
     self._settified_axes = {}
     self._unsettified_axes = {}
 
@@ -212,11 +209,11 @@ class AxisManager (object):
   def register_axes (self, axes):
     self.lookup_axes (axes)
 
-  # Convert an axis to tuples of values and auxiliary arrays
-  def flatten_axis (self, axis):
+  # Convert an axis to unordered set of tuples
+  def settify_axis (self, axis):
     axis = self.lookup_axis(axis)
     axis_id = id(axis)
-    entry = self._flattened_axes.get(axis_id,None)
+    entry = self._settified_axes.get(axis_id,None)
     if entry is not None: return entry
 
     if isinstance(axis,Varlist):
@@ -225,35 +222,23 @@ class AxisManager (object):
       auxarrays = [[(name,v) for v in axis.auxarrays[name]] for name in sorted(axis.auxarrays.keys())]
     assert all(len(aux) == len(axis.values) for aux in auxarrays)
     flat = tuple(zip(axis.values, *auxarrays))
-    self._flattened_axes[axis_id] = flat
-# disabled this - otherwise we get the original (unsorted) axis where we may
-# expect a sorted axis. (e.g. in DataVar)
-#    self._unflattened_axes.setdefault(type(axis),dict())[flat] = axis
-    return flat
 
-  # Convert an axis to unordered set of tuples
-  def settify_axis (self, axis):
-    axis = self.lookup_axis(axis)
-    axis_id = id(axis)
-    entry = self._settified_axes.get(axis_id,None)
-    if entry is not None: return entry
-
-    out = frozenset(self.flatten_axis (axis))
+    out = frozenset(flat)
     self._settified_axes[axis_id] = out
 # disabled this - otherwise we get the original (unsorted) axis where we may
 # expect a sorted axis. (e.g. in DataVar)
 #    self._unsettified_axes.setdefault(type(axis),dict())[out] = axis
     return out
 
-
-  # Convert some flattened coordinates back into an axis
-  def unflatten_axis (self, sample, values):
+  # Convert some settified coordinates back into an axis
+  def unsettify_axis (self, sample, values):
     import numpy as np
-    values = tuple(sorted(values))
     # Check if we can already get one
     key = values
-    axis = self._unflattened_axes.setdefault(type(sample),dict()).get(key,None)
+    axis = self._unsettified_axes.setdefault(type(sample),dict()).get(key,None)
     if axis is not None: return axis
+
+    values = tuple(sorted(values))
     x = zip(*values)
     # Special case: empty axis
     if len(x) == 0:
@@ -274,19 +259,6 @@ class AxisManager (object):
       if len(auxarrays) > 0: axis.auxarrays = auxarrays
 
     axis = self.lookup_axis(axis)
-    self._unflattened_axes[type(sample)][key] = axis
-    return axis
-
-  # Convert some settified coordinates back into an axis
-  #TODO: store reverse _settified_axes as well?
-  # (and do same with unflatten_axis()?)
-  def unsettify_axis (self, sample, values):
-    # Check if we can already get one
-    key = values
-    axis = self._unsettified_axes.setdefault(type(sample),dict()).get(key,None)
-    if axis is not None: return axis
-
-    axis = self.unflatten_axis(sample, values)
 
     self._unsettified_axes[type(sample)][key] = axis
     return axis
