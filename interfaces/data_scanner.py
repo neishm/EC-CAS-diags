@@ -211,12 +211,15 @@ class AxisManager (object):
 
   # Convert an axis to unordered set of tuples
   def settify_axis (self, axis):
+    from pygeode.timeaxis import Time
     axis = self.lookup_axis(axis)
     axis_id = id(axis)
     entry = self._settified_axes.get(axis_id,None)
     if entry is not None: return entry
 
-    if isinstance(axis,Varlist):
+    # Varlist objects have no aux arrays, and we don't *need* the aux arrays
+    # for time axes (can reconstruct this information later).
+    if isinstance(axis,(Varlist,Time)):
       auxarrays = []
     else:
       auxarrays = [[(name,v) for v in axis.auxarrays[name]] for name in sorted(axis.auxarrays.keys())]
@@ -292,13 +295,13 @@ class Domain (object):
     return hash(self.axis_values)
   def __repr__ (self):
     return "("+",".join(map(str,map(len,filter(None,self.axis_values))))+")"
-  # Mask out an axis (convert it to a 'None' placeholder)
   def which_axis (self, iaxis):
     if isinstance(iaxis,int): return iaxis
     assert isinstance(iaxis,str)
     if iaxis in self.axis_names:
       return self.axis_names.index(iaxis)
     return None
+  # Mask out an axis (convert it to a 'None' placeholder)
   def without_axis (self, iaxis):
     axis_values = list(self.axis_values)
     axis_values[self.which_axis(iaxis)] = None
