@@ -10,6 +10,7 @@ class NOAA_Station_Data(SplitProduct):
   # (original_name, standard_name, units)
   field_list = (
     ('CO', 'CO', 'ppb'),
+    ('CO_uncertainty', 'CO_uncertainty', 'ppb'),
   )
 
   # Method to open a single file
