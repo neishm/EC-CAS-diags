@@ -70,6 +70,8 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
           field = od[varname]
           field = convert(field, units, context=fieldname)
           field = field(time=(start,end))
+          # Check for missing data (so we don't connect this region with a line)
+          field = detect_gaps(field)
           varlist.append(field)
 
       datasets.append(Dataset(varlist))

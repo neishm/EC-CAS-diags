@@ -279,6 +279,10 @@ def detect_gaps(var):
   if len(var.time) <= 1: return var
 
   dt, count = Counter(np.diff(var.time.values)).most_common(1)[0]
+  # If we have an extremely irregular time axis, then don't try to make it
+  # regular (e.g. for flask data, which is taken whenever they remember to
+  # do it?)
+  if count < len(var.time)/10+2: return var
   start = var.time.values[0]
   stop = var.time.values[-1]
   n = int(round((stop-start)/dt)) + 1
