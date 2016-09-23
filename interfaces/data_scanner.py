@@ -250,14 +250,13 @@ class AxisManager (object):
 
     values = sorted(values)
 
+    # Check if the axis is degenerate
+    if len(values) == 0:
+      axis = sample.withnewvalues(values)
     # Do we have aux array pairs to deal with?
-    if isinstance(values[0],tuple):
+    elif isinstance(values[0],tuple):
       x = zip(*values)
-      # Special case: empty axis
-      if len(x) == 0:
-        values = []
-      else:
-        values = x[0]
+      values = x[0]
       auxarrays = {}
       for aux in x[1:]:
         name, arr = zip(*aux)
