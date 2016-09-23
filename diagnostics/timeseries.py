@@ -70,7 +70,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
           field = od[varname]
           field = convert(field, units, context=fieldname)
           field = field(time=(start,end))
-        varlist.append(field)
+          varlist.append(field)
 
       datasets.append(Dataset(varlist))
     out_obs = DerivedProduct(datasets, source=obs)
