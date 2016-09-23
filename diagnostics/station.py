@@ -46,6 +46,7 @@ class StationComparison(Diagnostic):
     from pygeode.dataset import Dataset
     from pygeode.axis import concat
     from ..common import closeness_to_surface, number_of_timesteps, select_surface
+    from ..interfaces import DerivedProduct
 
     # Lookup table for keeping track of what stations are sampled for each
     # variable.
@@ -55,7 +56,7 @@ class StationComparison(Diagnostic):
     for obs_dataset in obs.datasets:
       for var in obs_dataset:
         if model.have(var.name):
-          var_stations.setdefault(var.name,[]).append(obs.station)
+          var_stations.setdefault(var.name,[]).append(var.station)
 
     # Sample the data at all needed locations, and cache it.
     sampled_dataset = []

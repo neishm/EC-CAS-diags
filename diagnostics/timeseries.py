@@ -12,6 +12,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
     from ..common import find_and_convert, convert, detect_gaps, fix_timeaxis
     from ..interfaces import DerivedProduct
     from pygeode.timeutils import reltime
+    from pygeode.dataset import Dataset
     inputs = super(Timeseries,self)._transform_inputs(inputs)
 
     # First, need consistent time axis values across all inputs.
@@ -88,11 +89,18 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
     # Plot 4 timeseries per figure
     n = 4
 
-    time1 = inputs[0].datasets[0].vars[0].time.values[0]
-    time2 = inputs[0].datasets[0].vars[0].time.values[-1]
+    # Get global time axis range for the data (in relative units).
+    # Needed for calculating marker size.
+    time1 = min(d.time.values[0] for inp in inputs for d in inp.datasets if len(d.time) > 0)
+    time2 = max(d.time.values[-1] for inp in inputs for d in inp.datasets if len(d.time) > 0)
+    # Get global date range for the data (as datetime objects).
+    # Needed for forcing the scale of the plot.
+    mindate = min(to_datetimes(d.time)[0] for inp in inputs for d in inp.datasets if len(d.time) > 0)
+    maxdate = max(to_datetimes(d.time)[-1] for inp in inputs for d in inp.datasets if len(d.time) > 0)
 
     # Loop over individual stations
-    for i in len(inputs[0].datasets):
+    nstations = len(inputs[0].datasets)
+    for i in range(nstations):
       station_axis = inputs[0].datasets[i].vars[0].station
       assert len(station_axis) == 1, "Unable to handle multi-station datasets"
       location = station_axis.station[0]
@@ -118,16 +126,10 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
       # Fix issue with certain characters in station names
       title = title.decode('latin-1')
 
-      mindate = maxdate = None
+      # Loop over each product, and plot the data for this location.
       for inp in inputs:
         var = inp.datasets[i][self.fieldname]
         dates = to_datetimes(var.time)
-        # Keep track of min/max date range. (To force it at the end of this
-        # iteration)
-        if mindate is None: mindate = dates[0]
-        if maxdate is None: maxdate = dates[-1]
-        mindate = min(mindate,dates[0])
-        maxdate = max(maxdate,dates[0])
 
         values = var.get().flatten()
 
@@ -149,7 +151,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
           markersize = 1.0
 
         # Draw standard deviation?
-        for errame in (self.fieldname+'_std', self.fieldname+'_uncertainty'):
+        for errname in (self.fieldname+'_std', self.fieldname+'_uncertainty'):
          if errname in inp.datasets[i]:
           std = inp.datasets[i][errname].get().flatten()
           fill_min = values - 2*std
@@ -171,7 +173,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
       pl.ylabel('%s %s'%(self.fieldname,self.units))
 
       # Things to do on the last plot of the figure
-      if i%n == (n-1) or i == len(station_axis)-1:
+      if i%n == (n-1) or i == nstations-1:
         # Put a legend on the last plot
         labels = [d.title for d in inputs]
         pl.legend(labels)
