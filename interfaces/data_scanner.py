@@ -224,7 +224,14 @@ class AxisManager (object):
     else:
       auxarrays = [[(name,v) for v in axis.auxarrays[name]] for name in sorted(axis.auxarrays.keys())]
     assert all(len(aux) == len(axis.values) for aux in auxarrays)
-    flat = tuple(zip(axis.values, *auxarrays))
+
+    # If there are aux arrays, need to pair the elements in the flatteded
+    # version.
+    if len(auxarrays) > 0:
+      flat = zip(axis.values, *auxarrays)
+    # Otherwise, just need the values themselves.
+    else:
+      flat = axis.values
 
     out = frozenset(flat)
     self._settified_axes[axis_id] = out
@@ -241,25 +248,34 @@ class AxisManager (object):
     axis = self._unsettified_axes.setdefault(type(sample),dict()).get(key,None)
     if axis is not None: return axis
 
-    values = tuple(sorted(values))
-    x = zip(*values)
-    # Special case: empty axis
-    if len(x) == 0:
-      values = []
-    else:
-      values = x[0]
-    auxarrays = {}
-    for aux in x[1:]:
-      name, arr = zip(*aux)
-      auxarrays[name[0]] = np.array(arr)
-    if isinstance(sample,Varlist):
-      axis = Varlist(values)
-    else:
+    values = sorted(values)
+
+    # Do we have aux array pairs to deal with?
+    if isinstance(values[0],tuple):
+      x = zip(*values)
+      # Special case: empty axis
+      if len(x) == 0:
+        values = []
+      else:
+        values = x[0]
+      auxarrays = {}
+      for aux in x[1:]:
+        name, arr = zip(*aux)
+        auxarrays[name[0]] = np.array(arr)
       axis = sample.withnewvalues(values)
       # Only update the auxarrays if we have something to put
       # For empty axes, we don't want to erase the (empty) auxarrays already
       # created e.g. for the time axis.
       if len(auxarrays) > 0: axis.auxarrays = auxarrays
+
+    # Do we have a Varlist pseudo-axis?
+    elif isinstance(sample,Varlist):
+      axis = Varlist(values)
+
+    # Otherwise, we have an axis with no aux arrays (so we can just use the
+    # values we have).
+    else:
+      axis = sample.withnewvalues(values)
 
     axis = self.lookup_axis(axis)
 
