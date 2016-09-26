@@ -1,7 +1,7 @@
 # NOAA station data
 
-from . import StationObsProduct
-class NOAA_Station_Data(StationObsProduct):
+from . import SplitProduct
+class NOAA_Station_Data(SplitProduct):
   """
   Greenhouse gas measurments from NOAA.
   """
@@ -10,6 +10,7 @@ class NOAA_Station_Data(StationObsProduct):
   # (original_name, standard_name, units)
   field_list = (
     ('CO', 'CO', 'ppb'),
+    ('CO_uncertainty', 'CO_uncertainty', 'ppb'),
   )
 
   # Method to open a single file
@@ -60,7 +61,7 @@ class NOAA_Station_Data(StationObsProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+'/surface/*_event.txt')
+    return sorted(glob(dirname+'/surface/*_event.txt'))
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.

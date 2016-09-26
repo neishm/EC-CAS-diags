@@ -40,35 +40,71 @@ class StationComparison(Diagnostic):
     obs.name = obs.name + '_'+','.join(s for s in final_list)
     return obs
 
-  # Helper method - given an obs dataset, filter model data onto the same
+  # Helper method - given an obs dataset, sample model data at the same
   # points.
-  @staticmethod
-  def _sample_dataset_at_obs (obs, model):
+  def _sample_model_at_obs (self, model, obs):
     from pygeode.dataset import Dataset
-    # Sample at the station locations
-    fields = []
-    for var in model.vars:
-      # Ignore non-spatial fields
-      if not var.hasaxis('lat'): continue
-      if not var.hasaxis('lon'): continue
-      fields.append(StationSample(var, obs.station))
-    return Dataset(fields)
+    from pygeode.axis import concat
+    from ..common import closeness_to_surface, number_of_timesteps, select_surface
+    from ..interfaces import DerivedProduct
+
+    # Lookup table for keeping track of what stations are sampled for each
+    # variable.
+    var_stations = dict()
+
+    # Figure out what needs to be sampled.
+    for obs_dataset in obs.datasets:
+      for var in obs_dataset:
+        if model.have(var.name):
+          var_stations.setdefault(var.name,[]).append(var.station)
+
+    # Sample the data at all needed locations, and cache it.
+    sampled_dataset = []
+    for varname, stationlist in var_stations.iteritems():
+      var = model.find_best(varname, maximize = (closeness_to_surface,number_of_timesteps))
+      var = select_surface(var)
+      stations = concat(stationlist)
+      var = StationSample(var, stations)
+      # Cache the data for faster subsequent access.
+      # Disable time splitting for the cache file, since open_multi doesn't work
+      # very well with the encoded station data.
+      # Only cache if we have some data in this time period.
+      if len(var.time) > 0:
+        var = model.cache.write(var, prefix=model.name+'_at_%s_%s%s'%(obs.name,var.name,self.suffix), split_time=False, suffix=self.end_suffix)
+      sampled_dataset.append(var)
+    sampled_dataset = Dataset(sampled_dataset)
+
+    # Extract what we need from the cached data.
+    out_datasets = []
+    for obs_dataset in obs.datasets:
+      out_dataset = []
+      for obs_var in obs_dataset:
+        if obs_var.name in sampled_dataset:
+          sampled_var= sampled_dataset[obs_var.name]
+          out_var = sampled_var(l_station=obs_var.station.station)
+          out_dataset.append(out_var)
+      out_dataset = Dataset(out_dataset)
+      out_datasets.append(out_dataset)
+
+    # Wrap it up as a DataProduct, and we're done.
+    out = DerivedProduct(out_datasets,source=model)
+    return out
+
 
   # Helper method - determine if a dataset is in obs space (i.e., has a
   # station axis).
   # TODO: remove this some Dataset objects include a hasaxis routine.
   @staticmethod
-  def _has_station_axis (dataset):
-    for var in dataset.vars:
-      if var.hasaxis('station'): return True
+  def _has_station_axis (product):
+    for dataset in product.datasets:
+      for var in dataset.vars:
+        if var.hasaxis('station'): return True
     return False
 
   # For each observation dataset,
   # interpolate model data directly to station locations.
   def _input_combos (self, inputs):
-    from ..interfaces import DerivedProduct
-    from pygeode.dataset import Dataset
-    all_obs = [m for m in inputs if any(self._has_station_axis(d) for d in m.datasets)]
+    all_obs = [m for m in inputs if self._has_station_axis(m)]
     models = [m for m in inputs if m not in all_obs]
     # Subset the obs locations (if particular locations were given on the
     # command-line).
@@ -77,19 +113,12 @@ class StationComparison(Diagnostic):
     # Loop over each obs product
     for obs in all_obs:
       if len(obs.datasets) == 0: continue
-      # If we have multiple datasets, use the one with the largest amount
-      # of data we're interested in.
-      field = obs.find_best(self.fieldname)
-      obs = DerivedProduct(field, source=obs)
       # Loop over each model
       out_models = []
       for m in models:
-        datasets = []
-        for od in obs.datasets:
-          for md in m.datasets:
-            datasets.append(self._sample_dataset_at_obs(od,md))
-        if len(datasets) == 0: continue  # Ignore non-applicable models.
-        m = DerivedProduct(datasets,source=m)
+        # Sample model dataset at each applicable obs dataset.
+        m = self._sample_model_at_obs(m,obs)
+        if len(m.datasets) == 0: continue  # Ignore non-applicable models.
         out_models.append(m)
       if len(out_models) == 0: continue  # Don't do obs-only diagnostic.
       yield out_models + [obs]

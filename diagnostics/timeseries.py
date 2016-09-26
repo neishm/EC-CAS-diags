@@ -2,16 +2,17 @@
 
 from . import TimeVaryingDiagnostic, ImageDiagnostic
 from .station import StationComparison
-class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
+class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Sample data at surface obs locations, and plot the result as a 1D line plot.
   """
-  # Further modify the station sampling logic to select only surface level
-  # (and cache the data).
+  # Select a common time period for the data products, and convert to the
+  # right units.  Also, pick out the field of interest.
   def _transform_inputs (self, inputs):
-    from ..common import find_and_convert, closeness_to_surface, number_of_timesteps, select_surface, convert, detect_gaps, fix_timeaxis
+    from ..common import find_and_convert, convert, fix_timeaxis
     from ..interfaces import DerivedProduct
     from pygeode.timeutils import reltime
+    from pygeode.dataset import Dataset
     inputs = super(Timeseries,self)._transform_inputs(inputs)
 
     # First, need consistent time axis values across all inputs.
@@ -22,96 +23,92 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
     suffix = self.suffix
     models = inputs[:-1]
     obs = inputs[-1]
-    # Cache the model data
+    # Get common time period for model data.
     # Use the first model timeaxis as the range for plotting.
     timeaxis = None
-    cached_models = []
+    out_models = []
     for m in models:
-      dataset = []
-      field = find_and_convert(m, fieldname, units, maximize = (closeness_to_surface,number_of_timesteps))
-      field = select_surface(field)
-      # Apply time axis subsetting, but only if start or end are unspecified.
-      if timeaxis is None:
-        timeaxis = field.getaxis('time')
+      datasets = []
+      # Assuming obs and models have 1:1 mapping of datasets
+      # (should be the case for the current implementation of
+      # StationComparison, which we're deriving from).
+      for md in m.datasets:
+        field = md[fieldname]
+        field = convert(field, units)
 
-      start, end = self.date_range
+        # Apply time axis subsetting, but only if start or end are unspecified.
+        if timeaxis is None:
+          timeaxis = field.getaxis('time')
 
-      if start is None:
-        start = timeaxis.values[0]
-      else:
-        start = timeaxis.str_as_val(key=None,s=start.strftime("%d %b %Y"))
+        start, end = self.date_range
 
-      if end is None:
-        end = timeaxis.values[-1]
-      else:
-        end = timeaxis.str_as_val(key=None,s=end.strftime("%d %b %Y"))
+        if start is None:
+          start = timeaxis.values[0]
+        else:
+          start = timeaxis.str_as_val(key=None,s=start.strftime("%d %b %Y"))
 
-      field = field(time=(start,end))
+        if end is None:
+          end = timeaxis.values[-1]
+        else:
+          end = timeaxis.str_as_val(key=None,s=end.strftime("%d %b %Y"))
 
-      # Cache the data for faster subsequent access.
-      # Disable time splitting for the cache file, since open_multi doesn't work
-      # very well with the encoded station data.
-      # Only cache if we have some data in this time period.
-      if len(field.time) > 0:
-        field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False, suffix=self.end_suffix)
-      # Check for missing data (so we don't connect this region with a line)
-      field = detect_gaps(field)
-      dataset.append(field)
-      try:
-        field = find_and_convert(m, fieldname+'_ensemblespread', units, maximize = (closeness_to_surface,number_of_timesteps))
-        field = select_surface(field)
-        field = field(time=(timeaxis.values[0],timeaxis.values[-1]))
-        if len(field.time) > 0:
-          field = m.cache.write(field, prefix=m.name+'_at_%s_%s%s'%(obs.name,field.name,suffix), split_time=False, suffix=self.end_suffix)
-        # Check for missing data (so we don't connect this region with a line)
-        field = detect_gaps(field)
-        dataset.append(field.rename(fieldname+'_std'))
-      except KeyError:  # No ensemble spread for this model data
-        pass
-      m = DerivedProduct(dataset, source=m)
-      cached_models.append(m)
+        field = field(time=(start,end))
 
-    # Cache the obs data
-    dataset = []
-    obs_data = obs.find_best(fieldname)
-    obs_data = select_surface(obs_data)
-    obs_data = obs_data(time=(start,end))
-    # Cache obs data, but only  if we have some data in this time range.
-    if len(obs_data.time) > 0:
-      obs_data = obs.cache.write(obs_data, prefix=obs.name+'_sfc_%s%s'%(fieldname,suffix), split_time=False, suffix=self.end_suffix)
-    obs_data = convert(obs_data, units, context=fieldname)
-    dataset.append(obs_data)
-    # Cached the obs std. deviation (if it exists)
-    obs_stderr = None
-    for errname in (fieldname+'_std', fieldname+'_uncertainty'):
-      if obs.have(errname):
-        obs_stderr = obs.find_best(errname)
-    if obs_stderr is not None:
-      obs_stderr = select_surface(obs_stderr)
-      obs_stderr = obs_stderr(time=(start,end))
-      if len(obs_stderr.time) > 0:
-        obs_stderr = obs.cache.write(obs_stderr, prefix=obs.name+'_sfc_%s%s_std'%(fieldname,suffix), split_time=False, suffix=self.end_suffix)
-      obs_stderr = convert(obs_stderr, units, context=fieldname)
-      dataset.append(obs_stderr)
-    cached_obs = DerivedProduct(dataset, source=obs)
+        datasets.append(Dataset([field]))
+      m = DerivedProduct(datasets, source=m)
+      out_models.append(m)
 
-    return list(cached_models)+[cached_obs]
+    # Subset the obs times.
+    datasets = []
+    for od in obs.datasets:
+      varlist = []
+
+      for varname in (fieldname, fieldname+'_std', fieldname+'_uncertainty'):
+        if varname in od:
+          field = od[varname]
+          field = convert(field, units, context=fieldname)
+          field = field(time=(start,end))
+          varlist.append(field)
+
+      datasets.append(Dataset(varlist))
+    out_obs = DerivedProduct(datasets, source=obs)
+
+    return list(out_models)+[out_obs]
 
   def do (self, inputs):
     import numpy as np
     import matplotlib.pyplot as pl
     from os.path import exists
-    from ..common import to_datetimes
+    from ..common import detect_gaps, to_datetimes
 
     figwidth = 15
 
     # Create plots of each location
     # Plot 4 timeseries per figure
     n = 4
-    station_axis = inputs[0].datasets[0].vars[0].station
-    time1 = inputs[0].datasets[0].vars[0].time.values[0]
-    time2 = inputs[0].datasets[0].vars[0].time.values[-1]
-    for i,location in enumerate(station_axis.values):
+
+    # Get global time axis range for the data (in relative units).
+    # Needed for calculating marker size.
+    time1 = min(d.time.values[0] for inp in inputs for d in inp.datasets if len(d.time) > 0)
+    time2 = max(d.time.values[-1] for inp in inputs for d in inp.datasets if len(d.time) > 0)
+    # Get global date range for the data (as datetime objects).
+    # Needed for forcing the scale of the plot.
+    mindate = min(to_datetimes(d.time)[0] for inp in inputs for d in inp.datasets if len(d.time) > 0)
+    maxdate = max(to_datetimes(d.time)[-1] for inp in inputs for d in inp.datasets if len(d.time) > 0)
+
+    # Loop over individual stations
+    nstations = len(inputs[0].datasets)
+    for i in range(nstations):
+
+      fig_id = '%02d'%(i/n+1)
+      outfile = "%s/%s_timeseries_%s_%s%s.%s"%(self.outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
+
+      # Skip plots that have already been generated.
+      if exists(outfile): continue
+
+      station_axis = inputs[0].datasets[i].vars[0].station
+      assert len(station_axis) == 1, "Unable to handle multi-station datasets"
+      location = station_axis.station[0]
 
       if i%n == 0:
         fig = pl.figure(figsize=(figwidth,12))
@@ -134,21 +131,18 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
       # Fix issue with certain characters in station names
       title = title.decode('latin-1')
 
-      mindate = maxdate = None
+      # Loop over each product, and plot the data for this location.
       for inp in inputs:
-        var = inp.find_best(self.fieldname)
-        dates = to_datetimes(var.time)
-        # Keep track of min/max date range. (To force it at the end of this
-        # iteration)
-        if mindate is None: mindate = dates[0]
-        if maxdate is None: maxdate = dates[-1]
-        mindate = min(mindate,dates[0])
-        maxdate = max(maxdate,dates[0])
+        var = inp.datasets[i][self.fieldname]
+        # Check for missing data (so we don't connect this region with a line)
+        var = detect_gaps(var)
 
-        values = var.get(station=location).flatten()
+        dates = to_datetimes(var.time)
+
+        values = var.get().flatten()
 
         # Determine marker size based on the density of observations
-        timevalues = var(station=location).time.values
+        timevalues = var.time.values
         timevalues = timevalues[np.isfinite(values)]
         dt = filter(None,np.diff(timevalues))
         if len(dt) > 0:
@@ -165,8 +159,9 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
           markersize = 1.0
 
         # Draw standard deviation?
-        if inp.have(self.fieldname+'_std'):
-          std = inp.find_best(self.fieldname+'_std').get(station=location).flatten()
+        for errname in (self.fieldname+'_std', self.fieldname+'_uncertainty'):
+         if errname in inp.datasets[i]:
+          std = detect_gaps(inp.datasets[i][errname]).get().flatten()
           fill_min = values - 2*std
           fill_max = values + 2*std
           fill_mask = np.isfinite(fill_max)
@@ -186,7 +181,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
       pl.ylabel('%s %s'%(self.fieldname,self.units))
 
       # Things to do on the last plot of the figure
-      if i%n == (n-1) or i == len(station_axis)-1:
+      if i%n == (n-1) or i == nstations-1:
         # Put a legend on the last plot
         labels = [d.title for d in inputs]
         pl.legend(labels)
@@ -194,10 +189,7 @@ class Timeseries(TimeVaryingDiagnostic,ImageDiagnostic,StationComparison):
         pl.tight_layout()
 
         # Save as an image file.
-        fig_id = '%02d'%(i/n+1)
-        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(self.outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
-        if not exists(outfile):
-          fig.savefig(outfile)
+        fig.savefig(outfile)
 
         pl.close(fig)
 

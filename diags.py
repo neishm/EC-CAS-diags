@@ -305,10 +305,13 @@ diag ('flux-movie', 'CO2_flux', 'mol m-2 s-1', timefilter='Monthly', plottype='M
 diag ('flux-movie', 'CO2_flux', 'mol m-2 s-1', timefilter='Daily', plottype='MeanMap')
 
 diag ('timeseries-hist', 'CO2', 'ppm')
+diag ('timeseries-hist', 'CO',  'ppb')
 
 diag ('timeseries-diff', 'CO2', 'ppm')
+diag ('timeseries-diff', 'CO',  'ppb')
 
 diag ('regional-bargraph', 'CO2', 'ppm')
+diag ('regional-bargraph', 'CO',  'ppb')
 
 diag ('zonal-bargraph', 'CO2', 'ppm', height=0)
 

@@ -33,8 +33,8 @@ obs_locations['WMO-Lac_La_Biche'] = obs_locations['Lac_La_Biche'] = obs_location
 obs_locations['Downsview'] = obs_locations['Toronto']
 obs_locations['TAO'] = obs_locations['UofT']
 
-from . import StationObsProduct
-class EC_Station_Data(StationObsProduct):
+from . import SplitProduct
+class EC_Station_Data(SplitProduct):
   """
   Greenhouse gas measurements from Environment Canada stations.
   """
@@ -147,7 +147,7 @@ class EC_Station_Data(StationObsProduct):
     files = glob(dirname+'/*-*-Hourly.DAT')
     # Exclude extra files in methane directory (e.g. Lac_Labiche2-CH4-Hourly.DAT)
     files = [f for f in files if '2-CH4' not in f]
-    return files
+    return sorted(files)
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.

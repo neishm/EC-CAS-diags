@@ -28,6 +28,11 @@ class TimeseriesRBP(Timeseries):
       from os import makedirs
       makedirs(outdir)
 
+    outfile = "%s/%s_timeseries_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,self.suffix+self.end_suffix,self.image_format)
+
+    # Skip plots that have already been generated.
+    if exists(outfile): return
+
     Zones = np.zeros((5,len(inputs)))
     Stds = np.zeros((5,len(inputs)))
 
@@ -40,8 +45,11 @@ class TimeseriesRBP(Timeseries):
     #List for counting the number of stations in each group
     Count = np.zeros((5,len(inputs)),dtype=int)
 
-    station_axis = inputs[0].datasets[0].vars[0].station
-    for location in station_axis.values:
+    nstations = len(inputs[0].datasets)
+    for j in range(nstations):
+      station_axis = inputs[0].datasets[j].vars[0].station
+      assert len(station_axis) == 1, "Unable to handle multi-station datasets"
+      location = station_axis.station[0]
 
       station_info = station_axis(station=location)
       lat = station_info.lat[0]
@@ -49,7 +57,7 @@ class TimeseriesRBP(Timeseries):
 
       #-----Record Data------
       for i,inp in enumerate(inputs):
-        d = inp.find_best(self.fieldname)(station=location).squeeze().get()
+        d = inp.datasets[j][self.fieldname].get().flatten()
         mean = np.mean(d[~np.isnan(d)])
         std = np.std(d[~np.isnan(d)])
         if np.isnan(mean): continue  # Check if there's any data to include
@@ -113,9 +121,7 @@ class TimeseriesRBP(Timeseries):
     pl.legend(rects, [d.title for d in inputs],prop={'size':12})
     pl.text(.02,.96,'One standard deviation shown',transform = pl.gca().transAxes)
 
-    outfile = "%s/%s_timeseries_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,self.suffix+self.end_suffix,self.image_format)
-    if not exists(outfile):
-      fig.savefig(outfile)
+    fig.savefig(outfile)
 
     pl.close(fig)
 

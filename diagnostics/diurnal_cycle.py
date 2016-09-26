@@ -70,14 +70,17 @@ class DiurnalCycle(Timeseries):
     # Determine years for comparisons
     years = set()
     for inp in inputs:
-      t = inp.datasets[0].vars[0].getaxis('time')
-      for y in set(t.year):
-        if sum(t.year==y) > 10: years.add(y)
+      for d in inp.datasets:
+        t = d.vars[0].getaxis('time')
+        for y in set(t.year):
+          if sum(t.year==y) > 10: years.add(y)
     years = sorted(years)
 
     # Extract the data for each station,year,month.
     # Compute the diurnal means and do the plot.
-    for station in inputs[0].datasets[0].station.values:
+    nstations = len(inputs[0].datasets)
+    for i in range(nstations):
+      station = inputs[0].datasets[i].station.station[0]
       for year in years:
         outfile = "%s/%s_diurnal_cycle_%s_at_%s_for_%04d%s%s.%s"%(outdir,'_'.join(d.name for d in inputs), self.fieldname, station.replace('/','^'), year, self.suffix, self.end_suffix, self.image_format)
         if exists(outfile): continue
@@ -93,7 +96,7 @@ class DiurnalCycle(Timeseries):
           pl.title(month_string)
 
           for inp in inputs:
-            data = inp.find_best(self.fieldname)(station=station).squeeze('station')(year=year,month=month).squeeze()
+            data = inp.datasets[i][self.fieldname](station=station)(year=year,month=month).squeeze()
             if len(data.axes) == 0: continue
             hours, data, std = self.compute_diurnal_mean_stddev(data)
             pl.plot(hours, data, color=inp.color, linestyle=inp.linestyle, linewidth=2, marker=inp.marker, markersize=10, markeredgecolor=inp.color, label=inp.title)

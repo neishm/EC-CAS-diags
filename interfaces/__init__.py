@@ -212,18 +212,13 @@ class DataProduct (DataInterface):
   def write (datasets, dirname):
     raise NotImplementedError
 
-
-  # Any axis that should be common among datasets.
-  # Final values will be superset of values from all variables.
-  _common_axis = None
-
   # Indicates that the domains should not cross file boundaries.
   _per_file = False
 
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
   def __init__ (self, files, name, title='untitled', cache=None, rescan=False, color='black', linestyle='-', std_style='lines', marker=None, cmap='jet'):
-    from .data_scanner import from_files
+    from .data_scanner import Manifest, from_files
     from os.path import exists
     from os import remove
     from pygeode.dataset import asdataset
@@ -241,23 +236,25 @@ class DataProduct (DataInterface):
     else:
       manifest = None
 
+    # Start a manifest (optionally, associate it with a file on disk).
+    manifest = Manifest(manifest)
+
     expanded_files = self.expand_files(files)
     if self._per_file:
-      data = [from_files([f], type(self), manifest=manifest, force_common_axis=self._common_axis) for f in expanded_files]
+      data = [from_files([f], type(self), manifest=manifest) for f in expanded_files]
       # Flatten into a single list
       data = sum(data,[])
     else:
-      data = from_files(expanded_files, type(self), manifest=manifest, force_common_axis=self._common_axis)
+      data = from_files(expanded_files, type(self), manifest=manifest)
+
+    # Flush the manifest back to disk (if there were any updates).
+    manifest.save()
+
     # Decode the data (get standard field names, etc.)
     data = map(self.decode, data)
     data = map(asdataset, data)
     # Store the data in this object.
     DataInterface.__init__(self,data)
-
-
-# A sub-class to handle station obs data.
-class StationObsProduct(DataProduct):
-  _common_axis = 'time'
 
 
 # A sub-class to handle data that should be treated independently for each

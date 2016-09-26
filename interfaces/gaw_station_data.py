@@ -1,7 +1,7 @@
 # GAW station data
 
-from . import StationObsProduct
-class GAW_Station_Data(StationObsProduct):
+from . import SplitProduct
+class GAW_Station_Data(SplitProduct):
   """
   Greenhouse gas measurments from the GAW network.
   """
@@ -131,7 +131,7 @@ class GAW_Station_Data(StationObsProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+'/*.dat')
+    return sorted(glob(dirname+'/*.dat'))
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.

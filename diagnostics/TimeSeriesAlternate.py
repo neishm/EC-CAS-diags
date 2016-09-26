@@ -12,7 +12,7 @@ class TimeseriesDiff(Timeseries):
     from os.path import exists
     import math
     from os import makedirs
-    from ..common import to_datetimes
+    from ..common import detect_gaps, to_datetimes
 
     figwidth = 15
 
@@ -23,22 +23,36 @@ class TimeseriesDiff(Timeseries):
     # Create plots of each location
     # Plot 4 timeseries per figure
     n = 4
-    station_axis = inputs[0].datasets[0].vars[0].station
-    time1 = inputs[0].datasets[0].vars[0].time.values[0]
-    time2 = inputs[0].datasets[0].vars[0].time.values[-1]
-    for i,location in enumerate(station_axis.values):
+
+    # Get global time axis range for the data (in relative units).
+    # Needed for calculating marker size.
+    time1 = min(d.time.values[0] for inp in inputs for d in inp.datasets if len(d.time) > 0)
+    time2 = max(d.time.values[-1] for inp in inputs for d in inp.datasets if len(d.time) > 0)
+    # Get global date range for the data (as datetime objects).
+    # Needed for forcing the scale of the plot.
+    mindate = min(to_datetimes(d.time)[0] for inp in inputs for d in inp.datasets if len(d.time) > 0)
+    maxdate = max(to_datetimes(d.time)[-1] for inp in inputs for d in inp.datasets if len(d.time) > 0)
+
+    # Loop over individual stations
+    nstations = len(inputs[0].datasets)
+    for i in range(nstations):
+
+      fig_id = '%02d'%(i/n+1)
+      outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
+
+      # Skip plots that have already been generated.
+      if exists(outfile): continue
+
+      station_axis = inputs[0].datasets[i].vars[0].station
+      assert len(station_axis) == 1, "Unable to handle multi-station datasets"
+      location = station_axis.station[0]
 
       if i%n == 0:
         fig = pl.figure(figsize=(figwidth,12))
-        stations_on_figure = []
       pl.subplot(n,1,i%n+1)
       station_info = station_axis(station=location)
       lat = station_info.lat[0]
       lon = station_info.lon[0]
-
-      if self.stations is not None:
-        s = self._lookup_station(location)
-        stations_on_figure.append(s)
 
       # Construct a title for the plot
       title = location + ' - (%4.2f'%abs(lat)
@@ -54,13 +68,18 @@ class TimeseriesDiff(Timeseries):
       # Fix issue with certain characters in station names
       title = title.decode('latin-1')
 
+      # Loop over each product, and plot the data for this location.
       for j,inp in enumerate(inputs):
-        var = inp.find_best(self.fieldname)
+        var = inp.datasets[i][self.fieldname]
+        # Check for missing data (so we don't connect this region with a line)
+        var = detect_gaps(var)
+
         dates = to_datetimes(var.time)
-        values = var.get(station=location).flatten()
+
+        values = var.get().flatten()
 
         # Determine marker size based on the density of observations
-        timevalues = var(station=location).time.values
+        timevalues = var.time.values
         timevalues = timevalues[np.isfinite(values)]
         dt = filter(None,np.diff(timevalues))
         if len(dt) > 0:
@@ -77,8 +96,9 @@ class TimeseriesDiff(Timeseries):
           markersize = 1.0
 
         # Draw standard deviation?
-        if inp.have(self.fieldname+'_std'):
-          std = inp.find_best(self.fieldname+'_std').get(station=location).flatten()
+        for errname in (self.fieldname+'_std', self.fieldname+'_uncertainty'):
+         if errname in inp.datasets[i]:
+          std = detect_gaps(inp.datasets[i][errname]).get().flatten()
           fill_min = values - 2*std
           fill_max = values + 2*std
           fill_mask = np.isfinite(fill_max)
@@ -98,6 +118,9 @@ class TimeseriesDiff(Timeseries):
 
         # Plot the timeseries
         pl.plot(dates, values, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
+        # Work around issue where pyplot autoscale ignores points with missing
+        # data.
+        pl.xlim(mindate,maxdate)
 
       pl.title(title)
       pl.ylabel('%s %s'%(self.fieldname,self.units))
@@ -111,13 +134,20 @@ class TimeseriesDiff(Timeseries):
       TimesAx = to_datetimes(obs_times)
 
       # Determine Mean and Max difference, and standard deviation
-      DiffMean = np.mean(Difference[~np.isnan(Difference)])
-      DiffStd = np.std(Difference[~np.isnan(Difference)])
-      pl.text(.01,.9,'Mean Difference: %s | Max Difference: %s'%(round(DiffMean,1),round(np.nanmax(Difference),1)),size=11)
-      pl.text(.01,.82,'Difference Std: %s'%(round(DiffStd,1)),size=11)
+      if sum(~np.isnan(Difference)) > 0:
+        DiffMean = np.mean(Difference[~np.isnan(Difference)])
+        DiffStd = np.std(Difference[~np.isnan(Difference)])
+        pl.text(.01,.9,'Mean Difference: %s | Max Difference: %s'%(round(DiffMean,1),round(np.nanmax(Difference),1)),size=11)
+        pl.text(.01,.82,'Difference Std: %s'%(round(DiffStd,1)),size=11)
 
       # Difference plot
       pl.twinx()
+      # First, need to get the original axis lines in the legend.
+      # (adapted from http://stackoverflow.com/a/23647410)
+      for inp in inputs:
+        pl.plot(np.nan, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
+
+      # Now, can plot the difference plot.
       pl.plot(TimesAx,Difference,color='magenta')
 
       #Black baseline representing x = 0 line for difference
@@ -132,7 +162,7 @@ class TimeseriesDiff(Timeseries):
       # ----- end of difference plot -----
 
       # Things to do on the last plot of the figure
-      if i%n == (n-1) or i == len(station_axis)-1:
+      if i%n == (n-1) or i == nstations-1:
         # Put a legend on the last plot
         labels = [d.title for d in inputs]
         labels.append('Difference')
@@ -141,13 +171,7 @@ class TimeseriesDiff(Timeseries):
         pl.tight_layout()
 
         # Save as an image file.
-        if self.stations is not None:
-          fig_id = ','.join(stations_on_figure)
-        else:
-          fig_id = '%02d'%(i/n+1)
-        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
-        if not exists(outfile):
-          fig.savefig(outfile)
+        fig.savefig(outfile)
 
         pl.close(fig)
 

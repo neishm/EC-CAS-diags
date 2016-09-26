@@ -48,7 +48,7 @@ class ObsPack_Aircraft_Data(SplitProduct):
     from os.path import exists
     if exists(dirname+'/data'): dirname += '/data'
     if exists(dirname+'/nc'): dirname += '/nc'
-    return glob(dirname+'/*aircraft-pfp*.nc')
+    return sorted(glob(dirname+'/*aircraft-pfp*.nc'))
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.
