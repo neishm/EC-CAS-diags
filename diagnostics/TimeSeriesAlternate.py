@@ -132,6 +132,12 @@ class TimeseriesDiff(Timeseries):
 
       # Difference plot
       pl.twinx()
+      # First, need to get the original axis lines in the legend.
+      # (adapted from http://stackoverflow.com/a/23647410)
+      for inp in inputs:
+        pl.plot(np.nan, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
+
+      # Now, can plot the difference plot.
       pl.plot(TimesAx,Difference,color='magenta')
 
       #Black baseline representing x = 0 line for difference
