@@ -35,7 +35,7 @@ class TimeseriesHist(Timeseries):
 
       if i%n == 0:
         fig = pl.figure(figsize=(figwidth,12))
-      pl.subplot(2,2,i%n+1)
+      ax = pl.subplot(2,2,i%n+1)
       station_info = station_axis(station=location)
       lat = station_info.lat[0]
       lon = station_info.lon[0]
@@ -80,9 +80,9 @@ class TimeseriesHist(Timeseries):
           LocalMaxMin += '%d/%d | '%(max(s),min(s))
 
       #Add statistics to each plot
-      pl.text(.02,.98,LocalStds,size=11,verticalalignment='top')
-      pl.text(.02,.94,LocalMeans,size=11,verticalalignment='top')
-      pl.text(.02,.9,LocalMaxMin,size=11,verticalalignment='top')
+      pl.text(.02,.98,LocalStds,size=11,verticalalignment='top',transform=ax.transAxes)
+      pl.text(.02,.94,LocalMeans,size=11,verticalalignment='top',transform=ax.transAxes)
+      pl.text(.02,.9,LocalMaxMin,size=11,verticalalignment='top',transform=ax.transAxes)
 
       # Things to do on the last plot of the figure
       if i%n == (n-1) or i == nstations-1:
