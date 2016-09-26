@@ -9,7 +9,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
   # Select a common time period for the data products, and convert to the
   # right units.  Also, pick out the field of interest.
   def _transform_inputs (self, inputs):
-    from ..common import find_and_convert, convert, detect_gaps, fix_timeaxis
+    from ..common import find_and_convert, convert, fix_timeaxis
     from ..interfaces import DerivedProduct
     from pygeode.timeutils import reltime
     from pygeode.dataset import Dataset
@@ -54,8 +54,6 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
 
         field = field(time=(start,end))
 
-        # Check for missing data (so we don't connect this region with a line)
-        field = detect_gaps(field)
         datasets.append(Dataset([field]))
       m = DerivedProduct(datasets, source=m)
       out_models.append(m)
@@ -70,8 +68,6 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
           field = od[varname]
           field = convert(field, units, context=fieldname)
           field = field(time=(start,end))
-          # Check for missing data (so we don't connect this region with a line)
-          field = detect_gaps(field)
           varlist.append(field)
 
       datasets.append(Dataset(varlist))
@@ -83,7 +79,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
     import numpy as np
     import matplotlib.pyplot as pl
     from os.path import exists
-    from ..common import to_datetimes
+    from ..common import detect_gaps, to_datetimes
 
     figwidth = 15
 
@@ -131,6 +127,9 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
       # Loop over each product, and plot the data for this location.
       for inp in inputs:
         var = inp.datasets[i][self.fieldname]
+        # Check for missing data (so we don't connect this region with a line)
+        var = detect_gaps(var)
+
         dates = to_datetimes(var.time)
 
         values = var.get().flatten()
@@ -155,7 +154,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
         # Draw standard deviation?
         for errname in (self.fieldname+'_std', self.fieldname+'_uncertainty'):
          if errname in inp.datasets[i]:
-          std = inp.datasets[i][errname].get().flatten()
+          std = detect_gaps(inp.datasets[i][errname]).get().flatten()
           fill_min = values - 2*std
           fill_max = values + 2*std
           fill_mask = np.isfinite(fill_max)

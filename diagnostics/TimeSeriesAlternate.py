@@ -12,7 +12,7 @@ class TimeseriesDiff(Timeseries):
     from os.path import exists
     import math
     from os import makedirs
-    from ..common import to_datetimes
+    from ..common import detect_gaps, to_datetimes
 
     figwidth = 15
 
@@ -64,6 +64,9 @@ class TimeseriesDiff(Timeseries):
       # Loop over each product, and plot the data for this location.
       for j,inp in enumerate(inputs):
         var = inp.datasets[i][self.fieldname]
+        # Check for missing data (so we don't connect this region with a line)
+        var = detect_gaps(var)
+
         dates = to_datetimes(var.time)
 
         values = var.get().flatten()
@@ -88,7 +91,7 @@ class TimeseriesDiff(Timeseries):
         # Draw standard deviation?
         for errname in (self.fieldname+'_std', self.fieldname+'_uncertainty'):
          if errname in inp.datasets[i]:
-          std = inp.datasets[i][errname].get().flatten()
+          std = detect_gaps(inp.datasets[i][errname]).get().flatten()
           fill_min = values - 2*std
           fill_max = values + 2*std
           fill_mask = np.isfinite(fill_max)
