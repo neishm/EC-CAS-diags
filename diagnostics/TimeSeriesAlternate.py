@@ -124,10 +124,11 @@ class TimeseriesDiff(Timeseries):
       TimesAx = to_datetimes(obs_times)
 
       # Determine Mean and Max difference, and standard deviation
-      DiffMean = np.mean(Difference[~np.isnan(Difference)])
-      DiffStd = np.std(Difference[~np.isnan(Difference)])
-      pl.text(.01,.9,'Mean Difference: %s | Max Difference: %s'%(round(DiffMean,1),round(np.nanmax(Difference),1)),size=11)
-      pl.text(.01,.82,'Difference Std: %s'%(round(DiffStd,1)),size=11)
+      if sum(~np.isnan(Difference)) > 0:
+        DiffMean = np.mean(Difference[~np.isnan(Difference)])
+        DiffStd = np.std(Difference[~np.isnan(Difference)])
+        pl.text(.01,.9,'Mean Difference: %s | Max Difference: %s'%(round(DiffMean,1),round(np.nanmax(Difference),1)),size=11)
+        pl.text(.01,.82,'Difference Std: %s'%(round(DiffStd,1)),size=11)
 
       # Difference plot
       pl.twinx()
