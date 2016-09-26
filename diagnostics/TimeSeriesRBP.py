@@ -28,6 +28,11 @@ class TimeseriesRBP(Timeseries):
       from os import makedirs
       makedirs(outdir)
 
+    outfile = "%s/%s_timeseries_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,self.suffix+self.end_suffix,self.image_format)
+
+    # Skip plots that have already been generated.
+    if exists(outfile): return
+
     Zones = np.zeros((5,len(inputs)))
     Stds = np.zeros((5,len(inputs)))
 
@@ -116,9 +121,7 @@ class TimeseriesRBP(Timeseries):
     pl.legend(rects, [d.title for d in inputs],prop={'size':12})
     pl.text(.02,.96,'One standard deviation shown',transform = pl.gca().transAxes)
 
-    outfile = "%s/%s_timeseries_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,self.suffix+self.end_suffix,self.image_format)
-    if not exists(outfile):
-      fig.savefig(outfile)
+    fig.savefig(outfile)
 
     pl.close(fig)
 

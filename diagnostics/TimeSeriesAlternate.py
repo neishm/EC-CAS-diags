@@ -36,6 +36,13 @@ class TimeseriesDiff(Timeseries):
     # Loop over individual stations
     nstations = len(inputs[0].datasets)
     for i in range(nstations):
+
+      fig_id = '%02d'%(i/n+1)
+      outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
+
+      # Skip plots that have already been generated.
+      if exists(outfile): continue
+
       station_axis = inputs[0].datasets[i].vars[0].station
       assert len(station_axis) == 1, "Unable to handle multi-station datasets"
       location = station_axis.station[0]
@@ -164,10 +171,7 @@ class TimeseriesDiff(Timeseries):
         pl.tight_layout()
 
         # Save as an image file.
-        fig_id = '%02d'%(i/n+1)
-        outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
-        if not exists(outfile):
-          fig.savefig(outfile)
+        fig.savefig(outfile)
 
         pl.close(fig)
 
