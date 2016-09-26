@@ -25,21 +25,20 @@ class TimeseriesHist(Timeseries):
     # Create plots of each location
     # Plot 4 timeseries per figure
     n = 4
-    station_axis = inputs[0].datasets[0].vars[0].station
 
-    for i,location in enumerate(station_axis.values):
+    # Loop over individual stations
+    nstations = len(inputs[0].datasets)
+    for i in range(nstations):
+      station_axis = inputs[0].datasets[i].vars[0].station
+      assert len(station_axis) == 1, "Unable to handle multi-station datasets"
+      location = station_axis.station[0]
 
       if i%n == 0:
         fig = pl.figure(figsize=(figwidth,12))
-        stations_on_figure = []
       pl.subplot(2,2,i%n+1)
       station_info = station_axis(station=location)
       lat = station_info.lat[0]
       lon = station_info.lon[0]
-
-      if self.stations is not None:
-        s = self._lookup_station(location)
-        stations_on_figure.append(s)
 
       # Construct a title for the plot
       title = location + ' - (%4.2f'%abs(lat)
@@ -56,7 +55,7 @@ class TimeseriesHist(Timeseries):
       title = title.decode('latin-1')
 
       #Squeeze out the data (we don't need axes or anything else)
-      series = [inp.find_best(self.fieldname)(station=location).squeeze().get() for inp in inputs]
+      series = [inp.datasets[i][self.fieldname].get().flatten() for inp in inputs]
       series = [s[~np.isnan(s)] for s in series]
 
       #Find the max and mins of the datasets, lopping off the top and bottom 1% of data (outliers throwing off graph formatting)
@@ -86,7 +85,7 @@ class TimeseriesHist(Timeseries):
       pl.text(.02,.9,LocalMaxMin,size=11,verticalalignment='top')
 
       # Things to do on the last plot of the figure
-      if i%n == (n-1) or i == len(station_axis)-1:
+      if i%n == (n-1) or i == nstations-1:
         # Put a legend on the last plot
         labels = [d.title for d in inputs]
         pl.legend(labels,prop={'size':11})
@@ -94,10 +93,7 @@ class TimeseriesHist(Timeseries):
         pl.tight_layout()    #Makes layout tighter - less clutter for 4 plots
 
         # Save as an image file.
-        if self.stations is not None:
-          fig_id = ','.join(stations_on_figure)
-        else:
-          fig_id = '%02d'%(i/n+1)
+        fig_id = '%02d'%(i/n+1)
         outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
         if not exists(outfile):
           fig.savefig(outfile)
