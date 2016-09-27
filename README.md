@@ -13,7 +13,7 @@ Define your data
 
 First, you need to come up with a *config file* describing the data you want to process (what type of data, where to find it, and how it should look in the plots).  See the included `eccas.cfg` file for an example of how a config file is structured.
 
-If you're not sure which interfaces to use for your data, try running `eccas-diags --list-interfaces` to see all available options.  If you don't see the appropriate interface there, you could try making a new interface and adding it to the `interfaces/` directory (or request that it be added).
+If you're not sure which interfaces to use for your data, try running `eccas-diags --list-interfaces` to see all available options.  If you don't see the appropriate interface there, you could try making a new interface and adding it to the `eccas_diags/interfaces/` directory (or request that it be added).
 
 
 Run the diagnostics
