@@ -33,8 +33,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
       # (should be the case for the current implementation of
       # StationComparison, which we're deriving from).
       for md in m.datasets:
-        field = md[fieldname]
-        field = convert(field, units)
+        field = find_and_convert(md, fieldname, units)
 
         # Apply time axis subsetting, but only if start or end are unspecified.
         if timeaxis is None:
@@ -65,8 +64,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
 
       for varname in (fieldname, fieldname+'_std', fieldname+'_uncertainty'):
         if varname in od:
-          field = od[varname]
-          field = convert(field, units, context=fieldname)
+          field = find_and_convert(od, varname, units)
           field = field(time=(start,end))
           varlist.append(field)
 
