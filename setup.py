@@ -1,7 +1,7 @@
 from numpy.distutils.core import setup, Extension
 
-regrid_horz = Extension ('eccas_diags.regrid_horz', sources=['fvdasregridmodule.f90'])
-regrid_vert = Extension ('eccas_diags.regrid_vert', sources=['regrid_vert.f90'])
+regrid_horz = Extension ('eccas_diags.regrid_horz', sources=['eccas_diags/fvdasregridmodule.f90'])
+regrid_vert = Extension ('eccas_diags.regrid_vert', sources=['eccas_diags/regrid_vert.f90'])
 setup (
   name="eccas-diags",
   version="0-20150831",
