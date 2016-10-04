@@ -37,7 +37,6 @@ class StationComparison(Diagnostic):
       out_datasets.append(dataset(l_station=matches))
 #      print "?? result:", dataset(l_station=matches)
     obs = DerivedProduct(out_datasets, source=obs)
-    obs.name = obs.name + '_'+','.join(s for s in final_list)
     return obs
 
   # Helper method - given an obs dataset, sample model data at the same
@@ -106,9 +105,6 @@ class StationComparison(Diagnostic):
   def _input_combos (self, inputs):
     all_obs = [m for m in inputs if self._has_station_axis(m)]
     models = [m for m in inputs if m not in all_obs]
-    # Subset the obs locations (if particular locations were given on the
-    # command-line).
-    all_obs = map(self._select_obs_sites, all_obs)
 
     # Loop over each obs product
     for obs in all_obs:
@@ -119,8 +115,16 @@ class StationComparison(Diagnostic):
         # Sample model dataset at each applicable obs dataset.
         m = self._sample_model_at_obs(m,obs)
         if len(m.datasets) == 0: continue  # Ignore non-applicable models.
+        # Subset the obs locations (if particular locations were given on the
+        # command-line).
+        m = self._select_obs_sites(m)
         out_models.append(m)
       if len(out_models) == 0: continue  # Don't do obs-only diagnostic.
+      # Subset the obs locations (if particular locations were given on the
+      # command-line).
+      obs = self._select_obs_sites(obs)
+      if len(obs.datasets) == 0: continue  # Ignore combos where the obs don't
+                                           # match anything in the user list.
       yield out_models + [obs]
 
 
