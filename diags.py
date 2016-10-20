@@ -216,7 +216,7 @@ kwargs['outdir'] = outdir
 # any exceptions).
 def diag (diagname, fieldname, units, **extra):
   handled_fields.add(fieldname)
-  if fieldname != 'all':
+  if allowed_fields != 'all':
     # Skip fields that aren't requested by the user.
     if fieldname not in allowed_fields: return
   diagnostic = diagnostics.table[diagname]
