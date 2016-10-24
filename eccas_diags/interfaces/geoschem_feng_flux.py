@@ -44,7 +44,7 @@ class GEOSCHEM_Data(DataProduct):
   @staticmethod
   def open_file (filename):
     from pygeode.formats import netcdf
-    from common import rotate_grid
+    from ..common import rotate_grid
     from pygeode.dataset import Dataset
     data = netcdf.open(filename)
 
