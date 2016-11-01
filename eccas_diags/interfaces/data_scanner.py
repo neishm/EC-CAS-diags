@@ -561,7 +561,7 @@ def get_var_info(manifest):
   atts = dict((_varname,common_dict(_attslist)) for (_varname,_attslist) in atts.iteritems())
   return atts, table
 
-# Create a dataset from a set of files and an interface class
+# Find all datasets that can be constructed from a set of files.
 def from_files (filelist, interface, manifest=None):
 
   # If we're given a filename, then wrap it in a Manifest object.
@@ -659,4 +659,93 @@ class DataVar(Var):
     return out
 
 del Var
+
+
+# A generic data interface.
+# Essentially, a collection of datasets, with some convenience methods.
+class DataInterface (object):
+
+  # Generic initializer - takes a list of Datasets, stores it.
+  def __init__ (self, datasets):
+    from pygeode.dataset import asdataset
+    self.datasets = tuple(map(asdataset,datasets))
+
+  # Allow the underlying datasets to be iterated over
+  def __iter__ (self):
+    return iter(self.datasets)
+
+
+  # Get the requested variable(s).
+  # The possible matches are returned one at a time, and the calling method
+  # will have to figure out which one is the best.
+  def find (self, *vars, **kwargs):
+    requirement=kwargs.pop('requirement',None)
+    if len(kwargs) > 0:
+      raise TypeError("Unexpected keyword arguments: %s"%kwargs.keys())
+
+    for dataset in self.datasets:
+      # Check if this dataset meets any extra requirements
+      if requirement is not None:
+        if not requirement(dataset):
+          continue
+      # Check if all the variables are in the dataset
+      if all(v in dataset for v in vars):
+        varlist = [dataset[v] for v in vars]
+        if len(varlist) == 1: yield varlist[0]
+        else: yield varlist
+
+  # Determine if a given variable is in the data somewhere
+  def have (self, var):
+    for dataset in self.datasets:
+      if var in dataset: return True
+    return False
+
+  # Helper function - find the best field matches that fit some criteria
+  def find_best (self, fields, requirement=None, maximize=None, minimize=None):
+
+    # If we are given a single field name (not in a list), then return a
+    # single field (also not in a list structure).
+    collapse_result = False
+    if isinstance(fields,str):
+      fields = [fields]
+      collapse_result = True
+
+    if len(fields) == 1:
+      candidates = zip(self.find(*fields,requirement=requirement))
+    else:
+      candidates = list(self.find(*fields,requirement=requirement))
+
+    # At the very least, order by domain shapes
+    # (so we never have an arbitrary order of matches)
+    def domain_size (varlist):
+      return sorted((v.name,v.shape) for v in varlist)
+    candidates = sorted(candidates, key=domain_size, reverse=True)
+
+    if isinstance(maximize,tuple):
+      # Will be sorted by increasing order, so need to reverse the cost
+      # functions here.
+      maximize = lambda x,F=maximize: [-f(x) for f in F]
+    elif maximize is not None:
+      # Always need to invert the sign to get the maximum value first.
+      maximize = lambda x,f=maximize: -f(x)
+
+    if isinstance(minimize,tuple):
+      minimize = lambda x,F=minimize: [f(x) for f in F]
+
+
+    # Sort by the criteria (higher value is better)
+    if maximize is not None:
+      candidates = sorted(candidates, key=maximize)
+    elif minimize is not None:
+      candidates = sorted(candidates, key=minimize)
+
+    if len(candidates) == 0:
+      raise KeyError("Unable to find any matches for fields=%s, requirement=%s, maximize=%s, minimize=%s"%(fields, requirement, maximize, minimize))
+
+    # Use the best result
+    result = candidates[0]
+
+    if collapse_result: result = result[0]
+    return result
+
 
