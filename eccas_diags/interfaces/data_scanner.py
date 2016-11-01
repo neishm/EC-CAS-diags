@@ -563,6 +563,12 @@ def get_var_info(manifest):
 
 # Find all datasets that can be constructed from a set of files.
 def from_files (filelist, interface, manifest=None):
+  from glob import glob
+
+  # Check if we're given a single glob expression
+  # (evaluate to a list of files).
+  if isinstance(filelist,str):
+    filelist = glob(filelist)
 
   # If we're given a filename, then wrap it in a Manifest object.
   # If we're not given any filename, then create a new Manifest with no file
