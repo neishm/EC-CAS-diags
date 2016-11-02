@@ -297,6 +297,9 @@ class AxisManager (object):
     if axis is not None: return axis
 
     values = sorted(values)
+    # Detect reverse-ordered axes
+    if len(sample) > 1 and sample.values[0] > sample.values[1]:
+      values = values[::-1]
 
     # Check if the axis is degenerate
     if len(values) == 0:
