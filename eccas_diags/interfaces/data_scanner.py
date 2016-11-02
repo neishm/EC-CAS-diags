@@ -153,6 +153,7 @@ class Manifest(object):
       atime = getatime(self.filename)
       utime(self.filename,(atime,self.mtime))
 
+      self.modified_table = False
 
 # A list of variables (acts like an "axis" for the purpose of domain
 # aggregating).
@@ -562,7 +563,7 @@ def get_var_info(manifest,opener):
   return atts, table
 
 # Find all datasets that can be constructed from a set of files.
-def from_files (filelist, interface, manifest=None, opener_args={}):
+def from_files (filelist, interface, manifest=None, save_manifest=True, opener_args={}):
   from glob import glob
 
   # Check if we're given a single glob expression
@@ -597,6 +598,7 @@ def from_files (filelist, interface, manifest=None, opener_args={}):
   axis_manager = manifest.axis_manager
   # Scan the given data files, and add them to the table.
   manifest.scan_files(filelist, opener)
+  if save_manifest: manifest.save()
   # Get the final table of available data.
   table = manifest.get_table()
   # Done with these files.
