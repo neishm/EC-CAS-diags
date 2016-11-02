@@ -151,7 +151,7 @@ class DataProduct (DataInterface):
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
   def __init__ (self, files, name, title='untitled', cache=None, rescan=False, color='black', linestyle='-', std_style='lines', marker=None, cmap='jet'):
-    from .data_scanner import Manifest, from_files
+    from .data_scanner import _Manifest, from_files
     from os.path import exists
     from os import remove
     from pygeode.dataset import asdataset
@@ -170,7 +170,7 @@ class DataProduct (DataInterface):
       manifest = None
 
     # Start a manifest (optionally, associate it with a file on disk).
-    manifest = Manifest(manifest)
+    manifest = _Manifest(manifest)
 
     expanded_files = self.expand_files(files)
     if self._per_file:
