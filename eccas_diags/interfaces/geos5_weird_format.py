@@ -69,10 +69,8 @@ class GEOS5_Weird_Format(DataProduct):
     sigma = getattr(dataset,'sigma',None)
 
     # Get the interface A and B values.
-    # Un-reverse them, because our z axis wasn't flipped in the data scanner.
-    # (see 6031704f0cfcad7c355a7eb5003ad5ca6fc53df0)
-    A_m = np.array(GEOSCHEM_Data.A_interface[72][::-1])
-    B_m = np.array(GEOSCHEM_Data.B_interface[72][::-1])
+    A_m = np.array(GEOSCHEM_Data.A_interface[72])
+    B_m = np.array(GEOSCHEM_Data.B_interface[72])
     A = (A_m[:-1] + A_m[1:]) * 0.5
     B = (B_m[:-1] + B_m[1:]) * 0.5
     dA = (A_m[:-1] - A_m[1:])
