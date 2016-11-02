@@ -25,7 +25,7 @@
 # Current version of the manifest file format.
 # If this version doesn't match the existing manifest file, then the manifest
 # is re-generated.
-MANIFEST_VERSION="2"
+MANIFEST_VERSION="3"
 
 # Interface for creating / reading a manifest file.
 class Manifest(object):
@@ -64,7 +64,7 @@ class Manifest(object):
     else:
       self.axis_manager = AxisManager()
 
-    for filename, (_interface,entries) in self.table.iteritems():
+    for filename, entries in self.table.iteritems():
       for varname, axes, atts in entries:
         self.axis_manager.register_axes(axes)
 
@@ -77,7 +77,7 @@ class Manifest(object):
     self.selected_files = []
 
   # Scan through all the given files, add the info to the manifest.
-  def scan_files (self, files, interface):
+  def scan_files (self, files, opener):
     from os.path import getmtime, normpath
     from pygeode.progress import PBar
 
@@ -115,8 +115,8 @@ class Manifest(object):
 
       # Record all variables from the file.
       entries = []
-      table[f] = interface, entries
-      for var in interface.open_file(f):
+      table[f] = entries
+      for var in opener(f):
 
         axes = self.axis_manager.lookup_axes(var.axes)
         entries.append((var.name, axes, var.atts))
@@ -529,7 +529,7 @@ def _get_domains (manifest, axis_manager):
 
   # Start by adding all domain pieces to the list
   domains = set()
-  for interface, entries in manifest.itervalues():
+  for entries in manifest.itervalues():
     for var, axes, atts in entries:
       # Map each entry to a domain.
       axes = (Varlist.singlevar(var),)+axes
@@ -549,26 +549,44 @@ def _get_domains (manifest, axis_manager):
 
 
 # Extract variable attributes and table of files from the given manifest.
-def get_var_info(manifest):
+def get_var_info(manifest,opener):
   from pygeode.tools import common_dict
   atts = dict()
   table = dict()
-  for filename, (interface, entries) in manifest.iteritems():
+  for filename, entries in manifest.iteritems():
     for _varname, _axes, _atts in entries:
       _attslist = atts.setdefault(_varname,[])
       if _atts not in _attslist: _attslist.append(_atts)
-      table.setdefault(_varname,[]).append((filename, interface, _axes))
+      table.setdefault(_varname,[]).append((filename, opener, _axes))
   atts = dict((_varname,common_dict(_attslist)) for (_varname,_attslist) in atts.iteritems())
   return atts, table
 
 # Find all datasets that can be constructed from a set of files.
-def from_files (filelist, interface, manifest=None):
+def from_files (filelist, interface, manifest=None, opener_args={}):
   from glob import glob
 
   # Check if we're given a single glob expression
   # (evaluate to a list of files).
   if isinstance(filelist,str):
     filelist = glob(filelist)
+
+  # Determine what kind of parameter was passed for the 'interface', and
+  # find a file opener from this.
+  # Format name passed as a string?
+  if isinstance(interface,str):
+    import importlib
+    interface = importlib.import_module('pygeode.formats.'+interface)
+  # PyGeode format object?
+  if hasattr(interface,'open'):
+    interface = interface.open
+  # EC-CAS diags interface object?
+  if hasattr(interface,'open_file'):
+    interface = interface.open_file
+  if not hasattr(interface,'__call__'):
+    raise TypeError("Unable to determine the type of interface provided.")
+
+  # Wrap any extra args into the opener
+  opener = lambda filename: interface(filename,**opener_args)
 
   # If we're given a filename, then wrap it in a Manifest object.
   # If we're not given any filename, then create a new Manifest with no file
@@ -578,7 +596,7 @@ def from_files (filelist, interface, manifest=None):
 
   axis_manager = manifest.axis_manager
   # Scan the given data files, and add them to the table.
-  manifest.scan_files(filelist, interface)
+  manifest.scan_files(filelist, opener)
   # Get the final table of available data.
   table = manifest.get_table()
   # Done with these files.
@@ -588,7 +606,7 @@ def from_files (filelist, interface, manifest=None):
   # Find all variable attributes that are consistent throughout all files.
   # Also, invert the table so the lookup key is the varname (value is a list
   # of all filenames that contain it).
-  atts, table = get_var_info(table)
+  atts, table = get_var_info(table,opener)
   datasets = [_domain_as_dataset(d,atts,table,axis_manager) for d in domains]
   return datasets
 
@@ -631,7 +649,7 @@ class DataVar(Var):
     out_axes = view.clip().axes
     # Loop over all available files.
     N = 0  # Number of points covered so far
-    for filename, interface, axes in self._table:
+    for filename, opener, axes in self._table:
       subaxes = [self._axis_manager.get_axis_intersection([a1,a2]) for a1,a2 in zip(out_axes,axes)]
       reorder = []
       mask = []
@@ -652,7 +670,7 @@ class DataVar(Var):
           re = simplify(re)
         reorder.append(re)
         mask.append(m)
-      var = [v for v in interface.open_file(filename) if v.name == self._varname][0]
+      var = [v for v in opener(filename) if v.name == self._varname][0]
       v = View(subaxes)
       chunk = v.get(var)
       # Note: this may break if there is more than one axis with integer indices.
