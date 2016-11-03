@@ -46,7 +46,7 @@ class GEOSCHEM_Data(DataProduct):
     7.851231E+01, 5.638791E+01, 4.017541E+01, 2.836781E+01,
     1.979160E+01, 9.292942E+00, 4.076571E+00, 1.650790E+00,
     6.167791E-01, 2.113490E-01, 6.600001E-02, 1.000000E-02
-  ][::-1]
+  ]
 
   B_interface[47] = [
     1.000000E+00, 9.849520E-01, 9.634060E-01, 9.418650E-01,
@@ -61,7 +61,7 @@ class GEOSCHEM_Data(DataProduct):
     0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00,
     0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00,
     0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00
-  ][::-1]
+  ]
 
   A_interface[72] = [
     0.000000E+00, 4.804826E-02, 6.593752E+00, 1.313480E+01,
@@ -83,7 +83,7 @@ class GEOSCHEM_Data(DataProduct):
     2.113490E-01, 1.594950E-01, 1.197030E-01, 8.934502E-02,
     6.600001E-02, 4.758501E-02, 3.270000E-02, 2.000000E-02,
     1.000000E-02
-  ][::-1]
+  ]
 
   B_interface[72] = [
     1.000000E+00, 9.849520E-01, 9.634060E-01, 9.418650E-01,
@@ -105,7 +105,7 @@ class GEOSCHEM_Data(DataProduct):
     0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00,
     0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00,
     0.000000E+00
-  ][::-1]
+  ]
 
   # Method to open a single file
   @staticmethod
@@ -191,8 +191,8 @@ class GEOSCHEM_Data(DataProduct):
       B_interface = np.array(cls.B_interface[nlev])
       A = (A_interface[:-1] + A_interface[1:]) * 0.5
       B = (B_interface[:-1] + B_interface[1:]) * 0.5
-      dA = -(A_interface[:-1] - A_interface[1:])
-      dB = -(B_interface[:-1] - B_interface[1:])
+      dA = (A_interface[:-1] - A_interface[1:])
+      dB = (B_interface[:-1] - B_interface[1:])
 
       zaxis = Hybrid(zaxis.values, A=A, B=B)
       for i, var in enumerate(dataset):

@@ -22,13 +22,16 @@
 # Helper method(s) for scanning through data files, constructing a table of
 # contents, and sorting them into logical collections.
 
+# Stuff that in the official API for this module
+__all__ = ['AxisManager','DataInterface','from_files']
+
 # Current version of the manifest file format.
 # If this version doesn't match the existing manifest file, then the manifest
 # is re-generated.
-MANIFEST_VERSION="2"
+_MANIFEST_VERSION="3"
 
 # Interface for creating / reading a manifest file.
-class Manifest(object):
+class _Manifest(object):
 
   # Start using a manifest file (and read the existing entries if available).
   def __init__(self, filename=None, axis_manager=None):
@@ -53,7 +56,7 @@ class Manifest(object):
       self.mtime = getmtime(filename)
     # If we don't have an existing file, or it's the wrong version, then we
     # start with an empty table.
-    if filename is None or not exists(filename) or version != MANIFEST_VERSION:
+    if filename is None or not exists(filename) or version != _MANIFEST_VERSION:
       self.table = {}
       self.mtime = 0
 
@@ -64,7 +67,7 @@ class Manifest(object):
     else:
       self.axis_manager = AxisManager()
 
-    for filename, (_interface,entries) in self.table.iteritems():
+    for filename, entries in self.table.iteritems():
       for varname, axes, atts in entries:
         self.axis_manager.register_axes(axes)
 
@@ -77,7 +80,7 @@ class Manifest(object):
     self.selected_files = []
 
   # Scan through all the given files, add the info to the manifest.
-  def scan_files (self, files, interface):
+  def scan_files (self, files, opener):
     from os.path import getmtime, normpath
     from pygeode.progress import PBar
 
@@ -115,8 +118,8 @@ class Manifest(object):
 
       # Record all variables from the file.
       entries = []
-      table[f] = interface, entries
-      for var in interface.open_file(f):
+      table[f] = entries
+      for var in opener(f):
 
         axes = self.axis_manager.lookup_axes(var.axes)
         entries.append((var.name, axes, var.atts))
@@ -146,17 +149,18 @@ class Manifest(object):
 
     if self.modified_table is True and self.filename is not None:
       with gzip.open(self.filename,'w') as f:
-        pickle.dump(MANIFEST_VERSION, f)
+        pickle.dump(_MANIFEST_VERSION, f)
         blob = pickle.dumps(self.table)
         f.write(blob)
       # Set the modification time to the latest file that was used.
       atime = getatime(self.filename)
       utime(self.filename,(atime,self.mtime))
 
+      self.modified_table = False
 
 # A list of variables (acts like an "axis" for the purpose of domain
 # aggregating).
-class Varlist (object):
+class _Varlist (object):
   name = 'varlist'
   def __init__ (self, varnames):
     self.values = tuple(varnames)
@@ -177,7 +181,18 @@ class Varlist (object):
 # These methods are tied to a common object, which allows the re-use of
 # previous values.
 class AxisManager (object):
-  def __init__ (self, axes=[]):
+  """
+  Keeps track of existing PyGeode.Axis objects.
+  Allows you to avoiding having many duplicate Axis objects in your code.
+
+  Example:
+  >>> am = AxisManager()
+  >>> lat1 = am.lookup_axis(Lat([10.,20.,30.]))
+  >>> lat2 = am.lookup_axis(Lat([10.,20.,30.]))
+  >>> lat1 is lat2
+  True
+  """
+  def __init__ (self):
     self._hash_bins = {}  # Bin axis objects by hash value
     self._id_lookup = {}  # Reverse-lookup of an axis by id
     self._all_axes = []   # List of encountered axes (so the ids don't get
@@ -191,12 +206,15 @@ class AxisManager (object):
     self._unions = {}
     self._intersections = {}
 
-    self.register_axes (axes)
-
   # Helper function: recycle an existing axis object if possible.
   # This allows axes to be compared by their ids, and makes pickling them
   # more space-efficient.
   def lookup_axis (self, axis):
+    """
+    If the axis isn't registered yet, then register it and return it.
+    If the axis is already registered, or an identical axis is already
+    registered, then return a reference to that original axis.
+    """
     # Check if we've already looked at this exact object.
     axis_id = id(axis)
     entry = self._id_lookup.get(axis_id,None)
@@ -220,18 +238,27 @@ class AxisManager (object):
 
   # Register an axis in this object (so we're aware of it for future reference)
   def register_axis (self, axis):
+    """
+    Make the axis manager aware of the given axis.
+    """
     self.lookup_axis (axis)
 
   # Look up multiple axes at a time, return as a tuple
   def lookup_axes (self, axes):
+    """
+    Looks up multiple axes at a time.
+    """
     return tuple(map(self.lookup_axis, axes))
 
   # Register multiple axes at a time
   def register_axes (self, axes):
+    """
+    Registers multiple axes at a time.
+    """
     self.lookup_axes (axes)
 
   # Convert an axis to unordered set of tuples
-  def settify_axis (self, axis):
+  def _settify_axis (self, axis):
     from pygeode.timeaxis import Time
     axis = self.lookup_axis(axis)
     axis_id = id(axis)
@@ -240,7 +267,7 @@ class AxisManager (object):
 
     # Varlist objects have no aux arrays, and we don't *need* the aux arrays
     # for time axes (can reconstruct this information later).
-    if isinstance(axis,(Varlist,Time)):
+    if isinstance(axis,(_Varlist,Time)):
       auxarrays = []
     else:
       auxarrays = [[(name,v) for v in axis.auxarrays[name]] for name in sorted(axis.auxarrays.keys())]
@@ -262,7 +289,7 @@ class AxisManager (object):
     return out
 
   # Convert some settified coordinates back into an axis
-  def unsettify_axis (self, sample, values):
+  def _unsettify_axis (self, sample, values):
     import numpy as np
     # Check if we can already get one
     key = values
@@ -270,6 +297,9 @@ class AxisManager (object):
     if axis is not None: return axis
 
     values = sorted(values)
+    # Detect reverse-ordered axes
+    if len(sample) > 1 and sample.values[0] > sample.values[1]:
+      values = values[::-1]
 
     # Check if the axis is degenerate
     if len(values) == 0:
@@ -289,8 +319,8 @@ class AxisManager (object):
       if len(auxarrays) > 0: axis.auxarrays = auxarrays
 
     # Do we have a Varlist pseudo-axis?
-    elif isinstance(sample,Varlist):
-      axis = Varlist(values)
+    elif isinstance(sample,_Varlist):
+      axis = _Varlist(values)
 
     # Otherwise, we have an axis with no aux arrays (so we can just use the
     # values we have).
@@ -303,19 +333,19 @@ class AxisManager (object):
     return axis
 
   # Find common values between axes
-  def get_axis_intersection (self, axes):
+  def _get_axis_intersection (self, axes):
     key = tuple(sorted(map(id,axes)))
     if key in self._intersections: return self._intersections[key]
-    values = map(self.settify_axis, axes)
+    values = map(self._settify_axis, axes)
     values = reduce(frozenset.intersection, values, values[0])
-    intersection = self.unsettify_axis (axes[0], values)
+    intersection = self._unsettify_axis (axes[0], values)
     if len(intersection) > 0:
       self._intersections[key] = intersection
     return intersection
 
 
 # A domain (essentially a tuple of axes, with no deep comparisons)
-class Domain (object):
+class _Domain (object):
   def __init__ (self, axis_samples, axis_values):
     # Sample axis objects, for reconstructing axes of these types.
     # (may not contain the actual data that will be reconstructed).
@@ -352,7 +382,7 @@ class Domain (object):
     return type(self)(self.axis_samples, axis_values)
   # Reconstructs the axes from the samples and values. 
   def make_axes (self, axis_manager):
-    return [axis_manager.unsettify_axis(s,v) for (s,v) in zip(self.axis_samples, self.axis_values)]
+    return [axis_manager._unsettify_axis(s,v) for (s,v) in zip(self.axis_samples, self.axis_values)]
   # Determine if the given axis is in this domain (given its name)
   def has_axis (self, axis_name):
     return axis_name in self.axis_names
@@ -529,12 +559,12 @@ def _get_domains (manifest, axis_manager):
 
   # Start by adding all domain pieces to the list
   domains = set()
-  for interface, entries in manifest.itervalues():
+  for entries in manifest.itervalues():
     for var, axes, atts in entries:
       # Map each entry to a domain.
-      axes = (Varlist.singlevar(var),)+axes
-      axis_values = map(axis_manager.settify_axis, axes)
-      domains.add(Domain(axis_samples=axes, axis_values=axis_values))
+      axes = (_Varlist.singlevar(var),)+axes
+      axis_values = map(axis_manager._settify_axis, axes)
+      domains.add(_Domain(axis_samples=axes, axis_values=axis_values))
 
   # Reduce this to a minimal number of domains for data coverage
   domains = _get_prime_domains(domains)
@@ -549,30 +579,77 @@ def _get_domains (manifest, axis_manager):
 
 
 # Extract variable attributes and table of files from the given manifest.
-def get_var_info(manifest):
+def _get_var_info(manifest,opener):
   from pygeode.tools import common_dict
   atts = dict()
   table = dict()
-  for filename, (interface, entries) in manifest.iteritems():
+  for filename, entries in manifest.iteritems():
     for _varname, _axes, _atts in entries:
       _attslist = atts.setdefault(_varname,[])
       if _atts not in _attslist: _attslist.append(_atts)
-      table.setdefault(_varname,[]).append((filename, interface, _axes))
+      table.setdefault(_varname,[]).append((filename, opener, _axes))
   atts = dict((_varname,common_dict(_attslist)) for (_varname,_attslist) in atts.iteritems())
   return atts, table
 
-# Create a dataset from a set of files and an interface class
-def from_files (filelist, interface, manifest=None):
+# Find all datasets that can be constructed from a set of files.
+def from_files (filelist, interface, manifest=None, save_manifest=True, opener_args={}):
+  """
+  Scans the given files using the specified interface.  Determines all the
+  different ways the data can be mixed and matched, and returns a list of
+  PyGeode.Dataset objects, one for each combination of variables / axes.
+
+  Inputs:
+
+    filelist:  Can be either an explicit list of files, or a glob expression.
+
+    interface: How to read the data (either a format name, PyGeode format
+               module, or an explicit function for reading a file.
+
+    manifest: The name of a temporary file for storing the information about the
+              files (variable names, axes, attributes).  On subsequent calls,
+              this information can be re-used, so the data files don't have to
+              be re-scanned.
+              NOTE: If you change the interface in between calls, then you
+              should delete this file before re-running.
+
+    opener_args: Any extra arguments to pass to the file interface.
+
+  """
+
+  # Check if we're given a single glob expression
+  # (evaluate to a list of files).
+  if isinstance(filelist,str):
+    from glob import glob
+    filelist = glob(filelist)
+
+  # Determine what kind of parameter was passed for the 'interface', and
+  # find a file opener from this.
+  # Format name passed as a string?
+  if isinstance(interface,str):
+    import importlib
+    interface = importlib.import_module('pygeode.formats.'+interface)
+  # PyGeode format object?
+  if hasattr(interface,'open'):
+    interface = interface.open
+  # EC-CAS diags interface object?
+  if hasattr(interface,'open_file'):
+    interface = interface.open_file
+  if not hasattr(interface,'__call__'):
+    raise TypeError("Unable to determine the type of interface provided.")
+
+  # Wrap any extra args into the opener
+  opener = lambda filename: interface(filename,**opener_args)
 
   # If we're given a filename, then wrap it in a Manifest object.
   # If we're not given any filename, then create a new Manifest with no file
   # association.
   if isinstance(manifest,str) or manifest is None:
-    manifest = Manifest(filename=manifest)
+    manifest = _Manifest(filename=manifest)
 
   axis_manager = manifest.axis_manager
   # Scan the given data files, and add them to the table.
-  manifest.scan_files(filelist, interface)
+  manifest.scan_files(filelist, opener)
+  if save_manifest: manifest.save()
   # Get the final table of available data.
   table = manifest.get_table()
   # Done with these files.
@@ -582,7 +659,7 @@ def from_files (filelist, interface, manifest=None):
   # Find all variable attributes that are consistent throughout all files.
   # Also, invert the table so the lookup key is the varname (value is a list
   # of all filenames that contain it).
-  atts, table = get_var_info(table)
+  atts, table = _get_var_info(table,opener)
   datasets = [_domain_as_dataset(d,atts,table,axis_manager) for d in domains]
   return datasets
 
@@ -594,13 +671,13 @@ def _domain_as_dataset (domain, atts, table, axis_manager):
   assert ivarlist is not None, "Unable to determine variable names"
   varlist = axes[ivarlist]
   axes = axes[:ivarlist] + axes[ivarlist+1:]
-  return Dataset([DataVar.construct(name, axes, atts[name], table[name], axis_manager) for name in varlist])
+  return Dataset([_DataVar.construct(name, axes, atts[name], table[name], axis_manager) for name in varlist])
 
 
 
 # Wrap a variable from a domain into a Var object
 from pygeode.var import Var
-class DataVar(Var):
+class _DataVar(Var):
   @classmethod
   def construct (cls, varname, axes, atts, table, axis_manager):
 
@@ -625,8 +702,8 @@ class DataVar(Var):
     out_axes = view.clip().axes
     # Loop over all available files.
     N = 0  # Number of points covered so far
-    for filename, interface, axes in self._table:
-      subaxes = [self._axis_manager.get_axis_intersection([a1,a2]) for a1,a2 in zip(out_axes,axes)]
+    for filename, opener, axes in self._table:
+      subaxes = [self._axis_manager._get_axis_intersection([a1,a2]) for a1,a2 in zip(out_axes,axes)]
       reorder = []
       mask = []
       if any(len(a)==0 for a in subaxes): continue
@@ -646,7 +723,7 @@ class DataVar(Var):
           re = simplify(re)
         reorder.append(re)
         mask.append(m)
-      var = [v for v in interface.open_file(filename) if v.name == self._varname][0]
+      var = [v for v in opener(filename) if v.name == self._varname][0]
       v = View(subaxes)
       chunk = v.get(var)
       # Note: this may break if there is more than one axis with integer indices.
@@ -659,4 +736,140 @@ class DataVar(Var):
     return out
 
 del Var
+
+
+# A generic data interface.
+# Essentially, a collection of datasets, with some convenience methods.
+class DataInterface (object):
+  """
+  Wraps a list of PyGeode.Dataset objects in a higher-level interface for
+  querying the data.
+  """
+  # Generic initializer - takes a list of Datasets, stores it.
+  def __init__ (self, datasets):
+    from pygeode.dataset import asdataset
+    self.datasets = tuple(map(asdataset,datasets))
+
+  # Allow the underlying datasets to be iterated over
+  def __iter__ (self):
+    return iter(self.datasets)
+
+
+  # Get the requested variable(s).
+  # The possible matches are returned one at a time, and the calling method
+  # will have to figure out which one is the best.
+  def find (self, *vars, **kwargs):
+    """
+    Iterates over all datasets, looking for the given variable(s).
+
+    Inputs:
+      vars: Either a single variable name, or a list of variable names to
+            look for concurrently.
+
+      requirement: A boolean function that returns True or False for a given
+                   dataset.  Useful if you have some extra criteria that the
+                   data must satisfy.  (optional)
+
+    Returns: an iterator over all matching copies of the variable(s).
+    """
+    requirement=kwargs.pop('requirement',None)
+    if len(kwargs) > 0:
+      raise TypeError("Unexpected keyword arguments: %s"%kwargs.keys())
+
+    for dataset in self.datasets:
+      # Check if this dataset meets any extra requirements
+      if requirement is not None:
+        if not requirement(dataset):
+          continue
+      # Check if all the variables are in the dataset
+      if all(v in dataset for v in vars):
+        varlist = [dataset[v] for v in vars]
+        if len(varlist) == 1: yield varlist[0]
+        else: yield varlist
+
+  # Determine if a given variable is in the data somewhere
+  def have (self, var):
+    """
+    Checks if the specified variable is available in the datasets.
+    """
+    for dataset in self.datasets:
+      if var in dataset: return True
+    return False
+
+  # Helper function - find the best field matches that fit some criteria
+  def find_best (self, varnames, requirement=None, maximize=None, minimize=None):
+    """
+    Returns the "best" match for the specified variable name(s).
+
+    Inputs:
+      varnames: Either a single variable name, or a list of variable names to
+                match concurrently.
+
+      requirement: A boolean function that returns True or False for a given
+                   dataset.  Useful if you have some extra criteria that the
+                   data must satisfy.  (optional)
+
+      maximize / minimize: A function (or list of functions) for ranking
+                           a dataset.  This ranking value will be used for
+                           determining the "best" match.
+
+    Example:  Find CO2 and temperature fields on concurrent time steps, with
+              the additional requirement that we have surface-level data
+              (assuming a pressure axis):
+
+    >>> have_surface = lambda dataset: 1000.0 in dataset.pres.values
+    >>> co2, temp = mydata.find_best(['CO2','Temperature'], requirement=have_surface)
+
+    Example: Find temperature data with as much vertical extent as possible:
+
+    >>> number_of_levels = lambda dataset: len(dataset.zaxis)
+    >>> temp = mydata.find_best('Temperature', maximize=number_of_levels)
+
+    """
+
+    # If we are given a single field name (not in a list), then return a
+    # single field (also not in a list structure).
+    collapse_result = False
+    if isinstance(varnames,str):
+      varnames = [varnames]
+      collapse_result = True
+
+    if len(varnames) == 1:
+      candidates = zip(self.find(*varnames,requirement=requirement))
+    else:
+      candidates = list(self.find(*varnames,requirement=requirement))
+
+    # At the very least, order by domain shapes
+    # (so we never have an arbitrary order of matches)
+    def domain_size (varlist):
+      return sorted((v.name,v.shape) for v in varlist)
+    candidates = sorted(candidates, key=domain_size, reverse=True)
+
+    if isinstance(maximize,tuple):
+      # Will be sorted by increasing order, so need to reverse the cost
+      # functions here.
+      maximize = lambda x,F=maximize: [-f(x) for f in F]
+    elif maximize is not None:
+      # Always need to invert the sign to get the maximum value first.
+      maximize = lambda x,f=maximize: -f(x)
+
+    if isinstance(minimize,tuple):
+      minimize = lambda x,F=minimize: [f(x) for f in F]
+
+
+    # Sort by the criteria (higher value is better)
+    if maximize is not None:
+      candidates = sorted(candidates, key=maximize)
+    elif minimize is not None:
+      candidates = sorted(candidates, key=minimize)
+
+    if len(candidates) == 0:
+      raise KeyError("Unable to find any matches for varnames=%s, requirement=%s, maximize=%s, minimize=%s"%(varnames, requirement, maximize, minimize))
+
+    # Use the best result
+    result = candidates[0]
+
+    if collapse_result: result = result[0]
+    return result
+
 
