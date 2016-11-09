@@ -703,6 +703,10 @@ class _DataVar(Var):
     # Loop over all available files.
     N = 0  # Number of points covered so far
     for filename, opener, axes in self._table:
+      # Ignore data that's on an unexpected grid.
+      # (In case there are multiple versions of a variable, defined on different
+      # axes).
+      if map(type,out_axes) != map(type,axes): continue
       subaxes = [self._axis_manager._get_axis_intersection([a1,a2]) for a1,a2 in zip(out_axes,axes)]
       reorder = []
       mask = []
@@ -723,7 +727,7 @@ class _DataVar(Var):
           re = simplify(re)
         reorder.append(re)
         mask.append(m)
-      var = [v for v in opener(filename) if v.name == self._varname][0]
+      var = [v for v in opener(filename) if v.name == self._varname and map(type,v.axes)==map(type,out_axes)][0]
       v = View(subaxes)
       chunk = v.get(var)
       # Note: this may break if there is more than one axis with integer indices.
