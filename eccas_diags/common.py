@@ -624,10 +624,12 @@ def positive(var): return Positive(var)
 # Get a keyword / value that can be used to select a surface level for the
 # givem vertical axis.
 from pygeode.axis import Pres, Hybrid
-from pygeode.formats.fstd import LogHybrid
-surface_values = {Pres:1000., Hybrid:1.0, LogHybrid:1.0}
-surface_direction = {Pres:+1, Hybrid:+1, LogHybrid:+1}
-del Pres, Hybrid, LogHybrid
+from pygeode.formats.fstd import LogHybrid, Height_wrt_Ground
+surface_values = {Pres:1000., Hybrid:1.0, LogHybrid:1.0, Height_wrt_Ground:0.0}
+surface_direction = {Pres:+1, Hybrid:+1, LogHybrid:+1, Height_wrt_Ground:-1}
+# Rank the different axis types by preference (higher number is better)
+surface_preference = {Pres:0, Hybrid:0, LogHybrid:0, Height_wrt_Ground:1}
+del Pres, Hybrid, LogHybrid, Height_wrt_Ground
 
 # Find a surface value (or the closest level to the surface)
 def select_surface (var):
@@ -658,7 +660,12 @@ def closeness_to_surface (varlist):
       elif 'positive' in zaxis.atts:
         direction = {'up':-1, 'down':+1}[zaxis.atts['positive']]
       else: raise Exception ("Don't know how to find orientation of '%s'"%zaxis)
-      return max(var.getaxis(ZAxis).values * direction)
+      rank = surface_preference.get(type(zaxis),0)
+      value = max(var.getaxis(ZAxis).values * direction)
+      # Prefer higher-ranked axis types.
+      # Collapse (rank,value) tuple to a single value, for compatibility with
+      # data_scanner logic.
+      return rank*1E6+value
 
 # Rank a dataset based on the number of timesteps available.
 # To be used in the find_best() method.
