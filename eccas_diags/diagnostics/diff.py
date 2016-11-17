@@ -90,10 +90,10 @@ class Diff(Diagnostic):
     else:
       # Use only the common timesteps between the fields
       fields = same_times (*fields)
-    diff = fields[1]-fields[0]
+    diff = fields[0]-fields[1]
     diff.name=self.fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+str(self)+'_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
+    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+str(self)+'_with_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
     # Use symmetric range for the difference.
     x = max(abs(diff.atts['low']),abs(diff.atts['high']))
     diff.atts['low'] = -x
@@ -101,7 +101,10 @@ class Diff(Diagnostic):
     # Wrap into a data product.
     diff = DerivedProduct(diff, source=inputs[0])
     diff.name = 'diff'
-    diff.title = 'Difference (%s - %s)'%(inputs[1].name, inputs[0].name)
+    if inputs[0].desc is not None and inputs[1].desc is not None:
+      diff.title = '%s - %s'%(inputs[0].desc, inputs[1].desc)
+    else:
+      diff.title = 'Difference (%s - %s)'%(inputs[0].name, inputs[1].name)
     diff.cmap = 'bwr'
     # Colour out-of-range values instead of making them white.
     diff.cap_extremes = True

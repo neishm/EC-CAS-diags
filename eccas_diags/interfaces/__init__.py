@@ -150,12 +150,13 @@ class DataProduct (DataInterface):
 
   # Initialize a product interface.
   # Scans the provided files, and constructs the datasets.
-  def __init__ (self, files, name, title='untitled', cache=None, rescan=False, color='black', linestyle='-', std_style='lines', marker=None, cmap='jet'):
+  def __init__ (self, files, name, desc=None, title='untitled', cache=None, rescan=False, color='black', linestyle='-', std_style='lines', marker=None, cmap='jet'):
     from .data_scanner import _Manifest, from_files
     from os.path import exists
     from os import remove
     from pygeode.dataset import asdataset
     self.name = name
+    self.desc = desc
     self.title = title
     self.cache = cache
     self.color = color
@@ -202,6 +203,7 @@ class DerivedProduct (DataProduct):
     from pygeode.var import Var
     from pygeode.dataset import Dataset
     self.name = source.name
+    self.desc = source.desc
     self.title = source.title
     self.cache = source.cache
     self.color = source.color
