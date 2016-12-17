@@ -162,18 +162,24 @@ class ContourMovie(TiledMovie):
   def __init__ (self, *args, **kwargs):
     from .contouring import get_contours
     from matplotlib.pyplot import cm
-    # Get the colormaps for the contour plots
-    cmaps = kwargs.pop('cmaps')
-    cmaps = [cm.get_cmap(c) for c in cmaps]
-    self.cmaps = cmaps
-    # Check whether to cap the colours to stay in the range
-    self.cap_extremes = kwargs.pop('cap_extremes',[False]*len(cmaps))
+    # Pull these things out of the argument list, so they don't get passed
+    # to the parent init.
+    cmaps = kwargs.pop('cmaps',None)
+    cap_extremes = kwargs.pop('cap_extremes',None)
     # Send the rest of the arguments to the parent class init.
     TiledMovie.__init__(self, *args, **kwargs)
     # Determine the best contour intervals to use for the plots.
     self.clevs = {}
     for name, (low,high) in self.global_range.iteritems():
       self.clevs[name] = get_contours(low, high)
+    # Get the colormaps for the contour plots
+    if cmaps is None: cmaps = ['jet']*len(self.fields)
+    cmaps = [cm.get_cmap(c) for c in cmaps]
+    self.cmaps = cmaps
+    # Check whether to cap the colours to stay in the range
+    if cap_extremes is None:
+      cap_extremes = [False]*len(self.fields)
+    self.cap_extremes = cap_extremes
 
   def render_panel (self, axis, field, n):
     from pygeode.plot import plotvar
