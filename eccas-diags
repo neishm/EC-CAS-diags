@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Disable X-windows stuff
-# (so the diagnostics will work even if there is not X11 connection)
+# (so the diagnostics will work even if there is no X11 connection)
 import matplotlib
 matplotlib.use('Agg')
 
@@ -42,7 +42,8 @@ def make_parser(add_help=True):
 
   parser = argparse.ArgumentParser (description=description, epilog=epilog, add_help=add_help)
   parser.add_argument('-f', '--configfile', type=argparse.FileType('r'), nargs='?', help="Configuration file to use for the diagnostics.")
-  parser.add_argument('--tmpdir', help="where to put any intermediate files that get generated, if they can't be stored in their usual location.  THIS SHOULD NOT BE IN YOUR HOME DIRECTORY.")
+  parser.add_argument('--tmpdir', help="Where to put any intermediate files that get generated, if they can't be stored in their usual location.  THIS SHOULD NOT BE IN YOUR HOME DIRECTORY.")
+  parser.add_argument('--outdir', help="Where to put final diagnostic output.  Default is in a 'diags' subdirectory of the first experiment.")
   parser.add_argument('--rescan', action='store_true', help="Force the input files to be re-scanned.  Useful if the interfaces have changed since the last time the script was run.")
   parser.add_argument('--list-diagnostics', action='store_true', help="List all the available diagnostics, then exit.")
   parser.add_argument('--list-interfaces', action='store_true', help="List all the available data interfaces, then exit.")
@@ -172,9 +173,11 @@ for section in configparser.sections():
 
 # Dump the output files to a subdirectory of the experiment data
 from os import mkdir
-expsection = configparser.sections()[0]
-expdir = configparser.get(expsection,'dir')
-outdir = expdir+"/diags"
+outdir = args.outdir
+if outdir is None:
+  expsection = configparser.sections()[0]
+  expdir = configparser.get(expsection,'dir')
+  outdir = expdir+"/diags"
 try:
   mkdir(outdir)
 except OSError:
