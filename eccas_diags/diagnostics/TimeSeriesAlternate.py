@@ -93,6 +93,8 @@ class TimeseriesDiff(Timeseries):
       title = title.decode('latin-1')
 
       # Loop over each product, and plot the data for this location.
+      model_times = []  # Store for difference plots after.
+      model_values = []
       for j,inp in enumerate(inputs):
         var = inp.datasets[i][self.fieldname]
         # Check for missing data (so we don't connect this region with a line)
@@ -133,12 +135,12 @@ class TimeseriesDiff(Timeseries):
             pl.fill_between(dates, fill_min, fill_max, where=fill_mask, color=inp.color, linewidth=0, alpha=0.5)
 
         # Store some data for the difference plots further below.
-        if j == 0:
-          model_times = var.time
-          model_values = values
         if j == len(inputs)-1:
           obs_times = var.time
           obs_values = values
+        else:
+          model_times.append(var.time)
+          model_values.append(values)
 
         # Plot the timeseries
         pl.plot(dates, values, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
@@ -150,46 +152,45 @@ class TimeseriesDiff(Timeseries):
       pl.ylabel('%s %s'%(self.fieldname,self.units))
 
       # ----- start of difference plot -----
-      model_interp = np.interp(obs_times.values,model_times.values,model_values)    #Interpolate model data to those points for comparison
-
-      #------Difference Plot------
-      Difference = obs_values-model_interp    #Difference data
-
       TimesAx = to_datetimes(obs_times)
-
-      # Determine Mean and Max difference, and standard deviation
-      if sum(~np.isnan(Difference)) > 0:
-        DiffMean = np.mean(Difference[~np.isnan(Difference)])
-        DiffStd = np.std(Difference[~np.isnan(Difference)])
-        pl.text(.01,.9,'Mean Difference: %s | Max Difference: %s'%(round(DiffMean,1),round(np.nanmax(Difference),1)),size=11)
-        pl.text(.01,.82,'Difference Std: %s'%(round(DiffStd,1)),size=11)
-
-      # Difference plot
       pl.twinx()
       # First, need to get the original axis lines in the legend.
       # (adapted from http://stackoverflow.com/a/23647410)
       for inp in inputs:
         pl.plot(np.nan, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
 
-      # Now, can plot the difference plot.
-      pl.plot(TimesAx,Difference,color='magenta')
+      # Now, can plot the difference plots.
+      for j,inp in enumerate(inputs[:-1]):
+        model_interp = np.interp(obs_times.values,model_times[j].values,model_values[j])    #Interpolate model data to those points for comparison
+
+        #------Difference Plot------
+        Difference = obs_values-model_interp    #Difference data
+
+#      # Determine Mean and Max difference, and standard deviation
+#      if sum(~np.isnan(Difference)) > 0:
+#        DiffMean = np.mean(Difference[~np.isnan(Difference)])
+#        DiffStd = np.std(Difference[~np.isnan(Difference)])
+#        pl.text(.01,.9,'Mean Difference: %s | Max Difference: %s'%(round(DiffMean,1),round(np.nanmax(Difference),1)),size=11)
+#        pl.text(.01,.82,'Difference Std: %s'%(round(DiffStd,1)),size=11)
+
+        # Difference plot
+        pl.plot(TimesAx,Difference, color=inp.color, alpha=0.3)
 
       #Black baseline representing x = 0 line for difference
-      times = to_datetimes(model_times)
+      times = to_datetimes(model_times[0])
       times = [times[0], times[-1]]
       pl.plot(times, [0,0], color='black')
 
-      #Temporary lines for context (testing)
-      pl.plot(times,[10,10],color='black',alpha=.25)
-      pl.plot(times,[-10,-10],color='black',alpha=.25)
+#      #Temporary lines for context (testing)
+#      pl.plot(times,[10,10],color='black',alpha=.25)
+#      pl.plot(times,[-10,-10],color='black',alpha=.25)
 
       # ----- end of difference plot -----
 
       # Things to do on the last plot of the figure
       if i%n == (n-1) or i == nstations-1:
         # Put a legend on the last plot
-        labels = [d.title for d in inputs]
-        labels.append('Difference')
+        labels = [d.title for d in inputs] + ["obs - "+d.name for d in inputs[:-1]]
         pl.legend(labels, prop={'size':11})
 
         pl.tight_layout()
