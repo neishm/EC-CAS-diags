@@ -281,7 +281,7 @@ class DerivedProduct (DataProduct):
     self.cmap = source.cmap
     if isinstance(datasets,Var):
       datasets = [Dataset([datasets])]
-    elif hasattr(datasets,'__len__') and isinstance(datasets[0],Var):
+    elif hasattr(datasets,'__len__') and len(datasets)>0 and isinstance(datasets[0],Var):
       datasets = [Dataset(datasets)]
     elif isinstance(datasets,Dataset):
       datasets = [datasets]
