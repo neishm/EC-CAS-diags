@@ -27,7 +27,7 @@ eccas-diags -f your_data.cfg
 
 Additional arguments may be required, such as `--tmpdir` to specify where to put intermediate files.  To get a full list of options available, run `eccas-diags --help`.
 
-The final diagnostics will go in a `diags/` subdirectory from your first entry in your config file.
+By default, the final diagnostics will go in a `diags/` subdirectory of your first experiment in your config file.  You can override this by using the --outdir parameter.
 
 
 Dependencies
