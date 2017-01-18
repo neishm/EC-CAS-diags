@@ -198,6 +198,8 @@ def quote_arg (s):
     return key+'='+quote_arg(value)
   return '"'+s+'"'
 
+print "Writing diagnostics to %s"%outdir
+
 history_file = open(outdir+"/history.txt","a")
 history_file.write("=== %s ===\n"%now)
 history_file.write(" ".join(quote_arg(v) for v in argv)+"\n\n")
