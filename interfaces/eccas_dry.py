@@ -37,7 +37,8 @@ class ECCAS_Data(GEM_Data):
     # Do generic GEM field decoding
     dataset = GEM_Data.decode.__func__(cls,dataset)
 
-    for var in dataset:
+    dataset = list(dataset)
+    for i,var in enumerate(dataset):
       # Offset the ocean and land fields by 100ppm
       varname = var.name
       if varname == 'CO2_ocean':
@@ -55,6 +56,9 @@ class ECCAS_Data(GEM_Data):
 
       # Fix any name clobbering from doing math on the fields.
       var.name = varname
+
+      # Write the updated variable back to the list.
+      dataset[i] = var
 
     return dataset
 
