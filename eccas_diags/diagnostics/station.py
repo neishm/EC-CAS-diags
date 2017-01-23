@@ -151,12 +151,7 @@ class StationComparison(Diagnostic):
       obs = self._select_obs_sites(obs)
       if len(obs.datasets) == 0: continue  # Ignore combos where the obs don't
                                            # match anything in the user list.
-      # Allow for case where we don't actually have obs data, we just wanted
-      # sample some other model variable at obs locations.
-      if obs.have(self.fieldname):
-        yield out_models + [obs]
-      else:
-        yield out_models
+      yield out_models + [obs]
 
 
   # Determine if a particular station matches a list of station names.

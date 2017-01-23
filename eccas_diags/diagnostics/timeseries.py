@@ -106,6 +106,8 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
     # Plot 4 timeseries per figure
     n = 4
 
+    inputs = [inp for inp in inputs if inp.have(self.fieldname)]
+
     # Get global time axis range for the data (in relative units).
     # Needed for calculating marker size.
     time1 = min(d.time.values[0] for inp in inputs for d in inp.datasets if len(d.time) > 0)
