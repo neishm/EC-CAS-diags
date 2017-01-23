@@ -72,56 +72,43 @@ class StationComparison(Diagnostic):
     from ..common import closeness_to_surface, number_of_timesteps, select_surface
     from ..interfaces import DerivedProduct
 
-    # Lookup table for keeping track of what stations are sampled for each
-    # variable.
-    var_stations = dict()
-
-    # Figure out what needs to be sampled.
+    # Determine which obs fields are available at which stations.
+    obs_stations = dict()
     for obs_dataset in obs.datasets:
-      if self.fieldname not in obs_dataset and not self.no_require_obs:
-        continue
-      for var in obs_dataset:
-        if model.have(var.name):
-          var_stations.setdefault(var.name,[]).append(var.station)
-        # Force it?
-        if model.have(self.fieldname) and self.no_require_obs:
-          if var.station not in var_stations.setdefault(self.fieldname,[]):
-            var_stations[self.fieldname].append(var.station)
-
-    # Sample the data at all needed locations, and cache it.
-    sampled_dataset = []
-    for varname, stationlist in var_stations.iteritems():
-      var = model.find_best(varname, maximize = (closeness_to_surface,number_of_timesteps))
-      var = select_surface(var)
-      stations = concat(stationlist)
-      var = StationSample(var, stations)
-      # Cache the data for faster subsequent access.
-      # Disable time splitting for the cache file, since open_multi doesn't work
-      # very well with the encoded station data.
-      # Only cache if we have some data in this time period.
-      if len(var.time) > 0:
-        var = model.cache.write(var, prefix=model.name+'_at_%s_%s%s'%(obs.name,var.name,self.suffix), split_time=False, suffix=self.end_suffix)
-      sampled_dataset.append(var)
-    sampled_dataset = dict([(v.name,v) for v in sampled_dataset])
-
-    # Extract what we need from the cached data.
-    out_datasets = []
-    for obs_dataset in obs.datasets:
-      if self.fieldname not in obs_dataset and not self.no_require_obs:
-        continue
-      out_dataset = []
       for obs_var in obs_dataset:
-        if obs_var.name in sampled_dataset:
-          sampled_var= sampled_dataset[obs_var.name]
-          out_var = sampled_var(l_station=obs_var.station.station)
-          out_dataset.append(out_var)
-      if self.no_require_obs:
-        for sampled_var in sampled_dataset.values():
-          out_var = sampled_var(l_station=obs_dataset.station.station)
-          out_dataset.append(out_var)
-      if len(out_dataset) == 0: continue
-      out_dataset = Dataset(out_dataset)
-      out_datasets.append(out_dataset)
+        obs_stations.setdefault(obs_var.name,[]).append(obs_var.station)
+    obs_stations = dict([(varname,concat(s)) for varname,s in obs_stations.iteritems()])
+
+    # For the case where we're forcing a station sample when we don't actually
+    # have the obs field, we need to provide a list of all stations.
+    if self.no_require_obs and self.fieldname not in obs_stations:
+      all_stations = []
+      for varname in sorted(obs_stations.keys()):
+        if obs_stations[varname] not in all_stations:
+          all_stations.append(obs_stations[varname])
+      obs_stations[self.fieldname] = concat(all_stations)
+
+    out_datasets = []
+
+    # Do a 1:1 sampling of the model at the obs sites
+    for obs_dataset in obs.datasets:
+      if self.no_require_obs and model.have(self.fieldname):
+        fields = [self.fieldname]
+      elif self.fieldname in obs_dataset:
+        fields = sorted(obs_var.name for obs_var in obs_dataset if model.have(obs_var.name))
+      else:
+        continue
+
+      # Find the model data that matches this obs field.
+      vars = model.find_best(fields, maximize = (closeness_to_surface,number_of_timesteps))
+      # Sample at *all* applicable sites, and make one cache file.
+      vars = map(select_surface,vars)
+      vars = [StationSample(var,obs_stations[var.name]) for var in vars]
+      vars = [model.cache.write(var, prefix=model.name+'_at_%s_%s%s'%(obs.name,var.name,self.suffix), split_time=False, suffix=self.end_suffix) if len(var.time) > 0 else var for var in vars]
+      # Select out the particular station we want for this iteration.
+      vars = [var(l_station=obs_dataset.station.station) for var in vars]
+      if len(vars) > 0:
+        out_datasets.append(Dataset(vars))
 
     # Wrap it up as a DataProduct, and we're done.
     out = DerivedProduct(out_datasets,source=model)
