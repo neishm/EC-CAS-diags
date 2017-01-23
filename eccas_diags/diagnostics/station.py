@@ -29,13 +29,17 @@ class StationComparison(Diagnostic):
     if len(handled) > 0: return  # Only run once
     group = parser.add_argument_group('options for station comparisons')
     group.add_argument('--stations', action='store', metavar='StationA,StationB,...', help='Comma-separated list of stations to look at.  Only part of the station name is needed.  By default, all available stations are used.')
+    group.add_argument('--no-require-obs', action='store_true', help="Do station comparisons for all requested fields, even fields that don't have any observation data.")
     handled.append(True)
-  def __init__(self, stations=None, **kwargs):
+  def __init__(self, stations=None, no_require_obs=None, **kwargs):
     super(StationComparison,self).__init__(**kwargs)
     if stations is not None:
       self.stations = stations.split(',')
     else:
       self.stations = None
+    self.no_require_obs = no_require_obs
+    if self.no_require_obs:
+      self.require_fieldname = False
 
   # Helper method - subset the obs at the explicit stations given by the user.
   def _select_obs_sites (self, obs):
@@ -74,9 +78,15 @@ class StationComparison(Diagnostic):
 
     # Figure out what needs to be sampled.
     for obs_dataset in obs.datasets:
+      if self.fieldname not in obs_dataset and not self.no_require_obs:
+        continue
       for var in obs_dataset:
         if model.have(var.name):
           var_stations.setdefault(var.name,[]).append(var.station)
+        # Force it?
+        if model.have(self.fieldname) and self.no_require_obs:
+          if var.station not in var_stations.setdefault(self.fieldname,[]):
+            var_stations[self.fieldname].append(var.station)
 
     # Sample the data at all needed locations, and cache it.
     sampled_dataset = []
@@ -92,17 +102,24 @@ class StationComparison(Diagnostic):
       if len(var.time) > 0:
         var = model.cache.write(var, prefix=model.name+'_at_%s_%s%s'%(obs.name,var.name,self.suffix), split_time=False, suffix=self.end_suffix)
       sampled_dataset.append(var)
-    sampled_dataset = Dataset(sampled_dataset)
+    sampled_dataset = dict([(v.name,v) for v in sampled_dataset])
 
     # Extract what we need from the cached data.
     out_datasets = []
     for obs_dataset in obs.datasets:
+      if self.fieldname not in obs_dataset and not self.no_require_obs:
+        continue
       out_dataset = []
       for obs_var in obs_dataset:
         if obs_var.name in sampled_dataset:
           sampled_var= sampled_dataset[obs_var.name]
           out_var = sampled_var(l_station=obs_var.station.station)
           out_dataset.append(out_var)
+      if self.no_require_obs:
+        for sampled_var in sampled_dataset.values():
+          out_var = sampled_var(l_station=obs_dataset.station.station)
+          out_dataset.append(out_var)
+      if len(out_dataset) == 0: continue
       out_dataset = Dataset(out_dataset)
       out_datasets.append(out_dataset)
 
@@ -133,9 +150,10 @@ class StationComparison(Diagnostic):
       # Loop over each model
       out_models = []
       for m in models:
+        if not m.have(self.fieldname): continue # Ignore non-applicable models.
         # Sample model dataset at each applicable obs dataset.
         m = self._sample_model_at_obs(m,obs)
-        if len(m.datasets) == 0: continue  # Ignore non-applicable models.
+        if len(m.datasets) == 0: continue  # Skip problematic models.
         # Subset the obs locations (if particular locations were given on the
         # command-line).
         m = self._select_obs_sites(m)
@@ -146,7 +164,12 @@ class StationComparison(Diagnostic):
       obs = self._select_obs_sites(obs)
       if len(obs.datasets) == 0: continue  # Ignore combos where the obs don't
                                            # match anything in the user list.
-      yield out_models + [obs]
+      # Allow for case where we don't actually have obs data, we just wanted
+      # sample some other model variable at obs locations.
+      if obs.have(self.fieldname):
+        yield out_models + [obs]
+      else:
+        yield out_models
 
 
   # Determine if a particular station matches a list of station names.
