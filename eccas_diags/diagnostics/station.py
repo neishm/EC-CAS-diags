@@ -38,8 +38,29 @@ class StationComparison(Diagnostic):
     else:
       self.stations = None
     self.no_require_obs = no_require_obs
-    if self.no_require_obs:
-      self.require_fieldname = False
+
+  # Override the input criteria for the no_require_obs case.
+  def _select_inputs (self, inputs):
+    from ..interfaces import DerivedProduct
+    selected = []
+    for i in inputs:
+      # If this is an obs dataset that has NO data for this fieldname,
+      # and we want to force the diagnostic anyway, then include all
+      # obs locations for sampling the model at.
+      # The obs will be (hopefully) dropped at a later stage when it's
+      # apparent there's no actual data available.
+      if self.no_require_obs and self._has_station_axis(i) and not i.have(self.fieldname):
+        selected.append(i)
+        continue
+      # Otherwise, use the usual criteria (copied from the Diagnostic base
+      # class).
+      datasets = filter(self._check_dataset,i.datasets)
+      if len(datasets) == 0: continue  # No matches for this product?
+      if list(datasets) == list(i.datasets):
+        selected.append(i)
+      else:
+        selected.append(DerivedProduct(datasets,source=i))
+    return selected
 
   # Helper method - subset the obs at the explicit stations given by the user.
   def _select_obs_sites (self, obs):
@@ -92,10 +113,18 @@ class StationComparison(Diagnostic):
 
     # Do a 1:1 sampling of the model at the obs sites
     for obs_dataset in obs.datasets:
-      if self.no_require_obs and model.have(self.fieldname):
-        fields = [self.fieldname]
-      elif self.fieldname in obs_dataset:
+      # Usual case - have observation data
+      if self.fieldname in obs_dataset:
         fields = sorted(obs_var.name for obs_var in obs_dataset if model.have(obs_var.name))
+      # When we have obs data, but just not in this particular dataset, then
+      # skip it.
+      elif obs.have(self.fieldname):
+        continue
+      # If we don't have any obs data, but we have model data, then
+      # use this station.
+      elif self.no_require_obs and model.have(self.fieldname):
+        fields = [self.fieldname]
+      # Otherwise, we won't be using this dataset.
       else:
         continue
 
@@ -137,10 +166,9 @@ class StationComparison(Diagnostic):
       # Loop over each model
       out_models = []
       for m in models:
-        if not m.have(self.fieldname): continue # Ignore non-applicable models.
         # Sample model dataset at each applicable obs dataset.
         m = self._sample_model_at_obs(m,obs)
-        if len(m.datasets) == 0: continue  # Skip problematic models.
+        if len(m.datasets) == 0: continue  # Ignore non-applicable models.
         # Subset the obs locations (if particular locations were given on the
         # command-line).
         m = self._select_obs_sites(m)
