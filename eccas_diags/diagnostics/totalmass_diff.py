@@ -56,7 +56,7 @@ class TotalmassDiff(Totalmass):
     fields = same_times (*fields)
     diff = fields[0]-fields[1]
     diff.name=self.fieldname+'_diff'
-    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_totamass_diff_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
+    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_totalmass_diff_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
     dates = to_datetimes(diff.time)
 
     pl.plot(dates, diff.get(), color=inputs[0].color, linestyle=inputs[0].linestyle, marker=inputs[0].marker, markeredgecolor=inputs[0].color)
