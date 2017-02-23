@@ -96,6 +96,10 @@ try:
         sample, extra = grid_data.find_best([args.sample_field,varname])
       else:
         extra = grid_data.find_best(varname)
+      # Certain fields are assumed to be time independent, so the
+      # time axis does not have to match the input field(s).
+      if extra.name in ('cell_area','gravity') and extra.hasaxis('time'):
+        extra = extra(i_time=0).squeeze('time')
       dataset += extra
     else:
       logging.debug("Can't find '%s' in grid file.", varname)
