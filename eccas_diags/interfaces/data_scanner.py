@@ -22,7 +22,7 @@
 # Helper method(s) for scanning through data files, constructing a table of
 # contents, and sorting them into logical collections.
 
-# Stuff that in the official API for this module
+# Stuff that's in the official API for this module.
 __all__ = ['AxisManager','DataInterface','from_files']
 
 # Current version of the manifest file format.
@@ -727,7 +727,7 @@ class _DataVar(Var):
           re = simplify(re)
         reorder.append(re)
         mask.append(m)
-      var = [v for v in opener(filename) if v.name == self._varname and map(type,v.axes)==map(type,out_axes)][0]
+      var = [v for v in opener(filename) if v.name == self._varname and v.axes == axes][0]
       v = View(subaxes)
       chunk = v.get(var)
       # Note: this may break if there is more than one axis with integer indices.
