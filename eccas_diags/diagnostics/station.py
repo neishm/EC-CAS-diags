@@ -191,7 +191,6 @@ class StationComparison(Diagnostic):
     return None
 
 # Sample a model field at station locations
-#TODO: drop locations that aren't within the model grid.
 #TODO: handle timeseries data (data already output at particular lat/lon).
 from pygeode.var import Var
 class StationSample(Var):
@@ -224,8 +223,18 @@ class StationSample(Var):
       distance = np.sin((model_rlat-rlat)/2)**2 + np.cos(model_rlat)*np.cos(rlat) * np.sin((model_rlon-rlon)/2)**2
       min_distance = np.min(distance)
       ind = zip(*np.where(distance==min_distance))[0]
-      yaxis_indices.append(ind[yaxis_loc])
-      xaxis_indices.append(ind[xaxis_loc])
+      # Omit points that are outside our region.
+      # NOTE: This also excludes points right on the boundary
+      #       (easier to code this way).
+      # Flag these points by setting the indices to None.
+      if ind[yaxis_loc] > 0 and ind[yaxis_loc] < model_data.shape[yaxis_loc]-1:
+        yaxis_indices.append(ind[yaxis_loc])
+      else:
+        yaxis_indices.append(None)
+      if ind[xaxis_loc] > 0 and ind[xaxis_loc] < model_data.shape[xaxis_loc]-1:
+        xaxis_indices.append(ind[xaxis_loc])
+      else:
+        xaxis_indices.append(None)
     self.yaxis_indices = yaxis_indices
     self.xaxis_indices = xaxis_indices
     # Replace lat/lon axes with the station axis
@@ -259,7 +268,10 @@ class StationSample(Var):
         insl = [slice(None)]*self.model_data.naxes
         insl[yaxis_loc] = self.yaxis_indices[i]
         insl[xaxis_loc] = self.xaxis_indices[i]
-        out[full_outsl] = indata[insl]
+        if insl[yaxis_loc] is not None and insl[xaxis_loc] is not None:
+          out[full_outsl] = indata[insl]
+        else:
+          out[full_outsl] = float('nan')
     pbar.update(100)
     return out
 del Var
