@@ -109,33 +109,32 @@ class StationComparison(Diagnostic):
           all_stations.append(obs_stations[varname])
       obs_stations[self.fieldname] = concat(all_stations)
 
+
+    # Sample at *all* obs sites for the cache file.
+    fields = sorted(set(obs_stations.keys()))
+    fields = [f for f in fields if model.have(f)]
+    try:
+      # First, try more generic match with 2D lat/lon fields.
+      vars_allsites = model.find_best(fields+['lat','lon'], maximize = (closeness_to_surface,number_of_timesteps))
+      lat, lon = vars_allsites[-2:]
+      vars_allsites = vars_allsites[:-2]
+    except KeyError:
+      # If lat/lon fields not available, assume lat and lon are axes inside
+      # the field (no explicit 2D fields available).
+      vars_allsites = model.find_best(fields, maximize = (closeness_to_surface,number_of_timesteps))
+      lat, lon = None, None
+    # Sample at *all* applicable sites, and make one cache file.
+    vars_allsites = map(select_surface,vars_allsites)
+    vars_allsites = [StationSample(var,obs_stations[var.name],lat=lat,lon=lon) for var in vars_allsites]
+    vars_allsites = [model.cache.write(var, prefix=model.name+'_at_%s_%s%s'%(obs.name,var.name,self.suffix), split_time=False, suffix=self.end_suffix) if len(var.time) > 0 else var for var in vars_allsites]
+
     out_datasets = []
 
     # Do a 1:1 sampling of the model at the obs sites
     for obs_dataset in obs.datasets:
-      # Usual case - have observation data
-      if self.fieldname in obs_dataset:
-        fields = sorted(obs_var.name for obs_var in obs_dataset if model.have(obs_var.name))
-      # When we have obs data, but just not in this particular dataset, then
-      # skip it.
-      elif obs.have(self.fieldname):
-        continue
-      # If we don't have any obs data, but we have model data, then
-      # use this station.
-      elif self.no_require_obs and model.have(self.fieldname):
-        fields = [self.fieldname]
-      # Otherwise, we won't be using this dataset.
-      else:
-        continue
 
-      # Find the model data that matches this obs field.
-      vars = model.find_best(fields, maximize = (closeness_to_surface,number_of_timesteps))
-      # Sample at *all* applicable sites, and make one cache file.
-      vars = map(select_surface,vars)
-      vars = [StationSample(var,obs_stations[var.name]) for var in vars]
-      vars = [model.cache.write(var, prefix=model.name+'_at_%s_%s%s'%(obs.name,var.name,self.suffix), split_time=False, suffix=self.end_suffix) if len(var.time) > 0 else var for var in vars]
       # Select out the particular station we want for this iteration.
-      vars = [var(l_station=obs_dataset.station.station) for var in vars]
+      vars = [var(l_station=obs_dataset.station.station) for var in vars_allsites]
       if len(vars) > 0:
         out_datasets.append(Dataset(vars))
 
@@ -192,36 +191,63 @@ class StationComparison(Diagnostic):
     return None
 
 # Sample a model field at station locations
-#TODO: drop locations that aren't within the model grid.
-#TODO: handle non-cartesian coordinates.
 #TODO: handle timeseries data (data already output at particular lat/lon).
 from pygeode.var import Var
 class StationSample(Var):
-  def __init__ (self, model_data, station_axis):
+  def __init__ (self, model_data, station_axis, lat=None,lon=None):
     from pygeode.var import Var, copy_meta
     import numpy as np
+    # Get model lat/lon, broadcasted to all model dimensions.
+    yaxis_loc = model_data.whichaxis('yaxis')
+    xaxis_loc = model_data.whichaxis('xaxis')
+    if model_data.hasaxis('lat') and model_data.hasaxis('lon'):
+      model_lat = model_data.getaxis('lat').values
+      model_lat = model_lat.reshape([len(model_lat) if a.name == 'lat' else 1 for a in model_data.axes])
+      model_lon = model_data.getaxis('lon').values
+      model_lon = model_lon.reshape([len(model_lon) if a.name == 'lon' else 1 for a in model_data.axes])
+    elif lat is not None and lon is not None:
+      model_lat = lat.get().reshape([model_data.shape[i] if i in (yaxis_loc,xaxis_loc) else 1 for i in range(model_data.naxes)])
+      model_lon = lon.get().reshape([model_data.shape[i] if i in (yaxis_loc,xaxis_loc) else 1 for i in range(model_data.naxes)])
+    else:
+      raise ValueError("Unable to find lat/lon information for %s."%model_data.name)
+    model_rlat = model_lat / 180. * np.pi
+    model_rlon = model_lon / 180. * np.pi
     # Determine which model lat/lon indices to sample at
-    lat_indices = []
-    lon_indices = []
-    for lat in station_axis.lat:
-      lat_indices.append(np.argmin(abs(model_data.lat.values-lat)))
-    for lon in station_axis.lon:
-      lon_indices.append(np.argmin(abs(model_data.lon.values%360-lon%360)))
-    self.lat_indices = lat_indices
-    self.lon_indices = lon_indices
+    yaxis_indices = []
+    xaxis_indices = []
+    for lat,lon in zip(station_axis.lat,station_axis.lon):
+      # Use modifed haversine formula for distance.
+      # Just need to compare relative distances, so don't need proper units.
+      rlat = lat / 180. * np.pi
+      rlon = lon / 180. * np.pi
+      distance = np.sin((model_rlat-rlat)/2)**2 + np.cos(model_rlat)*np.cos(rlat) * np.sin((model_rlon-rlon)/2)**2
+      min_distance = np.min(distance)
+      ind = zip(*np.where(distance==min_distance))[0]
+      # Omit points that are outside our region.
+      # NOTE: This also excludes points right on the boundary
+      #       (easier to code this way).
+      # Flag these points by setting the indices to None.
+      if ind[yaxis_loc] > 0 and ind[yaxis_loc] < model_data.shape[yaxis_loc]-1:
+        yaxis_indices.append(ind[yaxis_loc])
+      else:
+        yaxis_indices.append(None)
+      if ind[xaxis_loc] > 0 and ind[xaxis_loc] < model_data.shape[xaxis_loc]-1:
+        xaxis_indices.append(ind[xaxis_loc])
+      else:
+        xaxis_indices.append(None)
+    self.yaxis_indices = yaxis_indices
+    self.xaxis_indices = xaxis_indices
     # Replace lat/lon axes with the station axis
-    lat_iaxis = model_data.whichaxis('lat')
-    lon_iaxis = model_data.whichaxis('lon')
     axes = list(model_data.axes)
-    axes[lat_iaxis] = station_axis
-    axes = axes[:lon_iaxis]+axes[lon_iaxis+1:]
+    axes[yaxis_loc] = station_axis
+    axes = axes[:xaxis_loc]+axes[xaxis_loc+1:]
     Var.__init__(self, axes, dtype=model_data.dtype)
     copy_meta(model_data,self)
     self.model_data = model_data
     self.station_axis = station_axis
     self.station_iaxis = self.whichaxis('station')
-    self.lat_iaxis = lat_iaxis
-    self.lon_iaxis = lon_iaxis
+    self.yaxis_loc = yaxis_loc
+    self.xaxis_loc = xaxis_loc
   def getview (self, view, pbar):
     import numpy as np
     from pygeode.tools import loopover
@@ -232,17 +258,20 @@ class StationSample(Var):
     for outsl, (indata,) in loopover(self.model_data, v, pbar=pbar):
       # Make sure we have a full lat/lon field to slice from
       # (otherwise, this routine would have to be re-written)
-      lat_iaxis = self.lat_iaxis
-      lon_iaxis = self.lon_iaxis
-      assert indata.shape[lat_iaxis] == self.model_data.shape[lat_iaxis]
-      assert indata.shape[lon_iaxis] == self.model_data.shape[lon_iaxis]
+      yaxis_loc = self.yaxis_loc
+      xaxis_loc = self.xaxis_loc
+      assert indata.shape[yaxis_loc] == self.model_data.shape[yaxis_loc]
+      assert indata.shape[xaxis_loc] == self.model_data.shape[xaxis_loc]
       for i,station in enumerate(station_axis.values):
         # Inject the station index into the output slice
         full_outsl = outsl[:istation]+(i,)+outsl[istation:]
         insl = [slice(None)]*self.model_data.naxes
-        insl[lat_iaxis] = self.lat_indices[i]
-        insl[lon_iaxis] = self.lon_indices[i]
-        out[full_outsl] = indata[insl]
+        insl[yaxis_loc] = self.yaxis_indices[i]
+        insl[xaxis_loc] = self.xaxis_indices[i]
+        if insl[yaxis_loc] is not None and insl[xaxis_loc] is not None:
+          out[full_outsl] = indata[insl]
+        else:
+          out[full_outsl] = float('nan')
     pbar.update(100)
     return out
 del Var

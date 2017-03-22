@@ -164,6 +164,8 @@ class GEM_Data(DataProduct):
     files.extend(glob(model_dir+"/2[0-9]*.fst"))
     # Omit 0h forecasts
     files = [f for f in files if not f.endswith('_000') and not f.endswith('_000h')]
+    # Omit netcdf files
+    files = [f for f in files if not f.endswith('.nc')]
 
 
     return files
