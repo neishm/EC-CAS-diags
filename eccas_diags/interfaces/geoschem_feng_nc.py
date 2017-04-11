@@ -35,6 +35,8 @@ class GEOSCHEM_Data(DataProduct):
     ('Center_pressure', 'air_pressure', 'hPa'),
     ('CO2_mixing_ratio', 'CO2', '1E-6 mol mol(semidry_air)-1'),
     ('CO_mixing_ratio', 'CO', '1E-9 mol mol(semidry_air)-1'),
+    ('geopotential_height', 'geopotential_height', 'm'),
+    ('psurf', 'surface_pressure', 'hPa')
   )
 
 
@@ -97,24 +99,25 @@ class GEOSCHEM_Data(DataProduct):
     # hacked into the opener, since we want it to get collected into the
     # same domain as CO2, and the data_interface module isn't sophisticated
     # enough to re-group domains after the decoding step.
-    p = data['Edge_pressure'].replace_axes(edge_level=ZAxis) # Make z-axis (so there aren't multiple NCDim axes going into the works)
-    zdim = p.whichaxis('edge_level')
-    upper_slice = [slice(None)]*p.naxes
-    upper_slice[zdim] = slice(1,None)
-    lower_slice = [slice(None)]*p.naxes
-    lower_slice[zdim] = slice(0,-1)
-    p_upper = p.slice[upper_slice].replace_axes(edge_level=data.layer, keep_old_name=False)
-    p_lower = p.slice[lower_slice].replace_axes(edge_level=data.layer, keep_old_name=False)
-    dp = p_lower - p_upper
-    dp.name = 'dp'
-    dp.atts['units'] = 'hPa'
-    data = data + dp
+    if 'Edge_pressure' in data:
+      p = data['Edge_pressure'].replace_axes(edge_level=ZAxis) # Make z-axis (so there aren't multiple NCDim axes going into the works)
+      zdim = p.whichaxis('edge_level')
+      upper_slice = [slice(None)]*p.naxes
+      upper_slice[zdim] = slice(1,None)
+      lower_slice = [slice(None)]*p.naxes
+      lower_slice[zdim] = slice(0,-1)
+      p_upper = p.slice[upper_slice].replace_axes(edge_level=data.layer, keep_old_name=False)
+      p_lower = p.slice[lower_slice].replace_axes(edge_level=data.layer, keep_old_name=False)
+      dp = p_lower - p_upper
+      dp.name = 'dp'
+      dp.atts['units'] = 'hPa'
+      data = data + dp
 
-    # Similarly, need to hack in surface pressure here.
-    p0 = p(i_edge_level=0).squeeze()
-    p0.name = 'surface_pressure'
-    p0.atts['units'] = 'hPa'
-    data = data + p0
+      # Similarly, need to hack in surface pressure here.
+      p0 = p(i_edge_level=0).squeeze()
+      p0.name = 'surface_pressure'
+      p0.atts['units'] = 'hPa'
+      data = data + p0
 
     # Geopotential height (if available)
     if 'Edge_gpHeight' in data:
@@ -133,14 +136,15 @@ class GEOSCHEM_Data(DataProduct):
 
     # Need to define the time axis
     # (not fully defined in the netcdf file).
-    from re import search
-    date = search("(?P<year>[0-9]{4})(?P<month>[0-9]{2})(?P<day>[0-9]{2})\.nc", filename).groupdict()
-    date = dict([x,int(y)] for x,y in date.iteritems())
-    from pygeode.timeaxis import StandardTime
-    time = StandardTime(startdate=date, units='hours', values=range(24))
-    # Need the time axis to have a consistent start date
-    time = StandardTime(startdate={'year':2009, 'month':1, 'day':1}, units='hours', **time.auxarrays)
-    data = data.replace_axes(time=time)
+    if 'time' not in data or 'units' not in data.time.auxatts:
+      from re import search
+      date = search("(?P<year>[0-9]{4})(?P<month>[0-9]{2})(?P<day>[0-9]{2})\.nc", filename).groupdict()
+      date = dict([x,int(y)] for x,y in date.iteritems())
+      from pygeode.timeaxis import StandardTime
+      time = StandardTime(startdate=date, units='hours', values=range(24))
+      # Need the time axis to have a consistent start date
+      time = StandardTime(startdate={'year':2009, 'month':1, 'day':1}, units='hours', **time.auxarrays)
+      data = data.replace_axes(time=time)
 
     return data
 
@@ -160,9 +164,11 @@ class GEOSCHEM_Data(DataProduct):
     layer = Hybrid(cls.eta, A=A, B=B, name='layer')
     # Need to make the z-axis the right type (since there's no metadata hints
     # in the file to indicate the type)
-    dataset = dataset.replace_axes(layer=layer, edge_level=ZAxis)
+    dataset = dataset.replace_axes(layer=layer, level=layer, edge_level=ZAxis)
     if 'layer' in dataset:
       zaxis = dataset.layer
+    elif 'level' in dataset:
+      zaxis = dataset.level
     elif 'edge_level' in dataset:
       zaxis = dataset.edge_level
     else: zaxis = None
