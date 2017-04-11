@@ -155,6 +155,9 @@ class GEOSCHEM_Data(DataProduct):
     if zaxis is not None:
       zaxis.atts['positive'] = 'up'
 
+    # Rename lat/lon axes for compatibility with certain diagnostics.
+    dataset = dataset.rename_axes(latitude='lat',longitude='lon')
+
     # Apply fieldname conversions
     data = DataProduct.decode.__func__(cls,dataset)
 
