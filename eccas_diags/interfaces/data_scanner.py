@@ -712,10 +712,17 @@ class _DataVar(Var):
       mask = []
       if any(len(a)==0 for a in subaxes): continue
       for a1,a2 in zip(out_axes,subaxes):
+        a1, a2 = a1.values, a2.values
         # Figure out where the input chunk fits into the output
-        re = np.searchsorted(a2.values, a1.values)
+        # Case 1: increasing array
+        if len(a2) > 1 and a2[1] >= a2[0]:
+          re = np.searchsorted(a2, a1)
+        # Case 2: decreasing array
+        else:
+          re = np.searchsorted(a2[::-1],a1)
+          re = len(a2)-1-re
         # Mask out elements that we don't actually have in the chunk
-        m = [r<len(a2.values) and a2.values[r]==v for r,v in zip(re,a1.values)]
+        m = [r<len(a2) and a2[r]==v for r,v in zip(re,a1)]
         m = np.array(m)
         # Convert mask to integer indices
         m = np.arange(len(m))[m]
