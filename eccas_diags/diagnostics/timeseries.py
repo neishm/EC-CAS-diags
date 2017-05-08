@@ -98,6 +98,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
     import numpy as np
     import matplotlib.pyplot as pl
     from os.path import exists
+    from os import mkdir
     from ..common import detect_gaps, to_datetimes
 
     figwidth = 15
@@ -105,6 +106,9 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
     # Create plots of each location
     # Plot 4 timeseries per figure
     n = 4
+
+    outdir = self.outdir + '/timeseries' + self.suffix + self.end_suffix
+    if not exists(outdir): mkdir(outdir)
 
     inputs = [inp for inp in inputs if inp.have(self.fieldname)]
 
@@ -125,7 +129,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
         fig_id = '%02d'%(i/n+1)
       else:
         fig_id = ','.join(inputs[0].datasets[j].vars[0].station[0] for j in range(i,min(i+n,nstations)))
-      outfile = "%s/%s_timeseries_%s_%s%s.%s"%(self.outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
+      outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
 
       # Skip plots that have already been generated.
       if exists(outfile): continue
