@@ -116,9 +116,11 @@ class ECCAS_Data(GEM_Data):
       # Hard code the ig1 / ig2
       records['ig1'][ind] = 38992
       records['ig2'][ind] = 45710
+      records['ig3'][ind] = 1
       # Update the coordinate records to be consistent.
       records['ip1'][~ind] = 38992
       records['ip2'][~ind] = 45710
+      records['ip3'][~ind] = 1
 
     # Otherwise, assume gaussian
     else:
