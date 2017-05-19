@@ -38,6 +38,12 @@ class FSTD_Timeseries(DataProduct):
     forecast = fstd.Forecast(raw[nomvar=='HH  ']['data_func'][0]().flatten())
     # Get station locations
     station_names = raw[nomvar=='STNS']['data_func'][0]().squeeze()
+    # Fix for newer station names - have to subtract 128 from the chars???
+    if ord(station_names.flatten()[0]) > 127:
+      station_names_dtype = station_names.dtype
+      station_names = station_names.view('uint8')
+      station_names -= 128
+      station_names = station_names.view(station_names_dtype)
     station_names = map(''.join, station_names)
     station_names = map(str.rstrip, station_names)
     station_lats = raw[nomvar=='^^  ']['data_func'][0]().flatten()
@@ -51,7 +57,12 @@ class FSTD_Timeseries(DataProduct):
     vcoord_table = fstd_core.decode_loghybrid_table(raw[nomvar=='!!  ']['data_func'][0]())
     # Remove extra level at top of model (not saved in profiles), and extra
     # level at bottom for A/B (diagnostic level, not saved in profiles).
-    zeta = fstd.LogHybrid(zeta[1:], A=vcoord_table['a_t'][1:-1], B=vcoord_table['b_t'][1:-1], atts=vcoord_table)
+    if vcoord_table['version'] == 2:
+      zeta = fstd.LogHybrid(zeta[1:], A=vcoord_table['a_t'][1:-1], B=vcoord_table['b_t'][1:-1], atts=vcoord_table)
+    # For GEM 4.8, the surface diagnostic level is now encoded as a height
+    # coordinate, so it's no longer in the zeta array?
+    elif vcoord_table['version'] == 5:
+      zeta = fstd.LogHybrid(zeta[:-1], A=vcoord_table['a_t'][1:-2], B=vcoord_table['b_t'][1:-2], atts=vcoord_table)
     # Hack the ip3 (station) value into ip1, so we can let FSTD_Var concatenate
     # records together.  Don't try this at home!
     raw['ip1'] = raw['ip3']
