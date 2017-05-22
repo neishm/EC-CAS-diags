@@ -39,6 +39,14 @@ class ECCAS_Timeseries(fstd_timeseries.FSTD_Timeseries, eccas_dry.ECCAS_Data):
       dirname += "/time_series"
     return glob(dirname+"/time_series*.fst")
 
+  # Method to find a unique identifying string for this dataset, from the
+  # given directory name.
+  @staticmethod
+  def get_dataname (dirname):
+    name = super(ECCAS_Timeseries,ECCAS_Timeseries).get_dataname(dirname)
+    # Modify the name so it doesn't collide with the regular model output.
+    return name+'_timeseries'
+
 
 # Add this interface to the table.
 from . import table
