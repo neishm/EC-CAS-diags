@@ -165,7 +165,7 @@ class GEOSCHEM_Data(DataProduct):
           # Note: this seems to be on interfaces (last level is the surface).
           # only keep last level, since we can generate pressure on mid-levels
           # from the formula.
-          var = var.slice[:,-1,:,:].squeeze('lev')
+          var = var.slice[:,0,:,:].squeeze('lev')
           var.name = 'surface_pressure'
           var.atts['units'] = 'hPa'
         if var.name.startswith('GMAO_'):
