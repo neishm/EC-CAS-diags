@@ -53,11 +53,12 @@ class ECCAS_EnKF_Data(ECCAS_Data):
       etiket = var.atts.get('etiket')
       if etiket in ('STDDEV','E2090KFN192'):
         var.name += "_ensemblespread"
-      elif etiket in ('MEAN','E2AVGANNALL'):
+      elif etiket in ('MEAN','E2AVGANNALL','E2AVGANPALL'):
         pass # No name clobbering for ensemble mean
       else:
         from warnings import warn
-        warn ("Unable to determine if etiket '%s' is mean or spread.  Assuming mean."%etiket)
+        warn ("Unable to determine if etiket '%s' is mean or spread.  Data will not be used."%etiket)
+        var.name += "_unknown"
 
     return dataset
 
