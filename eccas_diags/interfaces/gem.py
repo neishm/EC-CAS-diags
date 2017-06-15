@@ -85,6 +85,8 @@ class GEM_Data(DataProduct):
       # Compute a pressure field.
       # Also, compute a dp field (vertical change in pressure within a gridbox).
       if varname == 'surface_pressure':
+        # Skip ensemble calculations (like spread).
+        if 'ensemble_op' in var.atts: continue
         Ps = var
         for v in list(dataset):
           if v.hasaxis('zaxis'):
