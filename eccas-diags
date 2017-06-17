@@ -261,6 +261,7 @@ diag ('zonal-mean-diff', 'CH4', 'ppb')
 diag ('zonal-mean-diff', 'CO', 'ppb')
 
 diag ('xcol', 'CO2', 'ppm')
+diag ('xcol', 'CO2_ensemblespread', 'ppm')
 diag ('xcol', 'CO2_background', 'ppm')
 diag ('xcol', 'CO2_bio', 'ppm')
 diag ('xcol', 'CO2_ocean', 'ppm')
