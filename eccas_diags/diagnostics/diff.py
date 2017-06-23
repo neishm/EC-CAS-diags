@@ -26,16 +26,17 @@ class Diff(Diagnostic):
   @classmethod
   def add_args (cls, parser,  handled=[]):
     super(Diff,cls).add_args(parser)
-    if len(handled) > 0: return  # Only run ones
+    if len(handled) > 0: return  # Only run once
     group = parser.add_argument_group('options for difference plots')
     group = group.add_mutually_exclusive_group()
     group.add_argument('--interp-diff', action='store_true', help="Allow fields to be spatially interpolated for difference plots.")
     group.add_argument('--no-interp-diff', action='store_const', const=False, dest='interp_diff', help="Only do difference plots for fields on the same grid (default).")
     handled.append(True)
 
-  def __init__ (self, interp_diff, **kwargs):
+  def __init__ (self, interp_diff, cache_diff=True, **kwargs):
     super(Diff,self).__init__(**kwargs)
     self.interp_diff = interp_diff
+    self.cache_diff = cache_diff
 
   # Select the fields to do the difference on.
   def _input_combos (self, inputs):
@@ -93,11 +94,12 @@ class Diff(Diagnostic):
     diff = fields[0]-fields[1]
     diff.name=self.fieldname+'_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+str(self)+'_with_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
-    # Use symmetric range for the difference.
-    x = max(abs(diff.atts['low']),abs(diff.atts['high']))
-    diff.atts['low'] = -x
-    diff.atts['high'] = x
+    if self.cache_diff:
+      diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+str(self)+'_with_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
+      # Use symmetric range for the difference.
+      x = max(abs(diff.atts['low']),abs(diff.atts['high']))
+      diff.atts['low'] = -x
+      diff.atts['high'] = x
     # Wrap into a data product.
     diff = DerivedProduct(diff, source=inputs[0])
     diff.name = 'diff'
