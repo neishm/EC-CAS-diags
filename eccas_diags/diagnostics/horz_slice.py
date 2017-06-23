@@ -42,7 +42,6 @@ class HorzSlice(TimeVaryingDiagnostic):
     from ..common import number_of_timesteps, have_level, rotate_grid, find_and_convert
     from ..interfaces import DerivedProduct
 
-    input = super(HorzSlice,self)._transform_input(input)
     c = find_and_convert(input, self.fieldname, self.units, maximize=number_of_timesteps, requirement=have_level(float(self.level)))
 
     # Apply the slice
@@ -56,6 +55,9 @@ class HorzSlice(TimeVaryingDiagnostic):
 
     return DerivedProduct(c, source=input)
 
+  def _transform_inputs (self, inputs):
+    inputs = super(HorzSlice,self)._transform_inputs(inputs)
+    return map(self._transform_input,inputs)
 
   def do (self, inputs):
     from .movie import ContourMovie

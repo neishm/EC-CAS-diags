@@ -50,7 +50,6 @@ class ZonalMean(TimeVaryingDiagnostic):
     return have_gridded_3d_data(dataset)
   def _transform_input (self, input):
     from ..interfaces import DerivedProduct
-    input = super(ZonalMean,self)._transform_input(input)
     if self.zaxis == 'gph':
       var = self._zonalmean_gph (input)
     elif self.zaxis == 'plev':
@@ -60,6 +59,10 @@ class ZonalMean(TimeVaryingDiagnostic):
     else:
       raise ValueError("Unhandled zaxis type '%s'"%self.zaxis)
     return DerivedProduct(var, source=input)
+
+  def _transform_inputs (self, inputs):
+    inputs = super(ZonalMean,self)._transform_inputs(inputs)
+    return map(self._transform_input,inputs)
 
   # Convert zonal mean data (on height)
   def _zonalmean_gph (self, model, typestat=None):
