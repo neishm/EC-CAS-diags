@@ -22,6 +22,9 @@
 # Extra stuff for difference diagnostics.
 from . import Diagnostic
 class Diff(Diagnostic):
+  cache_diff = True  # Whether to cache the difference values.
+                     # Note: this is needed for low/high values if the diff
+                     # is plotted directly.
 
   @classmethod
   def add_args (cls, parser,  handled=[]):
@@ -33,10 +36,9 @@ class Diff(Diagnostic):
     group.add_argument('--no-interp-diff', action='store_const', const=False, dest='interp_diff', help="Only do difference plots for fields on the same grid (default).")
     handled.append(True)
 
-  def __init__ (self, interp_diff, cache_diff=True, **kwargs):
+  def __init__ (self, interp_diff, **kwargs):
     super(Diff,self).__init__(**kwargs)
     self.interp_diff = interp_diff
-    self.cache_diff = cache_diff
 
   # Select the fields to do the difference on.
   def _input_combos (self, inputs):
