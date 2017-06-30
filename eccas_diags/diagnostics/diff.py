@@ -25,6 +25,9 @@ class Diff(Diagnostic):
   cache_diff = True  # Whether to cache the difference values.
                      # Note: this is needed for low/high values if the diff
                      # is plotted directly.
+  rename_diff = True # Rename FIELD to FIELD_diff.
+                     # This forces to plotting mechanism to use a separate
+                     # colorbar range for the difference.
 
   @classmethod
   def add_args (cls, parser,  handled=[]):
@@ -108,7 +111,9 @@ class Diff(Diagnostic):
       fields = same_times (*fields)
     # Calculate a difference field.
     diff = fields[0]-fields[1]
-    diff.name=self.fieldname+'_diff'
+    diff.name=self.fieldname
+    if self.rename_diff:
+      diff.name += '_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
     if self.cache_diff:
       diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+str(self)+'_with_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)

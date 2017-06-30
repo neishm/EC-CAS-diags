@@ -26,6 +26,18 @@ class ZonalSTDofDiff(ZonalMean,Diff):
   Zonal standard deviation of the difference between two fields, animated in time.
   """
   cache_diff = False
+  rename_diff = False
+
+  # Rename the CO2 field to CO2_diff, *after* difference and zonal std is done.
+  # Need a different name, so the color bar is unassociated with the other
+  # panels.
+  def _transform_inputs(self, inputs):
+    from pygeode.dataset import Dataset
+    inputs = super(ZonalSTDofDiff,self)._transform_inputs(inputs)
+    field = inputs[-1].datasets[0].vars[0]
+    field.name += '_diff'
+    inputs[-1].datasets = (Dataset([field]),)
+    return inputs
 
 from . import table
 table['zonal-std-of-diff'] = ZonalSTDofDiff
