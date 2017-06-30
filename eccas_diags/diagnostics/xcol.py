@@ -49,7 +49,7 @@ class XCol(TimeVaryingDiagnostic):
     return DerivedProduct(xcol,source=input)
   def _transform_inputs (self, inputs):
     inputs = super(XCol,self)._transform_inputs(inputs)
-    return map(self._transform_input,inputs)
+    return [XCol._transform_input(self,inp) for inp in inputs]
 
   # Compute total column of a tracer
   # (in kg/m2)

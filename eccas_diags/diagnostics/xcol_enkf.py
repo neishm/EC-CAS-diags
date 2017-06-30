@@ -53,7 +53,7 @@ class XColEnKF(XCol):
     return computed
   def _transform_inputs (self, inputs):
     inputs = super(XColEnKF,self)._transform_inputs(inputs)
-    return map(self._transform_input,inputs)
+    return [XColEnKF._transform_input(self,inp) for inp in inputs]
 
   # Only look at one dataset at a time.
   def _input_combos (self, inputs):

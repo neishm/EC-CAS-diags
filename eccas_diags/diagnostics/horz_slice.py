@@ -57,7 +57,7 @@ class HorzSlice(TimeVaryingDiagnostic):
 
   def _transform_inputs (self, inputs):
     inputs = super(HorzSlice,self)._transform_inputs(inputs)
-    return map(self._transform_input,inputs)
+    return [HorzSlice._transform_input(self,inp) for inp in inputs]
 
   def do (self, inputs):
     from .movie import ContourMovie

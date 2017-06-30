@@ -200,7 +200,7 @@ class TimeVaryingDiagnostic(Diagnostic):
 
   def _transform_inputs (self, inputs):
     inputs = super(TimeVaryingDiagnostic,self)._transform_inputs(inputs)
-    return map(self._transform_input,inputs)
+    return [TimeVaryingDiagnostic._transform_input(self,inp) for inp in inputs]
 
 # Find all available diagnostics
 table = {}

@@ -62,7 +62,7 @@ class ZonalMean(TimeVaryingDiagnostic):
 
   def _transform_inputs (self, inputs):
     inputs = super(ZonalMean,self)._transform_inputs(inputs)
-    return map(self._transform_input,inputs)
+    return [ZonalMean._transform_input(self,inp) for inp in inputs]
 
   # Convert zonal mean data (on height)
   def _zonalmean_gph (self, model, typestat=None):
