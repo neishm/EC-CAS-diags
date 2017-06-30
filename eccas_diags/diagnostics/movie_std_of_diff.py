@@ -21,7 +21,7 @@
 
 from .movie_zonal import ZonalMean
 from .diff import Diff
-class ZonalSTDofDiff(Diff,ZonalMean):
+class ZonalSTDofDiff(ZonalMean,Diff):
   """
   Zonal standard deviation of the difference between two fields, animated in time.
   """
