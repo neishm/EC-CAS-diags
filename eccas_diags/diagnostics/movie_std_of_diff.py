@@ -19,9 +19,11 @@
 ###############################################################################
 
 
-from .movie_zonal import ZonalMean
+from .zonalmean import ZonalMean
+from .vinterp import VInterp
 from .diff import Diff
-class ZonalSTDofDiff(ZonalMean,Diff):
+from . import TimeVaryingDiagnostic
+class ZonalSTDofDiff(ZonalMean,Diff,VInterp,TimeVaryingDiagnostic):
   """
   Zonal standard deviation of the difference between two fields, animated in time.
   """
@@ -38,6 +40,26 @@ class ZonalSTDofDiff(ZonalMean,Diff):
     field.name += '_diff'
     inputs[-1].datasets = (Dataset([field]),)
     return inputs
+
+  def do (self, inputs):
+    from .movie import ZonalMovie
+
+    prefix = '_'.join(inp.name for inp in inputs) + '_zonal'+self.typestat+'_'+self.fieldname+'_on_'+self.zaxis+self.suffix+self.end_suffix
+    title = 'Zonal %s %s (in %s)'%(self.typestat,self.fieldname,self.units)
+    aspect_ratio = 1.0
+    shape = (1,len(inputs))
+
+    subtitles = [inp.title for inp in inputs]
+
+    fields = [inp.datasets[0].vars[0] for inp in inputs]
+
+    cmaps = [inp.cmap for inp in inputs]
+    cap_extremes = [getattr(inp,'cap_extremes',False) for inp in inputs]
+
+    movie = ZonalMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio=aspect_ratio, cmaps=cmaps, cap_extremes=cap_extremes)
+
+    movie.save (outdir=self.outdir, prefix=prefix)
+
 
 from . import table
 table['zonal-std-of-diff'] = ZonalSTDofDiff
