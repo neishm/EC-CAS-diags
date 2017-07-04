@@ -19,17 +19,27 @@
 ###############################################################################
 
 
-
-from .zonalmean import ZonalMean as Zonal
+from .zonalmean import ZonalMean
 from .vinterp import VInterp
+from .diff import Diff
 from . import TimeVaryingDiagnostic
-class ZonalMean(Zonal,VInterp,TimeVaryingDiagnostic):
+class ZonalSTDofDiff(ZonalMean,Diff,VInterp,TimeVaryingDiagnostic):
   """
-  Zonal mean (or standard deviation) of a field, animated in time.
+  Zonal standard deviation of the difference between two fields, animated in time.
   """
+  cache_diff = False
+  rename_diff = False
 
-  def __str__ (self):
-    return 'zonal'+self.typestat+'_'+self.zaxis
+  # Rename the CO2 field to CO2_diff, *after* difference and zonal std is done.
+  # Need a different name, so the color bar is unassociated with the other
+  # panels.
+  def _transform_inputs(self, inputs):
+    from pygeode.dataset import Dataset
+    inputs = super(ZonalSTDofDiff,self)._transform_inputs(inputs)
+    field = inputs[-1].datasets[0].vars[0]
+    field.name += '_diff'
+    inputs[-1].datasets = (Dataset([field]),)
+    return inputs
 
   def do (self, inputs):
     from .movie import ZonalMovie
@@ -52,5 +62,5 @@ class ZonalMean(Zonal,VInterp,TimeVaryingDiagnostic):
 
 
 from . import table
-table['zonal-movie'] = ZonalMean
+table['zonal-std-of-diff'] = ZonalSTDofDiff
 

@@ -22,11 +22,17 @@
 # Extra stuff for difference diagnostics.
 from . import Diagnostic
 class Diff(Diagnostic):
+  cache_diff = True  # Whether to cache the difference values.
+                     # Note: this is needed for low/high values if the diff
+                     # is plotted directly.
+  rename_diff = True # Rename FIELD to FIELD_diff.
+                     # This forces to plotting mechanism to use a separate
+                     # colorbar range for the difference.
 
   @classmethod
   def add_args (cls, parser,  handled=[]):
     super(Diff,cls).add_args(parser)
-    if len(handled) > 0: return  # Only run ones
+    if len(handled) > 0: return  # Only run once
     group = parser.add_argument_group('options for difference plots')
     group = group.add_mutually_exclusive_group()
     group.add_argument('--interp-diff', action='store_true', help="Allow fields to be spatially interpolated for difference plots.")
@@ -76,13 +82,26 @@ class Diff(Diagnostic):
       field = field.transpose(*order)
     return field
 
-  # Do the differencel
+  # Helper method - get the best dataset to use for an input
+  def _best_dataset (self, input):
+    # First, find the best instance of the required field.
+    field = input.find_best(self.fieldname)
+    # Then, find the dataset where that instance came from.
+    for dataset in input.datasets:
+      if any(v is field for v in dataset):
+        return dataset
+    raise KeyError("Unable to find the required field in the dataset.")
+
+  # Do the difference
   def _transform_inputs (self, inputs):
     from ..common import same_times
     from ..interfaces import DerivedProduct
     inputs = super(Diff,self)._transform_inputs(inputs)
-    # Plot a difference field as well.
-    fields = [inp.find_best(self.fieldname) for inp in inputs]
+    outputs = []
+    # Find the best datasets to use (must include the field of interest).
+    datasets = map(self._best_dataset, inputs)
+    # First, get the fields of interest.
+    fields = [datasets[0][self.fieldname], datasets[1][self.fieldname]]
     # Interpolate the second field to the first field?
     if self.interp_diff:
       fields[1] = nearesttime(fields[1], fields[0].time)
@@ -90,16 +109,26 @@ class Diff(Diagnostic):
     else:
       # Use only the common timesteps between the fields
       fields = same_times (*fields)
+    # Calculate a difference field.
     diff = fields[0]-fields[1]
-    diff.name=self.fieldname+'_diff'
+    diff.name=self.fieldname
+    if self.rename_diff:
+      diff.name += '_diff'
     # Cache the difference (so we get a global high/low for the colourbar)
-    diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+str(self)+'_with_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
-    # Use symmetric range for the difference.
-    x = max(abs(diff.atts['low']),abs(diff.atts['high']))
-    diff.atts['low'] = -x
-    diff.atts['high'] = x
+    if self.cache_diff:
+      diff = inputs[0].cache.write(diff, prefix=inputs[0].name+'_'+str(self)+'_with_'+inputs[1].name+'_'+self.fieldname+self.suffix, suffix=self.end_suffix)
+      # Use symmetric range for the difference.
+      x = max(abs(diff.atts['low']),abs(diff.atts['high']))
+      diff.atts['low'] = -x
+      diff.atts['high'] = x
+    # Add any extra fields from the first dataset, which may be needed later.
+    outputs.append(diff)
+    for field in datasets[0]:
+      if field.name != self.fieldname:
+        outputs.append(field)
+
     # Wrap into a data product.
-    diff = DerivedProduct(diff, source=inputs[0])
+    diff = DerivedProduct(outputs, source=inputs[0])
     diff.name = 'diff'
     if inputs[0].desc is not None and inputs[1].desc is not None:
       diff.title = '%s - %s'%(inputs[0].desc, inputs[1].desc)
@@ -108,8 +137,7 @@ class Diff(Diagnostic):
     diff.cmap = 'bwr'
     # Colour out-of-range values instead of making them white.
     diff.cap_extremes = True
-    inputs = list(inputs) + [diff]
-    return inputs
+    return list(inputs) + [diff]
 
 # Helper object - get nearest matches between two different time axes
 from pygeode.var import Var

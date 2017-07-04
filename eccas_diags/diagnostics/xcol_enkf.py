@@ -47,11 +47,13 @@ class XColEnKF(XCol):
   #TODO: make it easier to specify multiple fields, instead of having the
   # diagnostics always assume there's 1 field of interest?
   def _transform_input (self, input):
-    computed = super(XCol,self)._transform_input(input)
     spread = self._avgcolumn(input,fieldname=self.fieldname+'_ensemblespread')
     # Add this spread to the dataset in-place.
     computed.datasets[0] += spread
     return computed
+  def _transform_inputs (self, inputs):
+    inputs = super(XColEnKF,self)._transform_inputs(inputs)
+    return [XColEnKF._transform_input(self,inp) for inp in inputs]
 
   # Only look at one dataset at a time.
   def _input_combos (self, inputs):

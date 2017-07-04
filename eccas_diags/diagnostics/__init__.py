@@ -63,10 +63,6 @@ class Diagnostic(object):
         selected.append(DerivedProduct(datasets,source=i))
     return selected
 
-  # Apply a transformation to an individual input.
-  def _transform_input (self, input):
-    return input  # By default, nothing to transform.
-
   # Split the data into batches to be fed into the diagnostic.
   def _input_combos (self, inputs):
     yield inputs  # By default, use all the inputs at the same time.
@@ -78,7 +74,6 @@ class Diagnostic(object):
   # Apply the diagnostic to all valid input combos.
   def do_all (self, inputs):
     inputs = self._select_inputs(inputs)
-    inputs = map(self._transform_input,inputs)
     for current_inputs in self._input_combos(inputs):
       current_inputs = self._transform_inputs(current_inputs)
       if len(current_inputs) == 0: continue
@@ -168,7 +163,6 @@ class TimeVaryingDiagnostic(Diagnostic):
     from ..common import fix_timeaxis
     from pygeode.timeutils import reltime
     from math import floor
-    model = super(TimeVaryingDiagnostic,self)._transform_input(model)
     # Don't need to do anything if no time modifiers are used.
     if self.date_range == (None,None) and self.hour0_only is False:
       return model
@@ -203,6 +197,10 @@ class TimeVaryingDiagnostic(Diagnostic):
     model = DerivedProduct(out_datasets, source=model)
 
     return model
+
+  def _transform_inputs (self, inputs):
+    inputs = super(TimeVaryingDiagnostic,self)._transform_inputs(inputs)
+    return [TimeVaryingDiagnostic._transform_input(self,inp) for inp in inputs]
 
 # Find all available diagnostics
 table = {}
