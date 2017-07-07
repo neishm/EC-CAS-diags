@@ -26,6 +26,9 @@ class ZonalMeanDiff(Diff,ZonalMean):
   Difference between two zonal mean fields, animated in time.
   """
 
+  short_name = True  # Use shortened name for difference field.
+
+
 from . import table
 table['zonal-mean-diff'] = ZonalMeanDiff
 

@@ -28,6 +28,11 @@ class Diff(Diagnostic):
   rename_diff = True # Rename FIELD to FIELD_diff.
                      # This forces to plotting mechanism to use a separate
                      # colorbar range for the difference.
+  short_name = False # Use only "diff" for the name of the difference.
+                     # Makes multi-panel image filenames more concise.
+                     # This should only be done if the difference is the last
+                     # operation on the data, else subsequent cache files
+                     # will have non-unique names.
 
   @classmethod
   def add_args (cls, parser,  handled=[]):
@@ -129,7 +134,11 @@ class Diff(Diagnostic):
 
     # Wrap into a data product.
     diff = DerivedProduct(outputs, source=inputs[0])
-    diff.name = 'diff'
+    if self.short_name:
+      diff.name = 'diff'
+    else:
+      diff.name = '%s_%s_diff'%(inputs[0].name,inputs[1].name)
+
     if inputs[0].desc is not None and inputs[1].desc is not None:
       diff.title = '%s - %s'%(inputs[0].desc, inputs[1].desc)
     else:

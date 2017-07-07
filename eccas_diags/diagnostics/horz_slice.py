@@ -27,6 +27,8 @@ class HorzSlice(TimeVaryingDiagnostic):
   Sample data at a particular vertical level.
   """
 
+  short_name = True  # Use shortened name for difference field.
+
   def __str__ (self):
     return 'level'+self.level
 
