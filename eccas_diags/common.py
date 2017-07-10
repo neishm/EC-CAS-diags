@@ -172,8 +172,10 @@ def find_and_convert (product, fieldnames, units, **conditions):
 
   # Convert semi-dry air based on the type of output units
   for fieldname, out_units, table in zip(fieldnames, units, tables):
-    in_units = product.find_best(fieldname).atts['units']
+    in_units = product.find_best(fieldname).atts.get('units','')
     in_units = simplify(in_units,table=test_table)
+    # Allow the user to skip unit conversion by setting output units to None
+    if out_units is None: continue
     out_units = simplify(out_units,table=test_table)
     all_units = in_units.split() + out_units.split()
     # If looking at molefractions, treat as dry air.
@@ -194,6 +196,8 @@ def find_and_convert (product, fieldnames, units, **conditions):
   extra_fields = []
   exponents = []  # +1 = multiply, -1 = divide
   for fieldname, unit, table in zip(fieldnames,units,tables):
+    # Allow the user to skip unit conversion by setting output units to None
+    if unit is None: continue
     f, exp = _what_extra_fields(product, fieldname, unit, table=table)
     extra_fields.extend(f)
     exponents.extend(exp)
@@ -210,6 +214,8 @@ def find_and_convert (product, fieldnames, units, **conditions):
 
   # Apply the extra fields
   for i,fieldname in enumerate(fieldnames):
+    # Allow the user to skip unit conversion by setting output units to None
+    if units[i] is None: continue
     F, exp = _what_extra_fields(product, fieldname, units[i], table=tables[i])
     extra = [extra_vars[extra_fields.index(f)] for f in F]
     for v, e in zip(extra,exp):
@@ -227,7 +233,8 @@ def find_and_convert (product, fieldnames, units, **conditions):
         vars[i].atts['specie'] = specie
 
   # Do any remaining unit conversions.
-  vars = [convert(v, unit, table=table) for v,unit,table in zip(vars,units,tables)]
+  # Skip conversions when output unit set to None.
+  vars = [convert(v, unit, table=table) if unit is not None else v for v,unit,table in zip(vars,units,tables)]
 
   if return_list:
     return vars
