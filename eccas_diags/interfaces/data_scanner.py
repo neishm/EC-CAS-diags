@@ -741,6 +741,10 @@ class _DataVar(Var):
       assert len([r for r in reorder if isinstance(r,(tuple,np.ndarray))]) <= 1, "Unhandled advanced indexing case."
       assert len([m for m in mask if isinstance(m,(tuple,np.ndarray))]) <= 1, "Unhandled advanced indexing case."
       out[mask] = chunk[reorder]
+      # Some data is invariant across files (e.g. 2D lat/lon, cell area).
+      # Check if the output was entirely covered by this dataset, and if so,
+      # don't need to read any more files.
+      if (out[mask].shape == out.shape): break
       N = N + chunk.size
       pbar.update(100.*N/out.size)
 
