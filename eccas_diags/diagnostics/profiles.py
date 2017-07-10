@@ -49,10 +49,9 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     return obs_inputs
 
   def _find_applicable_models (self, inputs):
-    from ..common import have_gridded_3d_data
     model_inputs = []
     for x in inputs:
-      if any(self.fieldname in d and 'geopotential_height' in d and have_gridded_3d_data(d) for d in x.datasets):
+      if any(self.fieldname in d and 'geopotential_height' in d for d in x.datasets):
         model_inputs.append(x)
     return model_inputs
 
@@ -114,7 +113,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
 
   # Interpolate model data directly to aircraft site locations
   def _sample_model_at_obs (self, model, obs):
-    from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert, fix_timeaxis
+    from ..common import number_of_levels, number_of_timesteps, find_and_convert, fix_timeaxis
     from pygeode.axis import Height
     from pygeode.interp import interpolate
     from ..station_data import Station
@@ -124,7 +123,16 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
 
     z = Height(self.z_levels)
 
-    field, gph_field = find_and_convert(model, [fieldname,'geopotential_height'], [self.units,'m'], requirement=have_gridded_3d_data, maximize = (number_of_levels,number_of_timesteps))
+    lat, lon = None, None
+
+    try:
+      # First, try more generic match with 2D lat/lon fields.
+      field, gph_field, lat, lon = find_and_convert(model, [fieldname,'geopotential_height','lat','lon'], [self.units,'m',None,None], maximize = (number_of_levels,number_of_timesteps))
+    except KeyError:
+      # If lat/lon fields not available, assume lat and lon are axes inside
+      # the field (no explicit 2D fields available).
+      field, gph_field = find_and_convert(model, [fieldname,'geopotential_height'], [self.units,'m'], maximize = (number_of_levels,number_of_timesteps))
+      lat, lon = None, None
 
     # Determine which years to do (based on available model data).
     # Look for years with more than a couple of timesteps (since for GEM we
@@ -153,8 +161,8 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     stations = Station(values=station_names, **auxarrays)
 
     # Sample the model at the station locations
-    outfield = StationSample(field, stations)
-    gph = StationSample(gph_field, stations)
+    outfield = StationSample(field, stations, lat=lat, lon=lon)
+    gph = StationSample(gph_field, stations, lat=lat, lon=lon)
 
     # Cache the data for faster subsequent access.
     # Disable time splitting for the cache file, since open_multi doesn't wor
