@@ -48,11 +48,17 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
         obs_inputs.append(x)
     return obs_inputs
 
+  # Custom criteria: either 3D model data or pre-sampled profiles are okay.
+  @staticmethod
+  def _profiles_or_3d (d):
+    from eccas_diags.common import have_gridded_3d_data, have_profile_data
+    return have_gridded_3d_data(d) or have_profile_data(d)
+
+
   def _find_applicable_models (self, inputs):
-    from ..common import have_gridded_3d_data
     model_inputs = []
     for x in inputs:
-      if any(self.fieldname in d and 'geopotential_height' in d and have_gridded_3d_data(d) for d in x.datasets):
+      if any(self.fieldname in d and 'geopotential_height' in d and self._profiles_or_3d(d) for d in x.datasets):
         model_inputs.append(x)
     return model_inputs
 
@@ -114,7 +120,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
 
   # Interpolate model data directly to aircraft site locations
   def _sample_model_at_obs (self, model, obs):
-    from ..common import have_gridded_3d_data, number_of_levels, number_of_timesteps, find_and_convert, fix_timeaxis
+    from ..common import number_of_levels, number_of_timesteps, find_and_convert, fix_timeaxis
     from pygeode.axis import Height
     from pygeode.interp import interpolate
     from ..station_data import Station
@@ -124,7 +130,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
 
     z = Height(self.z_levels)
 
-    field, gph_field = find_and_convert(model, [fieldname,'geopotential_height'], [self.units,'m'], requirement=have_gridded_3d_data, maximize = (number_of_levels,number_of_timesteps))
+    field, gph_field = find_and_convert(model, [fieldname,'geopotential_height'], [self.units,'m'], requirement=self._profiles_or_3d, maximize = (number_of_levels,number_of_timesteps))
 
     # Determine which years to do (based on available model data).
     # Look for years with more than a couple of timesteps (since for GEM we
