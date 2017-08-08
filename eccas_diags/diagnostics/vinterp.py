@@ -54,7 +54,7 @@ class VInterp (Diagnostic):
     elif self.zaxis == 'plev':
       var = self._interp_pres (input)
     elif self.zaxis == 'model':
-      var = input  # No interpolation
+      var = self._no_interp (input)
     else:
       raise ValueError("Unhandled zaxis type '%s'"%self.zaxis)
     return DerivedProduct(var, source=input)
@@ -116,6 +116,11 @@ class VInterp (Diagnostic):
 
     return var
 
+  # No interpolation (just extract the variable).
+  def _no_interp (self, model):
+    from ..common import find_and_convert, number_of_levels, number_of_timesteps
+    fieldname = self.fieldname
 
+    var = find_and_convert(model, fieldname, self.units, maximize=(number_of_levels,number_of_timesteps))
 
-
+    return var
