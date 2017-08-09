@@ -223,17 +223,15 @@ class StationSample(Var):
       distance = np.sin((model_rlat-rlat)/2)**2 + np.cos(model_rlat)*np.cos(rlat) * np.sin((model_rlon-rlon)/2)**2
       min_distance = np.min(distance)
       ind = zip(*np.where(distance==min_distance))[0]
-      # Omit points that are outside our region.
-      # NOTE: This also excludes points right on the boundary
-      #       (easier to code this way).
+      # Omit points that are outside the boundary of our domain.
       # Flag these points by setting the indices to None.
-      if ind[yaxis_loc] > 0 and ind[yaxis_loc] < model_data.shape[yaxis_loc]-1:
+      matched_lat = model_lat[tuple(np.mod(ind,model_lat.shape))]
+      matched_lon = model_lon[tuple(np.mod(ind,model_lon.shape))]
+      if abs(lat-matched_lat) <= 5 and abs(abs(lon-matched_lon)-180) >= 175:
         yaxis_indices.append(ind[yaxis_loc])
-      else:
-        yaxis_indices.append(None)
-      if ind[xaxis_loc] > 0 and ind[xaxis_loc] < model_data.shape[xaxis_loc]-1:
         xaxis_indices.append(ind[xaxis_loc])
       else:
+        yaxis_indices.append(None)
         xaxis_indices.append(None)
     self.yaxis_indices = yaxis_indices
     self.xaxis_indices = xaxis_indices
