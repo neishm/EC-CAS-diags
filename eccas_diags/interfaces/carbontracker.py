@@ -84,7 +84,10 @@ class CT_Data(DataProduct):
     # We will interpret this as being valid at the start of the integration,
     # although it's not clear what exactly CarbonTracker is providing...
     if 'bio_flux_opt' in data:
-      taxis = data.date
+      if 'date' in data:
+        taxis = data.date
+      else:
+        taxis = data.time
       assert taxis.units == 'days'
       taxis = taxis.withnewvalues(taxis.values-(1./16))
       data = data.replace_axes(date=taxis)
