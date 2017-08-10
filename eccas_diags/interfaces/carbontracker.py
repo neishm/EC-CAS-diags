@@ -90,7 +90,7 @@ class CT_Data(DataProduct):
         taxis = data.time
       assert taxis.units == 'days'
       taxis = taxis.withnewvalues(taxis.values-(1./16))
-      data = data.replace_axes(date=taxis)
+      data = data.replace_axes(date=taxis,time=taxis)
 
     # Rename the 'date' axis to 'time', since that's what every other dataset
     # is using.
