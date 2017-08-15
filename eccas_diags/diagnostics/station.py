@@ -97,6 +97,8 @@ class StationComparison(Diagnostic):
     obs_stations = dict()
     for obs_dataset in obs.datasets:
       for obs_var in obs_dataset:
+        # Skip variables with no station axis
+        if not obs_var.hasaxis('station'): continue
         obs_stations.setdefault(obs_var.name,[]).append(obs_var.station)
     obs_stations = dict([(varname,concat(s)) for varname,s in obs_stations.iteritems()])
 
@@ -191,9 +193,14 @@ class StationComparison(Diagnostic):
     return None
 
 # Sample a model field at station locations
-#TODO: handle timeseries data (data already output at particular lat/lon).
+def StationSample (model_data, station_axis, lat=None,lon=None):
+  if model_data.hasaxis("station"):
+    return StationSample_from_profiles(model_data, station_axis)
+  else:
+    return StationSample_from_grid(model_data, station_axis, lat=lat, lon=lon)
+
 from pygeode.var import Var
-class StationSample(Var):
+class StationSample_from_grid(Var):
   def __init__ (self, model_data, station_axis, lat=None,lon=None):
     from pygeode.var import Var, copy_meta
     import numpy as np
@@ -252,6 +259,7 @@ class StationSample(Var):
     import numpy as np
     from pygeode.tools import loopover
     out = np.empty(view.shape, dtype=self.dtype)
+    #TODO: Make this work when slicing over station axis.
     v = view.remove(self.station_iaxis)
     station_axis = self.station_axis
     istation = self.station_iaxis
@@ -274,6 +282,57 @@ class StationSample(Var):
           out[full_outsl] = float('nan')
     pbar.update(100)
     return out
+class StationSample_from_profiles(Var):
+  def __init__ (self, model_data, station_axis):
+    from pygeode.var import Var, copy_meta
+    import numpy as np
+    # Get model profile lat/lon locations
+    model_lat = np.array(model_data.station.lat)
+    model_lon = np.array(model_data.station.lon)
+    # Use -180..180 for longitudes
+    model_lon[model_lon>180.] -= 360.
+    model_rlat = model_lat / 180. * np.pi
+    model_rlon = model_lon / 180. * np.pi
+    # Determine which model lat/lon indices to sample at
+    model_profile_indices = []
+    for st,lat,lon in zip(station_axis.station,station_axis.lat,station_axis.lon):
+      # Use modifed haversine formula for distance.
+      # Just need to compare relative distances, so don't need proper units.
+      rlat = lat / 180. * np.pi
+      rlon = lon / 180. * np.pi
+      distance = np.sin((model_rlat-rlat)/2)**2 + np.cos(model_rlat)*np.cos(rlat) * np.sin((model_rlon-rlon)/2)**2
+      min_distance = np.min(distance)
+      ind = zip(*np.where(distance==min_distance))[0][0]
+#      print '?? (%s,%s,%s) -> (%s,%s,%s)'%(st,lat,lon,model_data.station.station[ind],model_lat[ind],model_lon[ind])
+      # Omit points that are too far away.
+      #TODO: better test - may depend on model resolution?
+      if abs(model_lat[ind]-lat) <= 1.0 and abs(model_lon[ind]-lon) <= 1.0:
+        model_profile_indices.append(ind)
+#        print '>> match'
+      else:
+        model_profile_indices.append(None)
+#        print '>> NO match'
+#        raise Exception
+    self.model_profile_indices = model_profile_indices
+    # Replace the model station axis with the obs station axis
+    axes = list(model_data.axes)
+    station_iaxis = model_data.whichaxis('station')
+    axes[station_iaxis] = station_axis
+    Var.__init__(self, axes, dtype=model_data.dtype)
+    copy_meta(model_data,self)
+    self.model_data = model_data
+    self.station_axis = station_axis
+    self.station_iaxis = station_iaxis
+  def getview (self, view, pbar):
+    istation = self.station_iaxis
+    insl = list(view.slices)
+    insl[istation] = self.model_profile_indices
+    indata = self.model_data[insl]
+    tmpsl = [slice(None)]*indata.ndim
+    tmpsl[istation] = view.slices[istation]
+    tmpsl = tuple(tmpsl)
+    pbar.update(100)
+    return indata[tmpsl]
 del Var
 
 
