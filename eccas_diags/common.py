@@ -742,4 +742,9 @@ def have_station_data (varlist):
     if var.hasaxis("station"): return True
   return False
 
-
+# Similar to above, but must also have vertical structure.
+def have_profile_data (varlist):
+  from pygeode.axis import ZAxis
+  for var in varlist:
+    if var.hasaxis("station") and var.hasaxis(ZAxis): return True
+  return False
