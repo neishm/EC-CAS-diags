@@ -32,6 +32,7 @@ parser.add_argument ("--gridfiles", help="File(s) or directory that contains the
 parser.add_argument ("--sample-field", help="If multiple grids are defined in the grid files, then use the one for the specified field name.", metavar="NAME")
 parser.add_argument ("--outdir", help="The directory to write the output files.", required=True)
 parser.add_argument ("--use-target-time", help="Treat the input data as being valid at the first time in the target grid file.  Useful for generating initial conditions with data that comes from a different time period.", action="store_true")
+parser.add_argument ("--select-date", help="Select the specified date from the input data.  Useful if you have an input with many years of data, and only want to create an initial condition file from one of those dates.", metavar="YYYY-MM-DD")
 parser.add_argument ("--conserve-local-mass", help="Does a locally mass-conservative regridding.", action="store_true")
 parser.add_argument ("--conserve-global-mass", help="Does a global adjustment to the regridded field to conserve total mass.", action="store_true")
 parser.add_argument ("--debug", help="Print debugging messages.  Also, dump the full stack trace when there's an error.", action="store_true")
@@ -58,6 +59,12 @@ try:
   for intype, infiles in args.input.iteritems():
     if intype is None: raise ValueError("No type specified for files %s"%infiles)
     input_data.extend(interfaces.table[intype](infiles,name='input_data'))
+
+  # Select a particular date from the inputs.
+  if args.select_date is not None:
+    year, month, day = map(int,args.select_date.split('-'))
+    for i in range(len(input_data)):
+      input_data[i] = input_data[i](year=year, month=month, day=day)
 
   # Force the input data to be valid at the target grid time?
   if args.use_target_time:
