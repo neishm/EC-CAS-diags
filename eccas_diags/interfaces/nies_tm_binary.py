@@ -146,7 +146,8 @@ class NIES_TM(DataProduct):
     var = NIES_TM_Var(filename)
 
     # Ugly hack to ensure PS & CH4 have the same times.
-    var = var(year=(2014,2017))
+    if var.name in ('ch4vm','PS'):
+      var = var(year=(2014,2017))
 
     # Remove degenerate vertical axis for flux & PS data.
     if len(var.lev) == 1:
