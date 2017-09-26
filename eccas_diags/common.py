@@ -52,6 +52,8 @@ define_conversion ('mol(CO)', '28.010 g(CO)')
 # The following is a hack to get mass in terms of carbon atoms
 # I.e. to allow converting mass to Pg(C)
 define_conversion ('g(CO2)', repr(12.01/44.01) + ' g(C)')
+define_conversion ('g(CH4)', repr(12.01/16.04) + ' g(C)')
+define_conversion ('g(CO)', repr(12.01/28.010) + ' g(C)')
 
 # For the purpose of these diagnostics, assume mole fractions are always with
 # respect to air.
