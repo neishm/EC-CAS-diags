@@ -82,6 +82,16 @@ class ECCAS_Flux_Data(ECCAS_Data):
         var.atts['units'] += area.atts['units']
         dataset[i] = var
 
+    # Create total flux products
+    dataset = dict((var.name,var) for var in dataset)
+    if 'CH4_flux' not in dataset:
+      try:
+        dataset['CH4_flux'] = dataset['CH4_agwaste_flux'] + dataset['CH4_bioburn_flux'] + dataset['CH4_ocean_flux'] + dataset['CH4_fossil_flux'] + dataset['CH4_natural_flux']
+      except KeyError: raise
+    for name,var in dataset.items():
+      var.name = name
+    dataset = list(dataset.values())
+
     # Continue with the encoding
     return ECCAS_Data.encode.__func__(cls,dataset)
 
