@@ -34,7 +34,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
     ('ECLA', 'CO2_bio_flux', 'g(C) s-1'),
     ('ECH4', 'CH4_flux', 'g(CH4) s-1'),
     ('ECHF', 'CH4_fossil_flux', 'g(CH4) s-1'),
-    ('ECBB', 'CH4_bioburn_flux', 'g(CH4) s-1'),
+    ('ECHB', 'CH4_bioburn_flux', 'g(CH4) s-1'),
     ('ECHO', 'CH4_ocean_flux', 'g(CH4) s-1'),
     ('ECNA', 'CH4_natural_flux', 'g(CH4) s-1'),
     ('ECAG', 'CH4_agwaste_flux', 'g(CH4) s-1'),
