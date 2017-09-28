@@ -108,10 +108,6 @@ class ECCAS_Data(GEM_Data):
     # Select non-coordinate records (things that aren't already using IP2)
     ind = (records['ip2'] == 0)
 
-    # First check for uniform latitudes
-    lat = records['nomvar'] == '^^  '
-    lat = records[lat]['data_func'][0]()
-    dlat = np.diff(lat)
     # Hard code the ig1 / ig2
     records['ig1'][ind] = 95037
     records['ig2'][ind] = 85819
