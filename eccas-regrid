@@ -27,6 +27,7 @@ valid_types = interfaces.table.keys()
 parser = argparse.ArgumentParser(description="Converts model data from one format to another.", epilog="TYPE can be: "+', '.join(valid_types))
 parser.add_argument ("--intype", help="The type of input data to read.", choices=valid_types, required=True, action=set_dictkey, metavar="TYPE", dest="input")
 parser.add_argument ("--infiles", help="The input file(s), or an input directory.", nargs='+', required=True, action=append_dictvalue, metavar="FILE", dest="input")
+parser.add_argument ("--fields", help="Restrict the regridding to the specified fields.")
 parser.add_argument ("--outtype", help="The type of output data to write.", choices=valid_types, required=True, metavar="TYPE")
 parser.add_argument ("--gridfiles", help="File(s) or directory that contains the target grid to convert the data to.  Should be in the same format as the output.", nargs='+', required=True, metavar="FILE")
 parser.add_argument ("--sample-field", help="If multiple grids are defined in the grid files, then use the one for the specified field name.", metavar="NAME")
@@ -75,6 +76,16 @@ try:
       dataset = dataset.replace_axes(time=gridtime)
       input_data[i] = dataset
 
+  # Subset the fields?
+  if args.fields is not None:
+    from pygeode.dataset import Dataset
+    fields = args.fields.split(',')
+    datasets = []
+    for i, dataset in enumerate(input_data):
+      dataset = [v for v in dataset if v.name in fields]
+      if len(dataset) == 0: continue
+      datasets.append(Dataset(dataset))
+    input_data = datasets
 
   input_data = DataInterface(input_data)
 
