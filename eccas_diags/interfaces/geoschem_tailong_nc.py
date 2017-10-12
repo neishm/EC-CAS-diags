@@ -47,21 +47,11 @@ class GEOSCHEM_Data(DataProduct):
   @staticmethod
   def open_file (filename):
     from pygeode.formats import netcdf
+    from pygeode.axis import ZAxis, Height, TAxis
     data = netcdf.open(filename)
-    return data
-    #TODO
-    # Need to define the time axis
-    # (not fully defined in the netcdf file).
-    if 'time' not in data or 'units' not in data.time.auxatts:
-      from re import search
-      date = search("(?P<year>[0-9]{4})(?P<month>[0-9]{2})(?P<day>[0-9]{2})\.nc", filename).groupdict()
-      date = dict([x,int(y)] for x,y in date.iteritems())
-      from pygeode.timeaxis import StandardTime
-      time = StandardTime(startdate=date, units='hours', values=range(24))
-      # Need the time axis to have a consistent start date
-      time = StandardTime(startdate={'year':2009, 'month':1, 'day':1}, units='hours', **time.auxarrays)
-      data = data.replace_axes(time=time)
-
+    # Annotate some of the axes with specific types, to help the data_scanner
+    # figure things out.  Otherwise, get weird crashes.
+    data = data.replace_axes(date_time=TAxis, ground_level=Height, level=ZAxis, level_centers=ZAxis, level_edges=ZAxis)
     return data
 
   # Method to decode an opened dataset (standardize variable names, and add any
@@ -82,7 +72,7 @@ class GEOSCHEM_Data(DataProduct):
     level = Hybrid(GC.eta, A=A, B=B, name='level')
     # Need to make the z-axis the right type (since there's no metadata hints
     # in the file to indicate the type)
-    dataset = dataset.replace_axes(level_centers=level)
+    dataset = dataset.replace_axes(level=level,level_centers=level)
     if 'level' in dataset:
       zaxis = dataset.level
     else: zaxis = None
@@ -120,6 +110,11 @@ class GEOSCHEM_Data(DataProduct):
     # Generate a total CO flux (including biogenic components)
     if all('CO_'+n+'_flux' in data for n in ('nonbio','methanol','acetone','isoprene','monoterpene')):
       data['CO_flux'] = data['CO_nonbio_flux'] + data['CO_methanol_flux'] + data['CO_acetone_flux'] + data['CO_isoprene_flux'] + data['CO_monoterpene_flux']
+
+#    # Generate a surface pressure field.
+#    # NOTE: pressure is actually the pressure at the interfaces (from surface onward).
+#    if 'air_pressure' in data:
+#      data['surface_pressure'] = data['air_pressure'](i_level=0).squeeze('level')
 
     # General cleanup stuff
 
