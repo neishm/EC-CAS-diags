@@ -38,7 +38,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
     ('ECHO', 'CH4_ocean_flux', 'g(CH4) s-1'),
     ('ECNA', 'CH4_natural_flux', 'g(CH4) s-1'),
     ('ECAG', 'CH4_agwaste_flux', 'g(CH4) s-1'),
-    ('ECO', 'CO_anthropogenic_flux', 'g(CO) s-1'),
+    ('ECO', 'CO_flux', 'g(CO) s-1'),
   )
 
 
@@ -87,7 +87,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
     if 'CH4_flux' not in dataset:
       try:
         dataset['CH4_flux'] = dataset['CH4_agwaste_flux'] + dataset['CH4_bioburn_flux'] + dataset['CH4_ocean_flux'] + dataset['CH4_fossil_flux'] + dataset['CH4_natural_flux']
-      except KeyError: raise
+      except KeyError: pass
     for name,var in dataset.items():
       var.name = name
     dataset = list(dataset.values())
