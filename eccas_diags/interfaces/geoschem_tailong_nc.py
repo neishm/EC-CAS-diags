@@ -32,7 +32,7 @@ class GEOSCHEM_Data(DataProduct):
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
   field_list = (
-    ('pressure', 'air_pressure', 'hPa'),
+    ('pressure', 'pressure_edges', 'hPa'),
     ('co_emiss', 'CO_nonbio_flux', 'mol(CO) cm-2 s-1'),
     ('CO_ISO', 'CO_isoprene_flux', 'mol(CO) cm-2 s-1'),
     ('CO_MET', 'CO_methanol_flux', 'mol(CO) cm-2 s-1'),
@@ -62,6 +62,7 @@ class GEOSCHEM_Data(DataProduct):
     from pygeode.axis import Hybrid, Lat, Lon
     from pygeode.timeaxis import StandardTime
     from .geoschem_feng_nc import GEOSCHEM_Data as GC
+    from ..common import compute_pressure
 
     # Hard-code the hybrid levels (needed for doing zonal mean plots on native
     # model coordinates).
@@ -111,10 +112,13 @@ class GEOSCHEM_Data(DataProduct):
     if all('CO_'+n+'_flux' in data for n in ('nonbio','methanol','acetone','isoprene','monoterpene')):
       data['CO_flux'] = data['CO_nonbio_flux'] + data['CO_methanol_flux'] + data['CO_acetone_flux'] + data['CO_isoprene_flux'] + data['CO_monoterpene_flux']
 
-#    # Generate a surface pressure field.
-#    # NOTE: pressure is actually the pressure at the interfaces (from surface onward).
-#    if 'air_pressure' in data:
-#      data['surface_pressure'] = data['air_pressure'](i_level=0).squeeze('level')
+    # Generate a surface pressure field.
+    # NOTE: pressure is actually the pressure at the interfaces (from surface onward).
+    if 'pressure_edges' in data:
+      data['surface_pressure'] = data['pressure_edges'](i_level=0).squeeze('level')
+      # Re-compute pressure at the centers.
+      # The levels encoded for pressure_edges are actually the centers.
+      data['air_pressure'] = compute_pressure(data['pressure_edges'].level,data['surface_pressure'])
 
     # General cleanup stuff
 
