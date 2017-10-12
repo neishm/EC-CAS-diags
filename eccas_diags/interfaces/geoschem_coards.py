@@ -243,7 +243,10 @@ class GEOSCHEM_Data(DataProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+"/*.nc")  # Match any netcdf files in this directory.
+    files = []
+    for filename in "GC_restart.20100101_G5_4x5_COv10_47L.nc", "GEOS-Chem_CO_combust_VOC_emiss_2010.nc", "GEOS-Chem_CO_CH4_source_2010.nc", "GEOS-Chem_CO_loss_freq_2010.nc":
+      files.extend(glob(dirname+"/"+filename))
+    return files
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.
