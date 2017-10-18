@@ -69,16 +69,21 @@ try:
 
   # Force the input data to be valid at the target grid time?
   if args.use_target_time:
+    from pygeode.dataset import Dataset
     gridtime = grid_data.datasets[0].time(i_time=0)
     logging.info("Forcing time: %s", gridtime)
     for i, dataset in enumerate(input_data):
-      dataset = dataset(i_time=0)
-      dataset = dataset.replace_axes(time=gridtime)
-      input_data[i] = dataset
+      varlist = list(dataset)
+      for j, var in enumerate(varlist):
+        if var.hasaxis('time'):
+          var = var(i_time=0).replace_axes(time=gridtime)
+        else:
+          var = var.extend(0,gridtime)
+        varlist[j] = var
+      input_data[i] = Dataset(varlist)
 
   # Subset the fields?
   if args.fields is not None:
-    from pygeode.dataset import Dataset
     fields = args.fields.split(',')
     datasets = []
     for i, dataset in enumerate(input_data):
