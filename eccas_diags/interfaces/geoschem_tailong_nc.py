@@ -52,6 +52,8 @@ class GEOSCHEM_Data(DataProduct):
     # Annotate some of the axes with specific types, to help the data_scanner
     # figure things out.  Otherwise, get weird crashes.
     data = data.replace_axes(date_time=TAxis, ground_level=Height, level=ZAxis, level_centers=ZAxis, level_edges=ZAxis)
+    # Use consistent name for level_centers across the files.
+    data = data.rename_axes(level='level_centers')
     return data
 
   # Method to decode an opened dataset (standardize variable names, and add any
@@ -70,12 +72,12 @@ class GEOSCHEM_Data(DataProduct):
     B_interface = np.array(GC.B_interface)
     A = (A_interface[:-1] + A_interface[1:])/2
     B = (B_interface[:-1] + B_interface[1:])/2
-    level = Hybrid(GC.eta, A=A, B=B, name='level')
+    level = Hybrid(GC.eta, A=A, B=B, name='level_centers')
     # Need to make the z-axis the right type (since there's no metadata hints
     # in the file to indicate the type)
-    dataset = dataset.replace_axes(level=level,level_centers=level)
-    if 'level' in dataset:
-      zaxis = dataset.level
+    dataset = dataset.replace_axes(level_centers=level)
+    if 'level_centers' in dataset:
+      zaxis = dataset.level_centers
     else: zaxis = None
 
     if zaxis is not None:
@@ -115,10 +117,10 @@ class GEOSCHEM_Data(DataProduct):
     # Generate a surface pressure field.
     # NOTE: pressure is actually the pressure at the interfaces (from surface onward).
     if 'pressure_edges' in data:
-      data['surface_pressure'] = data['pressure_edges'](i_level=0).squeeze('level')
+      data['surface_pressure'] = data['pressure_edges'](i_level_centers=0).squeeze('level_centers')
       # Re-compute pressure at the centers.
       # The levels encoded for pressure_edges are actually the centers.
-      data['air_pressure'] = compute_pressure(data['pressure_edges'].level,data['surface_pressure'])
+      data['air_pressure'] = compute_pressure(data['pressure_edges'].level_centers,data['surface_pressure'])
 
     # General cleanup stuff
 
