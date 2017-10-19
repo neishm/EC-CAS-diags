@@ -33,11 +33,11 @@ class GEOSCHEM_Data(DataProduct):
   # (original_name, standard_name, units)
   field_list = (
     ('pressure', 'pressure_edges', 'hPa'),
-    ('co_emiss', 'CO_nonbio_flux', 'mol(CO) cm-2 s-1'),
-    ('CO_ISO', 'CO_isoprene_flux', 'mol(CO) cm-2 s-1'),
-    ('CO_MET', 'CO_methanol_flux', 'mol(CO) cm-2 s-1'),
-    ('CO_MONO', 'CO_monoterpene_flux', 'mol(CO) cm-2 s-1'),
-    ('CO_ACET', 'CO_acetone_flux', 'mol(CO) cm-2 s-1'),
+    ('co_emiss', 'CO_nonbio_flux', 'molecules(CO) cm-2 s-1'),
+    ('CO_ISO', 'CO_isoprene_flux', 'molecules(CO) cm-2 s-1'),
+    ('CO_MET', 'CO_methanol_flux', 'molecules(CO) cm-2 s-1'),
+    ('CO_MONO', 'CO_monoterpene_flux', 'molecules(CO) cm-2 s-1'),
+    ('CO_ACET', 'CO_acetone_flux', 'molecules(CO) cm-2 s-1'),
     ('surf_area', 'cell_area', 'm2'),
     ('co_init', 'CO', 'mol mol(semidry_air)-1'),
   )
