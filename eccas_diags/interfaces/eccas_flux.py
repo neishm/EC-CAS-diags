@@ -49,6 +49,15 @@ class ECCAS_Flux_Data(ECCAS_Data):
     from glob import glob
     return glob(dirname+"/area_??????????")
 
+  # Method to find a unique identifying string for this dataset, from the
+  # given directory name.
+  @staticmethod
+  def get_dataname (dirname):
+    # Modify name so that it's clear this is the data on the EC-CAS grid,
+    # not the original data.
+    name = super(ECCAS_Flux_Data,ECCAS_Flux_Data).get_dataname(dirname)
+    return name + '_eccas-grid'
+
   # Extra step to convert fluxes from mass / m2 / s to mass / g.
   @classmethod
   def encode (cls, dataset):
