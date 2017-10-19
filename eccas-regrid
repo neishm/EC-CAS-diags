@@ -84,6 +84,7 @@ try:
 
   # Subset the fields?
   if args.fields is not None:
+    from pygeode.dataset import Dataset
     fields = args.fields.split(',')
     datasets = []
     for i, dataset in enumerate(input_data):
