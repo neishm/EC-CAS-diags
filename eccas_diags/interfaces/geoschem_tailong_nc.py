@@ -72,7 +72,8 @@ class GEOSCHEM_Data(DataProduct):
     B_interface = np.array(GC.B_interface)
     A = (A_interface[:-1] + A_interface[1:])/2
     B = (B_interface[:-1] + B_interface[1:])/2
-    level = Hybrid(GC.eta, A=A, B=B, name='level_centers')
+    # Note: for compute_pressure need hybrid A and B w.r.t. Pascals, not hPa.
+    level = Hybrid(GC.eta, A=A*100, B=B, name='level_centers')
     # Need to make the z-axis the right type (since there's no metadata hints
     # in the file to indicate the type)
     dataset = dataset.replace_axes(level_centers=level)
