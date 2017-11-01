@@ -76,8 +76,12 @@ class GAW_Station_Data(SplitProduct):
         else:
           date1, time1, date2, time2, val, nd, sd, f, cs, rem = line.split()
 
+          try:
+            fudge = tz_fudge
+          except NameError:
+            raise AttributeError("Missing time zone information.")
+
           # In what universe does 24-hour time go from 1:00 to 24:00????
-          fudge = tz_fudge
           if time1 == '24:00':
             time1 = '23:00'
             fudge = fudge + timedelta(hours=1)
