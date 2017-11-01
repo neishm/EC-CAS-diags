@@ -105,6 +105,11 @@ class EC_Station_Data(SplitProduct):
         if len(data) == 0:
            print "Warning: ec-station-obs: %s has no data for %s."%(station,tracer)
            return asdataset([])
+        # More recent datasets contain a "DecimalDay" column.
+        # Ignore that column, so the column indices are compatible with
+        # previous versions.
+        if 'DecimalDay' in header:
+          data = data[0:1] + data[2:]
 
         year    = np.array ([int(x) for x in data[1]])
         month   = np.ones (len(year),dtype=int)
