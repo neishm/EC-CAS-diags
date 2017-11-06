@@ -1,0 +1,5 @@
+<NODE_RESOURCES>
+  <BATCH machine="${FRONTEND}" memory="4G" mpi="0" wallclock="180" catchup="1" cpu="1"/>
+  <ABORT_ACTION name="cont"/>
+</NODE_RESOURCES>
+

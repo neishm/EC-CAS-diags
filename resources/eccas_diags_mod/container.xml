@@ -1,0 +1,4 @@
+<NODE_RESOURCES>
+     <BATCH machine="${FRONTEND}" />
+</NODE_RESOURCES>
+

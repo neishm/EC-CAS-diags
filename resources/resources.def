@@ -1,0 +1,3 @@
+FRONTEND = eccc-ppp1
+SEQ_CONTAINER_METHOD = submit
+

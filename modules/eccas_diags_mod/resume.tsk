@@ -1,0 +1,7 @@
+#!/bin/ksh
+
+if [ "${ECCAS_DIAGS_RESUME}" == "1" ]; then
+  expbegin -d ${SEQ_DATE}
+fi
+
+
