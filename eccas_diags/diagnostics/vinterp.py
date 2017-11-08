@@ -33,7 +33,7 @@ class VInterp (Diagnostic):
   def add_args (cls, parser, handled=[]):
     super(VInterp,cls).add_args(parser)
     if len(handled) > 0: return  # Only run once
-    parser.add_argument('--zaxis', action='store', choices=('gph','plev','model'), default='gph', help="The vertical coordinate to use for vertical interpolation (e.g. for zonal mean plots).  Default is gph.")
+    parser.add_argument('--zaxis', action='store', choices=('gph','gph-tropo','plev','model'), default='gph', help="The vertical coordinate to use for vertical interpolation (e.g. for zonal mean plots).  Default is gph.")
     handled.append(True)
   def __init__ (self, zaxis='gph', **kwargs):
     super(VInterp,self).__init__(**kwargs)
@@ -42,7 +42,7 @@ class VInterp (Diagnostic):
     from ..common import have_vertical_data
     if super(VInterp,self)._check_dataset(dataset) is False:
       return False
-    if self.zaxis == 'gph' and 'geopotential_height' not in dataset:
+    if self.zaxis.startswith('gph') and 'geopotential_height' not in dataset:
       return False
     if self.zaxis == 'plev' and 'air_pressure' not in dataset:
       return False
@@ -51,6 +51,8 @@ class VInterp (Diagnostic):
     from ..interfaces import DerivedProduct
     if self.zaxis == 'gph':
       var = self._interp_gph (input)
+    elif self.zaxis == 'gph-tropo':
+      var = self._interp_gph (input, domain='tropo')
     elif self.zaxis == 'plev':
       var = self._interp_pres (input)
     elif self.zaxis == 'model':
@@ -64,7 +66,7 @@ class VInterp (Diagnostic):
     return [VInterp._transform_input(self,inp) for inp in inputs]
 
   # Interpolate to height
-  def _interp_gph (self, model):
+  def _interp_gph (self, model, domain=None):
     from pygeode.interp import interpolate
     from pygeode.axis import Height
     from ..common import find_and_convert, number_of_levels, number_of_timesteps
@@ -74,7 +76,10 @@ class VInterp (Diagnostic):
 
     var, z = find_and_convert(model, [fieldname,'geopotential_height'], [self.units,'m'], maximize=(number_of_levels,number_of_timesteps))
 
-    height = Height(range(68), name='height')
+    if domain == 'tropo':
+      height = Height(np.linspace(0,10,51), name='height')
+    else:
+      height = Height(range(68), name='height')
 
     # Define the final expected order of axes
     # (since 'interpolate' moves the interpolated axis)
