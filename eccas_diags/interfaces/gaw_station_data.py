@@ -138,7 +138,7 @@ class GAW_Station_Data(SplitProduct):
       country = atts['country_territory']
     else:
       country = atts['country_teritory']
-    station = Station([station_name], lat=[lat], lon=[lon], altitude=[altitude], country=[country])
+    station = Station([station_name], station=[station_name], lat=[lat], lon=[lon], altitude=[altitude], country=[country])
 
     # Wrap in PyGeode Vars
     mean = Var([time,station], values=np.asarray(values).reshape(-1,1), name=specie+'_mean', atts=atts)

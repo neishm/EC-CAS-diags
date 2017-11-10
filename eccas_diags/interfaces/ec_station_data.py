@@ -92,7 +92,7 @@ class EC_Station_Data(SplitProduct):
       print "Warning: ec-station-obs: %s not found in the table."%station
       return asdataset([])
 
-    station = Station([station], lat=[lat], lon=[lon], elevation=[elevation], country=[country])
+    station = Station([station], station=[station], lat=[lat], lon=[lon], elevation=[elevation], country=[country])
 
     # Read the data and put each column into an array.
     with open(filename, "r") as f:

@@ -48,7 +48,7 @@ class FSTD_Timeseries(DataProduct):
     station_names = map(str.rstrip, station_names)
     station_lats = raw[nomvar=='^^  ']['data_func'][0]().flatten()
     station_lons = raw[nomvar=='>>  ']['data_func'][0]().flatten()
-    station = Station(station_names, lat=station_lats, lon=station_lons)
+    station = Station(station_names, station=station_names, lat=station_lats, lon=station_lons)
     # Get vertical levels
     # NOTE: assuming thermodynamic levels - will not work for things defined
     # on momentum levels!

@@ -158,7 +158,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       for key, value in obsfield.station.auxarrays.iteritems():
         auxarrays.setdefault(key,[]).extend(value)
 
-    stations = Station(values=station_names, **auxarrays)
+    stations = Station(values=station_names, station=station_names, **auxarrays)
 
     # Sample the model at the station locations
     outfield = StationSample(field, stations, lat=lat, lon=lon)
