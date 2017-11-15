@@ -19,6 +19,17 @@
 ###############################################################################
 
 
+# Newer versions of netCDF don't allow _FillValue to be redefined.
+# Probably don't need it anyway???
+from pygeode.formats import netcdf
+orig_put_attributes = netcdf.put_attributes
+def put_attributes (fileid, varid, atts, version):
+  if '_FillValue' in atts:
+    atts.pop('_FillValue')
+  ret = orig_put_attributes(fileid, varid, atts, version)
+netcdf.put_attributes = put_attributes
+
+
 # Cache interface
 
 
