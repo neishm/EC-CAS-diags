@@ -151,14 +151,14 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       return
 
     # Concatenate all the available station locations into a single coordinate.
-    station_names = []
+    station_values = []
     auxarrays = {}
     for obsfield in self._find_obs(obs,fieldname):
-      station_names.extend(obsfield.station.values)
+      station_values.extend(obsfield.station.values)
       for key, value in obsfield.station.auxarrays.iteritems():
         auxarrays.setdefault(key,[]).extend(value)
 
-    stations = Station(values=station_names, station=station_names, **auxarrays)
+    stations = Station(values=station_values, **auxarrays)
 
     # Sample the model at the station locations
     outfield = StationSample(field, stations, lat=lat, lon=lon)
@@ -167,7 +167,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     # Cache the data for faster subsequent access.
     # Disable time splitting for the cache file, since open_multi doesn't wor
     # very well with the encoded station data.
-    print 'Sampling %s data at %s'%(model.name, list(outfield.station.values))
+    print 'Sampling %s data at %s'%(model.name, list(outfield.station.station))
     outfield = model.cache.write(outfield, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,fieldname,self.suffix), split_time=False, suffix=self.end_suffix)
     gph = model.cache.write(gph, prefix=model.name+'_at_%s_%s%s_full'%(obs.name,'geopotential_height',self.suffix), split_time=False, suffix=self.end_suffix)
 
@@ -181,7 +181,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
     for obsfield in self._find_obs(obs,fieldname):
       # Assuming we're looking at only one station at a time
       assert len(obsfield.station) == 1
-      station = obsfield.station.values[0]
+      station = obsfield.station.station[0]
       country = obsfield.station.country[0]
 
       # Use only continental US/Canada sites
