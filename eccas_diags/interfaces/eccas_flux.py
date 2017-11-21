@@ -42,6 +42,15 @@ class ECCAS_Flux_Data(ECCAS_Data):
   )
 
 
+  # Method to open a single file
+  # Override gem.open_file to "squash" the forecast axis, because we may have
+  # arbitrary combinations of origin dates and forecast hours which don't form
+  # complete axes.  Without squashing, the fstd.open call could fail.
+  @staticmethod
+  def open_file (filename):
+    from pygeode.formats import fstd
+    return fstd.open(filename, raw_list=True, squash_forecasts=True)
+
   # Method to find all files in the given directory, which can be accessed
   # through this interface.
   @staticmethod
