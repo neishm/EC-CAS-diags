@@ -97,7 +97,7 @@ class Cache (object):
   # Write out the data
   def write (self, var, prefix, suffix='', split_time=True, force_single_precision=True, _dryrun=False):
     from os.path import exists
-    from os import remove, mkdir
+    from os import remove, mkdir, rename
     from pygeode.formats import netcdf
     from pygeode.formats.multifile import open_multi
     from pygeode.dataset import asdataset
@@ -128,11 +128,8 @@ class Cache (object):
         dataset = asdataset([var])
         for save_hook in self.save_hooks:
           dataset = asdataset(save_hook(dataset))
-        try:
-          netcdf.save(filename, dataset)
-        except (KeyboardInterrupt, Exception):
-          remove(filename)
-          raise
+        netcdf.save(filename+".tmp", dataset)
+        rename(filename+".tmp",filename)
       dataset = netcdf.open(filename)
       for load_hook in self.load_hooks:
         dataset = asdataset(load_hook(dataset))
@@ -205,12 +202,8 @@ class Cache (object):
           data = asdataset([var(i_time=i)])
           for save_hook in self.save_hooks:
             data = asdataset(save_hook(data))
-          try:
-            netcdf.save(filename, data)
-          except (KeyboardInterrupt, Exception):
-            # Clean up the partial file, if the user aborts the process.
-            remove(filename)
-            raise
+          netcdf.save(filename+".tmp", data)
+          rename(filename+".tmp",filename)
 
         pbar.update(100)
 
@@ -241,11 +234,8 @@ class Cache (object):
       for save_hook in self.save_hooks:
         dataset = asdataset(save_hook(dataset))
       # Re-save back to a big file
-      try:
-        netcdf.save (bigfile, dataset, version=4)
-      except (KeyboardInterrupt, Exception):
-        remove(bigfile)
-        raise
+      netcdf.save (bigfile+".tmp", dataset, version=4)
+      rename(bigfile+".tmp",bigfile)
 
     # (end of cache file creation)
 
