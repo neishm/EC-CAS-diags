@@ -226,8 +226,21 @@ class Cache (object):
       var = var.load()
 
       # Compute ranges for the data
-      var.atts['low'] = np.nanpercentile(var.values, 0.1)
-      var.atts['high'] = np.nanpercentile(var.values, 99.9)
+      try:
+        var.atts['low'] = np.nanpercentile(var.values, 0.1)
+        var.atts['high'] = np.nanpercentile(var.values, 99.9)
+      # Fall back for older versions of numpy.
+      except AttributeError:
+        sample = var.values.flatten()
+        # Filter out NaN values
+        sample = sample[np.isfinite(sample)]
+        # Get a good range (covers most values)
+        sample.sort()
+        N = len(sample)
+        low = sample[int(round((N-1)*0.001))]
+        high = sample[int(round((N-1)*0.999))]
+        var.atts['low'] = low
+        var.atts['high'] = high
 
       # Apply any hooks for saving the var (extra metadata encoding?)
       dataset = asdataset([var])
