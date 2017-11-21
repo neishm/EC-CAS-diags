@@ -20,6 +20,7 @@
 
 
 # Helper methods for dealing with station data
+# DEPRECATED - this functionality is now handled by PyGeode natively.
 
 # A Station axis.
 # Each station is a entry along this dimension.
@@ -35,6 +36,12 @@ class Station (Axis):
   def __init__ (self, values, *args, **kwargs):
     if 'rtol' not in kwargs: kwargs['rtol']=1e-5
     from pygeode.axis import Axis
+    # Remove 'station' auxarray, should be same as values.
+    # It's passed in as a compatibility with the Station axis provided by
+    # PyGeode.
+    if 'station' in kwargs:
+      assert values == kwargs['station']
+      del kwargs['station']
     Axis.__init__(self, values, *args, **kwargs)
   # Override the __eq__ method for this axis, since there are currently
   # some assumptions in PyGeode about axes having numerical values.
@@ -185,6 +192,11 @@ def station_axis_load_hook (dataset):
   if not any(v.hasaxis('station') for v in dataset.vars):
     return dataset.vars
 
+  # If the station axis was already decoded (e.g. by a more recent
+  # version of PyGeode), then nothing to do.
+  if any(v.hasaxis('station') and 'lat' in v.station.auxarrays for v in dataset.vars):
+    return dataset.vars
+
   outvars = []
 
   # Find the actual variables (the things with a 'coordinates' attribute
@@ -215,19 +227,13 @@ def station_axis_load_hook (dataset):
 
   return outvars
 
-# Given a dictionary of obs locations, construct a station axis.
-def make_station_axis (obs_locations):
 
-  # Construct an alphabetically sorted arrays of stations
-  stations = sorted(obs_locations.keys())
-  lats = []
-  lons = []
-  countries = []
-  for station in stations:
-    lat, lon, country = obs_locations[station]
-    lats.append(lat)
-    lons.append(lon)
-    countries.append(country)
-
-  return Station(values=stations, lat=lats, lon=lons, country=countries)
-
+# Disable all this if PyGeode has station axis support.
+try:
+  from pygeode.axis import Station
+  def station_axis_load_hook(dataset):
+    return dataset.vars
+  def station_axis_save_hook(dataset):
+    return dataset.vars
+except ImportError:
+  pass

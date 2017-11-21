@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -e
+
+# Set the location of the experiment
+# (right now, the experiment directory is the one where this script resides)
+pushd ${0%/*}
+export SEQ_EXP_HOME=${PWD}
+popd
+
+if [ ! -e "${SEQ_EXP_HOME}/experiment.cfg" ]; then
+  echo "Error: directory '${SEQ_EXP_HOME}' is not a recognized experiment."
+  exit 1
+fi
+
+# Import the Maestro environment
+export SEQ_MAESTRO_SHORTCUT=". ssmuse-sh -d eccc/cmo/isst/maestro/1.5.1-rc11"
+$SEQ_MAESTRO_SHORTCUT
+
+# If this is the first time running with maestro >= 1.4.0, need to run a setup
+# script first (one time only).
+# This will ask a series of questions, and get the server process configured.
+if [ ! -e "${HOME}/.suites/mconfig.xml" ]; then
+  echo "This appears to be your first time running maestro >= 1.4.0."
+  echo "Starting a configuration wizard, to get maestro up and running."
+  mserver_initSCI
+fi
+
+# Make sure an mserver process is running
+mserver_check -m maestro1
+
+# Start xflow
+echo "Launching xflow..."
+xflow > /dev/null&
+

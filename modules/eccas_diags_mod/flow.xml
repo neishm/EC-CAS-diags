@@ -1,0 +1,8 @@
+<MODULE name="eccas_diags_mod">
+  <SUBMITS sub_name="eccas_diags"/>
+  <TASK name="eccas_diags">
+    <SUBMITS sub_name="resume"/>
+  </TASK>
+  <TASK name="resume"/>
+</MODULE>
+

@@ -5,6 +5,15 @@
 import matplotlib
 matplotlib.use('Agg')
 
+# Convert SIGTERM into a keyboard interrupt, to ensure proper cleanup when
+# wallclock time is exceeded (when running this as a job).
+import time
+import signal
+def stop(signal, frame):
+  print "Caught SIGTERM, raising KeyboardInterrupt."
+  raise KeyboardInterrupt
+signal.signal(signal.SIGTERM, stop)
+
 import argparse
 import ConfigParser
 from os.path import exists, basename, splitext

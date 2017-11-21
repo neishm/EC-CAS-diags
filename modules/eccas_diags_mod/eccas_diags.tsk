@@ -1,0 +1,26 @@
+#!/bin/ksh
+
+if [ -n "${ECCAS_DIAGS_CONTROL}" ]; then
+  ECCAS_DIAGS_CONTROL="--control ${ECCAS_DIAGS_CONTROL}"
+fi
+
+if [ -n "${ECCAS_DIAGS_FIELDS}" ]; then
+  ECCAS_DIAGS_FIELDS="--fields ${ECCAS_DIAGS_FIELDS}"
+fi
+
+if [ -n "${ECCAS_DIAGS_LIST}" ]; then
+  ECCAS_DIAGS_LIST="--diagnostics ${ECCAS_DIAGS_LIST}"
+fi
+
+cd ${SEQ_EXP_HOME}
+./eccas-diags -f ${ECCAS_DIAGS_CONFIG}      \
+  ${ECCAS_DIAGS_EXPERIMENT}                 \
+  ${ECCAS_DIAGS_CONTROL}                    \
+  ${ECCAS_DIAGS_FIELDS} ${ECCAS_DIAGS_LIST} \
+  --outdir ${ECCAS_DIAGS_OUTDIR}            \
+  --tmpdir ${ECCAS_DIAGS_TMPDIR}            \
+  ${ECCAS_DIAGS_EXTRA}
+
+# If we got this far, then the diagnostics finished (no need to resubmit).
+SEQ_XFER=stop
+

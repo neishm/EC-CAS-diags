@@ -68,7 +68,7 @@ class NOAA_Station_Data(SplitProduct):
     # station records can be more easily compared.
     time = StandardTime(year=year, month=month, day=day, hour=hour, units='hours', startdate={'year':1980,'month':1,'day':1})
     # Define the station axis.
-    station = Station([station_name], lat=[lat], lon=[lon], altitude=[altitude])
+    station = Station([station_name], station=[station_name], lat=[lat], lon=[lon], altitude=[altitude])
 
     # Wrap in PyGeode Vars
     values = Var([time,station], values=np.asarray(values).reshape(-1,1), name=fieldname)

@@ -110,7 +110,10 @@ class GEM_Data(DataProduct):
       # Make sure this is gridded GEM data (not profile / timeseries data).
       if len(latlon) > 0:
         var = latlon[0]
-        cell_area = get_area(var.lat,var.lon,flat=True).extend(0,var.time, var.forecast)
+        if var.hasaxis('forecast'):
+          cell_area = get_area(var.lat,var.lon,flat=True).extend(0,var.time, var.forecast)
+        else:
+          cell_area = get_area(var.lat,var.lon,flat=True).extend(0,var.time)
         cell_area.name = 'cell_area'
         dataset.append(cell_area)
 

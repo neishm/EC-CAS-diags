@@ -312,11 +312,22 @@ class AxisManager (object):
       for aux in x[1:]:
         name, arr = zip(*aux)
         auxarrays[name[0]] = np.array(arr)
-      axis = sample.withnewvalues(values)
-      # Only update the auxarrays if we have something to put
-      # For empty axes, we don't want to erase the (empty) auxarrays already
-      # created e.g. for the time axis.
-      if len(auxarrays) > 0: axis.auxarrays = auxarrays
+      # Special case: station axis should be created directly here.
+      # Otherwise, get message
+      # "Unable to determine a length for the non-coordinate axis."
+      if sample.name == 'station':
+        # Check if station names are stored in values or auxarrays.
+        if 'station' not in auxarrays:
+          auxarrays['station'] = values
+        axis = type(sample)(values, **auxarrays)
+      # Use .withnewvalues() for other axes, in case they have auxatts to
+      # copy?
+      else:
+        axis = sample.withnewvalues(values)
+        # Only update the auxarrays if we have something to put
+        # For empty axes, we don't want to erase the (empty) auxarrays already
+        # created e.g. for the time axis.
+        if len(auxarrays) > 0: axis.auxarrays = auxarrays
 
     # Do we have a Varlist pseudo-axis?
     elif isinstance(sample,_Varlist):
