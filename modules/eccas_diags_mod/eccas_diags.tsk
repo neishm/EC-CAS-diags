@@ -19,6 +19,8 @@ cd ${SEQ_EXP_HOME}
   ${ECCAS_DIAGS_FIELDS} ${ECCAS_DIAGS_LIST} \
   --outdir ${ECCAS_DIAGS_OUTDIR}            \
   --tmpdir ${ECCAS_DIAGS_TMPDIR}            \
+  --start $(echo ${STARTDATE} | sed 's:\(....\)\(..\)\(..\)..:\1/\2/\3:') \
+  --end   $(echo ${ENDDATE}   | sed 's:\(....\)\(..\)\(..\)..:\1/\2/\3:') \
   ${ECCAS_DIAGS_EXTRA}
 
 # If we got this far, then the diagnostics finished (no need to resubmit).
