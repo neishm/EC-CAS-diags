@@ -19,7 +19,7 @@
 ###############################################################################
 
 
-# Interface for ObsPack aircraft data
+# Interface for ObsPack data (surface and aircraft)
 
 from . import SplitProduct
 class ObsPack_Data(SplitProduct):
@@ -43,6 +43,9 @@ class ObsPack_Data(SplitProduct):
     from ..station_data import Station
     # Open the file
     data = netcdf.open(filename)
+    # Skip non-stationary data.
+    if data.atts['site_longitude'] == -1e34:
+      return []
     # Attach a time axis
     time = StandardTime(values=data.time.get(), startdate = dict(year=1970,month=1,day=1), units='seconds')
     data = data.replace_axes(obs=time)
