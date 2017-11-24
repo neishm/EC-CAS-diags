@@ -86,7 +86,9 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
       for varname in (fieldname, fieldname+'_std', fieldname+'_uncertainty'):
         if varname in od:
           field = find_and_convert(od, varname, units)
-          field = field(time=(start,end))
+          # Apply same time range restriction as the model data.
+          if timeaxis is not None:
+            field = field(time=(start,end))
           varlist.append(field)
 
       datasets.append(Dataset(varlist))
