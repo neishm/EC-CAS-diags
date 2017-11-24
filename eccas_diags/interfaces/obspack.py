@@ -22,7 +22,7 @@
 # Interface for ObsPack aircraft data
 
 from . import SplitProduct
-class ObsPack_Aircraft_Data(SplitProduct):
+class ObsPack_Data(SplitProduct):
   """
   Aircraft measurements of tracers from the ObsPack dataset.
   http://www.esrl.noaa.gov/gmd/ccgg/obspack/
@@ -49,6 +49,10 @@ class ObsPack_Aircraft_Data(SplitProduct):
     # Attach a "station" axis to retain the lat/lon information.
     station = Station([data.atts['site_name']], station=[data.atts['site_name']], site_code=[data.atts['site_code']], lat=[data.atts['site_latitude']], lon=[data.atts['site_longitude']], country=[data.atts['site_country']])
     data = [v.extend(1, station) for v in data.vars]
+    # Remove id and calendar variables.
+    # Including them causes the data scanner to produce multiple versions of
+    # the datasets (with/without these string/calendar dimensions).
+    data = [v for v in data if v.naxes == 2]
     return data
 
   # Decoding of the fields.
@@ -63,13 +67,13 @@ class ObsPack_Aircraft_Data(SplitProduct):
 
   # Method to find all files in the given directory, which can be accessed
   # through this interface.
-  @staticmethod
-  def find_files (dirname):
+  @classmethod
+  def find_files (cls, dirname):
     from glob import glob
     from os.path import exists
     if exists(dirname+'/data'): dirname += '/data'
     if exists(dirname+'/nc'): dirname += '/nc'
-    return sorted(glob(dirname+'/*aircraft-pfp*.nc'))
+    return sorted(glob(dirname+'/*'+cls.obstype+'*.nc'))
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.
@@ -81,7 +85,18 @@ class ObsPack_Aircraft_Data(SplitProduct):
     return dirs[-1]
 
 
+class ObsPack_Aircraft_Data(ObsPack_Data):
+  obstype = 'aircraft-pfp'
+
+class ObsPack_Surface_Data(ObsPack_Data):
+  obstype = 'surface-insitu'
+
+class ObsPack_Flask_Data(ObsPack_Data):
+  obstype = 'surface-flask'
+
 # Add this interface to the table.
 from . import table
 table['obspack-aircraft'] = ObsPack_Aircraft_Data
+table['obspack-hourly'] = ObsPack_Surface_Data
+table['obspack-flask'] = ObsPack_Flask_Data
 
