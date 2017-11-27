@@ -20,8 +20,8 @@
 
 
 
-from . import Diagnostic
-class FluxDiagnostic(Diagnostic):
+from . import TimeVaryingDiagnostic
+class FluxDiagnostic(TimeVaryingDiagnostic):
   """
   Various movies of input fluxes, plotted either on a map or binned into
   regions.
