@@ -80,12 +80,12 @@ class ObsPack_Data(SplitProduct):
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.
-  @staticmethod
-  def get_dataname (dirname):
+  @classmethod
+  def get_dataname (cls, dirname):
     import os
     dirs = dirname.split(os.sep)
     while dirs[-1] in ('nc','data'): dirs = dirs[:-1]
-    return dirs[-1]
+    return dirs[-1]+'-'+cls.obstype
 
 
 class ObsPack_Aircraft_Data(ObsPack_Data):
