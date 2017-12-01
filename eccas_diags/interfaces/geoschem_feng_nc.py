@@ -35,8 +35,10 @@ class GEOSCHEM_Data(DataProduct):
     ('Center_pressure', 'air_pressure', 'hPa'),
     ('CO2_mixing_ratio', 'CO2', '1E-6 mol mol(semidry_air)-1'),
     ('CO_mixing_ratio', 'CO', '1E-9 mol mol(semidry_air)-1'),
+    ('IJ-AVG-$', 'CO', '1E-9 mol mol(semidry_air)-1'),
     ('geopotential_height', 'geopotential_height', 'm'),
-    ('psurf', 'surface_pressure', 'hPa')
+    ('psurf', 'surface_pressure', 'hPa'),
+    ('PEDGE-$', 'surface_pressure', 'hPa'),
   )
 
 
@@ -154,6 +156,7 @@ class GEOSCHEM_Data(DataProduct):
   def decode (cls,dataset):
     import numpy as np
     from pygeode.axis import ZAxis, Hybrid
+    from ..common import compute_pressure
 
     # Hard-code the hybrid levels (needed for doing zonal mean plots on native
     # model coordinates).
@@ -161,7 +164,8 @@ class GEOSCHEM_Data(DataProduct):
     B_interface = np.array(cls.B_interface)
     A = (A_interface[:-1] + A_interface[1:])/2
     B = (B_interface[:-1] + B_interface[1:])/2
-    layer = Hybrid(cls.eta, A=A, B=B, name='layer')
+    layer = Hybrid(cls.eta, A=A*100, B=B, name='layer')
+
     # Need to make the z-axis the right type (since there's no metadata hints
     # in the file to indicate the type)
     dataset = dataset.replace_axes(layer=layer, level=layer, edge_level=ZAxis)
@@ -184,6 +188,15 @@ class GEOSCHEM_Data(DataProduct):
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
+
+    # Add pressure field (if not explicitly provided).
+    if 'air_pressure' not in data and 'surface_pressure' in data:
+      try:
+        air_pressure = compute_pressure(zaxis, data['surface_pressure'])
+        air_pressure.name = 'air_pressure'
+        data['air_pressure'] = air_pressure
+      except (TypeError, ValueError, AttributeError): pass
+
 
     # General cleanup stuff
 
