@@ -129,11 +129,11 @@ class NIES_TM(DataProduct):
   field_list = (
     ('ch4vm', 'CH4', 'mol mol(semidry_air)-1'),
     ('PS', 'surface_pressure', 'Pa'),
-    ('cag', 'CH4_agwaste_flux', 'g(C) m-2 day-1'),
-    ('cbb', 'CH4_bioburn_flux', 'g(C) m-2 day-1'),
-    ('cff', 'CH4_fossil_flux', 'g(C) m-2 day-1'),
-    ('cna', 'CH4_natural_flux', 'g(C) m-2 day-1'),
-    ('coc', 'CH4_ocean_flux', 'g(C) m-2 day-1'),
+    ('cag', 'CH4_agwaste_flux', 'g(CH4) m-2 day-1'),
+    ('cbb', 'CH4_bioburn_flux', 'g(CH4) m-2 day-1'),
+    ('cff', 'CH4_fossil_flux', 'g(CH4) m-2 day-1'),
+    ('cna', 'CH4_natural_flux', 'g(CH4) m-2 day-1'),
+    ('coc', 'CH4_ocean_flux', 'g(CH4) m-2 day-1'),
   )
 
 
