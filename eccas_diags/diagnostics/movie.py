@@ -72,8 +72,6 @@ class Movie(object):
     print "Saving %s images"%prefix
     for i,t in enumerate(taxis):
 
-      fig = pl.figure(figsize=self.figsize)
-
       # Sample the fields at the current time
       fields = [f(time=t) for f in self.fields]
 
@@ -114,10 +112,10 @@ class Movie(object):
       outfile += ".png"
 
       if not exists(outfile):
+        fig = pl.figure(figsize=self.figsize)
         self.render (fig, fields, datestring)
         fig.savefig(outfile)
-
-      pl.close()
+        pl.close(fig)
 
       pbar.update(i*100./len(taxis))
 

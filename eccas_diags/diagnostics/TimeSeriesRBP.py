@@ -41,8 +41,6 @@ class TimeseriesRBP(Timeseries):
     import matplotlib.pyplot as pl
     from os.path import exists
 
-    fig = pl.figure(figsize=(8,8))
-
     #Format image directory
     outdir = self.outdir + '/TimeSeriesRBP-images_%s_%s%s'%('_'.join(d.name for d in inputs),self.fieldname,self.suffix)
     if not exists(outdir):
@@ -53,6 +51,8 @@ class TimeseriesRBP(Timeseries):
 
     # Skip plots that have already been generated.
     if exists(outfile): return
+
+    fig = pl.figure(figsize=(8,8))
 
     Zones = np.zeros((5,len(inputs)))
     Stds = np.zeros((5,len(inputs)))
