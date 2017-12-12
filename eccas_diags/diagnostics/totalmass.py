@@ -94,7 +94,12 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
         totalmass = DerivedProduct(totalmass, source=inp)
         totalmass.title += ' (integrated flux)'
         computed.append(totalmass)
-      except KeyError: pass
+      except KeyError:
+        pass
+      except AssertionError as e:
+        from warnings import warn
+        warn ("Skipping %s totalflux %s: %s"%(inp.name,self.fieldname,e.message))
+        pass
     return computed
 
   # Total mass (Pg)
