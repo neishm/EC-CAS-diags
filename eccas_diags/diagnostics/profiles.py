@@ -262,12 +262,12 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       # if month < 1
       keys = [(y,m) if m > 0 else (y-1,m+12) for y in years for m in months]
 
-      fig = pl.figure(figsize=(6,6))
-
       obstimes = '_obstimes' if self.obstimes else ''
 
       outfile = "%s/%s_profiles_%s%s_%s_%s.%s"%(outdir,'_'.join(d.name for d in models+[obs]),self.fieldname,self.suffix+self.end_suffix+obstimes,season,year_string,self.image_format)
       if exists(outfile): continue
+
+      fig = pl.figure(figsize=(6,6))
 
       # Placeholder profile for missing data
       missing = np.empty([len(self.z_levels)])
@@ -303,7 +303,7 @@ class AircraftProfiles(TimeVaryingDiagnostic,ImageDiagnostic):
       pl.legend(loc='best')
 
       fig.savefig(outfile)
-
+      pl.close(fig)
 
 
 # Take an average of all pieces of data given

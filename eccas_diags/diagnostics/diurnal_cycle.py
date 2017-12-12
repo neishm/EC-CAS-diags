@@ -139,7 +139,8 @@ class DiurnalCycle(Timeseries):
           # Don't use matplotlib's axis label offset (looks ugly).
           # http://stackoverflow.com/questions/24171064/matplotlib-remove-axis-label-offset-by-default
           pl.gca().get_yaxis().get_major_formatter().set_useOffset(False)
-        pl.savefig(outfile)
+        fig.savefig(outfile)
+        pl.close(fig)
 
 from . import table
 table['diurnal-cycle'] = DiurnalCycle

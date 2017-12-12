@@ -181,14 +181,14 @@ for section in configparser.sections():
   datasets.append(experiment)
 
 # Dump the output files to a subdirectory of the experiment data
-from os import mkdir
+from os import makedirs
 outdir = args.outdir
 if outdir is None:
   expsection = configparser.sections()[0]
   expdir = configparser.get(expsection,'dir')
   outdir = expdir+"/diags"
 try:
-  mkdir(outdir)
+  makedirs(outdir)
 except OSError:
   pass   # directory already exists or can't be created
 

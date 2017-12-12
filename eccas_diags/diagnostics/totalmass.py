@@ -94,7 +94,12 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
         totalmass = DerivedProduct(totalmass, source=inp)
         totalmass.title += ' (integrated flux)'
         computed.append(totalmass)
-      except KeyError: pass
+      except KeyError:
+        pass
+      except AssertionError as e:
+        from warnings import warn
+        warn ("Skipping %s totalflux %s: %s"%(inp.name,self.fieldname,e.message))
+        pass
     return computed
 
   # Total mass (Pg)
@@ -196,6 +201,10 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
     from ..common import to_datetimes
     from os.path import exists
 
+    outfile = self.outdir + "/%s_totalmass_%s%s.%s"%('_'.join(inp.name for inp in inputs),self.fieldname,self.suffix+self.end_suffix,self.image_format)
+    if exists(outfile):
+      return
+
     fig = pl.figure(figsize=(15,12))
     ax = pl.subplot(111)
     pl.title ("Total mass %s in %s"%(self.fieldname,self.units))
@@ -216,10 +225,8 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
       pl.plot(dates, mass.get(), color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markeredgecolor=inp.color, label=inp.title)
     pl.legend(loc='best')
 
-    outfile = self.outdir + "/%s_totalmass_%s%s.%s"%('_'.join(inp.name for inp in inputs),self.fieldname,self.suffix+self.end_suffix,self.image_format)
-
-    if not exists(outfile):
-      fig.savefig(outfile)
+    fig.savefig(outfile)
+    pl.close(fig)
 
 from . import table
 table['totalmass'] = Totalmass

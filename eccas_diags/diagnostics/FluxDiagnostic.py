@@ -20,8 +20,8 @@
 
 
 
-from . import Diagnostic
-class FluxDiagnostic(Diagnostic):
+from . import TimeVaryingDiagnostic
+class FluxDiagnostic(TimeVaryingDiagnostic):
   """
   Various movies of input fluxes, plotted either on a map or binned into
   regions.
@@ -341,7 +341,7 @@ if True:
 
       if preview is False:
         fig.savefig(fname)
-        plt.close()
+        plt.close(fig)
         pbar.update(i*100/len(flux1.time))
       else:
         break

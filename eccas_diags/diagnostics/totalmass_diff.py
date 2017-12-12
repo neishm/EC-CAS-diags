@@ -46,6 +46,10 @@ class TotalmassDiff(Totalmass):
     from ..common import same_times, to_datetimes
     from matplotlib import pyplot as pl
 
+    outfile = self.outdir + "/%s_totalmass_diff_%s%s.%s"%('_'.join(inp.name for inp in inputs),self.fieldname,self.suffix+self.end_suffix, self.image_format)
+    if exists(outfile):
+      return
+
     fig = pl.figure(figsize=(15,12))
     ax = pl.subplot(111)
     pl.title("%s total mass difference (%s-%s) in %s"%(self.fieldname,inputs[0].name,inputs[1].name,self.units))
@@ -61,9 +65,8 @@ class TotalmassDiff(Totalmass):
 
     pl.plot(dates, diff.get(), color=inputs[0].color, linestyle=inputs[0].linestyle, marker=inputs[0].marker, markeredgecolor=inputs[0].color)
 
-    outfile = self.outdir + "/%s_totalmass_diff_%s%s.%s"%('_'.join(inp.name for inp in inputs),self.fieldname,self.suffix+self.end_suffix, self.image_format)
-    if not exists(outfile):
-      fig.savefig(outfile)
+    fig.savefig(outfile)
+    pl.close(fig)
 
 from . import table
 table['totalmass-diff'] = TotalmassDiff
