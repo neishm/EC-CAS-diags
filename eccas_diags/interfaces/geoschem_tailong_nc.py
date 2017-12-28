@@ -32,6 +32,9 @@ class GEOSCHEM_Data(DataProduct):
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
   field_list = (
+    # From original files
+    #   geoschem-emissions-djf1415.nc
+    #   geoschem_biogenic_prod_and_pressures.nc
     ('pressure', 'pressure_edges', 'hPa'),
     ('co_emiss', 'CO_nonbio_flux', 'molecules(CO) cm-2 s-1'),
     ('CO_ISO', 'CO_isoprene_flux', 'molecules(CO) cm-2 s-1'),
@@ -40,6 +43,18 @@ class GEOSCHEM_Data(DataProduct):
     ('CO_ACET', 'CO_acetone_flux', 'molecules(CO) cm-2 s-1'),
     ('surf_area', 'cell_area', 'm2'),
     ('co_init', 'CO', 'mol mol(semidry_air)-1'),
+    # From updated file
+    # geoschem-monthly-mean-emissions-2015.nc
+    ('p_center', 'pressure_edges', 'hPa'),
+    #('co_init', 'CO', 'mol mol(semidry_air)-1'),
+    #('surf_area', 'cell_area', 'm2'),
+    ('an_emiss', 'CO_anthro_flux', 'molecules(CO) cm-2 s-1'),
+    ('bb_emiss', 'CO_biomass_flux', 'molecules(CO) cm-2 s-1'),
+    ('bf_emiss', 'CO_biofuel_flux', 'molecules(CO) cm-2 s-1'),
+    ('isoprenes', 'CO_isoprene_flux', 'molecules(CO) cm-2 s-1'),
+    ('methanols', 'CO_methanol_flux', 'molecules(CO) cm-2 s-1'),
+    ('monos', 'CO_monoterpene_flux', 'molecules(CO) cm-2 s-1'),
+    ('acetones', 'CO_acetone_flux', 'molecules(CO) cm-2 s-1'),
   )
 
 
@@ -100,7 +115,7 @@ class GEOSCHEM_Data(DataProduct):
       month = (times//100)%100
       day = times%100
       time = StandardTime(year=year,month=month,day=day,units='days',startdate=dict(year=2014,month=1,day=1))
-      dataset = dataset.replace_axes(date_dim=time)
+      dataset = dataset.replace_axes(date_dim=time, datetime=time)
 
     # Remove "ground-level" dimension.
     dataset = dataset.squeeze()
@@ -110,6 +125,10 @@ class GEOSCHEM_Data(DataProduct):
 
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
+
+    # Collect non-bio fields together?
+    if all('CO_'+n+'_flux' in data for n in ('anthro','biomass','biofuel')):
+      data['CO_nonbio_flux'] = data['CO_anthro_flux'] + data['CO_biomass_flux'] + data['CO_biofuel_flux']
 
     # Generate a total CO flux (including biogenic components)
     if all('CO_'+n+'_flux' in data for n in ('nonbio','methanol','acetone','isoprene','monoterpene')):
@@ -138,7 +157,7 @@ class GEOSCHEM_Data(DataProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+"/geoschem-emissions-djf1415.nc") + glob(dirname+"/geoschem_biogenic_prod_and_pressures.nc")
+    return glob(dirname+"/geoschem-emissions-djf1415.nc") + glob(dirname+"/geoschem_biogenic_prod_and_pressures.nc") + glob(dirname+"/geoschem-monthly-mean-emissions-2015.nc")
 
 
 # Add this interface to the table.
