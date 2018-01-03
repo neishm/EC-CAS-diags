@@ -157,7 +157,7 @@ class GEOSCHEM_Data(DataProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+"/geoschem-emissions-djf1415.nc") + glob(dirname+"/geoschem_biogenic_prod_and_pressures.nc") + glob(dirname+"/geoschem-monthly-mean-emissions-2015.nc")
+    return glob(dirname+"/geoschem-emissions-djf1415.nc") + glob(dirname+"/geoschem_biogenic_prod_and_pressures.nc") + glob(dirname+"/geoschem-monthly-mean-emissions-2015_fixed-area.nc")
 
 
 # Add this interface to the table.
