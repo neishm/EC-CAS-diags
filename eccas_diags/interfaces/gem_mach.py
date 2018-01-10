@@ -28,6 +28,8 @@ class GEMMACH_Data(GEM_Data):
 
   field_list = GEM_Data.field_list + (
     ('TCO', 'CO', 'ug kg(semidry_air)-1'),
+    ('TOH', 'OH', 'ug kg(air)-1'),
+    ('RHO', 'density', 'kg(air) m-3'),
   )
 
 

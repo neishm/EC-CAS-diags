@@ -48,6 +48,8 @@ define_conversion ('mol(CH4)', '16.04 g(CH4)')
 define_conversion ('mol(dry_air)', '28.97 g(dry_air)')
 define_conversion ('mol(H2O)', '18.01528 g(H2O)')
 define_conversion ('mol(CO)', '28.010 g(CO)')
+define_conversion ('mol(OH)', '17.00 g(OH)')  # 17.01 according to wikipedia
+                                              # 17.00 according to GEM-MACH
 
 # The following is a hack to get mass in terms of carbon atoms
 # I.e. to allow converting mass to Pg(C)
@@ -105,7 +107,7 @@ def _what_extra_fields (data, fieldname, units, table):
   from units import simplify, inverse
   possible_extra_fields = []
   possible_extra_units = []
-  for f in ['dry_air', 'cell_area', 'dp', 'gravity']:
+  for f in ['dry_air', 'cell_area', 'dp', 'gravity', 'density']:
     try:
       v = data.find_best(f)
       possible_extra_fields.append(f)
