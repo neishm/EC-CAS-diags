@@ -23,10 +23,6 @@
 
 from . import SplitProduct
 class ObsPack_Data(SplitProduct):
-  """
-  Aircraft measurements of tracers from the ObsPack dataset.
-  http://www.esrl.noaa.gov/gmd/ccgg/obspack/
-  """
 
   # Define all the possible variables we might have in this dataset.
   # (original_name, standard_name, units)
@@ -89,12 +85,24 @@ class ObsPack_Data(SplitProduct):
 
 
 class ObsPack_Aircraft_Data(ObsPack_Data):
+  """
+  Aircraft measurements of tracers from the ObsPack dataset.
+  http://www.esrl.noaa.gov/gmd/ccgg/obspack/
+  """
   obstype = 'aircraft-pfp'
 
 class ObsPack_Surface_Data(ObsPack_Data):
+  """
+  Station-based (continuous) measurements of tracers from the ObsPack dataset.
+  http://www.esrl.noaa.gov/gmd/ccgg/obspack/
+  """
   obstype = 'surface-insitu'
 
 class ObsPack_Flask_Data(ObsPack_Data):
+  """
+  Station-based (flask) measurements of tracers from the ObsPack dataset.
+  http://www.esrl.noaa.gov/gmd/ccgg/obspack/
+  """
   obstype = 'surface-flask'
 
 # Add this interface to the table.
