@@ -61,7 +61,8 @@ class CCCMA_Data(DataProduct):
     # Is time axis a climatology?
     #TODO: update pygeode to automatically recognize a climatology axis
     if 'time' in dataset and 'climatology' in dataset.time.atts:
-      new_taxis = modify(dataset.time, exclude='year')
+      # Assume monthly mean values (so exclude day as well)
+      new_taxis = modify(dataset.time, exclude=['year','day','hour'])
       dataset = dataset.replace_axes(time=new_taxis)
 
     # Apply fieldname conversions
@@ -83,6 +84,10 @@ class CCCMA_Data(DataProduct):
     for varname, var in data.items():
       if not var.hasaxis('lat') or not var.hasaxis('lon'):
         del data[varname]
+
+    # Scale the OH field by a factor of 0.85, since this is a climatology.
+    if 'OH' in data:
+      data['OH'] *= 0.85
 
     # General cleanup stuff
 
