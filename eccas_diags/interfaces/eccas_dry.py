@@ -109,6 +109,19 @@ class ECCAS_Data(GEM_Data):
     ind = (records['ip2'] == 0)
 
     # Hard code the ig1 / ig2
+    # (EnKF case)
+    """
+    records['ig1'][ind] = 38992
+    records['ig2'][ind] = 45710
+    records['ig3'][ind] = 1
+    # Update the coordinate records to be consistent.
+    records['ip1'][~ind] = 38992
+    records['ip2'][~ind] = 45710
+    records['ip3'][~ind] = 1
+    #"""
+
+    # Hard code the ig1 / ig2
+    #"""
     records['ig1'][ind] = 95037
     records['ig2'][ind] = 85819
     records['ig3'][ind] = 1
@@ -116,6 +129,7 @@ class ECCAS_Data(GEM_Data):
     records['ip1'][~ind] = 95037
     records['ip2'][~ind] = 85819
     records['ip3'][~ind] = 1
+    #"""
 
     # Just for completion, set the typvar and deet as well.
     records['typvar'][ind] = 'A'
