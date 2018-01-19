@@ -104,7 +104,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
     dataset = dict((var.name,var) for var in dataset)
     if 'CH4_flux' not in dataset:
       try:
-        dataset['CH4_flux'] = dataset['CH4_agwaste_flux'] + dataset['CH4_bioburn_flux'] + dataset['CH4_ocean_flux'] + dataset['CH4_fossil_flux'] + dataset['CH4_natural_flux']
+        dataset['CH4_flux'] = dataset['CH4_agwaste_flux'] + dataset['CH4_bioburn_flux'] + dataset['CH4_fossil_flux'] + dataset['CH4_natural_flux']
       except KeyError: pass
     for name,var in dataset.items():
       var.name = name
