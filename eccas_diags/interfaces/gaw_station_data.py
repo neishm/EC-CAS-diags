@@ -75,6 +75,8 @@ class GAW_Station_Data(SplitProduct):
           comments.append(line)
         else:
           date1, time1, date2, time2, val, nd, sd, f, cs, rem = line.split()
+          # Check quality flags, ignore any suspicious data.
+          if f != '...': continue
 
           try:
             fudge = tz_fudge
