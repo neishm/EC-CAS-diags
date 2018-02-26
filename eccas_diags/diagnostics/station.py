@@ -136,7 +136,10 @@ class StationComparison(Diagnostic):
     for obs_dataset in obs.datasets:
 
       # Select out the particular station we want for this iteration.
-      vars = [var(l_station=obs_dataset.station.station) for var in vars_allsites]
+      # Ignore variables that don't have all the stations we need (works around
+      # an issue with no_require_obs, when not all real variables are
+      # available at all stations).
+      vars = [var(l_station=obs_dataset.station.station) for var in vars_allsites if set(obs_dataset.station.station) <= set(var.station.station)]
       if len(vars) > 0:
         out_datasets.append(Dataset(vars))
 
