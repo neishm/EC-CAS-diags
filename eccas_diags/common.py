@@ -473,8 +473,9 @@ def compute_dp (zaxis, p0):
     # Figure out if we have thermodynamic or momentum levels, and use the
     # other set of levels as the interfaces
     if set(zeta.A) <= set(a_m) and set(zeta.B) <= set(b_m):
-      a_int = a_t
-      b_int = b_t
+      #a_int = a_t
+      #b_int = b_t
+      raise ValueError ("Not computing dp on momentum levels.")
     elif set(zeta.A) <= set(a_t) and set(zeta.B) <= set(b_t):
       a_int = a_m
       b_int = b_m
