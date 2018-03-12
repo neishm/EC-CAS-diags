@@ -266,6 +266,7 @@ diag ('zonal-movie', 'CH4', 'ppb')
 diag ('zonal-movie', 'CO2', 'ppm', typestat='stdev')
 diag ('zonal-movie', 'CO', 'ppb')
 diag ('zonal-movie', 'CO', 'ppb', zaxis='model')
+diag ('zonal-movie', 'OH', 'molecules m-3')
 
 diag ('zonal-std-of-diff', 'CO2', 'ppm', typestat='stdev')
 
@@ -273,6 +274,7 @@ diag ('zonal-mean-diff', 'CO2', 'ppm', typestat='stdev')
 diag ('zonal-mean-diff', 'CO2', 'ppm')
 diag ('zonal-mean-diff', 'CH4', 'ppb')
 diag ('zonal-mean-diff', 'CO', 'ppb')
+diag ('zonal-mean-diff', 'OH', 'molecules m-3')
 
 diag ('xcol', 'CO2', 'ppm')
 diag ('xcol', 'CO2_ensemblespread', 'ppm')
