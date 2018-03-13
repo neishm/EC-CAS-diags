@@ -87,7 +87,9 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
 
         # Find the closest "start" time in the flux data that aligns with the last model data
         if last_totalmass is not None:
-          tx = float(min(set(time.values) & set(last_totalmass.time.values)))
+          common_times = set(time.values) & set(last_totalmass.time.values)
+          assert len(common_times) > 0
+          tx = float(min(common_times))
           # Offset the flux mass
           totalmass -= float(totalmass(time=tx).get().squeeze())
           totalmass += float(last_totalmass(time=tx).get().squeeze())
