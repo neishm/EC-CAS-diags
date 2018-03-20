@@ -53,7 +53,7 @@ class ECCAS_EnKF_Data(ECCAS_Data):
       etiket = var.atts.get('etiket')
       if etiket in ('STDDEV','E2090KFN192'):
         var.name += "_ensemblespread"
-      elif etiket in ('MEAN','E2AVGANNALL','E2AVGANPALL'):
+      elif etiket in ('MEAN','E2AVGANNALL','E2AVGANPALL','INITIAL'):
         pass # No name clobbering for ensemble mean
       else:
         from warnings import warn
