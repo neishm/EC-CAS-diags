@@ -68,8 +68,17 @@ class ECCAS_EnKF_Data(ECCAS_Data):
   def decode (cls,dataset):
     from .eccas_dry import ECCAS_Data
     from pygeode.dataset import Dataset
-    # Detect ensemble spread fields
+
     dataset = list(dataset)
+
+    # Limit the forecast period so there's no overlap.
+    # Assuming a 6-hour interval between analyses, and exclude last (hour 6)
+    # forecast.
+    for i,var in enumerate(dataset):
+      if var.hasaxis('forecast'):
+        dataset[i] = var(forecast=(0.0,4.5))
+
+    # Detect ensemble spread fields
     for var in dataset:
       if var.name.endswith('_ensemblespread'):
         var.name = var.name.rstrip('_ensemblespread')
