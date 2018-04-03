@@ -39,6 +39,8 @@ class ECCAS_Flux_Data(ECCAS_Data):
     ('ECNA', 'CH4_natural_flux', 'g(CH4) s-1'),
     ('ECAG', 'CH4_agwaste_flux', 'g(CH4) s-1'),
     ('ECO', 'CO_flux', 'g(CO) s-1'),
+    ('ECAN', 'CO2_Canada_flux', 'g(C) s-1'),
+    ('ENOC', 'CO2_no_Canada_flux', 'g(C) s-1'),
   )
 
 
