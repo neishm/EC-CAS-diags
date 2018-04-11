@@ -30,8 +30,10 @@ class ECCAS_NoCanada(GEM_Data):
   field_list = GEM_Data.field_list + (
     ('CO2', 'CO2_with_Canada', 'ug(C) kg(dry_air)-1'),
     ('NOCA', 'CO2', 'ug(C) kg(dry_air)-1'),
+    ('CANA', 'CO2_Canada', 'ug(C) kg(dry_air)-1'),
     ('XCO2', 'XCO2_with_Canada', 'ug(C) kg(dry_air)-1'),
     ('XNOC', 'XCO2', 'ug(C) kg(dry_air)-1'),
+    ('XNOC', 'XCO2_Canada', 'ug(C) kg(dry_air)-1'),
   )
 
 
@@ -44,6 +46,22 @@ class ECCAS_NoCanada(GEM_Data):
     return name+'_nocanada'
 
 
+  # Method to decode an opened dataset (standardize variable names, and add any
+  # extra info needed (pressure values, cell area, etc.)
+  @classmethod
+  def decode (cls,dataset):
+    from ..common import conversion_factor
+    from .gem import GEM_Data
+
+    # Do generic GEM field decoding
+    dataset = GEM_Data.decode.__func__(cls,dataset)
+
+    # Add specie name to facilitate unit conversion.
+    for var in dataset:
+      if var.name == 'CO2_Canada':
+        var.atts['specie'] = 'CO2'
+
+    return dataset
 
 # Add this interface to the table.
 from . import table
