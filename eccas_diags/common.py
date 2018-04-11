@@ -741,6 +741,17 @@ def have_level (level):
     return False
   return have_the_level
 
+# Check if we have a particular diagnostic level
+def have_height (height):
+  def have_the_height (dataset):
+    for var in dataset:
+      if var.hasaxis('height'):
+        heights = var.getaxis('height').values
+        if any(z == height for z in heights):
+          return True
+    return False
+  return have_the_height
+
 # Check if we have station data.
 def have_station_data (varlist):
   for var in varlist:

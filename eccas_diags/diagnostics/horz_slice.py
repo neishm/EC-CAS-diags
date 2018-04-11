@@ -30,30 +30,45 @@ class HorzSlice(TimeVaryingDiagnostic):
   short_name = True  # Use shortened name for difference field.
 
   def __str__ (self):
-    return 'level'+self.level
+    if hasattr(self,'level'):
+      return 'level'+self.level
+    else:
+      return self.height+'m'
 
   def _check_dataset (self, dataset):
-    from ..common import have_gridded_3d_data, have_level
+    from ..common import have_gridded_3d_data, have_level, have_height
     if super(HorzSlice,self)._check_dataset(dataset) is False:
       return False
-    return have_gridded_3d_data(dataset) and have_level(float(self.level))(dataset)
-  def __init__ (self, level, **kwargs):
+    if hasattr(self,'level'):
+      return have_gridded_3d_data(dataset) and have_level(float(self.level))(dataset)
+    else:
+      return have_gridded_3d_data(dataset) and have_height(float(self.height))(dataset)
+  def __init__ (self, level=None, height=None, **kwargs):
     super(HorzSlice,self).__init__(**kwargs)
-    self.level = level
+    if level is not None:
+      self.level = level
+    elif height is not None:
+      self.height = height
+    else:
+      raise ValueError("Expected a level or height value.")
   def _transform_input (self, input):
-    from ..common import number_of_timesteps, have_level, rotate_grid, find_and_convert
+    from ..common import number_of_timesteps, have_level, have_height, rotate_grid, find_and_convert
     from ..interfaces import DerivedProduct
 
-    c = find_and_convert(input, self.fieldname, self.units, maximize=number_of_timesteps, requirement=have_level(float(self.level)))
+    if hasattr(self,'level'):
+      z = self.level
+      c = find_and_convert(input, self.fieldname, self.units, maximize=number_of_timesteps, requirement=have_level(float(z)))
+    else:
+      z = self.height
+      c = find_and_convert(input, self.fieldname, self.units, maximize=number_of_timesteps, requirement=have_height(float(z)))
 
-    # Apply the slice
-    c = c(zaxis=float(self.level))
+    c = c(zaxis=float(z))
 
     # Rotate the longitudes to 0,360
     c = rotate_grid(c)
 
     # Cache the data
-    c = input.cache.write(c,prefix=input.name+'_'+c.zaxis.name+self.level+"_"+self.fieldname+self.suffix, suffix=self.end_suffix)
+    c = input.cache.write(c,prefix=input.name+'_'+c.zaxis.name+z+"_"+self.fieldname+self.suffix, suffix=self.end_suffix)
 
     return DerivedProduct(c, source=input)
 
@@ -64,12 +79,16 @@ class HorzSlice(TimeVaryingDiagnostic):
   def do (self, inputs):
     from .movie import ContourMovie
 
-    plotname = self.fieldname+"_level"+self.level
+    if hasattr(self,'level'):
+      plotname = self.fieldname+"_level"+self.level
+      title = '%s at level %s'%(self.fieldname,self.level)
+    else:
+      plotname = self.fieldname+"_"+self.height+"m"
+      title = '%s at height %s'%(self.fieldname,self.height)
     prefix = '_'.join(inp.name for inp in inputs) + '_' + plotname + self.suffix + self.end_suffix
 
     fields = [inp.datasets[0].vars[0] for inp in inputs]
     subtitles = [inp.title for inp in inputs]
-    title = '%s at level %s'%(self.fieldname,self.level)
 
     aspect_ratio = 0.4  # height / width for each panel
 
