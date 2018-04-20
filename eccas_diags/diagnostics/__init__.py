@@ -120,9 +120,11 @@ class TimeVaryingDiagnostic(Diagnostic):
     group.add_argument('--start', action='store', metavar=date_format.upper(), help="Specify a start date for the diagnostics.")
     group.add_argument('--end', action='store', metavar=date_format.upper(), help="Specify an end date for the diagnostics.")
     group.add_argument('--year', action='store', type=int, help="Limit the diagnostics to a particular year.")
-    group.add_argument('--hour0-only', action='store_true', help="Sample the data once per day, to speed up the diagnostics (useful when sub-daily scales don't matter anyway).")
+    hour_group = group.add_mutually_exclusive_group()
+    hour_group.add_argument('--hour0-only', action='store_true', help="Sample the data once per day, to speed up the diagnostics (useful when sub-daily scales don't matter anyway).")
+    hour_group.add_argument('--hour', type=int, help="Select a particular hour (in GMT)")
     handled.append(True)
-  def __init__(self,hour0_only=False,start=None,end=None,year=None,**kwargs):
+  def __init__(self,hour0_only=False,hour=None,start=None,end=None,year=None,**kwargs):
     from datetime import datetime, timedelta
     super(TimeVaryingDiagnostic,self).__init__(**kwargs)
     # Parse start and end dates
@@ -136,6 +138,7 @@ class TimeVaryingDiagnostic(Diagnostic):
       end = datetime(year=year+1,month=1,day=1) - timedelta(days=1)
     self.date_range = (start,end)
     self.hour0_only = hour0_only
+    self.hour = hour
     end_suffix = []
     datestr = ''
     if start is not None:
@@ -147,6 +150,8 @@ class TimeVaryingDiagnostic(Diagnostic):
       end_suffix.append(datestr)
     if hour0_only is True:
       end_suffix.append("hour0-only")
+    if hour is not None:
+      end_suffix.append("%dGMT"%hour)
     if len(end_suffix) > 0:
       self.end_suffix += '_' + '_'.join(end_suffix)
 
@@ -164,7 +169,7 @@ class TimeVaryingDiagnostic(Diagnostic):
     from pygeode.timeutils import reltime
     from math import floor
     # Don't need to do anything if no time modifiers are used.
-    if self.date_range == (None,None) and self.hour0_only is False:
+    if self.date_range == (None,None) and self.hour0_only is False and self.hour is None:
       return model
     date_range = self.date_range
 
@@ -181,16 +186,18 @@ class TimeVaryingDiagnostic(Diagnostic):
       else:
         end = d.time.str_as_val(key=None,s=end.strftime("%d %b %Y"))
       d = d(time=(start,end))
-      if self.hour0_only is True:
-        hours = set(reltime(d.time,units='hours')%24)
-        # Ignore empty datasets (e.g. datasets that don't fall in the
-        # above start & end dates).
-        # Also, ignore datasets where the hours don't fall on regular intervals.
-        if len(hours) > 0 and len(hours) < len(d.time):
+      hours = set(reltime(d.time,units='hours')%24)
+      # Ignore empty datasets (e.g. datasets that don't fall in the
+      # above start & end dates).
+      # Also, ignore datasets where the hours don't fall on regular intervals.
+      if len(hours) > 0 and len(hours) < len(d.time):
+        if self.hour0_only is True:
           hour_float = min(hours)
           hour = int(floor(hour_float))
           minute = int((hour_float-hour)*60)
           d = d(hour=hour,minute=minute)
+        elif self.hour is not None:
+          d = d(hour=self.hour,minute=0)
       # Use the same start date & units for all time axes.
       d = fix_timeaxis(d)
       out_datasets.append(d)
