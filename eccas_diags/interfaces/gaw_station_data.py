@@ -75,8 +75,6 @@ class GAW_Station_Data(SplitProduct):
           comments.append(line)
         else:
           date1, time1, date2, time2, val, nd, sd, f, cs, rem = line.split()
-          # Check quality flags, ignore any suspicious data.
-          if f not in ('...','1'): continue
 
           try:
             fudge = tz_fudge
@@ -158,7 +156,7 @@ class GAW_Station_Data(SplitProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return sorted(glob(dirname+'/*.ec.*.dat')+glob(dirname+'/*.noaa.*.dat'))
+    return sorted(glob(dirname+'/*.dat'))
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.
