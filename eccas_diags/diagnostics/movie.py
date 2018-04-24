@@ -26,7 +26,7 @@
 # To use this class, create a sub-class and define an appropriate 'render'
 # method.
 class Movie(object):
-  def __init__ (self, fields, figsize=None):
+  def __init__ (self, fields, figsize=None, extra_plotvar_args={}):
     self.fields = fields
     # Determine the range of values for each field being rendered
     # (range is over the whole time period).
@@ -43,6 +43,7 @@ class Movie(object):
         low1, high1 = self.global_range[field.name]
         self.global_range[field.name] = (min(low1,low),max(high1,high))
     self.figsize = figsize
+    self.extra_plotvar_args = extra_plotvar_args
 
   # Save the movie.
   def save (self, outdir, prefix):
@@ -202,12 +203,13 @@ class ContourMovie(TiledMovie):
 
   def render_panel (self, axis, field, n):
     from pygeode.plot import plotvar
+    from copy import deepcopy
     clevs = self.clevs[field.name]
     # Cap extreme values, so they don't go off the colour scale?
     if self.cap_extremes[n] is True:
-      plotvar (field, ax=axis, clevs=clevs, title=self.subtitles[n], cmap=self.cmaps[n], extend='both')
+      plotvar (field, ax=axis, clevs=clevs, title=self.subtitles[n], cmap=self.cmaps[n], extend='both', **deepcopy(self.extra_plotvar_args))
     else:
-      plotvar (field, ax=axis, clevs=clevs, title=self.subtitles[n], cmap=self.cmaps[n])
+      plotvar (field, ax=axis, clevs=clevs, title=self.subtitles[n], cmap=self.cmaps[n], **deepcopy(self.extra_plotvar_args))
 
 class ZonalMovie (ContourMovie):
   # Modify the panel rendering to show the y-axis on the first panel,

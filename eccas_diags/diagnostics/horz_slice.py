@@ -22,7 +22,8 @@
 # Horizontal slice movie.
 
 from . import TimeVaryingDiagnostic
-class HorzSlice(TimeVaryingDiagnostic):
+from .map import Map
+class HorzSlice(TimeVaryingDiagnostic,Map):
   """
   Sample data at a particular vertical level.
   """
@@ -97,7 +98,7 @@ class HorzSlice(TimeVaryingDiagnostic):
     cmaps = [inp.cmap for inp in inputs]
     cap_extremes = [getattr(inp,'cap_extremes',False) for inp in inputs]
 
-    movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio, cmaps=cmaps, cap_extremes=cap_extremes)
+    movie = ContourMovie(fields, title=title, subtitles=subtitles, shape=shape, aspect_ratio = aspect_ratio, cmaps=cmaps, cap_extremes=cap_extremes, extra_plotvar_args=self.plotvar_map_args)
 
     movie.save (outdir=self.outdir, prefix=prefix)
 
