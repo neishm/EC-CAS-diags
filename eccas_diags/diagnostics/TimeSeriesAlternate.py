@@ -156,8 +156,10 @@ class TimeseriesDiff(Timeseries):
       pl.twinx()
       # First, need to get the original axis lines in the legend.
       # (adapted from http://stackoverflow.com/a/23647410)
-      for inp in inputs:
-        pl.plot(np.nan, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
+      # Note: no longer works in more recent matplotlib.  This somehow extends
+      # the beginning of the time axis to the year 2000??
+      #for inp in inputs:
+        #pl.plot(np.nan, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
 
       # Now, can plot the difference plots.
       for j,inp in enumerate(inputs[:-1]):
@@ -190,7 +192,7 @@ class TimeseriesDiff(Timeseries):
       # Things to do on the last plot of the figure
       if i%n == (n-1) or i == nstations-1:
         # Put a legend on the last plot
-        labels = [d.title for d in inputs] + ["obs - "+d.name for d in inputs[:-1]]
+        labels = ["obs - "+d.name for d in inputs[:-1]]
         pl.legend(labels, prop={'size':11})
 
         pl.tight_layout()
