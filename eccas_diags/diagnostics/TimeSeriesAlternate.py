@@ -197,7 +197,11 @@ class TimeseriesDiff(Timeseries):
           for t,v in zip(TimesAx,Difference):
             if not np.isfinite(v): continue
             month_bins.setdefault(datetime(t.year,t.month,15),[]).append(v)
-          pl.errorbar(month_bins.keys(), map(np.mean,month_bins.values()), yerr=map(np.std,month_bins.values()), marker='o', markersize=10, capsize=10, linestyle='none', color=inp.color, markeredgecolor=inp.color, alpha=0.3, label="obs - "+inp.name)
+          months = list(month_bins.keys())
+          values = list(map(np.mean,month_bins.values()))
+          std = list(map(np.std,month_bins.values()))
+          if len(months) > 0:
+            pl.errorbar(months, values, yerr=std, marker='o', markersize=10, capsize=10, linestyle='none', color=inp.color, markeredgecolor=inp.color, alpha=0.3, label="obs - "+inp.name)
 
       #Black baseline representing x = 0 line for difference
       times = to_datetimes(model_times[0])
