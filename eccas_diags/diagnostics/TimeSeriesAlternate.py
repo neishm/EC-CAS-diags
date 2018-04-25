@@ -27,6 +27,15 @@ class TimeseriesDiff(Timeseries):
   """
   Difference between two datasets, sampled at obs locations.
   """
+  def __init__ (self, stat=None, **kwargs):
+    import numpy as np
+    super(TimeseriesDiff,self).__init__(**kwargs)
+    self.stat = stat
+    if stat is not None:
+      end_suffix = self.end_suffix.split('_')
+      end_suffix.append(stat)
+      self.end_suffix = '_'.join(end_suffix)
+
   def do (self, inputs):
     import numpy as np
     import matplotlib.pyplot as pl
@@ -34,6 +43,8 @@ class TimeseriesDiff(Timeseries):
     import math
     from os import makedirs
     from ..common import detect_gaps, to_datetimes
+    from collections import OrderedDict
+    from datetime import datetime
 
     figwidth = 15
 
@@ -176,7 +187,17 @@ class TimeseriesDiff(Timeseries):
 #        pl.text(.01,.82,'Difference Std: %s'%(round(DiffStd,1)),size=11)
 
         # Difference plot
-        pl.plot(TimesAx,Difference, color=inp.color, alpha=0.3)
+        if self.stat is None:
+          pl.plot(TimesAx,Difference, color=inp.color, alpha=0.3, label="obs - "+inp.name)
+
+        elif self.stat == 'monthly':
+          # Compute monthly statistics?
+          #monthly = pandas.Series(Difference,TimesAx).resample('M',how=('mean','std','count'),loffset='15D')
+          month_bins = OrderedDict()
+          for t,v in zip(TimesAx,Difference):
+            if not np.isfinite(v): continue
+            month_bins.setdefault(datetime(t.year,t.month,15),[]).append(v)
+          pl.errorbar(month_bins.keys(), map(np.mean,month_bins.values()), yerr=map(np.std,month_bins.values()), marker='o', markersize=10, capsize=10, linestyle='none', color=inp.color, markeredgecolor=inp.color, alpha=0.3, label="obs - "+inp.name)
 
       #Black baseline representing x = 0 line for difference
       times = to_datetimes(model_times[0])
@@ -192,8 +213,7 @@ class TimeseriesDiff(Timeseries):
       # Things to do on the last plot of the figure
       if i%n == (n-1) or i == nstations-1:
         # Put a legend on the last plot
-        labels = ["obs - "+d.name for d in inputs[:-1]]
-        pl.legend(labels, prop={'size':11})
+        pl.legend(prop={'size':11})
 
         pl.tight_layout()
 
