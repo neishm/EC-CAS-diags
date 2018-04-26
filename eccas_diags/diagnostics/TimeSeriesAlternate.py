@@ -106,7 +106,11 @@ class TimeseriesDiff(Timeseries):
       # Loop over each product, and plot the data for this location.
       model_times = []  # Store for difference plots after.
       model_values = []
+      # Don't plot the data for the monthly stats variant.
+      do_plot = (self.stat!='monthly')
+
       for j,inp in enumerate(inputs):
+
         var = inp.datasets[i][self.fieldname]
         # Check for missing data (so we don't connect this region with a line)
         var = detect_gaps(var)
@@ -140,10 +144,12 @@ class TimeseriesDiff(Timeseries):
           fill_max = values + 2*std
           fill_mask = np.isfinite(fill_max)
           if inp.std_style == 'lines':
-            pl.plot(dates, fill_min, color=inp.color, linestyle='--')
-            pl.plot(dates, fill_max, color=inp.color, linestyle='--')
+            if do_plot:
+              pl.plot(dates, fill_min, color=inp.color, linestyle='--')
+              pl.plot(dates, fill_max, color=inp.color, linestyle='--')
           if inp.std_style == 'shade':
-            pl.fill_between(dates, fill_min, fill_max, where=fill_mask, color=inp.color, linewidth=0, alpha=0.5)
+            if do_plot:
+              pl.fill_between(dates, fill_min, fill_max, where=fill_mask, color=inp.color, linewidth=0, alpha=0.5)
 
         # Store some data for the difference plots further below.
         if j == len(inputs)-1:
@@ -154,17 +160,20 @@ class TimeseriesDiff(Timeseries):
           model_values.append(values)
 
         # Plot the timeseries
-        pl.plot(dates, values, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
-        # Work around issue where pyplot autoscale ignores points with missing
-        # data.
-        pl.xlim(mindate,maxdate)
+        if do_plot:
+          pl.plot(dates, values, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
+
+      # Work around issue where pyplot autoscale ignores points with missing
+      # data.
+      pl.xlim(mindate,maxdate)
 
       pl.title(title)
       pl.ylabel('%s %s'%(self.fieldname,self.units))
 
       # ----- start of difference plot -----
       TimesAx = to_datetimes(obs_times)
-      pl.twinx()
+      if self.stat != 'monthly':
+        pl.twinx()
       # First, need to get the original axis lines in the legend.
       # (adapted from http://stackoverflow.com/a/23647410)
       # Note: no longer works in more recent matplotlib.  This somehow extends
@@ -177,7 +186,7 @@ class TimeseriesDiff(Timeseries):
         model_interp = np.interp(obs_times.values,model_times[j].values,model_values[j])    #Interpolate model data to those points for comparison
 
         #------Difference Plot------
-        Difference = obs_values-model_interp    #Difference data
+        Difference = model_interp-obs_values    #Difference data
 
 #      # Determine Mean and Max difference, and standard deviation
 #      if sum(~np.isnan(Difference)) > 0:
@@ -188,7 +197,7 @@ class TimeseriesDiff(Timeseries):
 
         # Difference plot
         if self.stat is None:
-          pl.plot(TimesAx,Difference, color=inp.color, alpha=0.3, label="obs - "+inp.name)
+          pl.plot(TimesAx,Difference, color=inp.color, alpha=0.3, label=inp.title+" bias")
 
         elif self.stat == 'monthly':
           # Compute monthly statistics?
@@ -199,9 +208,14 @@ class TimeseriesDiff(Timeseries):
             month_bins.setdefault(datetime(t.year,t.month,15),[]).append(v)
           months = list(month_bins.keys())
           values = list(map(np.mean,month_bins.values()))
+          counts = list(map(len,month_bins.values()))
           std = list(map(np.std,month_bins.values()))
           if len(months) > 0:
-            pl.errorbar(months, values, yerr=std, marker='o', markersize=10, capsize=10, linestyle='none', color=inp.color, markeredgecolor=inp.color, alpha=0.3, label="obs - "+inp.name)
+            pl.errorbar(months, values, yerr=std, marker='o', markersize=10, capsize=10, linestyle='none', color=inp.color, markeredgecolor=inp.color, alpha=1.0, label=inp.title+" bias")
+            # Label the number of data points on one of the plots.
+            if j == 0:
+              for month, value, count in zip(months,values,counts):
+                pl.text(month, value, "   "+str(count), horizontalalignment='left', verticalalignment='center')
 
       #Black baseline representing x = 0 line for difference
       times = to_datetimes(model_times[0])
