@@ -332,7 +332,7 @@ diag ('timeseries-hist', 'CO2', 'ppm')
 diag ('timeseries-hist', 'CO',  'ppb')
 
 diag ('timeseries-diff', 'CO2', 'ppm')
-diag ('timeseries-diff', 'CO2', 'ppm', stat='monthly')
+diag ('timeseries-diff', 'CO2', 'ppm', stat='monthly', dump_txt=True)
 diag ('timeseries-diff', 'CO',  'ppb')
 
 diag ('regional-bargraph', 'CO2', 'ppm')

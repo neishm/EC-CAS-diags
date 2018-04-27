@@ -27,10 +27,11 @@ class TimeseriesDiff(Timeseries):
   """
   Difference between two datasets, sampled at obs locations.
   """
-  def __init__ (self, stat=None, **kwargs):
+  def __init__ (self, stat=None, dump_txt=False, **kwargs):
     import numpy as np
     super(TimeseriesDiff,self).__init__(**kwargs)
     self.stat = stat
+    self.dump_txt = dump_txt
     if stat is not None:
       end_suffix = self.end_suffix.split('_')
       end_suffix.append(stat)
@@ -76,7 +77,7 @@ class TimeseriesDiff(Timeseries):
       outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
 
       # Skip plots that have already been generated.
-      if exists(outfile): continue
+      if exists(outfile) and self.dump_txt is False: continue
 
       station_axis = inputs[0].datasets[i].vars[0].station
       assert len(station_axis) == 1, "Unable to handle multi-station datasets"
@@ -181,6 +182,9 @@ class TimeseriesDiff(Timeseries):
       #for inp in inputs:
         #pl.plot(np.nan, color=inp.color, linestyle=inp.linestyle, marker=inp.marker, markersize=markersize, markeredgecolor=inp.color)
 
+      # Store the stats for future use
+      stats_table = OrderedDict()
+
       # Now, can plot the difference plots.
       for j,inp in enumerate(inputs[:-1]):
         model_interp = np.interp(obs_times.values,model_times[j].values,model_values[j])    #Interpolate model data to those points for comparison
@@ -210,8 +214,14 @@ class TimeseriesDiff(Timeseries):
           values = list(map(np.mean,month_bins.values()))
           counts = list(map(len,month_bins.values()))
           std = list(map(np.std,month_bins.values()))
+          if j == 0:
+            stats_table["year"] = [m.strftime("%Y") for m in months]
+            stats_table["month"] = [m.strftime("%m") for m in months]
+          stats_table[inp.title+" mean"] = ["%9f"%v for v in values]
+          stats_table[inp.title+" std"] = ["%9f"%v for v in std]
+          stats_table[inp.title+" count"] = ["%3d"%v for v in counts]
           if len(months) > 0:
-            pl.errorbar(months, values, yerr=std, marker='o', markersize=10, capsize=10, linestyle='none', color=inp.color, markeredgecolor=inp.color, alpha=1.0, label=inp.title+" bias")
+            pl.errorbar(months, values, yerr=std, marker='s', markersize=10, capsize=10, linestyle='none', color=inp.color, markerfacecolor='none', markeredgecolor=inp.color, alpha=1.0, label=inp.title+" bias")
             # Label the number of data points on one of the plots.
             if j == 0:
               for month, value, count in zip(months,values,counts):
@@ -228,6 +238,16 @@ class TimeseriesDiff(Timeseries):
 
       # ----- end of difference plot -----
 
+      # Dump stats to file?
+      if self.dump_txt is True:
+        stats_file = "%s/%s_stats.txt"%(outdir,location.replace(' ','_'))
+        with open(stats_file,'w') as f:
+          f.write(", ".join(stats_table.keys()))
+          f.write("\n")
+          for row in zip(*list(stats_table.values())):
+            f.write(", ".join(row))
+            f.write("\n")
+
       # Things to do on the last plot of the figure
       if i%n == (n-1) or i == nstations-1:
         # Put a legend on the last plot
@@ -236,7 +256,8 @@ class TimeseriesDiff(Timeseries):
         pl.tight_layout()
 
         # Save as an image file.
-        fig.savefig(outfile)
+        if not exists(outfile):
+          fig.savefig(outfile)
 
         pl.close(fig)
 
