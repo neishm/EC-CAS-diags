@@ -29,15 +29,22 @@ class StationComparison(Diagnostic):
     if len(handled) > 0: return  # Only run once
     group = parser.add_argument_group('options for station comparisons')
     group.add_argument('--stations', action='store', metavar='StationA,StationB,...', help='Comma-separated list of stations to look at.  Only part of the station name is needed.  By default, all available stations are used.')
+    group.add_argument('--station-order', choices=('alphabetical','latitude'), default='alphabetical', help='Which order to put the stations on the figures.  Default is %(default)s.')
     group.add_argument('--no-require-obs', action='store_true', help="Do station comparisons for all requested fields, even fields that don't have any observation data.")
     handled.append(True)
-  def __init__(self, stations=None, no_require_obs=None, **kwargs):
+  def __init__(self, stations=None, station_order=None, no_require_obs=None, **kwargs):
     super(StationComparison,self).__init__(**kwargs)
     if stations is not None:
       self.stations = stations.split(',')
     else:
       self.stations = None
+    self.station_order = station_order
     self.no_require_obs = no_require_obs
+    if station_order is not None:
+      end_suffix = self.end_suffix.split('_')
+      end_suffix.append('by_'+station_order)
+      self.end_suffix = '_'.join(end_suffix)
+
 
   # Override the input criteria for the no_require_obs case.
   def _select_inputs (self, inputs):
@@ -60,6 +67,12 @@ class StationComparison(Diagnostic):
         selected.append(i)
       else:
         selected.append(DerivedProduct(datasets,source=i))
+    # Order the datasets by latitude?
+    if self.station_order == 'latitude':
+      for i,inp in enumerate(selected):
+        if not self._has_station_axis(inp): continue
+        datasets = sorted(inp.datasets, key=lambda d: d.station.lat[0])
+        inputs[i] = DerivedProduct(datasets,source=inp)
     return selected
 
   # Helper method - subset the obs at the explicit stations given by the user.
