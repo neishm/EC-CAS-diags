@@ -240,7 +240,7 @@ class TimeseriesDiff(Timeseries):
 
       # Dump stats to file?
       if self.dump_txt is True:
-        stats_file = "%s/%s_stats.txt"%(outdir,location.replace(' ','_'))
+        stats_file = "%s/%s_stats.txt"%(outdir,location.translate(None,' /'))
         with open(stats_file,'w') as f:
           f.write(", ".join(stats_table.keys()))
           f.write("\n")
