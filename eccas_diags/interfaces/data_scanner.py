@@ -864,10 +864,11 @@ class DataInterface (object):
     else:
       candidates = list(self.find(*varnames,requirement=requirement))
 
-    # At the very least, order by domain shapes
+    # At the very least, order by domain size
     # (so we never have an arbitrary order of matches)
     def domain_size (varlist):
-      return sorted((v.name,v.shape) for v in varlist)
+      import numpy as np
+      return sorted((v.name,np.prod(v.shape)) for v in varlist)
     candidates = sorted(candidates, key=domain_size, reverse=True)
 
     if isinstance(maximize,tuple):
