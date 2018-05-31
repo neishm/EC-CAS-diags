@@ -19,19 +19,22 @@
 ###############################################################################
 
 
-# Interface for ODIAC data
+# Interface for CTDAS-CH4 data
 
 from . import DataProduct
-class ODIAC(DataProduct):
+class CTDAS(DataProduct):
   """
-  ODIAC CO2 data
+  CTDAS CH4 data
   """
 
   # List of all possible fields we expect from the data
   # (original_name, standard_name, units)
   field_list = (
-    ('land', 'CO2_bio_flux', 'g(C) m-2 day-1'),
-    ('intl_bunker', 'CO2_intl_bunker_flux', 'g(C) m-2 day-1'),
+    ('bio_flux_opt',  'CH4_natural_flux', 'Tg(CH4) year-1'),
+    ('anth_flux_opt', 'CH4_fossil_flux',  'Tg(CH4) year-1'),
+    ('fire_flux_imp', 'CH4_bioburn_flux', 'Tg(CH4) year-1'),
+    ('term_flux_imp', 'CH4_agwaste_flux', 'Tg(CH4) year-1'),
+    ('ocn_flux_imp',  'CH4_ocean_flux',   'Tg(CH4) year-1'),
   )
   # Helper methods
 
@@ -42,18 +45,21 @@ class ODIAC(DataProduct):
     from os.path import basename, splitext
     from pygeode.timeaxis import StandardTime
     f = open(filename)
-    # Complete the time axis.
-    # Use the year from the filename.
-    year = splitext(basename(filename))[0].split('_')[-1]
-    year = int(year)
-    taxis = StandardTime(year=[year]*12, month=f.month, units='days', startdate=dict(year=2000,month=1))
-    f = f.replace_axes(month=taxis)
+    # Create the time axis.
+    # Use the year/month from the filename.
+    yyyymm = splitext(basename(filename))[0].split('_')[-2]
+    year = int(yyyymm[:4])
+    month = int(yyyymm[4:])
+    taxis = StandardTime(year=[year], month=[month], units='days', startdate=dict(year=2000,month=1))
+    f = f.extend(0,taxis)
     return f
 
   # Method to decode an opened dataset (standardize variable names, and add any
   # extra info needed (pressure values, cell area, etc.)
   @classmethod
   def decode (cls, data):
+
+    from ..common import ndays_in_year
 
     # Apply fieldname conversions
     data = DataProduct.decode.__func__(cls,data)
@@ -63,8 +69,16 @@ class ODIAC(DataProduct):
 
     # Add species name for all products (to assist in things like unit conversion)
     for varname in data:
-      if varname.startswith('CO2'):
-        data[varname].atts['specie'] = 'CO2'
+      if varname.startswith('CH4'):
+        data[varname].atts['specie'] = 'CH4'
+      # Convert units from mass/year to mass/day
+      if 'units' in data[varname].atts:
+        if data[varname].atts['units'] == 'Tg(CH4) year-1':
+          data[varname] = data[varname] / ndays_in_year(data[varname].time)
+          data[varname].atts['units'] = 'Tg(CH4) day-1'
+      # Add default units to unprocessed data
+      else:
+        data[varname].atts['units'] = ''
 
     # Make sure the variables have the appropriate names
     for name, var in data.iteritems():  var.name = name
@@ -80,7 +94,7 @@ class ODIAC(DataProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+"/odiac2017_1x1d_????.nc")
+    return glob(dirname+"/monthly_CH4_??????_1x1.nc")
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.
@@ -94,7 +108,7 @@ class ODIAC(DataProduct):
 
 # Add this interface to the table.
 from . import table
-table['odiac'] = ODIAC
+table['ctdas-ch4'] = CTDAS
 
 
 

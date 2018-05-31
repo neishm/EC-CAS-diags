@@ -131,14 +131,10 @@ class GEOSCHEM_Data(DataProduct):
 
     # Change units of biomass burning (from monthly total to rate)
     if 'CO2_fire_flux' in data:
+      from ..common import ndays_in_year
       from calendar import monthrange
-      from pygeode.var import Var
       bb = data['CO2_fire_flux']
-      year = bb.time.year
-      month = bb.time.month
-      ndays = [monthrange(y,m)[1] for y,m in zip(year,month)]
-      ndays = Var(axes=[bb.time], values=ndays)
-      bb /= ndays
+      bb /= ndays_in_year(bb.time)
       bb /= 86400
       bb.atts['units'] = 'g m-2 s-1'
       bb.atts['specie'] = 'CO2'

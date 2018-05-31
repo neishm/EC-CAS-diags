@@ -262,6 +262,16 @@ def fix_timeaxis (data):
     data = data.replace_axes(time=time)
   return data
 
+# Calculate the number of days in a year, along a time axis.
+def ndays_in_year (time):
+  from calendar import monthrange
+  from pygeode.var import Var
+  year = time.year
+  month = time.month
+  ndays = [monthrange(y,m)[1] for y,m in zip(year,month)]
+  ndays = Var(axes=[time], name='ndays', values=ndays)
+  return ndays
+
 # Convert a string to an int or float, if possible.  (Otherwise, keep it as a string)
 def best_type (x):
   try: return int(x)
