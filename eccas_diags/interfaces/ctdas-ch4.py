@@ -130,6 +130,9 @@ class CTDAS(DataProduct):
         if hybrid is None:
           hybrid = Hybrid(data[varname].HYBRID.values, name='hybrid', A=data['a'].get(), B=data['b'].get())
         data[varname] = data[varname].replace_axes(HYBRID=hybrid)
+    # Remove a,b variables.
+    data.pop('a',None)
+    data.pop('b',None)
 
     # Add pressure field (if not explicitly provided).
     if 'surface_pressure' in data and hybrid is not None:
