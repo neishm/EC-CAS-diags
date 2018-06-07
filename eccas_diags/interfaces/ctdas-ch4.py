@@ -35,23 +35,54 @@ class CTDAS(DataProduct):
     ('fire_flux_imp', 'CH4_bioburn_flux', 'Tg(CH4) year-1'),
     ('term_flux_imp', 'CH4_agwaste_flux', 'Tg(CH4) year-1'),
     ('ocn_flux_imp',  'CH4_ocean_flux',   'Tg(CH4) year-1'),
+    ('tempm', 'air_temperature', 'K'),
+    ('presm', 'surface_pressure', 'Pa'),
+    ('ch4', 'CH4', 'mol mol(semidry_air)-1'),
   )
   # Helper methods
 
   # Method to open a single file
   @staticmethod
   def open_file (filename):
-    from pygeode.formats.netcdf import open
+    from pygeode.formats import netcdf as nc, hdf4
     from os.path import basename, splitext
     from pygeode.timeaxis import StandardTime
-    f = open(filename)
-    # Create the time axis.
-    # Use the year/month from the filename.
-    yyyymm = splitext(basename(filename))[0].split('_')[-2]
-    year = int(yyyymm[:4])
-    month = int(yyyymm[4:])
-    taxis = StandardTime(year=[year], month=[month], units='days', startdate=dict(year=2000,month=1))
-    f = f.extend(0,taxis)
+    from pygeode.axis import ZAxis
+    from pygeode.var import Var
+    # Case 1: netCDF flux file
+    if filename.endswith('.nc'):
+      f = nc.open(filename)
+      # Use the date from the filename.
+      yyyymm = splitext(basename(filename))[0].split('_')[-2]
+      year = int(yyyymm[:4])
+      month = int(yyyymm[4:])
+      taxis = StandardTime(year=[year], month=[month], units='days', startdate=dict(year=2000,month=1))
+      # Create the time axis.
+      f = f.extend(0,taxis)
+    # Case 2: HDF4 concentration file
+    elif filename.endswith('.hdf'):
+      f = hdf4.open(filename)
+      # Use the date from the filename.
+      yyyymmddhh = splitext(basename(filename))[0].split('_')[-2]
+      year = int(yyyymmddhh[:4])
+      month = int(yyyymmddhh[4:6])
+      day = int(yyyymmddhh[6:8])
+      hour = int(yyyymmddhh[8:])
+      taxis = StandardTime(year=[year], month=[month], day=[day], hour=[hour], units='days', startdate=dict(year=2000,month=1))
+      # Create the time axis.
+      f = f.extend(0,taxis)
+      # Store the hybrid a/b information for later use.
+      at = f.atts['at']
+      a = (at[:-1] + at[1:]) / 2
+      a = Var(axes=[f.HYBRID], name='a', values=a)
+      bt = f.atts['bt']
+      b = (bt[:-1] + bt[1:]) / 2
+      b = Var(axes=[f.HYBRID], name='b', values=b)
+      f = f + a + b
+      # Partial decoding of zaxis.
+      # Can't create a full Hybrid axis here, because the diagnostic machinery
+      # gets confused about the extra A/B auxiliary array.
+      f = f.replace_axes(HYBRID=ZAxis)
     return f
 
   # Method to decode an opened dataset (standardize variable names, and add any
@@ -60,6 +91,8 @@ class CTDAS(DataProduct):
   def decode (cls, data):
 
     from ..common import ndays_in_year
+    from pygeode.axis import Lat, Lon, Hybrid
+    import numpy as np
 
     # Apply fieldname conversions
     data = DataProduct.decode.__func__(cls,data)
@@ -80,6 +113,22 @@ class CTDAS(DataProduct):
       else:
         data[varname].atts['units'] = ''
 
+    # Attach lat/lon/level coordinates (for concentration files.)
+    latbounds = np.linspace(-90,90,46)
+    lat = (latbounds[:-1] + latbounds[1:]) / 2
+    lat = Lat(lat)
+    lonbounds = np.linspace(-180,180,61)
+    lon = (lonbounds[:-1] + lonbounds[1:]) / 2
+    lon = Lon(lon)
+    hybrid = None
+    for varname in data:
+      if data[varname].hasaxis('LATglb600x400'):
+        data[varname] = data[varname].replace_axes(LATglb600x400=lat, LONglb600x400=lon)
+      if data[varname].hasaxis('HYBRID'):
+        if hybrid is None:
+          hybrid = Hybrid(data[varname].HYBRID.values, name='hybrid', A=data['a'].get(), B=data['b'].get())
+        data[varname] = data[varname].replace_axes(HYBRID=hybrid)
+
     # Make sure the variables have the appropriate names
     for name, var in data.iteritems():  var.name = name
 
@@ -94,17 +143,14 @@ class CTDAS(DataProduct):
   @staticmethod
   def find_files (dirname):
     from glob import glob
-    return glob(dirname+"/monthly_CH4_??????_1x1.nc")
+    return glob(dirname+"/monthly_CH4_??????_1x1.nc") + glob(dirname+"mmix_??????????_??????????_glb600x400.hdf")
 
   # Method to find a unique identifying string for this dataset, from the
   # given directory name.
   @staticmethod
   def get_dataname (dirname):
-    from os import path
-    dirname = path.normpath(dirname)
-    name = dirname.split('/')[-2:]
-    name = '_'.join(name)
-    return name
+    # No versioning information in directory name, just use interface name.
+    return 'CTDAS-CH4'
 
 # Add this interface to the table.
 from . import table
