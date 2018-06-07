@@ -47,8 +47,9 @@ class CTDAS(DataProduct):
     from pygeode.formats import netcdf as nc, hdf4
     from os.path import basename, splitext
     from pygeode.timeaxis import StandardTime
-    from pygeode.axis import ZAxis
+    from pygeode.axis import Lat, Lon, ZAxis
     from pygeode.var import Var
+    import numpy as np
     # Case 1: netCDF flux file
     if filename.endswith('.nc'):
       f = nc.open(filename)
@@ -83,6 +84,16 @@ class CTDAS(DataProduct):
       # Can't create a full Hybrid axis here, because the diagnostic machinery
       # gets confused about the extra A/B auxiliary array.
       f = f.replace_axes(HYBRID=ZAxis)
+      # Attach lat/lon  coordinates (for concentration files.)
+      # Have to do it here in the opener, because the data_scanner can't handle
+      # the default "dummy" lat/lon axes in the file.
+      latbounds = np.linspace(-90,90,46)
+      lat = (latbounds[:-1] + latbounds[1:]) / 2
+      lat = Lat(lat)
+      lonbounds = np.linspace(-180,180,61)
+      lon = (lonbounds[:-1] + lonbounds[1:]) / 2
+      lon = Lon(lon)
+      f = f.replace_axes(LATglb600x400=lat, LONglb600x400=lon)
     return f
 
   # Method to decode an opened dataset (standardize variable names, and add any
@@ -90,9 +101,8 @@ class CTDAS(DataProduct):
   @classmethod
   def decode (cls, data):
 
-    from ..common import ndays_in_year
-    from pygeode.axis import Lat, Lon, Hybrid
-    import numpy as np
+    from ..common import ndays_in_year, compute_pressure
+    from pygeode.axis import Hybrid
 
     # Apply fieldname conversions
     data = DataProduct.decode.__func__(cls,data)
@@ -113,21 +123,22 @@ class CTDAS(DataProduct):
       else:
         data[varname].atts['units'] = ''
 
-    # Attach lat/lon/level coordinates (for concentration files.)
-    latbounds = np.linspace(-90,90,46)
-    lat = (latbounds[:-1] + latbounds[1:]) / 2
-    lat = Lat(lat)
-    lonbounds = np.linspace(-180,180,61)
-    lon = (lonbounds[:-1] + lonbounds[1:]) / 2
-    lon = Lon(lon)
+    # Finish defining level coordinates (for concentration files.)
     hybrid = None
     for varname in data:
-      if data[varname].hasaxis('LATglb600x400'):
-        data[varname] = data[varname].replace_axes(LATglb600x400=lat, LONglb600x400=lon)
       if data[varname].hasaxis('HYBRID'):
         if hybrid is None:
           hybrid = Hybrid(data[varname].HYBRID.values, name='hybrid', A=data['a'].get(), B=data['b'].get())
         data[varname] = data[varname].replace_axes(HYBRID=hybrid)
+
+    # Add pressure field (if not explicitly provided).
+    if 'surface_pressure' in data and hybrid is not None:
+      #try:
+        air_pressure = compute_pressure(hybrid, data['surface_pressure'])
+        air_pressure.name = 'air_pressure'
+        data['air_pressure'] = air_pressure
+      #except (TypeError, ValueError, AttributeError): pass
+
 
     # Make sure the variables have the appropriate names
     for name, var in data.iteritems():  var.name = name
