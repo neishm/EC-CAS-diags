@@ -35,6 +35,7 @@ class CTDAS(DataProduct):
     ('fire_flux_imp', 'CH4_bioburn_flux', 'Tg(CH4) year-1'),
     ('term_flux_imp', 'CH4_agwaste_flux', 'Tg(CH4) year-1'),
     ('ocn_flux_imp',  'CH4_ocean_flux',   'Tg(CH4) year-1'),
+    ('total_flux_opt','CH4_flux',         'Tg(CH4) year-1'),
     ('tempm', 'air_temperature', 'K'),
     ('presm', 'surface_pressure', 'Pa'),
     ('ch4', 'CH4', 'mol mol(semidry_air)-1'),
