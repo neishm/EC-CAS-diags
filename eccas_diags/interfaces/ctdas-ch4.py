@@ -120,6 +120,7 @@ class CTDAS(DataProduct):
         if data[varname].atts['units'] == 'Tg(CH4) year-1':
           data[varname] = data[varname] / ndays_in_year(data[varname].time)
           data[varname].atts['units'] = 'Tg(CH4) day-1'
+          data[varname].atts['specie'] = 'CH4'
       # Add default units to unprocessed data
       else:
         data[varname].atts['units'] = ''
