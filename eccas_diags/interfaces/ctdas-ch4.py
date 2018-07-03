@@ -95,6 +95,10 @@ class CTDAS(DataProduct):
       lon = (lonbounds[:-1] + lonbounds[1:]) / 2
       lon = Lon(lon)
       f = f.replace_axes(LATglb600x400=lat, LONglb600x400=lon)
+
+    # Remove idate attribute (causes problems with the data_scanner).
+    for var in f:
+      var.atts.pop('idate',None)
     return f
 
   # Method to decode an opened dataset (standardize variable names, and add any
