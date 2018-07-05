@@ -105,9 +105,16 @@ class ObsPack_Flask_Data(ObsPack_Data):
   """
   obstype = 'surface-flask'
 
+class ObsPack_Tower_Data(ObsPack_Data):
+  """
+  Tower measurements of tracers from the ObsPack dataset.
+  http://www.esrl.noaa.gov/gmd/ccgg/obspack/
+  """
+  obstype = 'tower-insitu'
+
 # Add this interface to the table.
 from . import table
 table['obspack-aircraft'] = ObsPack_Aircraft_Data
 table['obspack-hourly'] = ObsPack_Surface_Data
 table['obspack-flask'] = ObsPack_Flask_Data
-
+table['obspack-tower'] = ObsPack_Tower_Data
