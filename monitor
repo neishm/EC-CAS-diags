@@ -14,7 +14,7 @@ if [ ! -e "${SEQ_EXP_HOME}/experiment.cfg" ]; then
 fi
 
 # Import the Maestro environment
-export SEQ_MAESTRO_SHORTCUT=". ssmuse-sh -d eccc/cmo/isst/maestro/1.5.1-rc11"
+export SEQ_MAESTRO_SHORTCUT=". ssmuse-sh -d eccc/cmo/isst/maestro/1.5.1-rc22"
 $SEQ_MAESTRO_SHORTCUT
 
 # If this is the first time running with maestro >= 1.4.0, need to run a setup
