@@ -121,6 +121,25 @@ class ECCAS_Data(GEM_Data):
     records['typvar'][ind] = 'A'
     records['deet'][ind] = 0
 
+  # For our EnKF cycles, we need to hard-code the ig1/ig2 of the tracers.
+  # This is so we match the ip1/ip2 of the EnKF initial file we're injecting
+  # into.
+  # Rename this to _fstd_tweak_records to activate.
+  @staticmethod
+  def _fstd_tweak_records_enkf (records):
+    # Select non-coordinate records (things that aren't already using IP2)
+    ind = (records['ip2'] == 0)
+    # Hard code the ig1 / ig2
+    records['ig1'][ind] = 38992
+    records['ig2'][ind] = 45710
+    records['ig3'][ind] = 1
+    # Update the coordinate records to be consistent.
+    records['ip1'][~ind] = 38992
+    records['ip2'][~ind] = 45710
+    records['ip3'][~ind] = 1
+    # Just for completion, set the typvar and deet as well.
+    records['typvar'][ind] = 'A'
+    records['deet'][ind] = 0
 
 # Add this interface to the table.
 from . import table
