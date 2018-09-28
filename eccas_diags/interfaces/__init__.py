@@ -56,7 +56,7 @@ class DataProduct (DataInterface):
   # Expects 'dataset' to be a dictionary.
   @staticmethod
   def _add_extra_fields (dataset):
-    from ..common import grav, get_area
+    from ..common import grav, get_area, find_and_convert
     from pygeode.var import Var
     if isinstance(dataset,dict):
       dataset = dataset.values()
@@ -73,6 +73,18 @@ class DataProduct (DataInterface):
         cell_area = get_area(var.lat,var.lon)
         cell_area.name = 'cell_area'
         dataset.append(cell_area)
+
+    # Compute air density.
+    if 'density' not in varnames and 'air_pressure' in varnames and 'air_temperature' in varnames and 'specific_humidity' in varnames:
+      T = find_and_convert (dataset, 'air_temperature', 'K')
+      q = find_and_convert (dataset, 'specific_humidity', 'kg(H2O) kg(air)-1')
+      p = find_and_convert (dataset, 'air_pressure', 'Pa')
+      Rd = 287.05
+      Tv = (1 + 0.608*q)*T
+      rho = p / (Rd * Tv)
+      rho.atts['units'] = 'kg(air) m-3'
+      rho.name = 'density'
+      dataset.append(rho)
 
     return dataset
 
