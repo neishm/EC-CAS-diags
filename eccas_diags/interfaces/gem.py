@@ -32,7 +32,7 @@ class GEM_Data(DataProduct):
     ('GZ', 'geopotential_height', 'dam'),
     ('P0', 'surface_pressure', 'hPa'),
     ('PN', 'MSL_pressure', 'hPa'),
-    ('TT', 'air_temperature', 'K'),
+    ('TT', 'air_temperature', 'C'),
     ('UU', 'zonal_wind', 'knots'),
     ('VV', 'meridional_wind', 'knots'),
     ('WW', 'vertical_motion', 'Pa s-1'),

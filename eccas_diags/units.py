@@ -68,6 +68,7 @@ _unprefixable_units = [
   ('h', 'hours', '3600 s'),
   ('day', 'days', '24 h'),
   ('K', 'Kelvin', ''),
+  ('C', 'Celcius', ''),
 ]
 
 # Container for defining a unit
