@@ -42,6 +42,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
     ('ECO', 'CO_flux', 'g(CO) s-1'),
     ('ECAN', 'CO2_Canada_flux', 'g(C) s-1'),
     ('ENOC', 'CO2_no_Canada_flux', 'g(C) s-1'),
+    ('ECPF', 'CO2_permafrost_flux', 'g(C) s-1'),
   )
 
 
