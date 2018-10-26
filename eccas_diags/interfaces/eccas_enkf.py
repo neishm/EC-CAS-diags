@@ -75,7 +75,10 @@ class ECCAS_EnKF_Data(ECCAS_Data):
     # Assuming a 6-hour interval between analyses, and exclude last (hour 6)
     # forecast.
     for i,var in enumerate(dataset):
-      if var.hasaxis('forecast'):
+      # Only consider doing this if the forecast extends over range of values.
+      # Not applicable for the standard trial and analysis output, which has a
+      # single forecast value of 6 and 0 respectively.
+      if var.hasaxis('forecast') and len(var.forecast) > 1:
         dataset[i] = var(forecast=(0.0,4.5))
 
     # Detect ensemble spread fields
