@@ -86,8 +86,8 @@ class CCCMA_Data(DataProduct):
         del data[varname]
 
     # Scale the OH field by a factor of 0.85, since this is a climatology.
-    if 'OH' in data:
-      data['OH'] *= 0.85
+    #if 'OH' in data:
+    #  data['OH'] *= 0.85
 
     # General cleanup stuff
 
