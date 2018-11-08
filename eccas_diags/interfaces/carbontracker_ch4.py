@@ -68,6 +68,7 @@ class CTCH4_Data(DataProduct):
   @staticmethod
   def open_file (filename):
     from pygeode.formats import netcdf
+    from pygeode.axis import NamedAxis
     data = netcdf.open(filename)
     # The time axis in the file is wrong!
     # Override the year, month, and day
@@ -79,7 +80,7 @@ class CTCH4_Data(DataProduct):
     minute = data.time.minute
     from pygeode.timeaxis import StandardTime
     taxis = StandardTime(startdate=data.time.startdate, year=year, month=month, day=day, hour=hour, minute=minute, units='days')
-    data = data.replace_axes(time=taxis)
+    data = data.replace_axes(time=taxis,lev=NamedAxis)
     return data
 
   # Method to decode an opened dataset (standardize variable names, and add any

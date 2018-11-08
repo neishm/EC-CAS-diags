@@ -41,6 +41,7 @@ class GEOS5_Weird_Format(DataProduct):
   @staticmethod
   def open_file (filename):
     from pygeode.formats import netcdf
+    from pygeode.axis import NamedAxis
     data = netcdf.open(filename)
     # If we have year information for OH climatology, then store it for future reference.
     if 'UCX-OH-' in filename:
@@ -48,6 +49,9 @@ class GEOS5_Weird_Format(DataProduct):
       year = filename.split('_')[-1][:-3]
       year = Var(axes=[data.tau0], values=[int(year)]*12,name='year')
       data = data + year
+    # Convert sigma coordinate from NCDim to NamedAxis to make it comparable.
+    if 'sigma' in data:
+      data = data.replace_axes(sigma=NamedAxis)
     return data
 
   # Method to decode an opened dataset (standardize variable names, and add any

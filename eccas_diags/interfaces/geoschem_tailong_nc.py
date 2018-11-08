@@ -66,7 +66,7 @@ class GEOSCHEM_Data(DataProduct):
     data = netcdf.open(filename)
     # Annotate some of the axes with specific types, to help the data_scanner
     # figure things out.  Otherwise, get weird crashes.
-    data = data.replace_axes(date_time=TAxis, ground_level=Height, level=ZAxis, level_centers=ZAxis, level_edges=ZAxis)
+    data = data.replace_axes(date_time=TAxis, date_dim=TAxis, ground_level=Height, level=ZAxis, level_centers=ZAxis, level_edges=ZAxis)
     # Use consistent name for level_centers across the files.
     data = data.rename_axes(level='level_centers')
     return data
