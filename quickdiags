@@ -1,0 +1,188 @@
+#!/usr/bin/env python
+
+# Model parameters to assume for this data:
+nlev = 79   # Number of thermodynamic levels
+
+from argparse import ArgumentParser
+parser = ArgumentParser(description='Performs some quick diagnostics on EC-CAS model output.')
+parser.add_argument('infile', help='Input file or directory to process.')
+parser.add_argument('outdir', nargs='?', default='.', help='Where to put the output files.  Default is the current directory.')
+parser.add_argument('--label', help='The name of the experiment.  If not specified, then a name will be determined from the input directory structure.')
+args = parser.parse_args()
+
+try:
+  import fstd2nc
+  import rpnpy.librmn.all as rmn
+except ImportError:
+  parser.error("You need to run the following command before using the script:\n\n. ssmuse-sh -p eccc/crd/ccmr/EC-CAS/master/fstd2nc_0.20180821.0\n")
+
+from os.path import dirname
+if args.label is None:
+  dirs = dirname(args.infile).split('/')
+  while dirs[-1] in ('model','pressure','timeseries','','.'):
+    dirs.pop()
+  args.label = dirs[-1]
+
+fstd2nc.stdout.streams = ('error',)
+b = fstd2nc.Buffer(args.infile, ignore_diag_level=True, rpnstd_metadata=True, progress=True)
+b._makevars()
+
+import numpy as np
+
+# Determine the timesteps available for mass diagnostics.
+# Assume tracers will have same output frequency as HU.
+for v in b._varlist:
+  if v.name == 'HU': hu = v
+  if v.name == 'P0': p0 = v
+  if v.name == 'DX': dx = v
+datev = b._headers['datev'][hu.record_id[:,0]]
+ip1 = b._headers['ip1'][hu.record_id[0,:]]
+
+# Get momentum-level A and B vertical parameters.
+am = np.array(hu.axes[1].atts['CA_M'])[:-1]
+bm = np.array(hu.axes[1].atts['CB_M'])[:-1]
+assert len(am) == nlev + 1
+
+# Helper function to subset records to match HU
+def subset (var):
+  recs = var.record_id
+  if recs.ndim == 1:
+    recs = recs[np.array([d in datev for d in b._headers['datev'][recs]])]
+  else:
+    recs = recs[np.array([d in datev for d in b._headers['datev'][recs[:,0]]])]
+    recs = recs[:,np.array([i in ip1 for i in b._headers['ip1'][recs[0,:]]])]
+  var.record_id = recs
+
+subset(p0)
+# Pre-load dx, since we only need a single copy of the record.
+dx = b._fstluk(dx.record_id[0])['d']
+
+class TracerMass (object):
+  def __init__ (self, var):
+    self._var = var
+  # List the parameters needed for the diagnostic.
+  def input_table (self):
+    v = self._var
+    for ind in np.ndindex(v.record_id.shape):
+      extra = ind[1]
+      table.append(('c',v.record_id[ind],tracer_mass,v.name,(),extra))
+      table.append(('q',hu.record_id[ind],tracer_mass,v.name,(),extra))
+      table.append(('p0',p0.record_id[ind[0]],tracer_mass,v.name,(),extra))
+  # The function that will be called to compute the mass.
+  #TODO: handle repeated longitude
+  @staticmethod
+  def calc (c, q, p0, extra, out=None):
+    import numpy as np
+    if out is None:
+      out = np.zeros((),dtype=np.float64)
+    k = extra
+    plog = np.log(p0/1000.)
+    p_above = np.exp(am[k] + bm[k]*plog)
+    p_below = np.exp(am[k+1] + bm[k+1]*plog)
+    dp = p_above - p_below
+    out[...] += np.sum(c*(1-q)*dp*dx)
+    return out
+
+
+# The function that will be called to compute the mass.
+#TODO: handle repeated longitude
+def tracer_mass (c, q, p0, extra, out=None):
+  import numpy as np
+  if out is None:
+    out = np.zeros((),dtype=np.float64)
+  k = extra
+  plog = np.log(p0/1000.)
+  p_above = np.exp(am[k] + bm[k]*plog)
+  p_below = np.exp(am[k+1] + bm[k+1]*plog)
+  dp = p_above - p_below
+  out[...] += np.sum(c*(1-q)*dp*dx)
+  return out
+
+# Figure out all the inputs needed for the mass diagnostics.
+table = []
+for v in b._varlist:
+  if v.name in ('TURB','EN','B5','ZN','GZ','TT','HU'): continue
+  if v.record_id.ndim != 2: continue
+  subset(v)
+  for ind in np.ndindex(v.record_id.shape):
+    extra = ind[1]
+    table.append(('c',v.record_id[ind],tracer_mass,v.name,(),extra))
+    table.append(('q',hu.record_id[ind],tracer_mass,v.name,(),extra))
+    table.append(('p0',p0.record_id[ind[0]],tracer_mass,v.name,(),extra))
+
+
+###############################################################################
+# Do the diagnostics
+import pandas as pd
+import netCDF4
+
+# Helper class - readahead for records.
+class ReadAhead (object):
+  def __init__ (self, b, recs):
+    self.b = b
+    self.recs = sorted(recs)
+    self._read_ahead()
+  def _do_read (self, rec_id):
+    self.data = self.b._fstluk(rec_id)['d']
+  def _read_ahead (self):
+    from threading import Thread
+    if not hasattr(self,'i'):
+      self.i = -1
+    self.i += 1
+    if self.i >= len(self.recs):
+      return  # Nothing left to read ahead
+    rec_id = self.recs[self.i]
+    self.thread = Thread(target=self._do_read, args=[rec_id])
+    self.thread.start()
+  def read (self, rec_id):
+    self.thread.join()
+    expected = self.recs[self.i]
+    assert rec_id == expected, "Expected request for record %d, but got request for %d."%(expected, rec_id)
+    self._read_ahead()
+    return self.data
+
+table = pd.DataFrame(table, columns=('parameter','record_id','diagnostic','field','ind','extra'))
+
+readahead = ReadAhead(b, table['record_id'].unique())
+
+# Get list of parameters needed for each diagnostic.
+params_needed = {}
+for diagnostic, group in table.groupby('diagnostic', group_keys=False):
+  params_needed[diagnostic] = list(group['parameter'].unique()) + ['extra','out']
+
+outfiles = {}  # The output files for each diagnostic.
+working = {}   # The work space for the diagnostics.
+
+for rec_id, group in table.groupby('record_id', group_keys=False):
+  print 'read %s record %d'%(b._headers['nomvar'][rec_id],rec_id)
+  data = readahead.read(rec_id)
+  #data = None
+  for param, r, diagnostic, field, ind, extra in group.itertuples(index=False):
+    print "will use as parameter '%s' for %s %s (ind=%s) (%s)"%(param, diagnostic.func_name, field, ind, extra)
+    key = '-'.join(str(k) for k in (diagnostic.func_name, field, ind, extra))
+    if key not in working:
+      working[key] = {}
+    w = working[key]
+    w[param] = data
+    w['extra'] = extra
+    w.setdefault('out',None)
+    if len(w) == len(params_needed[diagnostic]):
+      print "calculating %s %s (ind=%s) (%s)"%(diagnostic.func_name, field, ind, extra)
+      diagnostic (**w)
+      filename = "%s/%s-%s.nc"%(args.outdir,args.label,diagnostic.func_name)
+      if filename not in outfiles:
+        print "opening file %s for writing"%(filename)
+        outfiles[filename] = netCDF4.Dataset(filename,'w')
+      dataset = outfiles[filename]
+      #TODO
+      working.pop(key)
+
+print working
+
+quit()
+
+# Now, read the data and compute the mass.
+recs = [hu.record_id.flatten(), p0.record_id.flatten(), dx.record_id.flatten()]
+
+recs += [r.flatten() for r in tracers.values()]
+print recs
