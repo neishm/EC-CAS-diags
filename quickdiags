@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 
 # Model parameters to assume for this data:
+tracers = ('CO2','CH4','TCO')
 nlev = 79   # Number of thermodynamic levels
+debug = True
+grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
 from argparse import ArgumentParser
 parser = ArgumentParser(description='Performs some quick diagnostics on EC-CAS model output.')
@@ -24,27 +27,14 @@ if args.label is None:
   args.label = dirs[-1]
 
 fstd2nc.stdout.streams = ('error',)
-b = fstd2nc.Buffer(args.infile, ignore_diag_level=True, rpnstd_metadata=True, progress=True)
-b._makevars()
+b = fstd2nc.Buffer(args.infile, ignore_diag_level=True, rpnstd_metadata=True, progress=True, unique_names=False)
 
-import numpy as np
-
-# Determine the timesteps available for mass diagnostics.
-# Assume tracers will have same output frequency as HU.
-for v in b._varlist:
-  if v.name == 'HU': hu = v
-  if v.name == 'P0': p0 = v
-  if v.name == 'DX': dx = v
-datev = b._headers['datev'][hu.record_id[:,0]]
-ip1 = b._headers['ip1'][hu.record_id[0,:]]
-
-# Get momentum-level A and B vertical parameters.
-am = np.array(hu.axes[1].atts['CA_M'])[:-1]
-bm = np.array(hu.axes[1].atts['CB_M'])[:-1]
-assert len(am) == nlev + 1
 
 # Helper function to subset records to match HU
-def subset (var):
+def subset (var, hu, b):
+  import numpy as np
+  datev = b._headers['datev'][hu.record_id[:,0]]
+  ip1 = b._headers['ip1'][hu.record_id[0,:]]
   recs = var.record_id
   if recs.ndim == 1:
     recs = recs[np.array([d in datev for d in b._headers['datev'][recs]])]
@@ -53,62 +43,65 @@ def subset (var):
     recs = recs[:,np.array([i in ip1 for i in b._headers['ip1'][recs[0,:]]])]
   var.record_id = recs
 
-subset(p0)
-# Pre-load dx, since we only need a single copy of the record.
-dx = b._fstluk(dx.record_id[0])['d']
-
 class TracerMass (object):
-  def __init__ (self, var):
-    self._var = var
-  # List the parameters needed for the diagnostic.
-  def input_table (self):
-    v = self._var
-    for ind in np.ndindex(v.record_id.shape):
-      extra = ind[1]
-      table.append(('c',v.record_id[ind],tracer_mass,v.name,(),extra))
-      table.append(('q',hu.record_id[ind],tracer_mass,v.name,(),extra))
-      table.append(('p0',p0.record_id[ind[0]],tracer_mass,v.name,(),extra))
-  # The function that will be called to compute the mass.
-  #TODO: handle repeated longitude
-  @staticmethod
-  def calc (c, q, p0, extra, out=None):
+  name = 'tracer_mass'
+
+  def __init__ (self, b):
     import numpy as np
+    b._makevars()
+
+    # Determine the timesteps available for mass diagnostics.
+    # Assume tracers will have same output frequency as HU.
+    for v in b._varlist:
+      if v.name == 'HU': hu = v
+      if v.name == 'P0': p0 = v
+      if v.name == 'DX': dx = v
+
+    # Get momentum-level A and B vertical parameters.
+    self._am = np.array(hu.axes[1].atts['CA_M'])[:-1]
+    self._bm = np.array(hu.axes[1].atts['CB_M'])[:-1]
+    assert len(self._am) == nlev + 1
+    subset(p0, hu, b)
+    # Pre-load dx, since we only need a single copy of the record.
+    self._dx = b._fstluk(dx.record_id[0])['d']
+
+    table = []
+    for v in b._varlist:
+      if v.name not in tracers: continue
+      if v.record_id.ndim != 2: continue
+      subset(v, hu, b)
+      for ind in np.ndindex(v.record_id.shape):
+        t = ind[0]
+        k = ind[1]
+        table.append(('c',v.record_id[ind],v.name,t,k))
+        table.append(('q',hu.record_id[ind],v.name,t,k))
+        table.append(('p0',p0.record_id[ind[0]],v.name,t,k))
+
+    self.table = table
+    self.axes = (hu.axes[0],)
+
+  # The function that will be called to compute the mass.
+  def calc (self, c, q, p0, ind, loop, out=None):
+    import numpy as np
+    am = self._am
+    bm = self._bm
+    dx = self._dx
+    # Ignore repeated longitude
+    c = c[:,:-1]
+    q = q[:,:-1]
+    p0 = p0[:,:-1]
+    dx = dx[:,:-1]
     if out is None:
       out = np.zeros((),dtype=np.float64)
-    k = extra
+    k = loop
     plog = np.log(p0/1000.)
     p_above = np.exp(am[k] + bm[k]*plog)
     p_below = np.exp(am[k+1] + bm[k+1]*plog)
-    dp = p_above - p_below
-    out[...] += np.sum(c*(1-q)*dp*dx)
+    dp = p_below - p_above
+    out[...] += np.sum(c*(1-q)*dp*dx) * 1E-9 / grav * 1E-12
     return out
 
-
-# The function that will be called to compute the mass.
-#TODO: handle repeated longitude
-def tracer_mass (c, q, p0, extra, out=None):
-  import numpy as np
-  if out is None:
-    out = np.zeros((),dtype=np.float64)
-  k = extra
-  plog = np.log(p0/1000.)
-  p_above = np.exp(am[k] + bm[k]*plog)
-  p_below = np.exp(am[k+1] + bm[k+1]*plog)
-  dp = p_above - p_below
-  out[...] += np.sum(c*(1-q)*dp*dx)
-  return out
-
-# Figure out all the inputs needed for the mass diagnostics.
-table = []
-for v in b._varlist:
-  if v.name in ('TURB','EN','B5','ZN','GZ','TT','HU'): continue
-  if v.record_id.ndim != 2: continue
-  subset(v)
-  for ind in np.ndindex(v.record_id.shape):
-    extra = ind[1]
-    table.append(('c',v.record_id[ind],tracer_mass,v.name,(),extra))
-    table.append(('q',hu.record_id[ind],tracer_mass,v.name,(),extra))
-    table.append(('p0',p0.record_id[ind[0]],tracer_mass,v.name,(),extra))
+diags = [TracerMass(b)]
 
 
 ###############################################################################
@@ -141,43 +134,74 @@ class ReadAhead (object):
     self._read_ahead()
     return self.data
 
-table = pd.DataFrame(table, columns=('parameter','record_id','diagnostic','field','ind','extra'))
 
-readahead = ReadAhead(b, table['record_id'].unique())
+diags = [pd.DataFrame(d.table, columns=('parameter','record_id','field','ind','loop')).assign(diagnostic=d) for d in diags]
+diags = pd.concat(diags)
+readahead = ReadAhead(b, diags['record_id'].unique())
+
 
 # Get list of parameters needed for each diagnostic.
 params_needed = {}
-for diagnostic, group in table.groupby('diagnostic', group_keys=False):
-  params_needed[diagnostic] = list(group['parameter'].unique()) + ['extra','out']
+outer_sizes = {}
+loops = {}
+for diagnostic, group in diags.groupby('diagnostic', group_keys=False):
+  params_needed[diagnostic] = list(group['parameter'].unique()) + ['ind','loop','out']
+  biggest_ind = max(group['ind'])
+  if isinstance(biggest_ind,int):
+    biggest_ind = (biggest_ind,)
+  outer_sizes[diagnostic] = tuple([i+1 for i in biggest_ind])
+  loops[diagnostic] = len(group['loop'])
 
 outfiles = {}  # The output files for each diagnostic.
 working = {}   # The work space for the diagnostics.
+loopcounts = {} # How many loop iterations have been done so far.
 
-for rec_id, group in table.groupby('record_id', group_keys=False):
-  print 'read %s record %d'%(b._headers['nomvar'][rec_id],rec_id)
+for rec_id, group in diags.groupby('record_id', group_keys=False):
+  if debug: print 'read %s record %d'%(b._headers['nomvar'][rec_id],rec_id)
   data = readahead.read(rec_id)
   #data = None
-  for param, r, diagnostic, field, ind, extra in group.itertuples(index=False):
-    print "will use as parameter '%s' for %s %s (ind=%s) (%s)"%(param, diagnostic.func_name, field, ind, extra)
-    key = '-'.join(str(k) for k in (diagnostic.func_name, field, ind, extra))
+  for param, r, field, ind, loop, diagnostic in group.itertuples(index=False):
+    if debug: print "will use as parameter '%s' for %s %s (ind=%s) (%s)"%(param, diagnostic.name, field, ind, loop)
+    key = (diagnostic, field, ind, loop)
     if key not in working:
       working[key] = {}
     w = working[key]
     w[param] = data
-    w['extra'] = extra
+    w['ind'] = ind
+    w['loop'] = loop
     w.setdefault('out',None)
     if len(w) == len(params_needed[diagnostic]):
-      print "calculating %s %s (ind=%s) (%s)"%(diagnostic.func_name, field, ind, extra)
-      diagnostic (**w)
-      filename = "%s/%s-%s.nc"%(args.outdir,args.label,diagnostic.func_name)
-      if filename not in outfiles:
-        print "opening file %s for writing"%(filename)
-        outfiles[filename] = netCDF4.Dataset(filename,'w')
-      dataset = outfiles[filename]
-      #TODO
+      if debug: print "calculating %s %s (ind=%s) (%s)"%(diagnostic.name, field, ind, loop)
+      out = diagnostic.calc (**w)
+      w['out'] = out  # Store for later use (if need multiple calcs per output)
+      ###
+      loopkey = (diagnostic,field,ind)
+      loopcounts.setdefault(loopkey,0)
+      loopcounts[loopkey] += 1
+      assert loopcounts[loopkey] <= loops[diagnostic]
+      if loopcounts[loopkey] == loops[diagnostic]:
+        filename = "%s/%s_%s.nc"%(args.outdir,args.label,diagnostic.name)
+        if filename not in outfiles:
+          if debug: print "opening file %s for writing"%(filename)
+          outfiles[filename] = netCDF4.Dataset(filename,'w')
+        dataset = outfiles[filename]
+        dimnames = [a.name for a in diagnostic.axes]
+        if len(dataset.dimensions) == 0:
+          sizes = outer_sizes[diagnostic] + out.shape
+          assert len(dimnames) == len(sizes)
+          if debug: print "defining dimensions %s of size %s"%(dimnames, sizes)
+          for dimname, size in zip(dimnames, sizes):
+            dataset.createDimension(dimname, size)
+        if field not in dataset.variables:
+          if debug: print "adding %s to %s"%(field,filename)
+          dataset.createVariable(varname=field, datatype=out.dtype, dimensions=dimnames) 
+        #TODO
+        dataset[field][ind] = out
       working.pop(key)
 
 print working
+for outfile in outfiles.values():
+  outfile.close()
 
 quit()
 
