@@ -110,6 +110,7 @@ diags = [TracerMass(b)]
 import pandas as pd
 import netCDF4
 from fstd2nc.mixins import _ProgressBar as ProgressBar
+from fstd2nc.mixins.dates import stamp2datetime
 
 # Helper class - readahead for records.
 class ReadAhead (object):
@@ -118,7 +119,7 @@ class ReadAhead (object):
     self.recs = sorted(recs)
     self._read_ahead()
   def _do_read (self, rec_id):
-    self.data = self.b._fstluk(rec_id)['d']
+    self.data = self.b._fstluk(rec_id)
   def _read_ahead (self):
     from threading import Thread
     if not hasattr(self,'i'):
@@ -168,8 +169,8 @@ iterator = diags.groupby('record_id', group_keys=False)
 if not debug: iterator = ProgressBar("Calculating diagnostics", suffix='%(percent)d%% [%(myeta)s]', max=len(diags['record_id'].unique())).iter(iterator)
 for rec_id, group in iterator:
   if debug: print 'read %s record %d'%(b._headers['nomvar'][rec_id],rec_id)
-  data = readahead.read(rec_id)
-  #data = None
+  info = readahead.read(rec_id)
+  data = info['d']
   for param, r, field, ind, loop, diagnostic in group.itertuples(index=False):
     if debug: print "will use as parameter '%s' for %s %s (ind=%s) (%s)"%(param, diagnostic.name, field, ind, loop)
     outkey = (diagnostic,field,ind)
@@ -204,6 +205,12 @@ for rec_id, group in iterator:
           if debug: print "defining dimensions %s of size %s"%(dimnames, sizes)
           for dimname, size in zip(dimnames, sizes):
             dataset.createDimension(dimname, size)
+        if 'time' not in dataset.variables:
+          if debug: print "adding time information"
+          dataset.createVariable(varname='time', datatype='float32', dimensions=('time',))
+          dataset['time'].setncatts({'units':'hours since 2015-01-01'})
+        #TODO: handle multiple outer indices.
+        dataset['time'][ind] = netCDF4.date2num(stamp2datetime(info['datev']),units='hours since 2015-01-01')
         if field not in dataset.variables:
           if debug: print "adding %s to %s"%(field,filename)
           dataset.createVariable(varname=field, datatype=out.dtype, dimensions=dimnames) 
