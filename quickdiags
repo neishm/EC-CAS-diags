@@ -3,7 +3,7 @@
 # Model parameters to assume for this data:
 tracers = ('CO2','CH4','TCO')
 nlev = 79   # Number of thermodynamic levels
-debug = True
+debug = False
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
 from argparse import ArgumentParser
@@ -125,6 +125,8 @@ class ReadAhead (object):
     if self.i >= len(self.recs):
       return  # Nothing left to read ahead
     rec_id = self.recs[self.i]
+    if hasattr(self,'thread'):
+      self.thread.join()
     self.thread = Thread(target=self._do_read, args=[rec_id])
     self.thread.start()
   def read (self, rec_id):
@@ -143,17 +145,20 @@ readahead = ReadAhead(b, diags['record_id'].unique())
 # Get list of parameters needed for each diagnostic.
 params_needed = {}
 outer_sizes = {}
-loops = {}
 for diagnostic, group in diags.groupby('diagnostic', group_keys=False):
-  params_needed[diagnostic] = list(group['parameter'].unique()) + ['ind','loop','out']
+  params_needed[diagnostic] = list(group['parameter'].unique())
   biggest_ind = max(group['ind'])
   if isinstance(biggest_ind,int):
     biggest_ind = (biggest_ind,)
   outer_sizes[diagnostic] = tuple([i+1 for i in biggest_ind])
+
+loops = {}
+for stuff, group in diags.groupby(['diagnostic','field','parameter','ind'], group_keys=False):
   loops[diagnostic] = len(group['loop'])
 
 outfiles = {}  # The output files for each diagnostic.
-working = {}   # The work space for the diagnostics.
+loop_workspace = {} # The workspace for looping over records.
+out_workspace = {}  # The workspace for building the final output.
 loopcounts = {} # How many loop iterations have been done so far.
 
 for rec_id, group in diags.groupby('record_id', group_keys=False):
@@ -162,24 +167,26 @@ for rec_id, group in diags.groupby('record_id', group_keys=False):
   #data = None
   for param, r, field, ind, loop, diagnostic in group.itertuples(index=False):
     if debug: print "will use as parameter '%s' for %s %s (ind=%s) (%s)"%(param, diagnostic.name, field, ind, loop)
-    key = (diagnostic, field, ind, loop)
-    if key not in working:
-      working[key] = {}
-    w = working[key]
+    outkey = (diagnostic,field,ind)
+    out_workspace.setdefault(outkey,None)
+    loopkey = (diagnostic, field, ind, loop)
+    if loopkey not in loop_workspace:
+      loop_workspace[loopkey] = {}
+    w = loop_workspace[loopkey]
     w[param] = data
-    w['ind'] = ind
-    w['loop'] = loop
-    w.setdefault('out',None)
+
+    # All input parameters have been collected for this loop?
     if len(w) == len(params_needed[diagnostic]):
       if debug: print "calculating %s %s (ind=%s) (%s)"%(diagnostic.name, field, ind, loop)
-      out = diagnostic.calc (**w)
-      w['out'] = out  # Store for later use (if need multiple calcs per output)
-      ###
-      loopkey = (diagnostic,field,ind)
-      loopcounts.setdefault(loopkey,0)
-      loopcounts[loopkey] += 1
-      assert loopcounts[loopkey] <= loops[diagnostic]
-      if loopcounts[loopkey] == loops[diagnostic]:
+      out = diagnostic.calc (ind=ind,loop=loop,out=out_workspace[outkey],**w)
+      loop_workspace.pop(loopkey)
+      out_workspace[outkey] = out  # Store for later use (if need multiple calcs per output)
+      loopcounts.setdefault(outkey,0)
+      loopcounts[outkey] += 1
+      assert loopcounts[outkey] <= loops[diagnostic]
+      # All loops finished for this output?
+      if loopcounts[outkey] == loops[diagnostic]:
+        #TODO: set chunk sizes
         filename = "%s/%s_%s.nc"%(args.outdir,args.label,diagnostic.name)
         if filename not in outfiles:
           if debug: print "opening file %s for writing"%(filename)
@@ -195,11 +202,10 @@ for rec_id, group in diags.groupby('record_id', group_keys=False):
         if field not in dataset.variables:
           if debug: print "adding %s to %s"%(field,filename)
           dataset.createVariable(varname=field, datatype=out.dtype, dimensions=dimnames) 
-        #TODO
         dataset[field][ind] = out
-      working.pop(key)
+        out_workspace.pop(outkey)
 
-print working
+if debug: print loop_workspace, out_workspace
 for outfile in outfiles.values():
   outfile.close()
 
