@@ -221,10 +221,3 @@ if debug: print loop_workspace, out_workspace
 for outfile in outfiles.values():
   outfile.close()
 
-quit()
-
-# Now, read the data and compute the mass.
-recs = [hu.record_id.flatten(), p0.record_id.flatten(), dx.record_id.flatten()]
-
-recs += [r.flatten() for r in tracers.values()]
-print recs
