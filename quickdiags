@@ -27,6 +27,7 @@ if args.label is None:
   args.label = dirs[-1]
 
 fstd2nc.stdout.streams = ('error',)
+rmn.fstopt('MSGLVL','ERRORS')
 b = fstd2nc.Buffer(args.infile, ignore_diag_level=True, rpnstd_metadata=True, progress=True, unique_names=False)
 
 
@@ -108,6 +109,7 @@ diags = [TracerMass(b)]
 # Do the diagnostics
 import pandas as pd
 import netCDF4
+from fstd2nc.mixins import _ProgressBar as ProgressBar
 
 # Helper class - readahead for records.
 class ReadAhead (object):
@@ -133,8 +135,9 @@ class ReadAhead (object):
     self.thread.join()
     expected = self.recs[self.i]
     assert rec_id == expected, "Expected request for record %d, but got request for %d."%(expected, rec_id)
+    data = self.data
     self._read_ahead()
-    return self.data
+    return data
 
 
 diags = [pd.DataFrame(d.table, columns=('parameter','record_id','field','ind','loop')).assign(diagnostic=d) for d in diags]
@@ -161,7 +164,9 @@ loop_workspace = {} # The workspace for looping over records.
 out_workspace = {}  # The workspace for building the final output.
 loopcounts = {} # How many loop iterations have been done so far.
 
-for rec_id, group in diags.groupby('record_id', group_keys=False):
+iterator = diags.groupby('record_id', group_keys=False)
+if not debug: iterator = ProgressBar("Calculating diagnostics", suffix='%(percent)d%% [%(myeta)s]', max=len(diags['record_id'].unique())).iter(iterator)
+for rec_id, group in iterator:
   if debug: print 'read %s record %d'%(b._headers['nomvar'][rec_id],rec_id)
   data = readahead.read(rec_id)
   #data = None
