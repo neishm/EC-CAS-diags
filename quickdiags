@@ -16,6 +16,7 @@ args = parser.parse_args()
 try:
   import fstd2nc
   import rpnpy.librmn.all as rmn
+  import rpnpy.vgd.all as vgd
 except ImportError:
   parser.error("You need to run the following command before using the script:\n\n. ssmuse-sh -p eccc/crd/ccmr/EC-CAS/master/fstd2nc_0.20180821.0\n")
 
@@ -26,10 +27,237 @@ if args.label is None:
     dirs.pop()
   args.label = dirs[-1]
 
+import netCDF4
+
+# Helper functions
+
+# Class for handling dependencies on calculations.
+class Calc (object):
+  def __init__ (self, func, *inputs):
+    import weakref
+    self.func = func
+    self.inputs = list(inputs)
+    for inp in inputs:
+      if isinstance(inp,Calc):
+        if debug: print '%s will call back %s'%(inp,func.func_name)
+        inp.callbacks.add(self)
+    self.callbacks = weakref.WeakSet()
+  def trigger (self):
+    if debug: print 'trigger %s? %s'%(self.func.func_name, [not isinstance(inp,Calc) for inp in self.inputs])
+    if not any(isinstance(inp,Calc) for inp in self.inputs):
+      if debug: print 'triggered'
+      data = self.func(*self.inputs)
+      self._do_callback (data)
+    else:
+      if debug: print 'not triggered'
+  def _do_callback (self, data):
+    if debug: print 'callbacks:', list(self.callbacks)
+    for callback in self.callbacks:
+      ids = list(map(id,callback.inputs))
+      if id(self) not in ids:
+        print 'weird'
+        return
+      i = ids.index(id(self))
+      callback.inputs[i] = data
+      callback.trigger()
+  def __del__ (self):
+    pass #if debug: print 'deleting %s'%(self.func.func_name)
+
+# Decorate for turning a regular function into one that handles dependent
+# calculations.
+import weakref
+def calc (func, lookup=weakref.WeakValueDictionary()):
+  from functools import wraps
+  @wraps(func)
+  def f (*args):
+    key = (func,tuple(args))
+    if key in lookup:
+      if debug: print 'reusing existing %s (%s)'%(func.func_name, ','.join(map(str,args)))
+    else:
+      if debug: print 'generating new %s (%s)'%(func.func_name, ','.join(map(str,args)))
+    result = lookup.get(key,None)
+    if result is None:
+      result = Calc(func,*args)
+    lookup[key] = result
+    return result
+  return f
+del weakref
+
+# Keep track of all records that are used.
+all_records = set()
+
+@calc
+def _read (rec_id):
+  if debug: print 'read'
+  all_records.remove(rec_id)
+  return b._fstluk(rec_id)['d']
+def read (rec_id):
+  all_records.add(rec_id)
+  return _read (rec_id)
+
+
+# Object for managing writes into a netCDF4 dataset.
+class Writer (Calc):
+  def __init__ (self, dataset):
+    Calc.__init__(self,None)
+    self.dataset = dataset
+  def trigger (self):
+    if not any(isinstance(inp,Calc) for inp in self.inputs):
+      if debug: print 'close file'
+      self.dataset.close()
+  def write (self, varname, ind, data):
+    if not isinstance(data,Calc):
+      self.dataset[varname][ind] = data
+      return
+    inp = _write (self.dataset[varname], ind, data)
+    self.inputs.append(inp)
+    inp.callbacks.add(self)
+  def __del__ (self):
+    return
+
+# Object for doing an individual write.
+@calc
+def _write (var, ind, data):
+  if debug: print 'write'
+  var[ind] = data
+
+
+@calc
+def logp (p0):
+  if debug: print 'logp'
+  import numpy as np
+  return np.log(p0/1000.)
+
+@calc
+def pres (a, b, s):
+  if debug: print 'pres'
+  import numpy as np
+  return np.exp(a+b*s)
+
+@calc
+def layer_mass (c,q,p_above,p_below):
+  if debug: print 'layer mass'
+  return c*(1-q)*(p_below-p_above)
+
+@calc
+def area_integrate (x, dx, scale):
+  if debug: print 'area integrate'
+  import numpy as np
+  # Remove repeated longitude
+  x = x[:,:-1]
+  dx = dx[:,:-1]
+  return np.sum(x*dx*scale)
+
+@calc
+def layer_sum (*inputs):
+  if debug: print 'layer sum'
+  return sum(inputs)
+
+
+import numpy as np
+
 fstd2nc.stdout.streams = ('error',)
-rmn.fstopt('MSGLVL','ERRORS')
+if not debug:
+  rmn.fstopt('MSGLVL','ERRORS')
 b = fstd2nc.Buffer(args.infile, ignore_diag_level=True, rpnstd_metadata=True, progress=True, unique_names=False)
 
+# Get vertical parameters for this data.
+vgd_id = vgd.vgd_read(b._opened_funit)
+am = vgd.vgd_get(vgd_id,'CA_M')[:-1]
+bm = vgd.vgd_get(vgd_id,'CB_M')[:-1]
+at = vgd.vgd_get(vgd_id,'CA_T')[:-2]
+bt = vgd.vgd_get(vgd_id,'CB_T')[:-2]
+assert len(am) == nlev+1
+assert len(at) == nlev
+assert np.all(am[:-1] < at)
+assert np.all(am[1:] > at)
+
+# Structure the records into time/level dimensions.
+b._makevars()
+vardict = {v.name:v for v in b._varlist}
+
+# Get grid cell areas.
+dx = read(vardict['DX'].record_id[0])
+
+# Select records with full vertical extent
+def get_3d_recs (recs):
+  return recs[np.all(recs>=0, axis=1),:]
+
+# Get unique timesteps from records
+def get_timesteps (recs):
+  if recs.ndim > 1:
+    recs = recs[:,0]
+  return set(b._headers[recs]['datev'])
+
+# Limit records to those that fall on particular timesteps
+def limit_timesteps (recs, target_timesteps):
+  if recs.ndim > 1:
+    timesteps = b._headers[recs[:,0]]['datev']
+  else:
+    timesteps = b._headers[recs]['datev']
+  return recs[np.isin(timesteps,list(target_timesteps))]
+
+# Find timesteps available for mass diagnostics.
+mass_timesteps = get_timesteps(get_3d_recs(vardict['HU'].record_id)) \
+               & get_timesteps(vardict['P0'].record_id)
+
+HU_recs = limit_timesteps(get_3d_recs(vardict['HU'].record_id), mass_timesteps)
+P0_recs = limit_timesteps(vardict['P0'].record_id, mass_timesteps)
+
+# Find the available timesteps and levels.
+mass_timesteps = b._headers[HU_recs[:,0]]['datev']
+mass_levels = b._headers[HU_recs[0,:]]['level']
+assert np.all(vgd.vgd_get(vgd_id,'VIPT')[:-2] == b._headers[HU_recs[0,:]]['ip1'])
+
+# Determine mass calculations.
+filename = "%s/%s_totalmass.nc"%(args.outdir,args.label)
+totalmass = netCDF4.Dataset(filename,'w')
+totalmass.createDimension('time', None)
+totalmass.createVariable(varname='time', datatype='float32', dimensions=('time',))
+totalmass['time'].setncatts({'units':'hours since 2015-01-01'})
+times = fstd2nc.mixins.dates.stamp2datetime(mass_timesteps)
+times = np.array(times,dtype='datetime64[s]')
+totalmass['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-01-01')
+for tracer in tracers:
+  totalmass.createVariable(varname=tracer, datatype='float64', dimensions=('time',)) 
+
+totalmass = Writer(totalmass)
+
+for tracer in tracers:
+  recs = limit_timesteps(get_3d_recs(vardict[tracer].record_id), mass_timesteps)
+  for it,t in enumerate(np.searchsorted(mass_timesteps, b._headers[recs[:,0]]['datev'])):
+    layers = []
+    for ik,k in enumerate(np.searchsorted(mass_levels, b._headers[recs[0,:]]['level'])):
+      c = read(recs[it,ik])
+      q = read(HU_recs[t,k])
+      p0 = read(P0_recs[t])
+      s = logp(p0)
+      p_above = pres(am[k],bm[k],s)
+      p_below = pres(am[k+1],bm[k+1],s)
+      layer = area_integrate(layer_mass(c,q,p_above,p_below), dx, 1E-9/grav*1E-12)
+      layers.append(layer)
+    mass = layer_sum(*layers)
+    #TODO: release the mass calculation after this is done?
+    totalmass.write (tracer, t, mass)
+
+if debug: print 'starting I/O'
+
+# Read DX first.
+# These records seem to be found at the end of the RPN file, so all the other
+# operations will be waiting a long time if this isn't pre-loaded.
+dx.trigger()
+
+if not debug:
+  pbar = fstd2nc.mixins._ProgressBar("Calculating diagnostics", suffix='%(percent)d%% [%(myeta)s]', max=len(all_records))
+
+for rec_id in sorted(all_records):
+  read(rec_id).trigger()
+  if not debug: pbar.next()
+if not debug: pbar.finish()
+
+quit()
+
+####
 
 # Helper function to subset records to match HU
 def subset (var, hu, b):
@@ -74,30 +302,37 @@ class TracerMass (object):
       for ind in np.ndindex(v.record_id.shape):
         t = ind[0]
         k = ind[1]
-        table.append(('c',v.record_id[ind],v.name,t,k))
-        table.append(('q',hu.record_id[ind],v.name,t,k))
-        table.append(('p0',p0.record_id[ind[0]],v.name,t,k))
+        table.append(('c',None,v.record_id[ind],None,v.name,t,k))
+        table.append(('q',None,hu.record_id[ind],None,v.name,t,k))
+        table.append(('p_above',(self.pm,k),p0.record_id[ind[0]],v.name,t,k))
+        table.append(('p_below',(self.pm,k+1),p0.record_id[ind[0]],v.name,t,k))
 
     self.table = table
     self.axes = (hu.axes[0],)
 
-  # The function that will be called to compute the mass.
-  def calc (self, c, q, p0, ind, loop, out=None):
+  def pm (self, k, p0):
     import numpy as np
     am = self._am
     bm = self._bm
+    def do_log():
+      plog = np.log(p0/1000.)
+      return plog
+    plog = do_log()
+    return np.exp(am[k] + bm[k]*plog)
+
+  # The function that will be called to compute the mass.
+  def calc (self, c, q, p_above, p_below, ind, loop, out=None):
+    import numpy as np
     dx = self._dx
     # Ignore repeated longitude
     c = c[:,:-1]
     q = q[:,:-1]
-    p0 = p0[:,:-1]
+    p_above = p_above[:,:-1]
+    p_below = p_below[:,:-1]
     dx = dx[:,:-1]
     if out is None:
       out = np.zeros((),dtype=np.float64)
     k = loop
-    plog = np.log(p0/1000.)
-    p_above = np.exp(am[k] + bm[k]*plog)
-    p_below = np.exp(am[k+1] + bm[k+1]*plog)
     dp = p_below - p_above
     out[...] += np.sum(c*(1-q)*dp*dx) * 1E-9 / grav * 1E-12
     return out
@@ -167,11 +402,19 @@ loopcounts = {} # How many loop iterations have been done so far.
 
 iterator = diags.groupby('record_id', group_keys=False)
 if not debug: iterator = ProgressBar("Calculating diagnostics", suffix='%(percent)d%% [%(myeta)s]', max=len(diags['record_id'].unique())).iter(iterator)
-for rec_id, group in iterator:
+def doit():
+ for rec_id, group in iterator:
   if debug: print 'read %s record %d'%(b._headers['nomvar'][rec_id],rec_id)
   info = readahead.read(rec_id)
   data = info['d']
-  for param, r, field, ind, loop, diagnostic in group.itertuples(index=False):
+  #for param, r, field, ind, loop, diagnostic in group.itertuples(index=False):
+  for i in range(len(group.index)):
+    param = group['parameter'].values[i]
+    r = group['record_id'].values[i]
+    field = group['field'].values[i]
+    ind = group['ind'].values[i]
+    loop = group['loop'].values[i]
+    diagnostic = group['diagnostic'].values[i]
     if debug: print "will use as parameter '%s' for %s %s (ind=%s) (%s)"%(param, diagnostic.name, field, ind, loop)
     outkey = (diagnostic,field,ind)
     out_workspace.setdefault(outkey,None)
@@ -216,6 +459,8 @@ for rec_id, group in iterator:
           dataset.createVariable(varname=field, datatype=out.dtype, dimensions=dimnames) 
         dataset[field][ind] = out
         out_workspace.pop(outkey)
+from cProfile import run
+run('doit()',sort='cumtime')
 
 if debug: print loop_workspace, out_workspace
 for outfile in outfiles.values():
