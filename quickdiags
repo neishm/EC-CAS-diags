@@ -91,7 +91,7 @@ all_records = set()
 def _read (rec_id):
   if debug: print 'read'
   all_records.remove(rec_id)
-  return fstluk(rec_id)
+  return np.asarray(fstluk(rec_id),dtype='float64')
 def read (rec_id):
   all_records.add(rec_id)
   return _read (rec_id)
