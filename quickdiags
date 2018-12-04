@@ -170,12 +170,16 @@ all_nk = np.array(b._headers['nk'])
 all_shape = list(zip(all_ni,all_nj,all_nk))
 all_datyp = np.array(b._headers['datyp'])
 all_nbits = np.array(b._headers['nbits'])
+all_file_id = np.array(b._headers['file_id'])
+
 def fstluk (rec_id):
   import ctypes as _ct
   import numpy.ctypeslib as _npc
   from rpnpy.librmn import proto as _rp
   from rpnpy.librmn.fstd98 import dtype_fst2numpy
   import numpy as np
+  file_id = all_file_id[rec_id]
+  b._open(file_id)
   key = (all_keys[rec_id]<<10) + b._opened_librmn_index
   shape = all_shape[rec_id]
   dtype = dtype_fst2numpy(int(all_datyp[rec_id]),int(all_nbits[rec_id]))
