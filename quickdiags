@@ -33,6 +33,7 @@ import netCDF4
 
 # Class for handling dependencies on calculations.
 class Calc (object):
+  __slots__ = ('func','inputs','callbacks','__weakref__')
   def __init__ (self, func, *inputs):
     import weakref
     self.func = func
@@ -71,10 +72,10 @@ def calc (func, lookup=weakref.WeakValueDictionary()):
   @wraps(func)
   def f (*args):
     key = (func,tuple(args))
-    if key in lookup:
-      if debug: print 'reusing existing %s (%s)'%(func.func_name, ','.join(map(str,args)))
-    else:
-      if debug: print 'generating new %s (%s)'%(func.func_name, ','.join(map(str,args)))
+    if debug and key in lookup:
+      print 'reusing existing %s (%s)'%(func.func_name, ','.join(map(str,args)))
+    elif debug:
+      print 'generating new %s (%s)'%(func.func_name, ','.join(map(str,args)))
     result = lookup.get(key,None)
     if result is None:
       result = Calc(func,*args)
@@ -90,7 +91,7 @@ all_records = set()
 def _read (rec_id):
   if debug: print 'read'
   all_records.remove(rec_id)
-  return b._fstluk(rec_id)['d']
+  return fstluk(rec_id)
 def read (rec_id):
   all_records.add(rec_id)
   return _read (rec_id)
@@ -160,6 +161,34 @@ fstd2nc.stdout.streams = ('error',)
 if not debug:
   rmn.fstopt('MSGLVL','ERRORS')
 b = fstd2nc.Buffer(args.infile, ignore_diag_level=True, rpnstd_metadata=True, progress=True, unique_names=False)
+
+# Call c_fstluk directly
+all_keys = np.array(b._headers['key'])
+all_ni = np.array(b._headers['ni'])
+all_nj = np.array(b._headers['nj'])
+all_nk = np.array(b._headers['nk'])
+all_shape = list(zip(all_ni,all_nj,all_nk))
+all_datyp = np.array(b._headers['datyp'])
+all_nbits = np.array(b._headers['nbits'])
+def fstluk (rec_id):
+  import ctypes as _ct
+  import numpy.ctypeslib as _npc
+  from rpnpy.librmn import proto as _rp
+  from rpnpy.librmn.fstd98 import dtype_fst2numpy
+  import numpy as np
+  key = (all_keys[rec_id]<<10) + b._opened_librmn_index
+  shape = all_shape[rec_id]
+  dtype = dtype_fst2numpy(int(all_datyp[rec_id]),int(all_nbits[rec_id]))
+  _rp.c_fstluk.argtypes = (_npc.ndpointer(dtype=dtype), _ct.c_int,
+                           _ct.POINTER(_ct.c_int), _ct.POINTER(_ct.c_int),
+                           _ct.POINTER(_ct.c_int))
+  data = np.empty(shape, dtype=dtype, order='FORTRAN')
+  (cni, cnj, cnk) = (_ct.c_int(), _ct.c_int(), _ct.c_int())
+  istat = _rp.c_fstluk(data, key, _ct.byref(cni), _ct.byref(cnj),
+                       _ct.byref(cnk))
+  if istat < 0:
+    raise FSTDError()
+  return data.transpose().squeeze()
 
 # Get vertical parameters for this data.
 vgd_id = vgd.vgd_read(b._opened_funit)
