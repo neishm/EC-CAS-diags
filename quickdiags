@@ -258,6 +258,7 @@ for dataset in totalmass, tropo_totalmass:
   dataset['time'].setncatts({'units':'hours since 2015-01-01'})
   dataset['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-01-01')
   for tracer in tracers:
+    if tracer not in vardict: continue
     dataset.createVariable(varname=tracer, datatype='float64', dimensions=('time',))
   dataset.createVariable(varname='air', datatype='float64', dimensions=('time',))
   dataset.createVariable(varname='dry_air', datatype='float64', dimensions=('time',))
@@ -266,6 +267,7 @@ totalmass = Writer(totalmass)
 tropo_totalmass = Writer(tropo_totalmass)
 
 for tracer in tracers:
+  if tracer not in vardict: continue
   recs = limit_timesteps(get_3d_recs(vardict[tracer].record_id), mass_timesteps)
   for it,t in enumerate(np.searchsorted(mass_timesteps, b._headers[recs[:,0]]['datev'])):
     layers = []
