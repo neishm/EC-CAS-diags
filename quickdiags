@@ -247,59 +247,75 @@ assert np.all(vgd.vgd_get(vgd_id,'VIPT')[:-2] == b._headers[HU_recs[0,:]]['ip1']
 
 # Determine mass calculations.
 filename = "%s/%s_totalmass.nc"%(args.outdir,args.label)
+tropo_filename = "%s/%s_tropomass.nc"%(args.outdir,args.label)
 totalmass = netCDF4.Dataset(filename,'w')
-totalmass.createDimension('time', None)
-totalmass.createVariable(varname='time', datatype='float32', dimensions=('time',))
-totalmass['time'].setncatts({'units':'hours since 2015-01-01'})
+tropo_totalmass = netCDF4.Dataset(tropo_filename,'w')
 times = fstd2nc.mixins.dates.stamp2datetime(mass_timesteps)
 times = np.array(times,dtype='datetime64[s]')
-totalmass['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-01-01')
-for tracer in tracers:
-  totalmass.createVariable(varname=tracer, datatype='float64', dimensions=('time',)) 
-totalmass.createVariable(varname='air', datatype='float64', dimensions=('time',))
-totalmass.createVariable(varname='dry_air', datatype='float64', dimensions=('time',))
+for dataset in totalmass, tropo_totalmass:
+  dataset.createDimension('time', None)
+  dataset.createVariable(varname='time', datatype='float32', dimensions=('time',))
+  dataset['time'].setncatts({'units':'hours since 2015-01-01'})
+  dataset['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-01-01')
+  for tracer in tracers:
+    dataset.createVariable(varname=tracer, datatype='float64', dimensions=('time',))
+  dataset.createVariable(varname='air', datatype='float64', dimensions=('time',))
+  dataset.createVariable(varname='dry_air', datatype='float64', dimensions=('time',))
 
 totalmass = Writer(totalmass)
+tropo_totalmass = Writer(tropo_totalmass)
 
 for tracer in tracers:
   recs = limit_timesteps(get_3d_recs(vardict[tracer].record_id), mass_timesteps)
   for it,t in enumerate(np.searchsorted(mass_timesteps, b._headers[recs[:,0]]['datev'])):
     layers = []
+    tropo_layers = []
     for ik,k in enumerate(np.searchsorted(mass_levels, b._headers[recs[0,:]]['level'])):
       c = read(recs[it,ik])
       q = read(HU_recs[t,k])
-      p0 = read(P0_recs[t])
-      s = logp(p0)
+      s = logp(read(P0_recs[t]))
       p_above = pres(am[k],bm[k],s)
       p_below = pres(am[k+1],bm[k+1],s)
       layer = layer_mass(c,q,p_above,p_below)
       layers.append(layer)
+      if mass_levels[k] > 0.2:
+        tropo_layers.append(layer)
     mass = layer_sum(*layers)
     mass = area_integrate(mass, dx, 1E-9/grav*1E-12)
     totalmass.write (tracer, t, mass)
+    mass = layer_sum(*tropo_layers)
+    mass = area_integrate(mass, dx, 1E-9/grav*1E-12)
+    tropo_totalmass.write (tracer, t, mass)
 # Dry-air mass
 for t in range(len(mass_timesteps)):
   layers = []
+  tropo_layers = []
   for k in range(len(mass_levels)):
     q = read(HU_recs[t,k])
-    p0 = read(P0_recs[t])
-    s = logp(p0)
+    s = logp(read(P0_recs[t]))
     p_above = pres(am[k],bm[k],s)
     p_below = pres(am[k+1],bm[k+1],s)
     layer = layer_mass(1,q,p_above,p_below)
     layers.append(layer)
+    if mass_levels[k] > 0.2:
+      tropo_layers.append(layer)
   mass = layer_sum(*layers)
   mass = area_integrate(mass, dx, 1/grav*1E-12)
   totalmass.write ('dry_air', t, mass)
+  mass = layer_sum(*tropo_layers)
+  mass = area_integrate(mass, dx, 1/grav*1E-12)
+  tropo_totalmass.write ('dry_air', t, mass)
 # Total air mass
 for t in range(len(mass_timesteps)):
-  p0 = read(P0_recs[t])
-  s = logp(p0)
+  s = logp(read(P0_recs[t]))
   p_above = pres(am[0],bm[0],s)
   p_below = pres(am[nlev],bm[nlev],s)
   mass = layer_mass(1,0,p_above,p_below)
   mass = area_integrate(mass, dx, 1/grav*1E-12)
   totalmass.write ('air', t, mass)
+  mass = layer_mass(1,0,20000,p_below)
+  mass = area_integrate(mass, dx, 1/grav*1E-12)
+  tropo_totalmass.write ('air', t, mass)
 
 
 if debug: print 'starting I/O'
