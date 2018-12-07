@@ -16,6 +16,7 @@ args = parser.parse_args()
 try:
   import fstd2nc
   import rpnpy.librmn.all as rmn
+  import rpnpy.vgd.all as vgd
 except ImportError:
   parser.error("You need to run the following command before using the script:\n\n. ssmuse-sh -p eccc/crd/ccmr/EC-CAS/master/fstd2nc_0.20180821.0\n")
 
@@ -26,198 +27,311 @@ if args.label is None:
     dirs.pop()
   args.label = dirs[-1]
 
+import netCDF4
+
+# Helper functions
+
+# Class for handling dependencies on calculations.
+class Calc (object):
+  __slots__ = ('func','inputs','callbacks','__weakref__')
+  def __init__ (self, func, *inputs):
+    import weakref
+    self.func = func
+    self.inputs = list(inputs)
+    for inp in inputs:
+      if isinstance(inp,Calc):
+        if debug: print '%s will call back %s'%(inp,func.func_name)
+        inp.callbacks.add(self)
+    self.callbacks = weakref.WeakSet()
+  def trigger (self):
+    if debug: print 'trigger %s? %s'%(self.func.func_name, [not isinstance(inp,Calc) for inp in self.inputs])
+    if not any(isinstance(inp,Calc) for inp in self.inputs):
+      if debug: print 'triggered'
+      data = self.func(*self.inputs)
+      self._do_callback (data)
+    else:
+      if debug: print 'not triggered'
+  def _do_callback (self, data):
+    if debug: print 'callbacks:', list(self.callbacks)
+    for callback in self.callbacks:
+      ids = list(map(id,callback.inputs))
+      if id(self) not in ids:
+        print 'weird'
+        return
+      i = ids.index(id(self))
+      callback.inputs[i] = data
+      callback.trigger()
+  def __del__ (self):
+    if debug: print 'deleting %s'%(self.func.func_name)
+
+# Decorate for turning a regular function into one that handles dependent
+# calculations.
+import weakref
+def calc (func, lookup=weakref.WeakValueDictionary()):
+  from functools import wraps
+  @wraps(func)
+  def f (*args):
+    key = (func,tuple(args))
+    if debug and key in lookup:
+      print 'reusing existing %s (%s)'%(func.func_name, ','.join(map(str,args)))
+    elif debug:
+      print 'generating new %s (%s)'%(func.func_name, ','.join(map(str,args)))
+    result = lookup.get(key,None)
+    if result is None:
+      result = Calc(func,*args)
+    lookup[key] = result
+    return result
+  return f
+del weakref
+
+# Keep track of all records that are used.
+all_records = set()
+
+@calc
+def _read (rec_id):
+  if debug: print 'read'
+  all_records.remove(rec_id)
+  return np.asarray(fstluk(rec_id),dtype='float64')
+def read (rec_id):
+  all_records.add(rec_id)
+  return _read (rec_id)
+
+
+# Object for managing writes into a netCDF4 dataset.
+class Writer (Calc):
+  def __init__ (self, dataset):
+    Calc.__init__(self,None)
+    self.dataset = dataset
+  def trigger (self):
+    if not any(isinstance(inp,Calc) for inp in self.inputs):
+      if debug: print 'close file'
+      self.dataset.close()
+  def write (self, varname, ind, data):
+    if not isinstance(data,Calc):
+      self.dataset[varname][ind] = data
+      return
+    inp = _write (self.dataset[varname], ind, data)
+    self.inputs.append(inp)
+    inp.callbacks.add(self)
+  def __del__ (self):
+    return
+
+# Object for doing an individual write.
+@calc
+def _write (var, ind, data):
+  if debug: print 'write'
+  var[ind] = data
+
+
+@calc
+def logp (p0):
+  if debug: print 'logp'
+  import numpy as np
+  return np.log(p0/1000.)
+
+@calc
+def pres (a, b, s):
+  if debug: print 'pres'
+  import numpy as np
+  return np.exp(a+b*s)
+
+@calc
+def layer_mass (c,q,p_above,p_below):
+  if debug: print 'layer mass'
+  return c*(1-q)*(p_below-p_above)
+
+@calc
+def area_integrate (x, dx, scale):
+  if debug: print 'area integrate'
+  import numpy as np
+  # Remove repeated longitude
+  x = x[:,:-1]
+  dx = dx[:,:-1]
+  return np.sum(x*dx*scale)
+
+@calc
+def layer_sum (*inputs):
+  if debug: print 'layer sum'
+  return sum(inputs)
+
+
+import numpy as np
+
 fstd2nc.stdout.streams = ('error',)
-rmn.fstopt('MSGLVL','ERRORS')
+if not debug:
+  rmn.fstopt('MSGLVL','ERRORS')
 b = fstd2nc.Buffer(args.infile, ignore_diag_level=True, rpnstd_metadata=True, progress=True, unique_names=False)
 
+# Call c_fstluk directly
+all_keys = np.array(b._headers['key'])
+all_ni = np.array(b._headers['ni'])
+all_nj = np.array(b._headers['nj'])
+all_nk = np.array(b._headers['nk'])
+all_shape = list(zip(all_ni,all_nj,all_nk))
+all_datyp = np.array(b._headers['datyp'])
+all_nbits = np.array(b._headers['nbits'])
+all_file_id = np.array(b._headers['file_id'])
 
-# Helper function to subset records to match HU
-def subset (var, hu, b):
+def fstluk (rec_id):
+  import ctypes as _ct
+  import numpy.ctypeslib as _npc
+  from rpnpy.librmn import proto as _rp
+  from rpnpy.librmn.fstd98 import dtype_fst2numpy
   import numpy as np
-  datev = b._headers['datev'][hu.record_id[:,0]]
-  ip1 = b._headers['ip1'][hu.record_id[0,:]]
-  recs = var.record_id
-  if recs.ndim == 1:
-    recs = recs[np.array([d in datev for d in b._headers['datev'][recs]])]
+  file_id = all_file_id[rec_id]
+  b._open(file_id)
+  key = (all_keys[rec_id]<<10) + b._opened_librmn_index
+  shape = all_shape[rec_id]
+  dtype = dtype_fst2numpy(int(all_datyp[rec_id]),int(all_nbits[rec_id]))
+  _rp.c_fstluk.argtypes = (_npc.ndpointer(dtype=dtype), _ct.c_int,
+                           _ct.POINTER(_ct.c_int), _ct.POINTER(_ct.c_int),
+                           _ct.POINTER(_ct.c_int))
+  data = np.empty(shape, dtype=dtype, order='FORTRAN')
+  (cni, cnj, cnk) = (_ct.c_int(), _ct.c_int(), _ct.c_int())
+  istat = _rp.c_fstluk(data, key, _ct.byref(cni), _ct.byref(cnj),
+                       _ct.byref(cnk))
+  if istat < 0:
+    raise FSTDError()
+  return data.transpose().squeeze()
+
+# Get vertical parameters for this data.
+vgd_id = vgd.vgd_read(b._opened_funit)
+am = vgd.vgd_get(vgd_id,'CA_M')[:-1]
+bm = vgd.vgd_get(vgd_id,'CB_M')[:-1]
+at = vgd.vgd_get(vgd_id,'CA_T')[:-2]
+bt = vgd.vgd_get(vgd_id,'CB_T')[:-2]
+assert len(am) == nlev+1
+assert len(at) == nlev
+assert np.all(am[:-1] < at)
+assert np.all(am[1:] > at)
+
+# Structure the records into time/level dimensions.
+b._makevars()
+vardict = {v.name:v for v in b._varlist}
+
+# Get grid cell areas.
+dx = read(vardict['DX'].record_id[0])
+
+# Select records with full vertical extent
+def get_3d_recs (recs):
+  return recs[np.all(recs>=0, axis=1),:]
+
+# Get unique timesteps from records
+def get_timesteps (recs):
+  if recs.ndim > 1:
+    recs = recs[:,0]
+  return set(b._headers[recs]['datev'])
+
+# Limit records to those that fall on particular timesteps
+def limit_timesteps (recs, target_timesteps):
+  if recs.ndim > 1:
+    timesteps = b._headers[recs[:,0]]['datev']
   else:
-    recs = recs[np.array([d in datev for d in b._headers['datev'][recs[:,0]]])]
-    recs = recs[:,np.array([i in ip1 for i in b._headers['ip1'][recs[0,:]]])]
-  var.record_id = recs
+    timesteps = b._headers[recs]['datev']
+  return recs[np.isin(timesteps,list(target_timesteps))]
 
-class TracerMass (object):
-  name = 'tracer_mass'
+##############################################################################
+# Mass diagnostics
 
-  def __init__ (self, b):
-    import numpy as np
-    b._makevars()
+# Find timesteps available for mass diagnostics.
+mass_timesteps = get_timesteps(get_3d_recs(vardict['HU'].record_id)) \
+               & get_timesteps(vardict['P0'].record_id)
 
-    # Determine the timesteps available for mass diagnostics.
-    # Assume tracers will have same output frequency as HU.
-    for v in b._varlist:
-      if v.name == 'HU': hu = v
-      if v.name == 'P0': p0 = v
-      if v.name == 'DX': dx = v
+HU_recs = limit_timesteps(get_3d_recs(vardict['HU'].record_id), mass_timesteps)
+P0_recs = limit_timesteps(vardict['P0'].record_id, mass_timesteps)
 
-    # Get momentum-level A and B vertical parameters.
-    self._am = np.array(hu.axes[1].atts['CA_M'])[:-1]
-    self._bm = np.array(hu.axes[1].atts['CB_M'])[:-1]
-    assert len(self._am) == nlev + 1
-    subset(p0, hu, b)
-    # Pre-load dx, since we only need a single copy of the record.
-    self._dx = b._fstluk(dx.record_id[0])['d']
+# Find the available timesteps and levels.
+mass_timesteps = b._headers[HU_recs[:,0]]['datev']
+mass_levels = b._headers[HU_recs[0,:]]['level']
+assert np.all(vgd.vgd_get(vgd_id,'VIPT')[:-2] == b._headers[HU_recs[0,:]]['ip1'])
 
-    table = []
-    for v in b._varlist:
-      if v.name not in tracers: continue
-      if v.record_id.ndim != 2: continue
-      subset(v, hu, b)
-      for ind in np.ndindex(v.record_id.shape):
-        t = ind[0]
-        k = ind[1]
-        table.append(('c',v.record_id[ind],v.name,t,k))
-        table.append(('q',hu.record_id[ind],v.name,t,k))
-        table.append(('p0',p0.record_id[ind[0]],v.name,t,k))
+# Determine mass calculations.
+filename = "%s/%s_totalmass.nc"%(args.outdir,args.label)
+tropo_filename = "%s/%s_tropomass.nc"%(args.outdir,args.label)
+totalmass = netCDF4.Dataset(filename,'w')
+tropo_totalmass = netCDF4.Dataset(tropo_filename,'w')
+times = fstd2nc.mixins.dates.stamp2datetime(mass_timesteps)
+times = np.array(times,dtype='datetime64[s]')
+for dataset in totalmass, tropo_totalmass:
+  dataset.createDimension('time', None)
+  dataset.createVariable(varname='time', datatype='float32', dimensions=('time',))
+  dataset['time'].setncatts({'units':'hours since 2015-01-01'})
+  dataset['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-01-01')
+  for tracer in tracers:
+    if tracer not in vardict: continue
+    dataset.createVariable(varname=tracer, datatype='float64', dimensions=('time',))
+  dataset.createVariable(varname='air', datatype='float64', dimensions=('time',))
+  dataset.createVariable(varname='dry_air', datatype='float64', dimensions=('time',))
 
-    self.table = table
-    self.axes = (hu.axes[0],)
+totalmass = Writer(totalmass)
+tropo_totalmass = Writer(tropo_totalmass)
 
-  # The function that will be called to compute the mass.
-  def calc (self, c, q, p0, ind, loop, out=None):
-    import numpy as np
-    am = self._am
-    bm = self._bm
-    dx = self._dx
-    # Ignore repeated longitude
-    c = c[:,:-1]
-    q = q[:,:-1]
-    p0 = p0[:,:-1]
-    dx = dx[:,:-1]
-    if out is None:
-      out = np.zeros((),dtype=np.float64)
-    k = loop
-    plog = np.log(p0/1000.)
-    p_above = np.exp(am[k] + bm[k]*plog)
-    p_below = np.exp(am[k+1] + bm[k+1]*plog)
-    dp = p_below - p_above
-    out[...] += np.sum(c*(1-q)*dp*dx) * 1E-9 / grav * 1E-12
-    return out
-
-diags = [TracerMass(b)]
-
-
-###############################################################################
-# Do the diagnostics
-import pandas as pd
-import netCDF4
-from fstd2nc.mixins import _ProgressBar as ProgressBar
-from fstd2nc.mixins.dates import stamp2datetime
-
-# Helper class - readahead for records.
-class ReadAhead (object):
-  def __init__ (self, b, recs):
-    self.b = b
-    self.recs = sorted(recs)
-    self._read_ahead()
-  def _do_read (self, rec_id):
-    self.data = self.b._fstluk(rec_id)
-  def _read_ahead (self):
-    from threading import Thread
-    if not hasattr(self,'i'):
-      self.i = -1
-    self.i += 1
-    if self.i >= len(self.recs):
-      return  # Nothing left to read ahead
-    rec_id = self.recs[self.i]
-    if hasattr(self,'thread'):
-      self.thread.join()
-    self.thread = Thread(target=self._do_read, args=[rec_id])
-    self.thread.start()
-  def read (self, rec_id):
-    self.thread.join()
-    expected = self.recs[self.i]
-    assert rec_id == expected, "Expected request for record %d, but got request for %d."%(expected, rec_id)
-    data = self.data
-    self._read_ahead()
-    return data
+for tracer in tracers:
+  if tracer not in vardict: continue
+  recs = limit_timesteps(get_3d_recs(vardict[tracer].record_id), mass_timesteps)
+  for it,t in enumerate(np.searchsorted(mass_timesteps, b._headers[recs[:,0]]['datev'])):
+    layers = []
+    tropo_layers = []
+    for ik,k in enumerate(np.searchsorted(mass_levels, b._headers[recs[0,:]]['level'])):
+      c = read(recs[it,ik])
+      q = read(HU_recs[t,k])
+      s = logp(read(P0_recs[t]))
+      p_above = pres(am[k],bm[k],s)
+      p_below = pres(am[k+1],bm[k+1],s)
+      layer = layer_mass(c,q,p_above,p_below)
+      layers.append(layer)
+      if mass_levels[k] > 0.2:
+        tropo_layers.append(layer)
+    mass = layer_sum(*layers)
+    mass = area_integrate(mass, dx, 1E-9/grav*1E-12)
+    totalmass.write (tracer, t, mass)
+    mass = layer_sum(*tropo_layers)
+    mass = area_integrate(mass, dx, 1E-9/grav*1E-12)
+    tropo_totalmass.write (tracer, t, mass)
+# Dry-air mass
+for t in range(len(mass_timesteps)):
+  layers = []
+  tropo_layers = []
+  for k in range(len(mass_levels)):
+    q = read(HU_recs[t,k])
+    s = logp(read(P0_recs[t]))
+    p_above = pres(am[k],bm[k],s)
+    p_below = pres(am[k+1],bm[k+1],s)
+    layer = layer_mass(1,q,p_above,p_below)
+    layers.append(layer)
+    if mass_levels[k] > 0.2:
+      tropo_layers.append(layer)
+  mass = layer_sum(*layers)
+  mass = area_integrate(mass, dx, 1/grav*1E-12)
+  totalmass.write ('dry_air', t, mass)
+  mass = layer_sum(*tropo_layers)
+  mass = area_integrate(mass, dx, 1/grav*1E-12)
+  tropo_totalmass.write ('dry_air', t, mass)
+# Total air mass
+for t in range(len(mass_timesteps)):
+  s = logp(read(P0_recs[t]))
+  p_above = pres(am[0],bm[0],s)
+  p_below = pres(am[nlev],bm[nlev],s)
+  mass = layer_mass(1,0,p_above,p_below)
+  mass = area_integrate(mass, dx, 1/grav*1E-12)
+  totalmass.write ('air', t, mass)
+  mass = layer_mass(1,0,20000,p_below)
+  mass = area_integrate(mass, dx, 1/grav*1E-12)
+  tropo_totalmass.write ('air', t, mass)
 
 
-diags = [pd.DataFrame(d.table, columns=('parameter','record_id','field','ind','loop')).assign(diagnostic=d) for d in diags]
-diags = pd.concat(diags)
-readahead = ReadAhead(b, diags['record_id'].unique())
+if debug: print 'starting I/O'
 
+# Read DX first.
+# These records seem to be found at the end of the RPN file, so all the other
+# operations will be waiting a long time if this isn't pre-loaded.
+dx.trigger()
 
-# Get list of parameters needed for each diagnostic.
-params_needed = {}
-outer_sizes = {}
-for diagnostic, group in diags.groupby('diagnostic', group_keys=False):
-  params_needed[diagnostic] = list(group['parameter'].unique())
-  biggest_ind = max(group['ind'])
-  if isinstance(biggest_ind,int):
-    biggest_ind = (biggest_ind,)
-  outer_sizes[diagnostic] = tuple([i+1 for i in biggest_ind])
+if not debug:
+  pbar = fstd2nc.mixins._ProgressBar("Calculating diagnostics", suffix='%(percent)d%% [%(myeta)s]', max=len(all_records))
 
-loops = {}
-for stuff, group in diags.groupby(['diagnostic','field','parameter','ind'], group_keys=False):
-  loops[diagnostic] = len(group['loop'])
-
-outfiles = {}  # The output files for each diagnostic.
-loop_workspace = {} # The workspace for looping over records.
-out_workspace = {}  # The workspace for building the final output.
-loopcounts = {} # How many loop iterations have been done so far.
-
-iterator = diags.groupby('record_id', group_keys=False)
-if not debug: iterator = ProgressBar("Calculating diagnostics", suffix='%(percent)d%% [%(myeta)s]', max=len(diags['record_id'].unique())).iter(iterator)
-for rec_id, group in iterator:
-  if debug: print 'read %s record %d'%(b._headers['nomvar'][rec_id],rec_id)
-  info = readahead.read(rec_id)
-  data = info['d']
-  for param, r, field, ind, loop, diagnostic in group.itertuples(index=False):
-    if debug: print "will use as parameter '%s' for %s %s (ind=%s) (%s)"%(param, diagnostic.name, field, ind, loop)
-    outkey = (diagnostic,field,ind)
-    out_workspace.setdefault(outkey,None)
-    loopkey = (diagnostic, field, ind, loop)
-    if loopkey not in loop_workspace:
-      loop_workspace[loopkey] = {}
-    w = loop_workspace[loopkey]
-    w[param] = data
-
-    # All input parameters have been collected for this loop?
-    if len(w) == len(params_needed[diagnostic]):
-      if debug: print "calculating %s %s (ind=%s) (%s)"%(diagnostic.name, field, ind, loop)
-      out = diagnostic.calc (ind=ind,loop=loop,out=out_workspace[outkey],**w)
-      loop_workspace.pop(loopkey)
-      out_workspace[outkey] = out  # Store for later use (if need multiple calcs per output)
-      loopcounts.setdefault(outkey,0)
-      loopcounts[outkey] += 1
-      assert loopcounts[outkey] <= loops[diagnostic]
-      # All loops finished for this output?
-      if loopcounts[outkey] == loops[diagnostic]:
-        #TODO: set chunk sizes
-        filename = "%s/%s_%s.nc"%(args.outdir,args.label,diagnostic.name)
-        if filename not in outfiles:
-          if debug: print "opening file %s for writing"%(filename)
-          outfiles[filename] = netCDF4.Dataset(filename,'w')
-        dataset = outfiles[filename]
-        dimnames = [a.name for a in diagnostic.axes]
-        if len(dataset.dimensions) == 0:
-          sizes = outer_sizes[diagnostic] + out.shape
-          assert len(dimnames) == len(sizes)
-          if debug: print "defining dimensions %s of size %s"%(dimnames, sizes)
-          for dimname, size in zip(dimnames, sizes):
-            dataset.createDimension(dimname, size)
-        if 'time' not in dataset.variables:
-          if debug: print "adding time information"
-          dataset.createVariable(varname='time', datatype='float32', dimensions=('time',))
-          dataset['time'].setncatts({'units':'hours since 2015-01-01'})
-        #TODO: handle multiple outer indices.
-        dataset['time'][ind] = netCDF4.date2num(stamp2datetime(info['datev']),units='hours since 2015-01-01')
-        if field not in dataset.variables:
-          if debug: print "adding %s to %s"%(field,filename)
-          dataset.createVariable(varname=field, datatype=out.dtype, dimensions=dimnames) 
-        dataset[field][ind] = out
-        out_workspace.pop(outkey)
-
-if debug: print loop_workspace, out_workspace
-for outfile in outfiles.values():
-  outfile.close()
+for rec_id in sorted(all_records):
+  read(rec_id).trigger()
+  if not debug: pbar.next()
+if not debug: pbar.finish()
 
