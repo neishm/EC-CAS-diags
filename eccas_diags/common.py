@@ -352,6 +352,20 @@ def rotate_grid (data):
   # Re-sort the data
   return data.sorted('lon')
 
+# Adjust a lat/lon grid from 0,360 to -180,180
+def unrotate_grid (data):
+  from pygeode.axis import Lon
+  import numpy as np
+  if not data.hasaxis('lon'): return data
+  lon = np.array(data.getaxis('lon').values)
+  # Check if already unrotated
+  if lon[1] < 0: return data
+  lon[lon>=180] -= 360.
+  lon = Lon(lon)
+  data = data.replace_axes(lon=lon)
+  # Re-sort the data
+  return data.sorted('lon')
+
 # Make sure the latitudes are monotonically increasing
 def increasing_latitudes (data):
   if not data.hasaxis('lat'): return data

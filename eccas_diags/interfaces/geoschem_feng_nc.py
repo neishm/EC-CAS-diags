@@ -39,6 +39,7 @@ class GEOSCHEM_Data(DataProduct):
     ('geopotential_height', 'geopotential_height', 'm'),
     ('psurf', 'surface_pressure', 'hPa'),
     ('PEDGE-$', 'surface_pressure', 'hPa'),
+    ('CO2_mixing_ratio', 'CO2_out', '1E-6 mol mol(dry_air)-1'),  # Shortcut for saving to netcdf
   )
 
 
@@ -175,7 +176,7 @@ class GEOSCHEM_Data(DataProduct):
       zaxis = dataset.level
     elif 'edge_level' in dataset:
       zaxis = dataset.edge_level
-    else: zaxis = None
+    else: zaxis = layer
 
     if zaxis is not None:
       zaxis.atts['positive'] = 'up'
@@ -215,6 +216,35 @@ class GEOSCHEM_Data(DataProduct):
   def find_files (dirname):
     from glob import glob
     return glob(dirname+"/*.nc")
+
+  # Method to re-encode data into the source context
+  # (e.g., rename fields to what would be originally in these kinds of files)
+  @classmethod
+  def encode (cls, dataset):
+    # Apply the conversions
+    dataset = DataProduct.encode.__func__(cls,dataset)
+    return dataset
+
+  # Method to write data to file(s).
+  @classmethod
+  def write (cls, data_interface, dirname):
+    from pygeode.formats import netcdf
+    from ..common import unrotate_grid
+    assert len(data_interface.datasets) == 1
+    dataset = data_interface.datasets[0]
+
+    dataset = dataset.rename_axes(lon01='lon')
+    # Hack for doing unit conversion assuming everything is w.r.t. dry air
+    dataset = dataset.rename_vars(CO2='CO2_out')
+    # Put the axes in a certain order.
+    dataset = [var.transpose('time','layer','lat','lon') if var.hasaxis('layer') else var for var in dataset.vars]
+    # Un-rotate the longitudes, so they're -180..175
+    dataset = list(map(unrotate_grid, dataset))
+
+    # Encode the data to the appropriate units / fieldnames
+    dataset = cls.encode(dataset)
+
+    netcdf.save(dirname+"/out.nc", dataset)
 
 
 # Add this interface to the table.

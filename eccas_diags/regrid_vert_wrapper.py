@@ -221,8 +221,9 @@ def do_vertical_regridding (input_data, grid_data, conserve_mass, sample_field=N
     # Compute the dp for the target grid (forcing the source surface pressure)
     try:
       target_p = compute_pressure(target_grid.zaxis, source_p0)
-      target_dp = compute_dp(target_grid.zaxis, source_p0)
-      assert target_p.zaxis == target_dp.zaxis
+      if conserve_mass:
+        target_dp = compute_dp(target_grid.zaxis, source_p0)
+        assert target_p.zaxis == target_dp.zaxis
     except ValueError:
       logger.debug("Skipping %s - unable to get pressure levels and/or dp", var.name)
       continue
