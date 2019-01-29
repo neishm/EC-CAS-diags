@@ -154,6 +154,68 @@ def layer_sum (*inputs):
   if debug: print 'layer sum'
   return sum(inputs)
 
+@calc
+def stack (*inputs):
+  if debug: print 'stack'
+  import numpy as np
+  return np.stack(inputs)
+
+@calc
+def interp_gph (x, gz):
+  if debug: print 'interp gph'
+  import numpy as np
+  # Number of output levels (spaced 1km apart)
+  N = 68
+
+  # Number of model levels and horizontal grid cells.
+  nlev, nj, ni = x.shape
+  ninj = ni*nj
+
+  # Workspace for building the interpolated values.
+  work = np.zeros((N+1,ninj), dtype=x.dtype)
+
+  # Rearrange order from bottom to top.
+  x = x[::-1].reshape(nlev,ninj)
+  gz = gz[::-1].reshape(nlev,ninj)
+
+  # Calculate rates of change
+  z = gz/100.  # decameters to kilometers
+  dxdz = np.zeros((nlev+1,ninj),dtype=x.dtype)
+  dxdz[1:-1] = np.diff(x,axis=0)
+  dxdz[1:-1] /= np.diff(z,axis=0)
+  ddxdz = np.diff(dxdz,axis=0)
+  ind = np.arange(ninj)
+
+  # Loop over one model level at a time.
+  # The advanced numpy indexing doesn't work well if there are repeated
+  # indices, such as repeated target levels.
+  for i in range(nlev):
+    c = np.ceil(z[i]).astype(int)
+    c[c<0] = 0
+    c[c>N] = N
+    # Mark the transition between model levels.
+    work[c,ind] += (c-z[i])*ddxdz[i]
+    work[c+1,ind] -= (c-1-z[i])*ddxdz[i]
+    # Set the lower boundary value.
+    if i == 0:
+      work[c,ind] += x[0]
+      work[c+1,ind] -= x[0]
+
+  work[c+1,ind] = np.float('nan')
+  np.cumsum(work,axis=0,out=work)  # magic
+  np.cumsum(work,axis=0,out=work)  # more magic
+  work[work==0] = np.float('nan')
+
+  return work[:-1].reshape(N,nj,ni)
+
+@calc
+def zonal_mean (x):
+  if debug: print 'zonal mean'
+  import numpy as np
+  # Remove repeated longitude
+  x = x[...,:-1]
+  return np.nanmean(x,axis=-1)
+
 
 import numpy as np
 
@@ -319,6 +381,57 @@ for t in range(len(mass_timesteps)):
   mass = area_integrate(mass, dx, 1/grav*1E-12)
   tropo_totalmass.write ('air', t, mass)
 
+##############################################################################
+# Zonal diagnostics
+
+# Find timesteps available for zonal mean diagnostics on gph.
+gph_timesteps = get_timesteps(get_3d_recs(vardict['GZ'].record_id))
+
+# Get thermodynamic GZ records.
+GZ_recs = limit_timesteps(get_3d_recs(vardict['GZ'].record_id), gph_timesteps)[:,1::2]
+
+# Find the available timesteps and levels.
+gph_timesteps = b._headers[GZ_recs[:,0]]['datev']
+gph_levels = b._headers[GZ_recs[0,:]]['level']
+assert np.all(vgd.vgd_get(vgd_id,'VIPT')[:-2] == b._headers[GZ_recs[0,:]]['ip1'])
+
+# Determine zonal mean calculations.
+filename = "%s/%s_zonalmean_gph.nc"%(args.outdir,args.label)
+zonalmean = netCDF4.Dataset(filename,'w')
+times = fstd2nc.mixins.dates.stamp2datetime(gph_timesteps)
+times = np.array(times,dtype='datetime64[s]')
+
+zonalmean.createDimension('time', None)
+zonalmean.createVariable(varname='time', datatype='float32', dimensions=('time',))
+zonalmean['time'].setncatts({'units':'hours since 2015-01-01'})
+zonalmean['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-01-01')
+zonalmean.createDimension('height', 68)
+zonalmean.createVariable(varname='height', datatype='float32', dimensions=('height',))
+zonalmean['height'].setncatts({'units':'km'})
+zonalmean['height'][:] = np.arange(68)
+zonalmean.createDimension('lat', all_nj[GZ_recs[0,0]])
+zonalmean.createVariable(varname='lat', datatype='float32', dimensions=('lat',))
+zonalmean['lat'].setncatts({'units':'degrees_north'})
+zonalmean['lat'][:] = vardict['GZ'].axes[-2].array
+
+for tracer in tracers:
+  if tracer not in vardict: continue
+  zonalmean.createVariable(varname=tracer, datatype='float64', dimensions=('time','height','lat'))
+
+zonalmean = Writer(zonalmean)
+
+for tracer in tracers:
+  if tracer not in vardict: continue
+  recs = limit_timesteps(get_3d_recs(vardict[tracer].record_id), gph_timesteps)
+  for it,t in enumerate(np.searchsorted(gph_timesteps, b._headers[recs[:,0]]['datev'])):
+    x = []
+    gz = []
+    for ik,k in enumerate(np.searchsorted(gph_levels, b._headers[recs[0,:]]['level'])):
+      x.append(read(recs[it,ik]))
+      gz.append(read(GZ_recs[t,k]))
+    x = stack(*x)
+    gz = stack(*gz)
+    zonalmean.write (tracer, t, zonal_mean(interp_gph(x,gz)))
 
 if debug: print 'starting I/O'
 
