@@ -161,11 +161,9 @@ def stack (*inputs):
   return np.stack(inputs)
 
 @calc
-def interp_gph (x, gz):
-  if debug: print 'interp gph'
+def vinterp (x, z, N):
+  if debug: print 'vinterp'
   import numpy as np
-  # Number of output levels (spaced 1km apart)
-  N = 68
 
   # Number of model levels and horizontal grid cells.
   nlev, nj, ni = x.shape
@@ -174,12 +172,10 @@ def interp_gph (x, gz):
   # Workspace for building the interpolated values.
   work = np.zeros((N+1,ninj), dtype=x.dtype)
 
-  # Rearrange order from bottom to top.
-  x = x[::-1].reshape(nlev,ninj)
-  gz = gz[::-1].reshape(nlev,ninj)
+  x = x.reshape(nlev,ninj)
+  z = z.reshape(nlev,ninj)
 
   # Calculate rates of change
-  z = gz/100.  # decameters to kilometers
   dxdz = np.zeros((nlev+1,ninj),dtype=x.dtype)
   dxdz[1:-1] = np.diff(x,axis=0)
   dxdz[1:-1] /= np.diff(z,axis=0)
@@ -408,7 +404,7 @@ zonalmean['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-0
 zonalmean.createDimension('height', 68)
 zonalmean.createVariable(varname='height', datatype='float32', dimensions=('height',))
 zonalmean['height'].setncatts({'units':'km'})
-zonalmean['height'][:] = np.arange(68)
+zonalmean['height'][:] = np.arange(68)[::-1]
 zonalmean.createDimension('lat', all_nj[GZ_recs[0,0]])
 zonalmean.createVariable(varname='lat', datatype='float32', dimensions=('lat',))
 zonalmean['lat'].setncatts({'units':'degrees_north'})
@@ -419,6 +415,7 @@ for tracer in tracers:
   zonalmean.createVariable(varname=tracer, datatype='float64', dimensions=('time','height','lat'))
 
 zonalmean = Writer(zonalmean)
+gph_indices = calc(lambda gz: 67-gz/100.)
 
 for tracer in tracers:
   if tracer not in vardict: continue
@@ -431,7 +428,9 @@ for tracer in tracers:
       gz.append(read(GZ_recs[t,k]))
     x = stack(*x)
     gz = stack(*gz)
-    zonalmean.write (tracer, t, zonal_mean(interp_gph(x,gz)))
+    # decameters to kilometers
+    z = gph_indices(gz)
+    zonalmean.write (tracer, t, zonal_mean(vinterp (x, z, 68)))
 
 if debug: print 'starting I/O'
 
