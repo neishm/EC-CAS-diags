@@ -130,6 +130,12 @@ def logp (p0):
   return np.log(p0/1000.)
 
 @calc
+def log_pres (a, b, s):
+  if debug: print 'log_pres'
+  import numpy as np
+  return a+b*s
+
+@calc
 def pres (a, b, s):
   if debug: print 'pres'
   import numpy as np
@@ -170,7 +176,7 @@ def vinterp (x, z, N):
   ninj = ni*nj
 
   # Workspace for building the interpolated values.
-  work = np.zeros((N+1,ninj), dtype=x.dtype)
+  work = np.zeros((N+2,ninj), dtype=x.dtype)
 
   x = x.reshape(nlev,ninj)
   z = z.reshape(nlev,ninj)
@@ -202,7 +208,7 @@ def vinterp (x, z, N):
   np.cumsum(work,axis=0,out=work)  # more magic
   work[work==0] = np.float('nan')
 
-  return work[:-1].reshape(N,nj,ni)
+  return work[:-2].reshape(N,nj,ni)
 
 @calc
 def zonal_mean (x):
@@ -428,9 +434,56 @@ for tracer in tracers:
       gz.append(read(GZ_recs[t,k]))
     x = stack(*x)
     gz = stack(*gz)
-    # decameters to kilometers
     z = gph_indices(gz)
     zonalmean.write (tracer, t, zonal_mean(vinterp (x, z, 68)))
+
+# Find timesteps available for zonal mean diagnostics on pressure levels.
+pres_timesteps = get_timesteps(vardict['P0'].record_id)
+P0_recs = limit_timesteps(vardict['P0'].record_id, pres_timesteps)
+
+# Find the available timesteps and levels.
+pres_timesteps = b._headers[P0_recs[:]]['datev']
+
+# Determine zonal mean calculations.
+filename = "%s/%s_zonalmean_plev.nc"%(args.outdir,args.label)
+zonalmean = netCDF4.Dataset(filename,'w')
+times = fstd2nc.mixins.dates.stamp2datetime(pres_timesteps)
+times = np.array(times,dtype='datetime64[s]')
+
+zonalmean.createDimension('time', None)
+zonalmean.createVariable(varname='time', datatype='float32', dimensions=('time',))
+zonalmean['time'].setncatts({'units':'hours since 2015-01-01'})
+zonalmean['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-01-01')
+zonalmean.createDimension('pres', 100)
+zonalmean.createVariable(varname='pres', datatype='float32', dimensions=('pres',))
+zonalmean['pres'].setncatts({'units':'hPa','positive':'down'})
+zonalmean['pres'][:] = np.logspace(-1,3,100)
+zonalmean.createDimension('lat', all_nj[P0_recs[0]])
+zonalmean.createVariable(varname='lat', datatype='float32', dimensions=('lat',))
+zonalmean['lat'].setncatts({'units':'degrees_north'})
+zonalmean['lat'][:] = vardict['GZ'].axes[-2].array
+
+for tracer in tracers:
+  if tracer not in vardict: continue
+  zonalmean.createVariable(varname=tracer, datatype='float64', dimensions=('time','pres','lat'))
+
+zonalmean = Writer(zonalmean)
+pres_indices = calc(lambda lp: 99*(lp-np.log(100)-np.log(0.1))/(np.log(1000)-np.log(0.1)))
+
+for tracer in tracers:
+  if tracer not in vardict: continue
+  recs = limit_timesteps(get_3d_recs(vardict[tracer].record_id), pres_timesteps)
+  for it,t in enumerate(np.searchsorted(pres_timesteps, b._headers[recs[:,0]]['datev'])):
+    x = []
+    lp = []
+    for ik,k in enumerate(np.searchsorted(gph_levels, b._headers[recs[0,:]]['level'])):
+      x.append(read(recs[it,ik]))
+      s = logp(read(P0_recs[t]))
+      lp.append(log_pres(at[k],bt[k],s))
+    x = stack(*x)
+    lp = stack(*lp)
+    z = pres_indices(lp)
+    zonalmean.write (tracer, t, zonal_mean(vinterp (x, z, 100)))
 
 if debug: print 'starting I/O'
 
