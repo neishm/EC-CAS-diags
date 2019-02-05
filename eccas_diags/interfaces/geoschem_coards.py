@@ -156,7 +156,10 @@ class GEOSCHEM_Data(DataProduct):
       if var.name == 'PORL_L_S__PCH4':
         var.name = 'CO_production'
         var.atts['units'] = 'molecules cm-3 s-1'
-      if var.name.endswith('_PSURF') or var.name.endswith('_PS') or var.name.startswith('PEDGE_S'):
+      # Treat ppbv units as ppb
+      if var.atts.get('units',None) == 'ppbv':
+        var.atts['units'] = 'ppb'
+      if var.name == 'PSURF' or var.name.endswith('_PSURF') or var.name.endswith('_PS') or var.name.startswith('PEDGE_S'):
         # Special case: actually have 3D pressure (erroneously encoded?)
         if var.hasaxis('lev'):
           # Exception: data is not filled in
@@ -244,7 +247,7 @@ class GEOSCHEM_Data(DataProduct):
   def find_files (dirname):
     from glob import glob
     files = []
-    for filename in "GC_restart.20100101_G5_4x5_COv10_47L.nc", "GEOS-Chem_CO_combust_VOC_emiss_2010.nc", "GEOS-Chem_CO_CH4_source_2010.nc", "GEOS-Chem_CO_loss_freq_2010.nc":
+    for filename in "GC_restart.20100101_G5_4x5_COv10_47L.nc", "GEOS-Chem_CO_combust_VOC_emiss_2010.nc", "GEOS-Chem_CO_CH4_source_2010.nc", "GEOS-Chem_CO_loss_freq_2010.nc", "ts*.nc":
       files.extend(glob(dirname+"/"+filename))
     return files
 
