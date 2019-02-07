@@ -203,12 +203,13 @@ def vinterp (x, z, N):
       work[c,ind] += x[0]
       work[c+1,ind] -= x[0]
 
-  work[c+1,ind] = np.float('nan')
+  c[c==z[i]] += 1
+  work[c,ind] = np.float('nan')
   np.cumsum(work,axis=0,out=work)  # magic
   np.cumsum(work,axis=0,out=work)  # more magic
   work[work==0] = np.float('nan')
 
-  return work[:-2].reshape(N,nj,ni)
+  return work[:N].reshape(N,nj,ni)
 
 @calc
 def zonal_mean (x):
