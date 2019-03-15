@@ -60,6 +60,12 @@ for tracer in control.data_vars.keys():
   cbar2 = fig.axes[-1]
   frame3 = reldiff.isel(time=-1).plot(ax=pl.subplot(133),robust=True,cmap='RdBu_r',center=0.0)
   cbar3 = fig.axes[-1]
+  # Adjust vertical scale for pressure levels.
+  if 'pres' in control.dims:
+    for frame in frame1, frame2, frame3:
+      frame.axes.set_ylim(frame.axes.get_ylim()[::-1])
+      if min(control.coords['pres']) <= 100:
+        frame.axes.set_yscale('log')
   # Remove some labels to save space.
   cbar1.set_ylabel('')
   cbar2.set_ylabel('')
