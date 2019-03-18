@@ -451,7 +451,9 @@ pres_timesteps = b._headers[P0_recs[:]]['datev']
 
 # Determine zonal mean calculations.
 filename = "%s/%s_zonalmean_plev.nc"%(args.outdir,args.label)
+tropo_filename = "%s/%s_zonalmean_tropo.nc"%(args.outdir,args.label)
 zonalmean_plev = netCDF4.Dataset(filename,'w')
+zonalmean_tropo = netCDF4.Dataset(tropo_filename,'w')
 times = fstd2nc.mixins.dates.stamp2datetime(pres_timesteps)
 times = np.array(times,dtype='datetime64[s]')
 
@@ -468,12 +470,28 @@ zonalmean_plev.createVariable(varname='lat', datatype='float32', dimensions=('la
 zonalmean_plev['lat'].setncatts({'units':'degrees_north'})
 zonalmean_plev['lat'][:] = vardict['GZ'].axes[-2].array
 
+zonalmean_tropo.createDimension('time', None)
+zonalmean_tropo.createVariable(varname='time', datatype='float32', dimensions=('time',))
+zonalmean_tropo['time'].setncatts({'units':'hours since 2015-01-01'})
+zonalmean_tropo['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-01-01')
+zonalmean_tropo.createDimension('pres', 81)
+zonalmean_tropo.createVariable(varname='pres', datatype='float32', dimensions=('pres',))
+zonalmean_tropo['pres'].setncatts({'units':'hPa','positive':'down'})
+zonalmean_tropo['pres'][:] = np.linspace(200,1000,81)
+zonalmean_tropo.createDimension('lat', all_nj[P0_recs[0]])
+zonalmean_tropo.createVariable(varname='lat', datatype='float32', dimensions=('lat',))
+zonalmean_tropo['lat'].setncatts({'units':'degrees_north'})
+zonalmean_tropo['lat'][:] = vardict['GZ'].axes[-2].array
+
 for tracer in tracers:
   if tracer not in vardict: continue
   zonalmean_plev.createVariable(varname=tracer, datatype='float64', dimensions=('time','pres','lat'))
+  zonalmean_tropo.createVariable(varname=tracer, datatype='float64', dimensions=('time','pres','lat'))
 
 zonalmean_plev = Writer(zonalmean_plev)
+zonalmean_tropo = Writer(zonalmean_tropo)
 pres_indices = calc(lambda lp: 99*(lp-np.log(100)-np.log(0.1))/(np.log(1000)-np.log(0.1)))
+tropo_indices = calc(lambda p: 80*(p/100-200)/(1000-200))
 
 for tracer in tracers:
   if tracer not in vardict: continue
@@ -481,14 +499,20 @@ for tracer in tracers:
   for it,t in enumerate(np.searchsorted(pres_timesteps, b._headers[recs[:,0]]['datev'])):
     x = []
     lp = []
+    p = []
     for ik,k in enumerate(np.searchsorted(gph_levels, b._headers[recs[0,:]]['level'])):
       x.append(read(recs[it,ik]))
       s = logp(read(P0_recs[t]))
       lp.append(log_pres(at[k],bt[k],s))
+      p.append(pres(at[k],bt[k],s))
     x = stack(*x)
     lp = stack(*lp)
+    p = stack(*p)
     z = pres_indices(lp)
     zonalmean_plev.write (tracer, t, zonal_mean(vinterp (x, z, 100)))
+    z = tropo_indices(p)
+    zonalmean_tropo.write (tracer, t, zonal_mean(vinterp (x, z, 81)))
+
 
 if debug: print 'starting I/O'
 
