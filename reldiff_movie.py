@@ -83,7 +83,7 @@ for tracer in control.data_vars.keys():
 
   movie = an.writers['mencoder'](fps=args.fps, metadata={'comment':str(args)})
   outfile = args.outname+'_'+tracer+'.avi'
-  with movie.saving(fig, outfile, control.dims['time']):
+  with movie.saving(fig, outfile, 100):
     for i in fstd2nc.mixins._ProgressBar("Saving "+outfile, suffix='%(percent)d%% [%(myeta)s]').iter(range(control.dims['time'])):
       # Get date and time as formatted string.
       time = str(control.coords['time'].values[i])
