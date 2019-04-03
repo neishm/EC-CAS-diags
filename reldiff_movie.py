@@ -8,7 +8,8 @@ parser = ArgumentParser(description='Produces an animation of the relative diffe
 parser.add_argument('control', help='Control data (netCDF).')
 parser.add_argument('experiment', help='Experiment data (netCDF).')
 parser.add_argument('outname', help='Name of the movie file to generate.')
-parser.add_argument('--fps', default=25, type=int, help='Frames per second for the movie.')
+parser.add_argument('--fps', default=25, type=int, help='Frames per second for the movie.  Default is %(default)s.')
+parser.add_argument('--bitrate', default=1000, type=int, help='Frames per second for the movie.  Default is %(default)s.')
 args = parser.parse_args()
 
 try:
@@ -16,7 +17,7 @@ try:
   import dask
   import fstd2nc
 except ImportError:
-  parser.error("You need to run the following command before using the script:\n\n. ssmuse-sh -p eccc/crd/ccmr/EC-CAS/master/fstd2nc_0.20180821.0\n. ssmuse-sh -p eccc/crd/ccmr/EC-CAS/master/MPlayer_1.3.0\n")
+  parser.error("You need to run the following command before using the script:\n\n. ssmuse-sh -p eccc/crd/ccmr/EC-CAS/master/fstd2nc_0.20180821.0\n")
 
 import numpy as np
 from matplotlib import pyplot as pl
@@ -81,9 +82,9 @@ for tracer in control.data_vars.keys():
   # Remove excess whitespace.
   pl.tight_layout()
 
-  movie = an.writers['mencoder'](fps=args.fps, metadata={'comment':str(args)})
+  movie = an.writers['avconv'](fps=args.fps, bitrate=args.bitrate, metadata={'comment':str(args)})
   outfile = args.outname+'_'+tracer+'.avi'
-  with movie.saving(fig, outfile, 100):
+  with movie.saving(fig, outfile, 72):
     for i in fstd2nc.mixins._ProgressBar("Saving "+outfile, suffix='%(percent)d%% [%(myeta)s]').iter(range(control.dims['time'])):
       # Get date and time as formatted string.
       time = str(control.coords['time'].values[i])
