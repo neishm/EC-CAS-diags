@@ -19,37 +19,30 @@
 ###############################################################################
 
 
-# Interface for CT2016 molefraction data.
+# Interface for CT2017 data.
 
-from .ct2013b import CT2013B_Data
-class CT2016_Data(CT2013B_Data):
+from .ct2016 import CT2016_Data
+class CT2017_Data(CT2016_Data):
   """
-  CarbonTracker CO2 products (molefractions, fluxes) from CT2016 and later.
+  CarbonTracker CO2 products (molefractions, fluxes) from CT2017 and later.
   """
 
-  # Method to decode an opened dataset (standardize variable names, and add any
-  # extra info needed (pressure values, cell area, etc.)
-  @classmethod
-  def decode (cls, data):
-    # Rename latitude/longitude to lat/lon, for compatibility with the
-    # diagnostics.
-    renames = {}
-    if 'latitude' in data:
-      renames['latitude'] = 'lat'
-    if 'longitude' in data:
-      renames['longitude'] = 'lon'
-
-    if len(renames) > 0:
-      data = data.rename_axes(**renames)
-
-    # The rest of the decoding should be the same as previous CarbonTracker
-    # versions.
-    return super(CT2016_Data,cls).decode(data)
-
+  # List of all possible fields we expect from the data
+  # (original_name, standard_name, units)
+  field_list = CT2016_Data.field_list + (
+    ('fm', 'CO2_fossil_flux', 'mol m-2 s-1'),
+    ('fo', 'CO2_fossil_flux', 'mol m-2 s-1'),
+    ('b4', 'CO2_bio_flux', 'mol m-2 s-1'),
+    ('bc', 'CO2_bio_flux', 'mol m-2 s-1'),
+    ('oi', 'CO2_ocean_flux', 'mol m-2 s-1'),
+    ('oc', 'CO2_ocean_flux', 'mol m-2 s-1'),
+    ('w4', 'CO2_fire_flux', 'mol m-2 s-1'),
+    ('wc', 'CO2_fire_flux', 'mol m-2 s-1'),
+  )
 
 # Add this interface to the table.
 from . import table
-table['ct2016'] = CT2016_Data
+table['ct2017'] = CT2017_Data
 
 
 

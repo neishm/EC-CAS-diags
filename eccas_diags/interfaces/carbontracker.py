@@ -99,7 +99,7 @@ class CT_Data(DataProduct):
     # Don't worry about the date_components and decimal_date domain?
     # (Doesn't have any CO2-related variables).
     varnames = [v.name for v in data]
-    if 'co2' not in varnames and 'bio' not in varnames and 'bio_flux_opt' not in varnames: return data
+    if not any (name in varnames for name in ('co2','bio','bio_flux_opt','b4','bc')): return data
 
     # Force vertical axis to be a ZAxis
     data = data.replace_axes(level = ZAxis)
