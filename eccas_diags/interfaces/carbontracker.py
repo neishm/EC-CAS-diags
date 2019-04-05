@@ -83,7 +83,7 @@ class CT_Data(DataProduct):
     # The time is the mid-point of a 3-hour integration?
     # We will interpret this as being valid at the start of the integration,
     # although it's not clear what exactly CarbonTracker is providing...
-    if 'bio_flux_opt' in data:
+    if any(name in data for name in ('bio_flux_opt','b4','bc')):
       if 'date' in data:
         taxis = data.date
       else:
