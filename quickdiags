@@ -11,6 +11,7 @@ parser = ArgumentParser(description='Performs some quick diagnostics on EC-CAS m
 parser.add_argument('infile', help='Input file or directory to process.')
 parser.add_argument('outdir', nargs='?', default='.', help='Where to put the output files.  Default is the current directory.')
 parser.add_argument('--label', help='The name of the experiment.  If not specified, then a name will be determined from the input directory structure.')
+parser.add_argument('--nthreads', type=int, default=1, help='Number of threads to use for doing the calcuations.  Default is %(default)s')
 args = parser.parse_args()
 
 try:
@@ -33,11 +34,13 @@ import netCDF4
 
 # Class for handling dependencies on calculations.
 class Calc (object):
-  __slots__ = ('func','inputs','callbacks','__weakref__')
+  __slots__ = ('func','inputs','callbacks','__weakref__','lock')
   def __init__ (self, func, *inputs):
     import weakref
+    from threading import Lock
     self.func = func
     self.inputs = list(inputs)
+    self.lock = Lock()
     for inp in inputs:
       if isinstance(inp,Calc):
         if debug: print '%s will call back %s'%(inp,func.func_name)
@@ -59,8 +62,9 @@ class Calc (object):
         print 'weird'
         return
       i = ids.index(id(self))
-      callback.inputs[i] = data
-      callback.trigger()
+      with callback.lock:
+        callback.inputs[i] = data
+        callback.trigger()
   def __del__ (self):
     if debug: print 'deleting %s'%(self.func.func_name)
 
@@ -87,11 +91,15 @@ del weakref
 # Keep track of all records that are used.
 all_records = set()
 
+from threading import Lock
+read_lock = Lock()
+
 @calc
 def _read (rec_id):
-  if debug: print 'read'
-  all_records.remove(rec_id)
-  return np.asarray(fstluk(rec_id),dtype='float64')
+  with read_lock:
+    if debug: print 'read'
+    all_records.remove(rec_id)
+    return np.asarray(fstluk(rec_id),dtype='float64')
 def read (rec_id):
   all_records.add(rec_id)
   return _read (rec_id)
@@ -117,10 +125,13 @@ class Writer (Calc):
     return
 
 # Object for doing an individual write.
+from threading import Lock
+write_lock = Lock()
 @calc
 def _write (var, ind, data):
-  if debug: print 'write'
-  var[ind] = data
+  with write_lock:
+    if debug: print 'write'
+    var[ind] = data
 
 
 @calc
@@ -521,11 +532,21 @@ if debug: print 'starting I/O'
 # operations will be waiting a long time if this isn't pre-loaded.
 dx.trigger()
 
-if not debug:
-  pbar = fstd2nc.mixins._ProgressBar("Calculating diagnostics", suffix='%(percent)d%% [%(myeta)s]', max=len(all_records))
+pbar = fstd2nc.mixins._ProgressBar("Calculating diagnostics", suffix='%(percent)d%% [%(myeta)s]', max=len(all_records))
+
+from multiprocessing.pool import ThreadPool
+from threading import Lock
+pool = ThreadPool(args.nthreads)
+pbar_lock = Lock()
+def update_pbar (stuff):
+  with pbar_lock:
+    pbar.next()
 
 for rec_id in sorted(all_records):
-  read(rec_id).trigger()
-  if not debug: pbar.next()
-if not debug: pbar.finish()
+  pool.apply_async(read(rec_id).trigger, callback=update_pbar)
+  #read(rec_id).trigger()
+  #if not debug: pbar.next()
+pool.close()
+pool.join()
+pbar.finish()
 
