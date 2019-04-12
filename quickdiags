@@ -323,13 +323,13 @@ mass_levels = b._headers[HU_recs[0,:]]['level']
 assert np.all(vgd.vgd_get(vgd_id,'VIPT')[:-2] == b._headers[HU_recs[0,:]]['ip1'])
 
 # Determine mass calculations.
-filename = "%s/%s_totalmass.nc"%(args.outdir,args.label)
+total_filename = "%s/%s_totalmass.nc"%(args.outdir,args.label)
 tropo_filename = "%s/%s_tropomass.nc"%(args.outdir,args.label)
-totalmass = netCDF4.Dataset(filename,'w')
-tropo_totalmass = netCDF4.Dataset(tropo_filename,'w')
+totalmass = netCDF4.Dataset(total_filename,'w')
+tropomass = netCDF4.Dataset(tropo_filename,'w')
 times = fstd2nc.mixins.dates.stamp2datetime(mass_timesteps)
 times = np.array(times,dtype='datetime64[s]')
-for dataset in totalmass, tropo_totalmass:
+for dataset in totalmass, tropomass:
   dataset.createDimension('time', None)
   dataset.createVariable(varname='time', datatype='float32', dimensions=('time',))
   dataset['time'].setncatts({'units':'hours since 2015-01-01'})
@@ -341,7 +341,7 @@ for dataset in totalmass, tropo_totalmass:
   dataset.createVariable(varname='dry_air', datatype='float64', dimensions=('time',))
 
 totalmass = Writer(totalmass)
-tropo_totalmass = Writer(tropo_totalmass)
+tropomass = Writer(tropomass)
 
 for tracer in tracers:
   if tracer not in vardict: continue
@@ -364,7 +364,7 @@ for tracer in tracers:
     totalmass.write (tracer, t, mass)
     mass = layer_sum(*tropo_layers)
     mass = area_integrate(mass, dx, 1E-9/grav*1E-12)
-    tropo_totalmass.write (tracer, t, mass)
+    tropomass.write (tracer, t, mass)
 # Dry-air mass
 for t in range(len(mass_timesteps)):
   layers = []
@@ -383,7 +383,7 @@ for t in range(len(mass_timesteps)):
   totalmass.write ('dry_air', t, mass)
   mass = layer_sum(*tropo_layers)
   mass = area_integrate(mass, dx, 1/grav*1E-12)
-  tropo_totalmass.write ('dry_air', t, mass)
+  tropomass.write ('dry_air', t, mass)
 # Total air mass
 for t in range(len(mass_timesteps)):
   s = logp(read(P0_recs[t]))
@@ -394,7 +394,7 @@ for t in range(len(mass_timesteps)):
   totalmass.write ('air', t, mass)
   mass = layer_mass(1,0,20000,p_below)
   mass = area_integrate(mass, dx, 1/grav*1E-12)
-  tropo_totalmass.write ('air', t, mass)
+  tropomass.write ('air', t, mass)
 
 ##############################################################################
 # Zonal diagnostics
