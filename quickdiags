@@ -7,11 +7,12 @@ debug = False
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
 
 from argparse import ArgumentParser
+import subprocess
 parser = ArgumentParser(description='Performs some quick diagnostics on EC-CAS model output.')
 parser.add_argument('infile', help='Input file or directory to process.')
 parser.add_argument('outdir', nargs='?', default='.', help='Where to put the output files.  Default is the current directory.')
 parser.add_argument('--label', help='The name of the experiment.  If not specified, then a name will be determined from the input directory structure.')
-parser.add_argument('--nthreads', type=int, default=1, help='Number of threads to use for doing the calcuations.  Default is %(default)s')
+parser.add_argument('--nthreads', type=int, default=int(subprocess.check_output('nproc')), help='Number of threads to use for doing the calcuations.  Default is currently %(default)s.')
 args = parser.parse_args()
 
 try:
