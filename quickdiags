@@ -527,6 +527,10 @@ for tracer in tracers:
 
 if debug: print 'starting I/O'
 
+# Ignore numpy warnings about things like "mean of empty slice".
+import warnings
+warnings.simplefilter("ignore")
+
 # Read DX first.
 # These records seem to be found at the end of the RPN file, so all the other
 # operations will be waiting a long time if this isn't pre-loaded.
