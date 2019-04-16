@@ -23,6 +23,10 @@ import numpy as np
 from matplotlib import pyplot as pl
 from matplotlib import animation as an
 
+# Ignore numpy warnings about things like invalid values (such as NaN).
+import warnings
+warnings.simplefilter("ignore")
+
 control = xarray.open_dataset(args.control,chunks={'time':1})
 experiment = xarray.open_dataset(args.experiment,chunks={'time':1})
 
