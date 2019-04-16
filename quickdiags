@@ -173,6 +173,11 @@ def layer_sum (*inputs):
   return sum(inputs)
 
 @calc
+def quotient (numerator, denominator):
+  if debug: print 'quotient'
+  return numerator / denominator
+
+@calc
 def stack (*inputs):
   if debug: print 'stack'
   import numpy as np
@@ -308,7 +313,7 @@ def limit_timesteps (recs, target_timesteps):
   return recs[np.isin(timesteps,list(target_timesteps))]
 
 ##############################################################################
-# Mass diagnostics
+# Column and mass diagnostics
 
 # Find timesteps available for mass diagnostics.
 mass_timesteps = get_timesteps(get_3d_recs(vardict['HU'].record_id)) \
@@ -322,14 +327,18 @@ mass_timesteps = b._headers[HU_recs[:,0]]['datev']
 mass_levels = b._headers[HU_recs[0,:]]['level']
 assert np.all(vgd.vgd_get(vgd_id,'VIPT')[:-2] == b._headers[HU_recs[0,:]]['ip1'])
 
-# Determine mass calculations.
-filename = "%s/%s_totalmass.nc"%(args.outdir,args.label)
+# Determine column / mass calculations.
+total_filename = "%s/%s_totalmass.nc"%(args.outdir,args.label)
 tropo_filename = "%s/%s_tropomass.nc"%(args.outdir,args.label)
-totalmass = netCDF4.Dataset(filename,'w')
-tropo_totalmass = netCDF4.Dataset(tropo_filename,'w')
+colavg_filename = "%s/%s_column_avg.nc"%(args.outdir,args.label)
+tropoavg_filename = "%s/%s_tropocolumn_avg.nc"%(args.outdir,args.label)
+totalmass = netCDF4.Dataset(total_filename,'w')
+tropomass = netCDF4.Dataset(tropo_filename,'w')
+colavg = netCDF4.Dataset(colavg_filename,'w')
+tropoavg = netCDF4.Dataset(tropoavg_filename,'w')
 times = fstd2nc.mixins.dates.stamp2datetime(mass_timesteps)
 times = np.array(times,dtype='datetime64[s]')
-for dataset in totalmass, tropo_totalmass:
+for dataset in totalmass, tropomass:
   dataset.createDimension('time', None)
   dataset.createVariable(varname='time', datatype='float32', dimensions=('time',))
   dataset['time'].setncatts({'units':'hours since 2015-01-01'})
@@ -339,10 +348,63 @@ for dataset in totalmass, tropo_totalmass:
     dataset.createVariable(varname=tracer, datatype='float64', dimensions=('time',))
   dataset.createVariable(varname='air', datatype='float64', dimensions=('time',))
   dataset.createVariable(varname='dry_air', datatype='float64', dimensions=('time',))
+for dataset in colavg, tropoavg:
+  dataset.createDimension('time', None)
+  dataset.createVariable(varname='time', datatype='float32', dimensions=('time',))
+  dataset['time'].setncatts({'units':'hours since 2015-01-01'})
+  dataset['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-01-01')
+  dataset.createDimension('lat', all_nj[P0_recs[0]])
+  dataset.createVariable(varname='lat', datatype='float32', dimensions=('lat',))
+  dataset['lat'].setncatts({'units':'degrees_north'})
+  dataset['lat'][:] = vardict['P0'].axes[-2].array
+  dataset.createDimension('lon', all_ni[P0_recs[0]])
+  dataset.createVariable(varname='lon', datatype='float32', dimensions=('lon',))
+  dataset['lon'].setncatts({'units':'degrees_east'})
+  dataset['lon'][:] = vardict['P0'].axes[-1].array
+  for tracer in tracers:
+    if tracer not in vardict: continue
+    dataset.createVariable(varname=tracer, datatype='float64', dimensions=('time','lat','lon'))
 
 totalmass = Writer(totalmass)
-tropo_totalmass = Writer(tropo_totalmass)
+tropomass = Writer(tropomass)
+colavg = Writer(colavg)
+tropoavg = Writer(tropoavg)
 
+# Dry-air mass
+dryair_sum_save = []  # Saved for use later.
+dryair_tropo_sum_save = []  # Saved for use later.
+for t in range(len(mass_timesteps)):
+  dryair_layers = []
+  dryair_tropo_layers = []
+  for k in range(len(mass_levels)):
+    q = read(HU_recs[t,k])
+    s = logp(read(P0_recs[t]))
+    p_above = pres(am[k],bm[k],s)
+    p_below = pres(am[k+1],bm[k+1],s)
+    layer = layer_mass(1,q,p_above,p_below)
+    dryair_layers.append(layer)
+    if mass_levels[k] > 0.2:
+      dryair_tropo_layers.append(layer)
+  dryair_sum = layer_sum(*dryair_layers)
+  dryair_sum_save.append(dryair_sum)
+  mass = area_integrate(dryair_sum, dx, 1/grav*1E-12)
+  totalmass.write ('dry_air', t, mass)
+  dryair_tropo_sum = layer_sum(*dryair_tropo_layers)
+  dryair_tropo_sum_save.append(dryair_tropo_sum)
+  mass = area_integrate(dryair_tropo_sum, dx, 1/grav*1E-12)
+  tropomass.write ('dry_air', t, mass)
+# Total air mass
+for t in range(len(mass_timesteps)):
+  s = logp(read(P0_recs[t]))
+  p_above = pres(am[0],bm[0],s)
+  p_below = pres(am[nlev],bm[nlev],s)
+  mass = layer_mass(1,0,p_above,p_below)
+  mass = area_integrate(mass, dx, 1/grav*1E-12)
+  totalmass.write ('air', t, mass)
+  mass = layer_mass(1,0,20000,p_below)
+  mass = area_integrate(mass, dx, 1/grav*1E-12)
+  tropomass.write ('air', t, mass)
+# Tracer mass
 for tracer in tracers:
   if tracer not in vardict: continue
   recs = limit_timesteps(get_3d_recs(vardict[tracer].record_id), mass_timesteps)
@@ -359,42 +421,20 @@ for tracer in tracers:
       layers.append(layer)
       if mass_levels[k] > 0.2:
         tropo_layers.append(layer)
-    mass = layer_sum(*layers)
-    mass = area_integrate(mass, dx, 1E-9/grav*1E-12)
+    tracer_sum = layer_sum(*layers)
+    mass = area_integrate(tracer_sum, dx, 1E-9/grav*1E-12)
     totalmass.write (tracer, t, mass)
-    mass = layer_sum(*tropo_layers)
-    mass = area_integrate(mass, dx, 1E-9/grav*1E-12)
-    tropo_totalmass.write (tracer, t, mass)
-# Dry-air mass
-for t in range(len(mass_timesteps)):
-  layers = []
-  tropo_layers = []
-  for k in range(len(mass_levels)):
-    q = read(HU_recs[t,k])
-    s = logp(read(P0_recs[t]))
-    p_above = pres(am[k],bm[k],s)
-    p_below = pres(am[k+1],bm[k+1],s)
-    layer = layer_mass(1,q,p_above,p_below)
-    layers.append(layer)
-    if mass_levels[k] > 0.2:
-      tropo_layers.append(layer)
-  mass = layer_sum(*layers)
-  mass = area_integrate(mass, dx, 1/grav*1E-12)
-  totalmass.write ('dry_air', t, mass)
-  mass = layer_sum(*tropo_layers)
-  mass = area_integrate(mass, dx, 1/grav*1E-12)
-  tropo_totalmass.write ('dry_air', t, mass)
-# Total air mass
-for t in range(len(mass_timesteps)):
-  s = logp(read(P0_recs[t]))
-  p_above = pres(am[0],bm[0],s)
-  p_below = pres(am[nlev],bm[nlev],s)
-  mass = layer_mass(1,0,p_above,p_below)
-  mass = area_integrate(mass, dx, 1/grav*1E-12)
-  totalmass.write ('air', t, mass)
-  mass = layer_mass(1,0,20000,p_below)
-  mass = area_integrate(mass, dx, 1/grav*1E-12)
-  tropo_totalmass.write ('air', t, mass)
+    dryair_sum = dryair_sum_save[t]
+    tracer_col = quotient(tracer_sum, dryair_sum)
+    colavg.write (tracer, t, tracer_col)
+    tracer_sum = layer_sum(*tropo_layers)
+    mass = area_integrate(tracer_sum, dx, 1E-9/grav*1E-12)
+    tropomass.write (tracer, t, mass)
+    dryair_tropo_sum = dryair_tropo_sum_save[t]
+    tracer_col = quotient(tracer_sum, dryair_tropo_sum)
+    tropoavg.write (tracer, t, tracer_col)
+
+del dryair_sum_save, dryair_tropo_sum_save
 
 ##############################################################################
 # Zonal diagnostics
