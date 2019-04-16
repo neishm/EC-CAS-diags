@@ -440,57 +440,60 @@ del dryair_sum_save, dryair_tropo_sum_save
 # Zonal diagnostics
 
 # Find timesteps available for zonal mean diagnostics on gph.
-gph_timesteps = get_timesteps(get_3d_recs(vardict['GZ'].record_id))
-tracer_timesteps = set.union(*[get_timesteps(get_3d_recs(vardict[tracer].record_id)) for tracer in tracers if tracer in vardict])
-gph_timesteps = gph_timesteps & tracer_timesteps
 
-# Get thermodynamic GZ records.
-GZ_recs = limit_timesteps(get_3d_recs(vardict['GZ'].record_id), gph_timesteps)[:,1::2]
+if 'GZ' in vardict:
 
-# Find the available timesteps and levels.
-gph_timesteps = b._headers[GZ_recs[:,0]]['datev']
-gph_levels = b._headers[GZ_recs[0,:]]['level']
-assert np.all(vgd.vgd_get(vgd_id,'VIPT')[:-2] == b._headers[GZ_recs[0,:]]['ip1'])
+  gph_timesteps = get_timesteps(get_3d_recs(vardict['GZ'].record_id))
+  tracer_timesteps = set.union(*[get_timesteps(get_3d_recs(vardict[tracer].record_id)) for tracer in tracers if tracer in vardict])
+  gph_timesteps = gph_timesteps & tracer_timesteps
 
-# Determine zonal mean calculations.
-filename = "%s/%s_zonalmean_gph.nc"%(args.outdir,args.label)
-zonalmean_gph = netCDF4.Dataset(filename,'w')
-times = fstd2nc.mixins.dates.stamp2datetime(gph_timesteps)
-times = np.array(times,dtype='datetime64[s]')
+  # Get thermodynamic GZ records.
+  GZ_recs = limit_timesteps(get_3d_recs(vardict['GZ'].record_id), gph_timesteps)[:,1::2]
 
-zonalmean_gph.createDimension('time', None)
-zonalmean_gph.createVariable(varname='time', datatype='float32', dimensions=('time',))
-zonalmean_gph['time'].setncatts({'units':'hours since 2015-01-01'})
-zonalmean_gph['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-01-01')
-zonalmean_gph.createDimension('height', 68)
-zonalmean_gph.createVariable(varname='height', datatype='float32', dimensions=('height',))
-zonalmean_gph['height'].setncatts({'units':'km'})
-zonalmean_gph['height'][:] = np.arange(68)[::-1]
-zonalmean_gph.createDimension('lat', all_nj[GZ_recs[0,0]])
-zonalmean_gph.createVariable(varname='lat', datatype='float32', dimensions=('lat',))
-zonalmean_gph['lat'].setncatts({'units':'degrees_north'})
-zonalmean_gph['lat'][:] = vardict['GZ'].axes[-2].array
+  # Find the available timesteps and levels.
+  gph_timesteps = b._headers[GZ_recs[:,0]]['datev']
+  gph_levels = b._headers[GZ_recs[0,:]]['level']
+  assert np.all(vgd.vgd_get(vgd_id,'VIPT')[:-2] == b._headers[GZ_recs[0,:]]['ip1'])
 
-for tracer in tracers:
-  if tracer not in vardict: continue
-  zonalmean_gph.createVariable(varname=tracer, datatype='float64', dimensions=('time','height','lat'))
+  # Determine zonal mean calculations.
+  filename = "%s/%s_zonalmean_gph.nc"%(args.outdir,args.label)
+  zonalmean_gph = netCDF4.Dataset(filename,'w')
+  times = fstd2nc.mixins.dates.stamp2datetime(gph_timesteps)
+  times = np.array(times,dtype='datetime64[s]')
 
-zonalmean_gph = Writer(zonalmean_gph)
-gph_indices = calc(lambda gz: 67-gz/100.)
+  zonalmean_gph.createDimension('time', None)
+  zonalmean_gph.createVariable(varname='time', datatype='float32', dimensions=('time',))
+  zonalmean_gph['time'].setncatts({'units':'hours since 2015-01-01'})
+  zonalmean_gph['time'][:] = netCDF4.date2num(times.tolist(),units='hours since 2015-01-01')
+  zonalmean_gph.createDimension('height', 68)
+  zonalmean_gph.createVariable(varname='height', datatype='float32', dimensions=('height',))
+  zonalmean_gph['height'].setncatts({'units':'km'})
+  zonalmean_gph['height'][:] = np.arange(68)[::-1]
+  zonalmean_gph.createDimension('lat', all_nj[GZ_recs[0,0]])
+  zonalmean_gph.createVariable(varname='lat', datatype='float32', dimensions=('lat',))
+  zonalmean_gph['lat'].setncatts({'units':'degrees_north'})
+  zonalmean_gph['lat'][:] = vardict['GZ'].axes[-2].array
 
-for tracer in tracers:
-  if tracer not in vardict: continue
-  recs = limit_timesteps(get_3d_recs(vardict[tracer].record_id), gph_timesteps)
-  for it,t in enumerate(np.searchsorted(gph_timesteps, b._headers[recs[:,0]]['datev'])):
-    x = []
-    gz = []
-    for ik,k in enumerate(np.searchsorted(gph_levels, b._headers[recs[0,:]]['level'])):
-      x.append(read(recs[it,ik]))
-      gz.append(read(GZ_recs[t,k]))
-    x = stack(*x)
-    gz = stack(*gz)
-    z = gph_indices(gz)
-    zonalmean_gph.write (tracer, t, zonal_mean(vinterp (x, z, 68)))
+  for tracer in tracers:
+    if tracer not in vardict: continue
+    zonalmean_gph.createVariable(varname=tracer, datatype='float64', dimensions=('time','height','lat'))
+
+  zonalmean_gph = Writer(zonalmean_gph)
+  gph_indices = calc(lambda gz: 67-gz/100.)
+
+  for tracer in tracers:
+    if tracer not in vardict: continue
+    recs = limit_timesteps(get_3d_recs(vardict[tracer].record_id), gph_timesteps)
+    for it,t in enumerate(np.searchsorted(gph_timesteps, b._headers[recs[:,0]]['datev'])):
+      x = []
+      gz = []
+      for ik,k in enumerate(np.searchsorted(gph_levels, b._headers[recs[0,:]]['level'])):
+        x.append(read(recs[it,ik]))
+        gz.append(read(GZ_recs[t,k]))
+      x = stack(*x)
+      gz = stack(*gz)
+      z = gph_indices(gz)
+      zonalmean_gph.write (tracer, t, zonal_mean(vinterp (x, z, 68)))
 
 # Find timesteps available for zonal mean diagnostics on pressure levels.
 pres_timesteps = get_timesteps(vardict['P0'].record_id)
@@ -520,7 +523,7 @@ zonalmean_plev['pres'][:] = np.logspace(-1,3,100)
 zonalmean_plev.createDimension('lat', all_nj[P0_recs[0]])
 zonalmean_plev.createVariable(varname='lat', datatype='float32', dimensions=('lat',))
 zonalmean_plev['lat'].setncatts({'units':'degrees_north'})
-zonalmean_plev['lat'][:] = vardict['GZ'].axes[-2].array
+zonalmean_plev['lat'][:] = vardict['P0'].axes[-2].array
 
 zonalmean_tropo.createDimension('time', None)
 zonalmean_tropo.createVariable(varname='time', datatype='float32', dimensions=('time',))
@@ -533,7 +536,7 @@ zonalmean_tropo['pres'][:] = np.linspace(200,1000,81)
 zonalmean_tropo.createDimension('lat', all_nj[P0_recs[0]])
 zonalmean_tropo.createVariable(varname='lat', datatype='float32', dimensions=('lat',))
 zonalmean_tropo['lat'].setncatts({'units':'degrees_north'})
-zonalmean_tropo['lat'][:] = vardict['GZ'].axes[-2].array
+zonalmean_tropo['lat'][:] = vardict['P0'].axes[-2].array
 
 for tracer in tracers:
   if tracer not in vardict: continue
