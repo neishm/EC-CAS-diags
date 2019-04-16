@@ -88,8 +88,9 @@ for tracer in control.data_vars.keys():
 
   movie = an.writers['avconv'](fps=args.fps, bitrate=args.bitrate, metadata={'comment':str(args)})
   outfile = args.outname+'_'+tracer+'.avi'
+  print ("Saving "+outfile)
   with movie.saving(fig, outfile, 72):
-    for i in fstd2nc.mixins._ProgressBar("Saving "+outfile, suffix='%(percent)d%% [%(myeta)s]').iter(range(control.dims['time'])):
+    for i in fstd2nc.mixins._ProgressBar("",suffix='%(percent)d%% [%(myeta)s]').iter(range(control.dims['time'])):
       # Get date and time as formatted string.
       time = str(control.coords['time'].values[i])
       time = time[:10] + ' ' + time[11:16]
