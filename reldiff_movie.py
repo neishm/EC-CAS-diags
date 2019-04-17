@@ -55,15 +55,26 @@ for tracer in control.data_vars.keys():
   data2 = experiment.data_vars[tracer] * conversion
   reldiff = (data2-data1)/data1 * 100
 
-  fig = pl.figure(figsize=(12,6))
-  pl.suptitle(rename.get(tracer,tracer)+' '+diag_type,fontsize=16)
-  frame1 = data1.isel(time=-1).plot(ax=pl.subplot(131),robust=True)
+  if 'lat' in control.dims and 'lon' in control.dims:
+    fig = pl.figure(figsize=(8,10))
+    plot_layout = 310
+    set_label = lambda f, label: f.axes.set_ylabel(label)
+    hide_axis = lambda *frames: [f.axes.get_xaxis().set_visible(False) for f in frames[:-1]]
+    set_title = lambda title, *frames: frames[0].axes.set_title(rename.get(tracer,tracer)+' '+diag_type+' - '+title)
+  else:
+    fig = pl.figure(figsize=(12,6))
+    plot_layout = 130
+    set_label = lambda f, label: f.axes.set_xlabel(label)
+    hide_axis = lambda *fields: [f.axes.get_yaxis().set_visible(False) for f in fields[1:]]
+    pl.suptitle(rename.get(tracer,tracer)+' '+diag_type,fontsize=16)
+    set_title = lambda title, *frames: frames[-1].axes.set_title(title)
+  frame1 = data1.isel(time=-1).plot(ax=pl.subplot(plot_layout+1),robust=True)
   cbar1 = fig.axes[-1]
-  frame2 = data2.isel(time=-1).plot(ax=pl.subplot(132),robust=True)
+  frame2 = data2.isel(time=-1).plot(ax=pl.subplot(plot_layout+2),robust=True)
   # Use same colorbar range for control and experiment.
   frame2.set_clim(frame1.get_clim())
   cbar2 = fig.axes[-1]
-  frame3 = reldiff.isel(time=-1).plot(ax=pl.subplot(133),robust=True,cmap='RdBu_r',center=0.0)
+  frame3 = reldiff.isel(time=-1).plot(ax=pl.subplot(plot_layout+3),robust=True,cmap='RdBu_r',center=0.0)
   cbar3 = fig.axes[-1]
   # Adjust vertical scale for pressure levels.
   if 'pres' in control.dims:
@@ -75,14 +86,15 @@ for tracer in control.data_vars.keys():
   cbar1.set_ylabel('')
   cbar2.set_ylabel('')
   cbar3.set_ylabel('')
-  frame2.axes.get_yaxis().set_visible(False)
-  frame3.axes.get_yaxis().set_visible(False)
+  hide_axis(frame1,frame2,frame3)
   frame1.axes.set_title('')
   frame2.axes.set_title('')
+  frame3.axes.set_title('')
+  set_title('title',frame1,frame2,frame3)
   # Label the frames.
-  frame1.axes.set_xlabel(control_name)
-  frame2.axes.set_xlabel(experiment_name)
-  frame3.axes.set_xlabel('relative diff (%)')
+  set_label(frame1,control_name)
+  set_label(frame2,experiment_name)
+  set_label(frame3,'relative diff (%)')
   # Remove excess whitespace.
   pl.tight_layout()
 
@@ -94,7 +106,7 @@ for tracer in control.data_vars.keys():
       # Get date and time as formatted string.
       time = str(control.coords['time'].values[i])
       time = time[:10] + ' ' + time[11:16]
-      frame3.axes.set_title(time)
+      set_title(time,frame1,frame2,frame3)
 
       # Get the values for this frame.
       d1 = data1.isel(time=i).values.flatten()
