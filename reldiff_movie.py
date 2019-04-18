@@ -9,7 +9,7 @@ parser.add_argument('control', help='Control data (netCDF).')
 parser.add_argument('experiment', help='Experiment data (netCDF).')
 parser.add_argument('outname', help='Name of the movie file to generate.')
 parser.add_argument('--fps', default=25, type=int, help='Frames per second for the movie.  Default is %(default)s.')
-parser.add_argument('--bitrate', default=1000, type=int, help='Frames per second for the movie.  Default is %(default)s.')
+parser.add_argument('--bitrate', default=8000, type=int, help='Frames per second for the movie.  Default is %(default)s.')
 args = parser.parse_args()
 
 # Add paths to locally installed packages.
