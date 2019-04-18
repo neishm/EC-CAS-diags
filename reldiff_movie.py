@@ -12,6 +12,10 @@ parser.add_argument('--fps', default=25, type=int, help='Frames per second for t
 parser.add_argument('--bitrate', default=1000, type=int, help='Frames per second for the movie.  Default is %(default)s.')
 args = parser.parse_args()
 
+# Add paths to locally installed packages.
+import sys
+sys.path.append('/fs/ssm/eccc/crd/ccmr/EC-CAS/master/basemap_1.0.7rel_ubuntu-14.04-amd64-64/lib/python')
+
 try:
   import xarray
   import dask
@@ -22,6 +26,7 @@ except ImportError:
 import numpy as np
 from matplotlib import pyplot as pl
 from matplotlib import animation as an
+from mpl_toolkits.basemap import Basemap
 
 # Ignore numpy warnings about things like invalid values (such as NaN).
 import warnings
@@ -82,6 +87,10 @@ for tracer in control.data_vars.keys():
       frame.axes.set_ylim(frame.axes.get_ylim()[::-1])
       if min(control.coords['pres']) <= 100:
         frame.axes.set_yscale('log')
+  # Add map background?
+  if 'lat' in control.dims and 'lon' in control.dims:
+    for frame in frame1, frame2, frame3:
+      Basemap(projection='cyl', llcrnrlat=-90, urcrnrlat=90, llcrnrlon=0, urcrnrlon=360, ax=frame.axes).drawcoastlines()
   # Remove some labels to save space.
   cbar1.set_ylabel('')
   cbar2.set_ylabel('')
