@@ -33,7 +33,7 @@ class CT2016_Canada_Data(CT2016_Data):
   def open_file (cls, filename):
     from pygeode.formats import netcdf
     ct = super(CT2016_Canada_Data,cls).open_file(filename)
-    mask = netcdf.open("/wrk6/neish/from_doug/GCP_methane_regions_1x1.nc").REG
+    mask = netcdf.open("/space/hall1/sitestore/eccc/crd/ccmr/scrd701/misc/regions/GCP_methane_regions_1x1.nc").REG
     mask = mask.sorted('LAT')
     mask = mask.rename_axes(LAT='latitude',LON='longitude')
     return ct + mask
