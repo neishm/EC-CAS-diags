@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Model parameters to assume for this data:
-tracers = ('CO2','CH4','TCO')
+tracers = ('CO2','CH4','TCO','CFF','CBB','CLA','COC')
 nlev = 79   # Number of thermodynamic levels
 debug = False
 grav = .980616e+1  # Taken from GEM-MACH file chm_consphychm_mod.ftn90
@@ -60,7 +60,7 @@ class Calc (object):
     for callback in self.callbacks:
       ids = list(map(id,callback.inputs))
       if id(self) not in ids:
-        print 'weird'
+        print 'weird', self.func, callback.func, id(self), ids, map(type,callback.inputs)
         return
       i = ids.index(id(self))
       with callback.lock:
