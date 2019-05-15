@@ -132,7 +132,7 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
       else:
         ifirst = (i//n)*n
         ilast = min(ifirst+n,nstations)-1
-        fig_id = ','.join(inputs[0].datasets[j].vars[0].station[0] for j in range(ifirst,ilast+1))
+        fig_id = ','.join(inputs[0].datasets[j].vars[0].station.station[0] for j in range(ifirst,ilast+1))
       outfile = "%s/%s_timeseries_%s_%s%s.%s"%(outdir,'_'.join(d.name for d in inputs),self.fieldname,fig_id,self.suffix+self.end_suffix,self.image_format)
 
       # Skip plots that have already been generated.

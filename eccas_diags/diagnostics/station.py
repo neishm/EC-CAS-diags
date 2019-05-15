@@ -84,7 +84,7 @@ class StationComparison(Diagnostic):
     for dataset in obs.datasets:
       # Determine which stations were selected by the user
       matches = []
-      for s in dataset.station:
+      for s in dataset.station.station:
         name = self._lookup_station(s)
         if name is not None:
           matches.append(s)
