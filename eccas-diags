@@ -311,6 +311,7 @@ diag ('totalmass', 'air', 'Pg')
 diag ('totalmass', 'dry_air', 'Pg')
 diag ('totalmass', 'H2O', 'Pg')
 diag ('totalmass', 'CO', 'Pg')
+diag ('totalmass', 'OH', 'Pg')
 
 diag ('totalmass-diff', 'CO2', 'Pg(C)')
 diag ('totalmass-diff', 'CH4', 'Pg')
