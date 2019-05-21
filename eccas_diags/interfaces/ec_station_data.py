@@ -150,6 +150,9 @@ class EC_Station_Data(SplitProduct):
       print "Warning: ec-station-obs: %s has no data for %s."%(station,tracer)
       return asdataset([])
 
+    # Filter out negative values
+    mean[mean<0] = float('nan')
+
     # Define the time axis.  Use a consistent start date, so the various
     # station records can be more easily compared.
     taxis = StandardTime (year=year, month=month, day=day, hour=hourend, units='hours', startdate={'year':1980,'month':1,'day':1})
