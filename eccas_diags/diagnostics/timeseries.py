@@ -27,6 +27,20 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
   """
   Sample data at surface obs locations, and plot the result as a 1D line plot.
   """
+  @classmethod
+  def add_args (cls, parser, handled=[]):
+    from datetime import datetime
+    super(Timeseries,cls).add_args(parser)
+    if len(handled) > 0: return  # Only run once
+    group = parser.add_argument_group('options for time series filtering')
+    group.add_argument('--smooth', action='store', type=int, help="Smoothing window for timeseries data, in days.  Default is no smoothing.")
+    handled.append(True)
+  def __init__(self,smooth=None,**kwargs):
+    from datetime import datetime, timedelta
+    super(Timeseries,self).__init__(**kwargs)
+    self.smooth = smooth
+    if smooth is not None:
+      self.end_suffix += '_%dd_smoothed'%smooth
   # Select a common time period for the data products, and convert to the
   # right units.  Also, pick out the field of interest.
   def _transform_inputs (self, inputs):
@@ -173,10 +187,16 @@ class Timeseries(StationComparison,TimeVaryingDiagnostic,ImageDiagnostic):
 
         values = var.get().flatten()
 
+        # Apply smoothing
+        if self.smooth is not None and len(dates) > 1:
+          window = self.smooth * 3600 * 24 // int((dates[1]-dates[0]).total_seconds())
+          values = np.average([np.roll(values,w) for w in range(-window//2,window//2+1)], axis=0)
+
         # Determine marker size based on the density of observations
         timevalues = var.time.values
         timevalues = timevalues[np.isfinite(values)]
         dt = filter(None,np.diff(timevalues))
+        del timevalues
         if len(dt) > 0:
           # Choose a representative dt.
           dt = sorted(dt)[len(dt)/2]
