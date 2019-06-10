@@ -78,7 +78,7 @@ class DataProduct (DataInterface):
     if 'density' not in varnames and 'air_pressure' in varnames and 'air_temperature' in varnames and 'specific_humidity' in varnames:
       try:
         T = find_and_convert (dataset, 'air_temperature', 'K')
-      except ValueError:
+      except ValueError, KeyError:
         T = find_and_convert (dataset, 'air_temperature', 'C') + 273.15
       q = find_and_convert (dataset, 'specific_humidity', 'kg(H2O) kg(air)-1')
       p = find_and_convert (dataset, 'air_pressure', 'Pa')
