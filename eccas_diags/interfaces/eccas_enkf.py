@@ -81,20 +81,23 @@ class ECCAS_EnKF_Data(ECCAS_Data):
       if var.hasaxis('forecast') and len(var.forecast) > 1:
         dataset[i] = var(forecast=(0.0,4.5))
 
-    # Detect ensemble spread fields
-    for var in dataset:
-      if var.name.endswith('_ensemblespread'):
-        var.name = var.name.rstrip('_ensemblespread')
-        var.atts['ensemble_op'] = 'spread'
+    # Split into mean / spread datasets, and use the base name (e.g. CO2_ensemblespread -> CO2)
+    spread_dataset = [var for var in dataset if var.name.endswith('_ensemblespread')]
+    mean_dataset = [var for var in dataset if not var.name.endswith('_ensemblespread')]
+    for var in spread_dataset:
+      var.name = var.name.rstrip('_ensemblespread')
+      var.atts['ensemble_op'] = 'spread'
 
     # Do EC-CAS field decoding
-    dataset = ECCAS_Data.decode.__func__(cls,dataset)
+    spread_dataset = ECCAS_Data.decode.__func__(cls,spread_dataset)
+    mean_dataset = ECCAS_Data.decode.__func__(cls,mean_dataset)
 
     # Add back ensemble spread suffix.
-    dataset = list(dataset)
-    for var in dataset:
-      if var.atts.get('ensemble_op') == 'spread':
-        var.name += '_ensemblespread'
+    for var in spread_dataset:
+      var.name = var.name + '_ensemblespread'
+
+    # Merge the mean / spread fields back together, now that decoding is finished.
+    dataset = list(spread_dataset) + list(mean_dataset)
 
     return dataset
 
