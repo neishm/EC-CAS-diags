@@ -251,6 +251,9 @@ def diag (diagname, fieldname, units, **extra):
 diag ('timeseries', 'CO2', 'ppm')
 diag ('timeseries', 'CH4', 'ppb')
 diag ('timeseries', 'CO', 'ppb')
+# For Baysian inversions
+for component in 'CFF,CBB,CO2B,CLN1,CLN2,CLN3,CLS1,CLS2,CLS3,CON1,CON2,CON3,COS1,COS2,COS3'.split(','):
+  diag ('timeseries', component, 'ppm')
 
 diag ('aircraft-profiles', 'CO2', 'ppm')
 
@@ -259,6 +262,7 @@ diag ('diurnal-cycle', 'CH4', 'ppb')
 diag ('diurnal-cycle', 'CO', 'ppb')
 
 diag ('zonal-movie', 'CO2', 'ppm')
+diag ('zonal-movie', 'CO2_Canada', 'ppm')
 diag ('zonal-movie', 'CO2_ensemblespread', 'ppm')
 diag ('zonal-movie', 'CH4_ensemblespread', 'ppb')
 diag ('zonal-movie', 'CO_ensemblespread', 'ppb')
@@ -318,6 +322,7 @@ diag ('totalmass-diff', 'CH4', 'Pg')
 diag ('totalmass-diff', 'CO', 'Pg')
 
 diag ('horz-slice', 'CO', 'ppb', height="1.5")
+diag ('horz-slice', 'CO2_Canada', 'ppm', height="1.5")
 diag ('horz-slice-diff', 'CO2', 'ppm', height="1.5")
 
 diag ('concentration-v-height', 'CO2', 'ppm', xlim=(375,395))
