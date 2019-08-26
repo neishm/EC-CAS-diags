@@ -25,7 +25,7 @@ except ImportError:
 from os.path import dirname
 if args.label is None:
   dirs = dirname(args.infile).split('/')
-  while dirs[-1] in ('model','pressure','timeseries','','.'):
+  while dirs[-1] in ('model','pres','time_series','','.'):
     dirs.pop()
   args.label = dirs[-1]
 
