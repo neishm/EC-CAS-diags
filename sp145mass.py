@@ -37,8 +37,9 @@ indir = '/home/min000/data_maestro/eccc-ppp1/eccas-diags-tmp/'
 #   ./quickdiags "/home/smp001/data_maestro/eccc-ppp1/output/sp145_CCCma_scaled/model/*_024" ~/data_maestro/eccc-ppp1/eccas-diags-tmp/ --nthreads 8
 #   ./quickdiags "/home/smp001/data_maestro/eccc-ppp1/output/sp145_GEOS_v10_scaled/model/*_024" ~/data_maestro/eccc-ppp1/eccas-diags-tmp/ --nthreads 8
 #   ./quickdiags "/home/smp001/data_maestro/eccc-ppp1/output/sp145_GEOS_v5_with_v10_strato/model/*_024" ~/data_maestro/eccc-ppp1/eccas-diags-tmp/ --nthreads 8
+#   ./quickdiags "/home/smp001/data_maestro/eccc-ppp1/output/sp145_gemmach_scaled/model/*_024" ~/data_maestro/eccc-ppp1/eccas-diags-tmp/ --nthreads 8
 experiments = {
-  #'GEM-MACH (scaled)': 'mn141_GEM-MACH_saprc_scale0.65_tropomass.nc',
+  'GEM-MACH (scaled)': indir+'sp145_gemmach_scaled_tropomass.nc',
   'GEOS_v10 (scaled)': indir+'sp145_GEOS_v10_scaled_tropomass.nc',
   'GEOS_v5': indir+'sp145_GEOS_v5_with_v10_strato_tropomass.nc',
   'CAMS': indir+'sp145_CAMS_tropomass.nc',
