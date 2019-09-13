@@ -52,7 +52,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
   # complete axes.  Without squashing, the fstd.open call could fail.
   @staticmethod
   def open_file (filename):
-    from pygeode.formats import fstd
+    from pygeode_rpn import fstd
     return fstd.open(filename, raw_list=True, squash_forecasts=True)
 
   # Method to find all files in the given directory, which can be accessed
@@ -126,7 +126,7 @@ class ECCAS_Flux_Data(ECCAS_Data):
   # set IP2 to the hour of day (needed by the emissions preprocessor).
   @staticmethod
   def _fstd_tweak_records (records):
-    from pygeode.formats.fstd_core import stamp2date
+    from pygeode_rpn.fstd_core import stamp2date
     # Select non-coordinate records (things that aren't already using IP2)
     ind = (records['ip2'] == 0)
     # Set IP2 to the hour

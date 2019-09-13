@@ -473,7 +473,7 @@ def get_area (latvar, lonvar, flat=False):
 
 # Helper method to compute the change in pressure within a vertical layer.
 def compute_dp (zaxis, p0):
-  from pygeode.formats import fstd
+  from pygeode_rpn import fstd
   from pygeode.var import Var
   from pygeode.ufunc import exp, log
   import math
@@ -550,7 +550,7 @@ def compute_dp (zaxis, p0):
 
 # Helper method to compute pressure levels from the given z-axis and surface pressure
 def compute_pressure (zaxis, p0):
-  from pygeode.formats import fstd
+  from pygeode_rpn import fstd
   from pygeode.ufunc import exp, log
 
   p0 = convert(p0, 'Pa')
@@ -660,7 +660,7 @@ def positive(var): return Positive(var)
 # Get a keyword / value that can be used to select a surface level for the
 # givem vertical axis.
 from pygeode.axis import Pres, Hybrid
-from pygeode.formats.fstd import LogHybrid, Height_wrt_Ground
+from pygeode_rpn.fstd import LogHybrid, Height_wrt_Ground
 surface_values = {Pres:1000., Hybrid:1.0, LogHybrid:1.0, Height_wrt_Ground:0.0}
 surface_direction = {Pres:+1, Hybrid:+1, LogHybrid:+1, Height_wrt_Ground:-1}
 # Rank the different axis types by preference (higher number is better)

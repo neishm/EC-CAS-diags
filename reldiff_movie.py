@@ -13,6 +13,7 @@ parser.add_argument('--bitrate', default=8000, type=int, help='Frames per second
 args = parser.parse_args()
 
 # Add paths to locally installed packages.
+# Only needed for running on gpsc-vis nodes.
 import sys
 sys.path.append('/fs/ssm/eccc/crd/ccmr/EC-CAS/master/basemap_1.0.7rel_ubuntu-14.04-amd64-64/lib/python')
 
@@ -136,7 +137,12 @@ for tracer in control.data_vars.keys():
   # Remove excess whitespace.
   pl.tight_layout(rect=rect)
 
-  movie = an.writers['avconv'](fps=args.fps, bitrate=args.bitrate, metadata={'comment':str(args)})
+  try:
+    # gpsc-vis nodes
+    movie = an.writers['avconv'](fps=args.fps, bitrate=args.bitrate, metadata={'comment':str(args)})
+  except KeyError:
+    # ppp4
+    movie = an.writers['ffmpeg'](fps=args.fps, bitrate=args.bitrate, metadata={'comment':str(args)})
   outfile = args.outname+'_'+tracer+'.avi'
   print ("Saving "+outfile)
   with movie.saving(fig, outfile, 72):

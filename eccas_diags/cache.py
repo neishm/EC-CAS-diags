@@ -81,7 +81,7 @@ class Cache (object):
     # Set up the save/load hooks.
     from station_data import station_axis_save_hook, station_axis_load_hook
     def fstd_load_hook (dataset):
-      from pygeode.formats.fstd import detect_fstd_axes
+      from pygeode_rpn.fstd import detect_fstd_axes
       data = list(dataset.vars)
       detect_fstd_axes(data)
       return data

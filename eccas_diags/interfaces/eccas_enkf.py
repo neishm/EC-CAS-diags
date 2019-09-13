@@ -29,7 +29,7 @@ class ECCAS_EnKF_Data(ECCAS_Data):
   # Method to open a single file
   @staticmethod
   def open_file (filename):
-    from pygeode.formats import fstd
+    from pygeode_rpn import fstd
     # Ugly hack to force the PyGeode FSTD interface to always associate the
     # !! record with the fields (override the IG*/IP* pairing).
     orig_attach_vertical_axes = fstd.attach_vertical_axes

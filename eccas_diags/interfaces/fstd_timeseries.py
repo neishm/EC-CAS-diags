@@ -28,7 +28,7 @@ class FSTD_Timeseries(DataProduct):
   # Method to open a single file
   @staticmethod
   def open_file (filename):
-    from pygeode.formats import fstd, fstd_core
+    from pygeode_rpn import fstd, fstd_core
     from ..station_data import Station
     from pygeode.dataset import Dataset
     # Read the raw records from the fstd file (no decoding done yet)

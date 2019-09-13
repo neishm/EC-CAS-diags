@@ -14,7 +14,7 @@ if [ ! -e "${SEQ_EXP_HOME}/experiment.cfg" ]; then
 fi
 
 # Import the Maestro environment
-export SEQ_MAESTRO_SHORTCUT=". ssmuse-sh -d eccc/cmo/isst/maestro/1.5.1-rc22"
+export SEQ_MAESTRO_SHORTCUT=". ssmuse-sh -d eccc/cmo/isst/maestro/1.5.3.3"
 $SEQ_MAESTRO_SHORTCUT
 
 # If this is the first time running with maestro >= 1.4.0, need to run a setup
@@ -27,7 +27,15 @@ if [ ! -e "${HOME}/.suites/mconfig.xml" ]; then
 fi
 
 # Make sure an mserver process is running
-mserver_check -m maestro1
+# Also make sure resources file is selected.
+resources=${SEQ_EXP_HOME}/resources/resources.def
+if [ -e ${SEQ_EXP_HOME}/listings/eccc-ppp4 ]; then
+  mserver_check -m eccc-ppp4
+  [ ! -e ${resources} ] && ln -s resources.def.upgrade1 ${resources}
+else
+  mserver_check -m maestro2
+  [ ! -e ${resources} ] && ln -s resources.def.science ${resources}
+fi
 
 # Start xflow
 echo "Launching xflow..."

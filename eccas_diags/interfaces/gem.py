@@ -44,7 +44,7 @@ class GEM_Data(DataProduct):
   # Method to open a single file
   @staticmethod
   def open_file (filename):
-    from pygeode.formats import fstd
+    from pygeode_rpn import fstd
     return fstd.open(filename, raw_list=True)
 
 
@@ -52,7 +52,7 @@ class GEM_Data(DataProduct):
   # extra info needed (pressure values, cell area, etc.)
   @classmethod
   def decode (cls, dataset):
-    from pygeode.formats import fstd
+    from pygeode_rpn import fstd
     from pygeode.ufunc import exp, log
     from pygeode.var import concat, Var
     from pygeode.axis import ZAxis
@@ -245,7 +245,7 @@ class GEM_Data(DataProduct):
   @classmethod
   def write (cls, datasets, dirname):
     from pygeode.dataset import asdataset
-    from pygeode.formats import fstd, fstd_core
+    from pygeode_rpn import fstd, fstd_core
     import numpy as np
     from datetime import datetime, timedelta
     from ..common import rotate_grid, add_repeated_longitude, increasing_latitudes
