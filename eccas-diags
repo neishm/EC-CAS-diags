@@ -252,7 +252,7 @@ diag ('timeseries', 'CO2', 'ppm')
 diag ('timeseries', 'CH4', 'ppb')
 diag ('timeseries', 'CO', 'ppb')
 # For Baysian inversions
-for component in 'CFF,CBB,CO2B,CLN1,CLN2,CLN3,CLS1,CLS2,CLS3,CON1,CON2,CON3,COS1,COS2,COS3'.split(','):
+for component in 'CO2_fossil,CO2_fire,CO2_background,CLN1,CLN2,CLN3,CLS1,CLS2,CLS3,CON1,CON2,CON3,COS1,COS2,COS3'.split(','):
   diag ('timeseries', component, 'ppm')
 
 diag ('aircraft-profiles', 'CO2', 'ppm')
