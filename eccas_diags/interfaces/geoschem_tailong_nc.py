@@ -55,6 +55,9 @@ class GEOSCHEM_Data(DataProduct):
     ('methanols', 'CO_methanol_flux', 'molecules(CO) cm-2 s-1'),
     ('monos', 'CO_monoterpene_flux', 'molecules(CO) cm-2 s-1'),
     ('acetones', 'CO_acetone_flux', 'molecules(CO) cm-2 s-1'),
+    # Burning emissions, from Dylan.
+    # replaces an_emiss, bb_emiss, and bf_emiss.
+    ('COanth', 'CO_combust_flux', 'kg(CO) cm-2 s-1'),
   )
 
 
@@ -79,7 +82,7 @@ class GEOSCHEM_Data(DataProduct):
     from pygeode.axis import Hybrid, Lat, Lon
     from pygeode.timeaxis import StandardTime
     from .geoschem_feng_nc import GEOSCHEM_Data as GC
-    from ..common import compute_pressure
+    from ..common import compute_pressure, convert
 
     # Hard-code the hybrid levels (needed for doing zonal mean plots on native
     # model coordinates).
@@ -118,7 +121,8 @@ class GEOSCHEM_Data(DataProduct):
       dataset = dataset.replace_axes(date_dim=time, datetime=time)
 
     # Remove "ground-level" dimension.
-    dataset = dataset.squeeze()
+    if dataset.hasaxis('ground_level'):
+      dataset = dataset.squeeze('ground_level')
 
     # Apply fieldname conversions
     data = DataProduct.decode.__func__(cls,dataset)
@@ -126,9 +130,15 @@ class GEOSCHEM_Data(DataProduct):
     # Convert to a dictionary (for referencing by variable name)
     data = dict((var.name,var) for var in dataset)
 
+    # Convert units of combustion flux to be consistent with bio fluxes.
+    if 'CO_combust_flux' in data:
+      data['CO_combust_flux'] = convert(data['CO_combust_flux'],'molecules(CO) cm-2 s-1')
+
     # Collect non-bio fields together?
     if all('CO_'+n+'_flux' in data for n in ('anthro','biomass','biofuel')):
       data['CO_nonbio_flux'] = data['CO_anthro_flux'] + data['CO_biomass_flux'] + data['CO_biofuel_flux']
+    elif 'CO_combust_flux' in data:
+      data['CO_nonbio_flux'] = data['CO_combust_flux'].rename('CO_combust_flux')
 
     # Generate a total CO flux (including biogenic components)
     if all('CO_'+n+'_flux' in data for n in ('nonbio','methanol','acetone','isoprene','monoterpene')):
