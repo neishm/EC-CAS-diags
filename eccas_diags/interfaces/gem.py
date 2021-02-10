@@ -19,6 +19,33 @@
 ###############################################################################
 
 
+# Fix a bug in reduce_dimensionality.
+from pygeode_rpn import fstd
+from pygeode_rpn.fstd import FSTD_Var
+from pygeode.axis import Pres
+# Reduce the dimensionality of the given FSTD variable
+def reduce_dimensionality (var, squash_forecasts=False):
+  # Skip derived fields
+  if not isinstance(var, FSTD_Var): return var
+
+  remove_axes = []
+  # Forecast (axis 1)
+  if var.shape[1] == 1:
+    if squash_forecasts:
+      remove_axes += [1]
+  # Vertical (axis 2)
+  # Surface fields have a 'pressure' coordinate with a value of 0hPa
+  if var.shape[2] == 1:
+    if isinstance(var.axes[2], Pres) and var.axes[2].values == [0.]:
+      remove_axes += [2]
+  # K axis (axis 3)
+  if var.shape[var.naxes-3] == 1:
+    remove_axes += [var.naxes-3]
+
+  if len(remove_axes) == 0: return var   # <============== added fix here
+  return var.squeeze(*remove_axes)
+fstd.reduce_dimensionality = reduce_dimensionality
+
 
 from . import DataProduct
 class GEM_Data(DataProduct):
@@ -39,13 +66,14 @@ class GEM_Data(DataProduct):
     ('HU', 'specific_humidity', 'kg(H2O) kg(air)-1'),
     ('DX', 'cell_area', 'm2'),
     ('H', 'PBL_height', 'm'),
+    ('MASK', 'subgrid_weight', ''), # Note: local definition, not part of GEM.
   )
 
   # Method to open a single file
   @staticmethod
   def open_file (filename):
     from pygeode_rpn import fstd
-    return fstd.open(filename, raw_list=True)
+    return fstd.open(filename, raw_list=True, subgrid_axis=True)
 
 
   # Method to decode an opened dataset (standardize variable names, and add any
@@ -116,6 +144,14 @@ class GEM_Data(DataProduct):
           cell_area = get_area(var.lat,var.lon,flat=True).extend(0,var.time)
         cell_area.name = 'cell_area'
         dataset.append(cell_area)
+
+    # Blended grid cell area (contrubution from each subgrid).
+    if not any(var.name == 'blended_area' for var in dataset):
+      from ..common import get_blended_area
+      try:
+        blended_area = get_blended_area (dataset)
+        dataset.append(blended_area)
+      except (TypeError, ValueError): pass
 
     # Special case - already on pressure levels?
     # Can append a degenerate pressure field for the diagnostics.

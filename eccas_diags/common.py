@@ -470,6 +470,26 @@ def get_area (latvar, lonvar, flat=False):
 
   return dxdy
 
+# Compute an area with blending weight considered.
+# For yin-yan grids, this factors in the relative contribution of each grid
+# cell to the overlapping grids.
+# For other grids, this is identical to cell_area.
+def get_blended_area (varlist):
+  cell_area = None
+  subgrid_weight = None
+  for var in varlist:
+    if var.hasaxis('lat') and var.hasaxis('lon') and var.name == "cell_area":
+      return var.rename("blended_area")
+    elif var.name == "cell_area":
+      cell_area = var
+    elif var.name == "subgrid_weight":
+      subgrid_weight = var
+  if cell_area is not None and subgrid_weight is not None:
+    blended = (cell_area * subgrid_weight).rename("blended_area")
+    blended.atts['units'] = cell_area.atts['units']
+    return blended
+  raise TypeError ("Unable to construct blended area.")
+
 
 # Helper method to compute the change in pressure within a vertical layer.
 def compute_dp (zaxis, p0):

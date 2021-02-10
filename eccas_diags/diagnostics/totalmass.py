@@ -117,7 +117,7 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
 
       # Total air mass?
       if fieldname == 'air':
-       dp, area = model.find_best(['dp','cell_area'], maximize=(number_of_levels,number_of_timesteps))
+       dp, area = model.find_best(['dp','blended_area'], maximize=(number_of_levels,number_of_timesteps))
        # Integrate to get total column
        dp = convert(dp,'Pa')
        tc = dp.sum('zaxis') / g
@@ -125,7 +125,7 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
       # Total tracer mass?
       else:
        try:
-         c, dp, area = find_and_convert(model, [fieldname,'dp','cell_area'], ['kg kg(air)-1', 'Pa', 'm2'], maximize=(number_of_levels,number_of_timesteps))
+         c, dp, area = find_and_convert(model, [fieldname,'dp','blended_area'], ['kg kg(air)-1', 'Pa', 'm2'], maximize=(number_of_levels,number_of_timesteps))
          specie = c.atts.get('specie',None)
        except ValueError:
          #raise ValueError("Don't know how to compute mass from units of '%s'"%c.atts['units'])
@@ -139,7 +139,7 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
     # shortcut
     elif fieldname == 'air':
        from warnings import warn
-       p0, area = model.find_best(['surface_pressure','cell_area'], maximize=number_of_timesteps)
+       p0, area = model.find_best(['surface_pressure','blended_area'], maximize=number_of_timesteps)
        warn ("No 'dp' data found in '%s'.  Approximating total air mass from surface pressure"%model.name)
        p0 = convert(p0,'Pa')
        tc = p0 / g
@@ -149,7 +149,10 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
     # Integrate horizontally
     # Assume global grid - remove repeated longitude
     area = convert(area,'m2')
-    mass = remove_repeated_longitude(tc * area).sum('lat','lon')
+    if tc.hasaxis('subgrid'):  # Yin-yan special case
+      mass = (tc * area).sum('subgrid', 'y','x')
+    else:
+      mass = remove_repeated_longitude(tc * area).sum('lat','lon')
 
     # Convert from kg to Pg
     mass *= 1E-12
@@ -177,7 +180,7 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
       data = convert(data,'mol s-1')
     # Otherwise, we need to integrate over the grid cell area.
     except ValueError:
-      data, area = model.find_best([fieldname+'_flux','cell_area'], maximize=number_of_timesteps)
+      data, area = model.find_best([fieldname+'_flux','blended_area'], maximize=number_of_timesteps)
       # Convert the units, using the specified tracer name for mass conversion
       specie = data.atts['specie']
       data = convert(data,'mol m-2 s-1')
@@ -189,7 +192,10 @@ class Totalmass(TimeVaryingDiagnostic,ImageDiagnostic):
     # Sum, skipping the last (repeated) longitude
     data = remove_repeated_longitude(data)
     data = data.as_type('float64')
-    data = data.sum('lat','lon')
+    if data.hasaxis('subgrid'):  # Yin-yan special case
+      data = data.sum('subgrid', 'y','x')
+    else:
+      data = data.sum('lat','lon')
     data.name = fieldname
 
     # Cache the data
