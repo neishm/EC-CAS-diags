@@ -223,19 +223,27 @@ class StationSample_from_grid(Var):
     # Get model lat/lon, broadcasted to all model dimensions.
     yaxis_loc = model_data.whichaxis('yaxis')
     xaxis_loc = model_data.whichaxis('xaxis')
+    # For yin-yan grid, have an extra dimension representing the index of the subgrid.
+    if model_data.hasaxis('subgrid'):
+      sgaxis_loc = model_data.whichaxis('subgrid')
+    else:
+      sgaxis_loc = None
+
     if model_data.hasaxis('lat') and model_data.hasaxis('lon'):
       model_lat = model_data.getaxis('lat').values
       model_lat = model_lat.reshape([len(model_lat) if a.name == 'lat' else 1 for a in model_data.axes])
       model_lon = model_data.getaxis('lon').values
       model_lon = model_lon.reshape([len(model_lon) if a.name == 'lon' else 1 for a in model_data.axes])
     elif lat is not None and lon is not None:
-      model_lat = lat.get().reshape([model_data.shape[i] if i in (yaxis_loc,xaxis_loc) else 1 for i in range(model_data.naxes)])
-      model_lon = lon.get().reshape([model_data.shape[i] if i in (yaxis_loc,xaxis_loc) else 1 for i in range(model_data.naxes)])
+      model_lat = lat.get().reshape([model_data.shape[i] if i in (sgaxis_loc,yaxis_loc,xaxis_loc) else 1 for i in range(model_data.naxes)])
+      model_lon = lon.get().reshape([model_data.shape[i] if i in (sgaxis_loc,yaxis_loc,xaxis_loc) else 1 for i in range(model_data.naxes)])
     else:
       raise ValueError("Unable to find lat/lon information for %s."%model_data.name)
     model_rlat = model_lat / 180. * np.pi
     model_rlon = model_lon / 180. * np.pi
     # Determine which model lat/lon indices to sample at
+    if sgaxis_loc is not None:
+      sgaxis_indices = []
     yaxis_indices = []
     xaxis_indices = []
     for lat,lon in zip(station_axis.lat,station_axis.lon):
@@ -251,22 +259,32 @@ class StationSample_from_grid(Var):
       matched_lat = model_lat[tuple(np.mod(ind,model_lat.shape))]
       matched_lon = model_lon[tuple(np.mod(ind,model_lon.shape))]
       if abs(lat-matched_lat) <= 5 and abs(abs(lon-matched_lon)-180) >= 175:
+        if sgaxis_loc is not None:
+          sgaxis_indices.append(ind[sgaxis_loc])
         yaxis_indices.append(ind[yaxis_loc])
         xaxis_indices.append(ind[xaxis_loc])
       else:
+        sgaxis_indices.append(None)
         yaxis_indices.append(None)
         xaxis_indices.append(None)
+    if model_data.hasaxis('subgrid'):
+      self.sgaxis_indices = sgaxis_indices
     self.yaxis_indices = yaxis_indices
     self.xaxis_indices = xaxis_indices
     # Replace lat/lon axes with the station axis
     axes = list(model_data.axes)
-    axes[yaxis_loc] = station_axis
-    axes = axes[:xaxis_loc]+axes[xaxis_loc+1:]
+    if sgaxis_loc is not None:
+      axes[sgaxis_loc] = station_axis
+      axes = axes[:yaxis_loc]+axes[xaxis_loc+1:]
+    else:
+      axes[yaxis_loc] = station_axis
+      axes = axes[:xaxis_loc]+axes[xaxis_loc+1:]
     Var.__init__(self, axes, dtype=model_data.dtype)
     copy_meta(model_data,self)
     self.model_data = model_data
     self.station_axis = station_axis
     self.station_iaxis = self.whichaxis('station')
+    self.sgaxis_loc = sgaxis_loc
     self.yaxis_loc = yaxis_loc
     self.xaxis_loc = xaxis_loc
   def getview (self, view, pbar):
@@ -280,14 +298,19 @@ class StationSample_from_grid(Var):
     for outsl, (indata,) in loopover(self.model_data, v, pbar=pbar):
       # Make sure we have a full lat/lon field to slice from
       # (otherwise, this routine would have to be re-written)
+      sgaxis_loc = self.sgaxis_loc
       yaxis_loc = self.yaxis_loc
       xaxis_loc = self.xaxis_loc
       assert indata.shape[yaxis_loc] == self.model_data.shape[yaxis_loc]
       assert indata.shape[xaxis_loc] == self.model_data.shape[xaxis_loc]
+      if sgaxis_loc is not None:
+        assert indata.shape[sgaxis_loc] == self.model_data.shape[sgaxis_loc]
       for i,station in enumerate(station_axis.values):
         # Inject the station index into the output slice
         full_outsl = outsl[:istation]+(i,)+outsl[istation:]
         insl = [slice(None)]*self.model_data.naxes
+        if sgaxis_loc is not None:
+          insl[sgaxis_loc] = self.sgaxis_indices[i]
         insl[yaxis_loc] = self.yaxis_indices[i]
         insl[xaxis_loc] = self.xaxis_indices[i]
         if insl[yaxis_loc] is not None and insl[xaxis_loc] is not None:
