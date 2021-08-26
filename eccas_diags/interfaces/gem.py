@@ -73,7 +73,11 @@ class GEM_Data(DataProduct):
   @staticmethod
   def open_file (filename):
     from pygeode_rpn import fstd
-    return fstd.open(filename, raw_list=True, subgrid_axis=True)
+    f = fstd.open(filename, raw_list=True, subgrid_axis=True)
+    # Filter out degenerate subgrid axis, which seems to be applied to
+    # lat/lon fields when reading data that's not on yin-yang grid.
+    f = [v.squeeze('subgrid') if v.hasaxis('subgrid') else v for v in f]
+    return f
 
 
   # Method to decode an opened dataset (standardize variable names, and add any
