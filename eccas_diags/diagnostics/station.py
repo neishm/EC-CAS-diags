@@ -264,7 +264,8 @@ class StationSample_from_grid(Var):
         yaxis_indices.append(ind[yaxis_loc])
         xaxis_indices.append(ind[xaxis_loc])
       else:
-        sgaxis_indices.append(None)
+        if sgaxis_loc is not None:
+          sgaxis_indices.append(None)
         yaxis_indices.append(None)
         xaxis_indices.append(None)
     if model_data.hasaxis('subgrid'):
